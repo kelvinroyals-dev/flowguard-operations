@@ -175,11 +175,6 @@ const OpsSettings = (function () {
           transform: translateX(18px);
         }
 
-        /* Demo mode toggle — amber when on */
-        .st-toggle-input.demo:checked ~ .st-toggle-track {
-          background: var(--warn, #b45309);
-        }
-
         /* Threshold slider */
         .st-threshold {
           display: flex; align-items: center; gap: 12px;

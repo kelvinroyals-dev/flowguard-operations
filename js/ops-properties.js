@@ -259,7 +259,9 @@ const OpsProperties = (function () {
       : base;
     if (_pg) _pg.update(filtered);
     else renderTable(filtered);
-  }(s) {
+  }
+
+  function pipelineBadge(s) {
     const m = { submitted:'watch', inspection_scheduled:'watch', inspection_ongoing:'warning', report_ready:'nominal', quote_sent:'watch', payment_pending:'warning', payment_completed:'nominal', deployment_scheduled:'watch', active:'nominal', suspended:'critical', cancelled:'offline' };
     return `<span class="status-badge ${m[s] || 'offline'}">${(s || 'unknown').replace(/_/g, ' ')}</span>`;
   }
