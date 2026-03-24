@@ -1,292 +1,429 @@
 // ============================================
-// USER MANAGEMENT MODULE (NEON THEME)
-// Full CRUD - Team member invites and RBAC
+// OPS USER MANAGEMENT MODULE
+// Internal team access — invite, edit, deactivate
 // ============================================
 
-const OpsUserManagement = (function() {
-    
-    async function render(container) {
-        container.innerHTML = `
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
-                <div>
-                    <h2 style="font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; color: var(--text-bright); margin-bottom: 4px;">Team Members</h2>
-                    <p style="font-size: 11px; color: var(--text-dim); letter-spacing: 0.5px;">Manage internal team access and permissions</p>
-                </div>
-                <button onclick="OpsUserManagement.openInviteModal()" class="btn-primary">
-                    <svg style="width:14px;height:14px;display:inline;margin-right:6px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    Invite Member
-                </button>
-            </div>
-            
-            <div class="ops-card" style="margin-bottom: 20px;">
-                <div class="ops-card-header">
-                    <div class="ops-card-title">Active Members</div>
-                    <div style="display:flex;gap:8px;">
-                        <select id="filter-role" class="input-field" style="width:180px;">
-                            <option value="">All Roles</option>
-                            <option value="super_admin">Super Admin</option>
-                            <option value="operations_manager">Operations Manager</option>
-                            <option value="dispatcher">Dispatcher</option>
-                            <option value="field_lead">Field Lead</option>
-                            <option value="analyst">Analyst</option>
-                        </select>
+const OpsUserManagement = (function () {
+  'use strict';
+
+  let _users = [];
+
+  const ROLE_CONFIG = {
+    admin:              { label: 'Admin',              color: '#0a2a3d', bg: 'rgba(10,42,61,.08)',    perms: ['Full system access, all modules and configuration'] },
+    super_admin:        { label: 'Super Admin',        color: '#0a2a3d', bg: 'rgba(10,42,61,.08)',    perms: ['Full system access, all modules and configuration'] },
+    operations_manager: { label: 'Ops Manager',        color: '#16a8d3', bg: 'rgba(22,168,211,.09)',  perms: ['Client management', 'Team management', 'Alert handling', 'Reports'] },
+    dispatcher:         { label: 'Dispatcher',         color: '#b45309', bg: 'rgba(180,83,9,.08)',    perms: ['View alerts', 'Assign teams', 'Dispatch operations'] },
+    field_lead:         { label: 'Field Lead',         color: '#0a8a6a', bg: 'rgba(10,138,106,.08)',  perms: ['View own alerts', 'Update job status'] },
+    analyst:            { label: 'Analyst',             color: '#7c3aed', bg: 'rgba(124,58,237,.08)',  perms: ['View reports', 'Export data'] },
+    finance:            { label: 'Finance',             color: '#0d7fa0', bg: 'rgba(13,127,160,.09)',  perms: ['View billing', 'Manage invoices', 'Revenue reports'] },
+  };
+
+  const ROLE_OPTIONS = [
+    { value: 'super_admin',        label: 'Super Admin' },
+    { value: 'operations_manager', label: 'Operations Manager' },
+    { value: 'dispatcher',         label: 'Dispatcher' },
+    { value: 'field_lead',         label: 'Field Lead' },
+    { value: 'analyst',            label: 'Analyst' },
+    { value: 'finance',            label: 'Finance' },
+  ];
+
+  function getRoleConfig(role) {
+    return ROLE_CONFIG[role] || { label: role || '—', color: 'var(--ink-3)', bg: 'var(--surface-2)', perms: [] };
+  }
+
+  function render(container) {
+    container.innerHTML = `
+      <style>
+        .um-header {
+          display: flex; align-items: flex-start;
+          justify-content: space-between; margin-bottom: 20px;
+        }
+
+        .um-header-title {
+          font-family: var(--ff-d, 'Playfair Display', serif);
+          font-size: 1.3rem; font-weight: 800;
+          color: var(--ink, #0a1f2e); letter-spacing: -.02em; margin-bottom: 3px;
+        }
+
+        .um-header-sub { font-size: .8rem; color: var(--ink-3, #6b8fa3); }
+
+        /* Members table card */
+        .um-table-card {
+          background: var(--surface, #fff);
+          border: 1px solid var(--border, #dae6ef);
+          border-radius: var(--r, 10px);
+          overflow: hidden;
+          box-shadow: var(--sh-xs);
+          margin-bottom: 18px;
+        }
+
+        .um-table-head {
+          padding: 14px 20px;
+          border-bottom: 1px solid var(--border, #dae6ef);
+          display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        }
+
+        .um-table-title {
+          font-family: var(--ff-d, 'Playfair Display', serif);
+          font-size: .9rem; font-weight: 700; color: var(--ink, #0a1f2e);
+        }
+
+        .um-controls { display: flex; align-items: center; gap: 8px; }
+
+        .um-filter {
+          padding: 7px 12px;
+          border: 1px solid var(--border, #dae6ef);
+          border-radius: var(--rs, 6px);
+          background: var(--surface-2, #f7fafc);
+          font-family: var(--ff-b, 'Figtree', sans-serif);
+          font-size: .8rem; color: var(--ink, #0a1f2e);
+          outline: none; cursor: pointer;
+          transition: border-color .2s;
+        }
+
+        .um-filter:focus { border-color: var(--blue, #16a8d3); }
+
+        /* User avatar */
+        .um-avatar {
+          width: 34px; height: 34px; border-radius: 9px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: .72rem; font-weight: 700; color: white;
+          flex-shrink: 0;
+          font-family: var(--ff-m, 'JetBrains Mono', monospace);
+          letter-spacing: .5px;
+        }
+
+        .um-user-wrap { display: flex; align-items: center; gap: 10px; }
+        .um-user-name  { font-size: .85rem; font-weight: 600; color: var(--ink, #0a1f2e); }
+        .um-user-email { font-size: .74rem; color: var(--ink-3, #6b8fa3); margin-top: 1px; }
+
+        .um-role-chip {
+          display: inline-flex; align-items: center; gap: 5px;
+          padding: 3px 10px; border-radius: 20px;
+          font-size: .72rem; font-weight: 700;
+          white-space: nowrap;
+        }
+
+        /* Role permissions grid */
+        .um-perms-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
+        }
+
+        .um-perm-card {
+          background: var(--surface, #fff);
+          border: 1px solid var(--border, #dae6ef);
+          border-radius: var(--r, 10px);
+          padding: 16px 18px;
+          box-shadow: var(--sh-xs);
+          position: relative; overflow: hidden;
+        }
+
+        .um-perm-card::before {
+          content: '';
+          position: absolute; top: 0; left: 0; bottom: 0;
+          width: 3px;
+        }
+
+        .um-perm-title {
+          font-size: .84rem; font-weight: 700;
+          color: var(--ink, #0a1f2e); margin-bottom: 8px;
+        }
+
+        .um-perm-list {
+          list-style: none;
+          display: flex; flex-direction: column; gap: 5px;
+        }
+
+        .um-perm-item {
+          font-size: .74rem; color: var(--ink-2, #2d5068);
+          display: flex; align-items: flex-start; gap: 6px; line-height: 1.4;
+        }
+
+        .um-perm-item::before {
+          content: '✓';
+          font-size: .65rem; font-weight: 700;
+          flex-shrink: 0; margin-top: 1px;
+        }
+      </style>
+
+      <div class="um-header">
+        <div>
+          <div class="um-header-title">Team Members</div>
+          <div class="um-header-sub">Manage internal team access and role-based permissions</div>
+        </div>
+        <button class="btn-primary" onclick="OpsUserManagement.openInvite()">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          Invite Member
+        </button>
+      </div>
+
+      <!-- Members table -->
+      <div class="um-table-card">
+        <div class="um-table-head">
+          <div class="um-table-title">Active Members</div>
+          <div class="um-controls">
+            <select class="um-filter" id="um-role-filter" onchange="OpsUserManagement.filterRole(this.value)">
+              <option value="">All Roles</option>
+              ${ROLE_OPTIONS.map(r => `<option value="${r.value}">${r.label}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div id="um-table-body">
+          <div style="padding:48px;text-align:center;color:var(--ink-3);">
+            <div class="loading" style="margin:0 auto 12px;"></div>
+            <div style="font-size:.82rem;">Loading members…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Role permissions -->
+      <div style="margin-bottom:12px;">
+        <div style="font-family:var(--ff-d);font-size:.9rem;font-weight:700;color:var(--ink);margin-bottom:4px;">Role Permissions</div>
+        <div style="font-size:.78rem;color:var(--ink-3);">What each role can access within the operations center</div>
+      </div>
+
+      <div class="um-perms-grid">
+        ${Object.entries(ROLE_CONFIG)
+          .filter(([k]) => k !== 'admin')
+          .map(([key, rc]) => `
+            <div class="um-perm-card" style="border-color:${rc.color}20;">
+              <div style="position:absolute;top:0;left:0;bottom:0;width:3px;background:${rc.color};border-radius:0;"></div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                <span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:700;background:${rc.bg};color:${rc.color};">${rc.label}</span>
+              </div>
+              <ul class="um-perm-list">
+                ${rc.perms.map(p => `<li class="um-perm-item" style="color:${rc.color}40;"><span style="color:${rc.color};">&nbsp;</span><span style="color:var(--ink-2);">${p}</span></li>`).join('')}
+              </ul>
+            </div>`).join('')}
+      </div>
+    `;
+
+    loadUsers();
+  }
+
+  async function loadUsers() {
+    try {
+      const res = await OpsModal.apiGet('/users');
+      _users    = res.data || res.users || [];
+      if (!Array.isArray(_users)) _users = [];
+      renderTable(_users);
+    } catch (err) {
+      renderError(err.message);
+    }
+  }
+
+  function filterRole(role) {
+    const filtered = role ? _users.filter(u => (u.role_id || u.role) === role) : _users;
+    renderTable(filtered);
+  }
+
+  function avatarColor(name) {
+    const colors = ['#0a2a3d','#0d7fa0','#16a8d3','#0a8a6a','#7c3aed','#b45309'];
+    let h = 0;
+    for (let i = 0; i < (name || '').length; i++) h = (h * 31 + name.charCodeAt(i)) % colors.length;
+    return colors[h];
+  }
+
+  function initials(name) {
+    return (name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  }
+
+  function formatTime(ds) {
+    if (!ds) return '—';
+    const diff = Date.now() - new Date(ds).getTime();
+    const mins = Math.floor(diff / 60000);
+    const hrs  = Math.floor(diff / 3600000);
+    const days = Math.floor(hrs / 24);
+    if (mins < 1)   return 'Just now';
+    if (mins < 60)  return `${mins}m ago`;
+    if (hrs  < 24)  return `${hrs}h ago`;
+    if (days < 7)   return `${days}d ago`;
+    return new Date(ds).toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+  }
+
+  function renderTable(users) {
+    const el = document.getElementById('um-table-body');
+    if (!el) return;
+
+    if (!users || users.length === 0) {
+      el.innerHTML = `
+        <div style="padding:48px;text-align:center;color:var(--ink-3);">
+          <div style="font-size:.88rem;font-weight:600;color:var(--ink-2);margin-bottom:8px;">No members found</div>
+          <button class="btn-primary" onclick="OpsUserManagement.openInvite()">Invite First Member</button>
+        </div>`;
+      return;
+    }
+
+    el.innerHTML = `
+      <div style="overflow-x:auto;">
+        <table class="ops-table">
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Last Active</th>
+              <th style="text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${users.map(u => {
+              const id   = u.user_id || u.id;
+              const name = u.full_name || u.name || 'Unknown';
+              const role = u.role_id || u.role || '';
+              const rc   = getRoleConfig(role);
+              const isActive = u.status !== 'inactive' && u.status !== 'suspended';
+
+              return `<tr>
+                <td>
+                  <div class="um-user-wrap">
+                    <div class="um-avatar" style="background:${avatarColor(name)};">${initials(name)}</div>
+                    <div>
+                      <div class="um-user-name">${name}</div>
+                      <div class="um-user-email">${u.email || ''}</div>
                     </div>
-                </div>
-                <div class="ops-card-body" style="padding: 0;">
-                    <div style="overflow-x: auto;">
-                        <table class="ops-table">
-                            <thead>
-                                <tr>
-                                    <th>Member</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Status</th>
-                                    <th>Last Active</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="users-table-body">
-                                <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-dim);">
-                                    <div class="loading" style="margin:0 auto;"></div>
-                                    <div style="margin-top:12px;">Loading members...</div>
-                                </td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="ops-card">
-                <div class="ops-card-header"><div class="ops-card-title">Role Permissions</div></div>
-                <div class="ops-card-body">
-                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
-                        <div style="padding:12px;background:var(--surface);border-radius:8px;">
-                            <div style="font-weight:600;color:var(--text-bright);margin-bottom:8px;font-size:12px;">Super Admin</div>
-                            <div style="font-size:10px;color:var(--text-dim);line-height:1.5;">Full system access, user management, configuration</div>
-                        </div>
-                        <div style="padding:12px;background:var(--surface);border-radius:8px;">
-                            <div style="font-weight:600;color:var(--text-bright);margin-bottom:8px;font-size:12px;">Operations Manager</div>
-                            <div style="font-size:10px;color:var(--text-dim);line-height:1.5;">Client & team management, alert handling, reports</div>
-                        </div>
-                        <div style="padding:12px;background:var(--surface);border-radius:8px;">
-                            <div style="font-weight:600;color:var(--text-bright);margin-bottom:8px;font-size:12px;">Dispatcher</div>
-                            <div style="font-size:10px;color:var(--text-dim);line-height:1.5;">View alerts, assign teams, dispatch operations</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        loadUsers();
-        attachEventListeners();
+                  </div>
+                </td>
+                <td>
+                  <span class="um-role-chip" style="background:${rc.bg};color:${rc.color};">${rc.label}</span>
+                </td>
+                <td>
+                  <span class="status-badge ${isActive ? 'nominal' : 'offline'}">${u.status || 'active'}</span>
+                </td>
+                <td style="font-family:var(--ff-m);font-size:.76rem;color:var(--ink-3);">
+                  ${formatTime(u.last_login || u.last_active)}
+                </td>
+                <td style="text-align:right;">
+                  <div style="display:flex;gap:6px;justify-content:flex-end;">
+                    <button class="btn-ghost" onclick="OpsUserManagement.editUser('${id}','${name.replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:.76rem;">Edit</button>
+                    ${isActive
+                      ? `<button class="btn-ghost" onclick="OpsUserManagement.deactivateUser('${id}','${name.replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:.76rem;color:var(--err);border-color:rgba(220,38,38,.2);">Deactivate</button>`
+                      : `<button class="btn-ghost" onclick="OpsUserManagement.reactivateUser('${id}')" style="padding:6px 12px;font-size:.76rem;color:var(--ok);">Reactivate</button>`}
+                  </div>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  function renderError(message) {
+    const el = document.getElementById('um-table-body');
+    if (!el) return;
+    el.innerHTML = `
+      <div style="padding:48px;text-align:center;">
+        <div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load members</div>
+        <div style="color:var(--ink-3);font-size:.78rem;margin-bottom:16px;">${message}</div>
+        <button class="btn-ghost" onclick="reloadTab('team-members')">Retry</button>
+      </div>`;
+  }
+
+  // ── Invite modal ──
+  function openInvite() {
+    OpsModal.open('Invite Team Member', `
+      ${OpsModal.field('Email Address', 'email', 'email', '', { placeholder: 'team.member@flowguard.ng' })}
+      ${OpsModal.row([
+        OpsModal.field('Full Name', 'full_name', 'text', '', { placeholder: 'First Last' }),
+        OpsModal.field('Role', 'role_id', 'select', 'dispatcher', { options: ROLE_OPTIONS }),
+      ])}
+      ${OpsModal.field('Phone (optional)', 'phone', 'text', '', { placeholder: '+234…', required: false })}
+    `, [
+      { label: 'Cancel',      onclick: 'OpsModal.close()', class: 'btn-ghost' },
+      { label: 'Send Invite', onclick: 'OpsUserManagement.sendInvite()', class: 'btn-primary', id: 'modal-save-btn' },
+    ]);
+  }
+
+  async function sendInvite() {
+    const data = OpsModal.getFormData();
+    if (!data.email)     { OpsModal.toast('Email is required', 'warning'); return; }
+    if (!data.full_name) { OpsModal.toast('Full name is required', 'warning'); return; }
+    OpsModal.setLoading('modal-save-btn', true);
+    try {
+      await OpsModal.apiPost('/users/invite', data);
+      OpsModal.close();
+      OpsModal.toast('Invitation sent successfully', 'nominal');
+      reloadTab('team-members');
+    } catch (err) {
+      OpsModal.toast('Failed: ' + err.message, 'critical');
+      OpsModal.setLoading('modal-save-btn', false);
     }
-    
-    async function loadUsers() {
-        try {
-            const data = await OpsModal.apiGet('/users');
-            const users = data.data || data.users || [];
-            renderUsersTable(Array.isArray(users) ? users : []);
-        } catch (error) {
-            console.error('Load users error:', error);
-            renderError(error.message);
-        }
+  }
+
+  // ── Edit user modal ──
+  async function editUser(id, name) {
+    let userData = { user_id: id, full_name: name };
+    try {
+      const res  = await OpsModal.apiGet(`/users/${id}`);
+      userData   = res.data || res;
+    } catch {}
+
+    OpsModal.open(`Edit — ${name}`, `
+      ${OpsModal.field('Full Name', 'full_name', 'text', userData.full_name || userData.name || name)}
+      ${OpsModal.row([
+        OpsModal.field('Role', 'role_id', 'select', userData.role_id || userData.role || '', { options: ROLE_OPTIONS }),
+        OpsModal.field('Status', 'status', 'select', userData.status || 'active', {
+          options: [
+            { value: 'active',    label: 'Active' },
+            { value: 'inactive',  label: 'Inactive' },
+            { value: 'suspended', label: 'Suspended' },
+          ]
+        }),
+      ])}
+      ${OpsModal.field('Email', 'email', 'email', userData.email || '', { readonly: true })}
+    `, [
+      { label: 'Cancel',       onclick: 'OpsModal.close()', class: 'btn-ghost' },
+      { label: 'Save Changes', onclick: `OpsUserManagement.saveEdit('${id}')`, class: 'btn-primary', id: 'modal-save-btn' },
+    ]);
+  }
+
+  async function saveEdit(id) {
+    const data = OpsModal.getFormData();
+    delete data.email; // email is read-only
+    OpsModal.setLoading('modal-save-btn', true);
+    try {
+      await OpsModal.apiPut(`/users/${id}`, data);
+      OpsModal.close();
+      OpsModal.toast('Member updated successfully', 'nominal');
+      reloadTab('team-members');
+    } catch (err) {
+      OpsModal.toast('Failed: ' + err.message, 'critical');
+      OpsModal.setLoading('modal-save-btn', false);
     }
-    
-    function renderUsersTable(users) {
-        const tbody = document.getElementById('users-table-body');
-        if (!tbody) return;
-        
-        if (!users || users.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-dim);">
-                <div style="font-size:12px;margin-bottom:12px;">No team members yet</div>
-                <button onclick="OpsUserManagement.openInviteModal()" class="btn-secondary">Invite First Member</button>
-            </td></tr>`;
-            return;
-        }
-        
-        tbody.innerHTML = users.map(user => {
-            const id = user.user_id || user.id;
-            const name = user.full_name || user.name || 'Unknown';
-            const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-            
-            return `
-                <tr class="ops-table-row">
-                    <td>
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <div style="width:32px;height:32px;background:linear-gradient(135deg,var(--neon-dim),#006b60);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--bg);">${initials}</div>
-                            <span style="font-weight:600;color:var(--text-bright);">${name}</span>
-                        </div>
-                    </td>
-                    <td style="color:var(--text-mid);font-size:12px;font-family:var(--font-mono);">${user.email}</td>
-                    <td><span class="status-badge nominal" style="font-size:9px;">${formatRole(user.role_id || user.role)}</span></td>
-                    <td><span class="status-badge ${user.status === 'active' ? 'nominal' : 'offline'}">${user.status || 'active'}</span></td>
-                    <td style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono);">${formatTime(user.last_login || user.last_active)}</td>
-                    <td>
-                        <div style="display:flex;gap:6px;">
-                            <button onclick="OpsUserManagement.editUser('${id}','${name.replace(/'/g, "\\'")}')" class="btn-table-action" title="Edit">
-                                <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                            </button>
-                            <button onclick="OpsUserManagement.deactivateUser('${id}','${name.replace(/'/g, "\\'")}')" class="btn-table-action" title="Deactivate" style="color:var(--s-critical);">
-                                <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+  }
+
+  // ── Deactivate ──
+  function deactivateUser(id, name) {
+    OpsModal.confirm(`Deactivate "${name}"? They will lose access immediately.`, async function () {
+      OpsModal.setLoading('modal-confirm-btn', true);
+      try {
+        await OpsModal.apiPut(`/users/${id}`, { status: 'inactive' });
+        OpsModal.close();
+        OpsModal.toast('Member deactivated', 'nominal');
+        reloadTab('team-members');
+      } catch (err) {
+        OpsModal.toast('Failed: ' + err.message, 'critical');
+        OpsModal.setLoading('modal-confirm-btn', false);
+      }
+    });
+  }
+
+  // ── Reactivate ──
+  async function reactivateUser(id) {
+    try {
+      await OpsModal.apiPut(`/users/${id}`, { status: 'active' });
+      OpsModal.toast('Member reactivated', 'nominal');
+      reloadTab('team-members');
+    } catch (err) {
+      OpsModal.toast('Failed: ' + err.message, 'critical');
     }
-    
-    function formatRole(role) {
-        const roles = {
-            'super_admin': 'Super Admin',
-            'operations_manager': 'Ops Manager',
-            'dispatcher': 'Dispatcher',
-            'field_lead': 'Field Lead',
-            'analyst': 'Analyst',
-            'finance': 'Finance'
-        };
-        return roles[role] || role || '—';
-    }
-    
-    function formatTime(dateString) {
-        if (!dateString) return '—';
-        const minutes = Math.floor((new Date() - new Date(dateString)) / 60000);
-        if (minutes < 60) return `${minutes}m ago`;
-        const hours = Math.floor(minutes / 60);
-        if (hours < 24) return `${hours}h ago`;
-        const days = Math.floor(hours / 24);
-        if (days < 7) return `${days}d ago`;
-        return new Date(dateString).toLocaleDateString();
-    }
-    
-    // ============================================
-    // CRUD MODALS
-    // ============================================
-    
-    function openInviteModal() {
-        const body = `
-            ${OpsModal.field('Email Address', 'email', 'email', '', { placeholder: 'team.member@flowguard.ng' })}
-            ${OpsModal.row([
-                OpsModal.field('Full Name', 'full_name', 'text', '', { placeholder: 'John Doe' }),
-                OpsModal.field('Role', 'role_id', 'select', 'dispatcher', { options: [
-                    { value: 'super_admin', label: 'Super Admin' },
-                    { value: 'operations_manager', label: 'Operations Manager' },
-                    { value: 'dispatcher', label: 'Dispatcher' },
-                    { value: 'field_lead', label: 'Field Lead' },
-                    { value: 'analyst', label: 'Analyst' },
-                    { value: 'finance', label: 'Finance' }
-                ]})
-            ])}
-            ${OpsModal.field('Phone (optional)', 'phone', 'text', '', { placeholder: '+234...', required: false })}
-        `;
-        
-        OpsModal.open('Invite Team Member', body, [
-            { label: 'Cancel', class: 'btn-ghost', onclick: 'OpsModal.close()' },
-            { label: 'Send Invite', class: 'btn-primary', onclick: 'OpsUserManagement.sendInvite()', id: 'modal-save-btn' }
-        ]);
-    }
-    
-    async function sendInvite() {
-        const data = OpsModal.getFormData();
-        if (!data.email) { OpsModal.toast('Email is required', 'warning'); return; }
-        
-        OpsModal.setLoading('modal-save-btn', true);
-        try {
-            await OpsModal.apiPost('/users/invite', data);
-            OpsModal.close();
-            OpsModal.toast('Invitation sent successfully', 'nominal');
-            reloadTab('team-members');
-        } catch (err) {
-            OpsModal.toast('Failed: ' + err.message, 'critical');
-            OpsModal.setLoading('modal-save-btn', false);
-        }
-    }
-    
-    async function editUser(id, name) {
-        // Try to get full user data
-        let userData = {};
-        try {
-            const data = await OpsModal.apiGet(`/users/${id}`);
-            userData = data.data || data;
-        } catch (e) {
-            // Fallback: use what we know
-            userData = { user_id: id, full_name: name };
-        }
-        
-        const body = `
-            ${OpsModal.field('Full Name', 'full_name', 'text', userData.full_name || userData.name || name)}
-            ${OpsModal.row([
-                OpsModal.field('Role', 'role_id', 'select', userData.role_id || userData.role || '', { options: [
-                    { value: 'super_admin', label: 'Super Admin' },
-                    { value: 'operations_manager', label: 'Operations Manager' },
-                    { value: 'dispatcher', label: 'Dispatcher' },
-                    { value: 'field_lead', label: 'Field Lead' },
-                    { value: 'analyst', label: 'Analyst' },
-                    { value: 'finance', label: 'Finance' }
-                ]}),
-                OpsModal.field('Status', 'status', 'select', userData.status || 'active', { options: [
-                    { value: 'active', label: 'Active' },
-                    { value: 'inactive', label: 'Inactive' },
-                    { value: 'suspended', label: 'Suspended' }
-                ]})
-            ])}
-            ${OpsModal.field('Email', 'email', 'email', userData.email || '', { readonly: true })}
-        `;
-        
-        OpsModal.open(`Edit Member: ${name}`, body, [
-            { label: 'Cancel', class: 'btn-ghost', onclick: 'OpsModal.close()' },
-            { label: 'Save Changes', class: 'btn-primary', onclick: `OpsUserManagement.saveEditUser('${id}')`, id: 'modal-save-btn' }
-        ]);
-    }
-    
-    async function saveEditUser(id) {
-        const data = OpsModal.getFormData();
-        delete data.email; // Don't update email
-        
-        OpsModal.setLoading('modal-save-btn', true);
-        try {
-            await OpsModal.apiPut(`/users/${id}`, data);
-            OpsModal.close();
-            OpsModal.toast('Member updated successfully', 'nominal');
-            reloadTab('team-members');
-        } catch (err) {
-            OpsModal.toast('Failed: ' + err.message, 'critical');
-            OpsModal.setLoading('modal-save-btn', false);
-        }
-    }
-    
-    function deactivateUser(id, name) {
-        OpsModal.confirm(`Deactivate user "${name}"?`, async function() {
-            OpsModal.setLoading('modal-confirm-btn', true);
-            try {
-                await OpsModal.apiPut(`/users/${id}`, { status: 'inactive' });
-                OpsModal.close();
-                OpsModal.toast('User deactivated', 'nominal');
-                reloadTab('team-members');
-            } catch (err) {
-                OpsModal.toast('Failed: ' + err.message, 'critical');
-                OpsModal.setLoading('modal-confirm-btn', false);
-            }
-        });
-    }
-    
-    function renderError(message) {
-        const tbody = document.getElementById('users-table-body');
-        if (!tbody) return;
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;">
-            <div style="color:var(--s-critical);font-weight:600;margin-bottom:8px;">Failed to Load</div>
-            <div style="color:var(--text-dim);font-size:11px;margin-bottom:16px;">${message}</div>
-            <button onclick="reloadTab('team-members')" class="btn-secondary">Retry</button>
-        </td></tr>`;
-    }
-    
-    function attachEventListeners() {
-        const filter = document.getElementById('filter-role');
-        if (filter) filter.addEventListener('change', loadUsers);
-    }
-    
-    return {
-        render, openInviteModal, sendInvite,
-        editUser, saveEditUser, deactivateUser
-    };
+  }
+
+  return {
+    render, filterRole, openInvite, sendInvite,
+    editUser, saveEdit, deactivateUser, reactivateUser,
+  };
+
 })();
