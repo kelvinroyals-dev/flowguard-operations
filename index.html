@@ -999,6 +999,19 @@
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         <span class="nav-label">Reports</span>
       </button>
+      <button class="nav-item" id="nav-billing" onclick="switchTab('billing')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        <span class="nav-label">Billing</span>
+      </button>
+      <button class="nav-item" id="nav-sla" onclick="switchTab('sla')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <span class="nav-label">SLA Tracker</span>
+      </button>
+      <button class="nav-item" id="nav-audit" onclick="switchTab('audit')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/><path stroke-linecap="round" d="M9 12h6M9 16h4"/></svg>
+        <span class="nav-label">Audit Log</span>
+      </button>
+      <div class="nav-sect">System</div>
       <button class="nav-item" id="nav-settings" onclick="switchTab('settings')">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         <span class="nav-label">Settings</span>
@@ -1053,6 +1066,9 @@
       <div id="content-teams"        class="tab-content"></div>
       <div id="content-team-members" class="tab-content"></div>
       <div id="content-reports"      class="tab-content"></div>
+      <div id="content-billing"      class="tab-content"></div>
+      <div id="content-sla"          class="tab-content"></div>
+      <div id="content-audit"        class="tab-content"></div>
       <div id="content-settings"     class="tab-content"></div>
     </div>
   </div>
@@ -1084,6 +1100,9 @@
 <script src="js/ops-properties.js"></script>
 <script src="js/ops-teams.js"></script>
 <script src="js/ops-alerts-reports.js"></script>
+<script src="js/ops-billing.js"></script>
+<script src="js/ops-sla.js"></script>
+<script src="js/ops-audit.js"></script>
 <script src="js/ops-settings.js"></script>
 
 <script>
@@ -1091,14 +1110,17 @@
   Auth.install401Interceptor();
 
   const TAB_META = {
-    dashboard:      { module:'Dashboard',    title:'Operations Overview'      },
-    clients:        { module:'Clients',      title:'Client Accounts'          },
-    properties:     { module:'Properties',   title:'Asset Registry'           },
-    alerts:         { module:'Alerts',       title:'Incident Management'      },
-    teams:          { module:'Field',        title:'Team Dispatch'            },
-    'team-members': { module:'Field',        title:'Team Members'             },
-    reports:        { module:'Intelligence', title:'Reports & Analytics'      },
-    settings:       { module:'System',       title:'Settings & Configuration' },
+    dashboard:      { module:'Dashboard',    title:'Operations Overview'         },
+    clients:        { module:'Clients',      title:'Client Accounts'             },
+    properties:     { module:'Properties',   title:'Asset Registry'              },
+    alerts:         { module:'Alerts',       title:'Incident Management'         },
+    teams:          { module:'Field',        title:'Team Dispatch'               },
+    'team-members': { module:'Field',        title:'Team Members'                },
+    reports:        { module:'Intelligence', title:'Reports & Analytics'         },
+    billing:        { module:'Intelligence', title:'Billing & Revenue'           },
+    sla:            { module:'Intelligence', title:'SLA Tracker'                 },
+    audit:          { module:'Intelligence', title:'Audit Log'                   },
+    settings:       { module:'System',       title:'Settings & Configuration'    },
   };
 
   const ALL_TABS = Object.keys(TAB_META);
@@ -1437,6 +1459,9 @@
       teams:          () => typeof OpsTeams          !== 'undefined' ? OpsTeams          : null,
       'team-members': () => typeof OpsUserManagement !== 'undefined' ? OpsUserManagement : null,
       reports:        () => typeof OpsReports        !== 'undefined' ? OpsReports        : null,
+      billing:        () => typeof OpsBilling        !== 'undefined' ? OpsBilling        : null,
+      sla:            () => typeof OpsSLA            !== 'undefined' ? OpsSLA            : null,
+      audit:          () => typeof OpsAudit          !== 'undefined' ? OpsAudit          : null,
       settings:       () => typeof OpsSettings       !== 'undefined' ? OpsSettings       : null,
     };
 

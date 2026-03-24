@@ -32,13 +32,13 @@ const CONFIG = Object.freeze({
   // To grant a role access to a new tab: add the key here only.
   // 'admin' is an API alias for 'super_admin'.
   NAV_ACCESS: Object.freeze({
-    admin:              ['dashboard','alerts','clients','properties','teams','team-members','reports','settings'],
-    super_admin:        ['dashboard','alerts','clients','properties','teams','team-members','reports','settings'],
-    operations_manager: ['dashboard','alerts','clients','properties','teams','reports'],
+    admin:              ['dashboard','alerts','clients','properties','teams','team-members','reports','billing','sla','audit','settings'],
+    super_admin:        ['dashboard','alerts','clients','properties','teams','team-members','reports','billing','sla','audit','settings'],
+    operations_manager: ['dashboard','alerts','clients','properties','teams','reports','billing','sla'],
     dispatcher:         ['dashboard','alerts','teams'],
     field_lead:         ['dashboard','alerts'],
-    analyst:            ['dashboard','reports'],
-    finance:            ['dashboard','clients','reports'],
+    analyst:            ['dashboard','reports','billing','sla','audit'],
+    finance:            ['dashboard','clients','reports','billing'],
   }),
 
   // ── ROLE DISPLAY LABELS ───────────────────────────────────────────────
