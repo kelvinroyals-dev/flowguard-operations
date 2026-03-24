@@ -35,6 +35,7 @@ const CONFIG = Object.freeze({
   // Lists the tab keys each role may access.
   // To grant a role new access: add the key to its array here — nowhere else.
   NAV_ACCESS: {
+    admin:              ['dashboard','alerts','clients','properties','teams','team-members','reports','settings'],
     super_admin:        ['dashboard','alerts','clients','properties','teams','team-members','reports','settings'],
     operations_manager: ['dashboard','alerts','clients','properties','teams','reports'],
     dispatcher:         ['dashboard','alerts','teams'],
