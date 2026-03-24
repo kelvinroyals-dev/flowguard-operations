@@ -7,6 +7,7 @@ const OpsUserManagement = (function () {
   'use strict';
 
   let _users = [];
+  let _pg    = null;
 
   const ROLE_CONFIG = {
     admin:              { label: 'Admin',              color: '#0a2a3d', bg: 'rgba(10,42,61,.08)',    perms: ['Full system access, all modules and configuration'] },
@@ -208,7 +209,8 @@ const OpsUserManagement = (function () {
       const res = await OpsModal.apiGet('/users');
       _users    = res.data || res.users || [];
       if (!Array.isArray(_users)) _users = [];
-      renderTable(_users);
+      _pg = FGPaginator.create(_users, { pageSize: 25, containerId: 'um-table-body' });
+      _pg.render(renderTable);
     } catch (err) {
       renderError(err.message);
     }
@@ -216,7 +218,8 @@ const OpsUserManagement = (function () {
 
   function filterRole(role) {
     const filtered = role ? _users.filter(u => (u.role_id || u.role) === role) : _users;
-    renderTable(filtered);
+    if (_pg) _pg.update(filtered);
+    else renderTable(filtered);
   }
 
   function avatarColor(name) {

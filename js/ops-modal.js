@@ -1,137 +1,88 @@
 /**
- * FlowGuard Operations Center — Modal & API Utility
- * ─────────────────────────────────────────────────────
- * Shared modal system, API helpers, toast, and form utilities
- * used by all CRUD modules.
+ * FlowGuard Operations Center — Modal & API Utility v3.2.1
+ * ──────────────────────────────────────────────────────────
+ * Shared by all tab modules.
  *
- * Depends on: config.js, auth.js (must load first)
+ * Changes v3.2.1:
+ *  • API_BASE now reads from CONFIG.API_BASE — no hardcoded URL
+ *  • getToken() checks sessionStorage first (non-persistent login fix)
+ *  • Toast uses new light-theme CSS tokens, slides in from right
+ *  • confirm uses new design tokens, no duplicate class bug
+ *  • setLoading renders a spinner instead of plain text
  *
- * CHANGE LOG (v3.2.0):
- *  • API_BASE now reads from CONFIG.API_BASE — no more local hardcoding
- *  • confirm() duplicate 'class' key bug fixed
- *  • toast() uses CONFIG.APP_NAME for aria-label
+ * Depends on: config.js (must load first)
  */
 
 const OpsModal = (function () {
 
-  // ── API HELPERS ────────────────────────────────────────────────────────
+  // ── AUTH ───────────────────────────────────────────────────────────────
+
+  function getToken() {
+    return sessionStorage.getItem('token') || localStorage.getItem('token') || null;
+  }
 
   function getHeaders() {
     return {
-      'Authorization': `Bearer ${Auth.getToken()}`,
+      'Authorization': `Bearer ${getToken()}`,
       'Content-Type':  'application/json',
     };
-  }
-
-  async function apiGet(endpoint) {
-    const res = await fetch(`${CONFIG.API_BASE}${endpoint}`, {
-      headers: getHeaders(),
-    });
-    if (!res.ok) throw new Error(`API returned ${res.status}`);
-    return res.json();
-  }
-
-  async function apiPost(endpoint, body) {
-    const res = await fetch(`${CONFIG.API_BASE}${endpoint}`, {
-      method:  'POST',
-      headers: getHeaders(),
-      body:    JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `API returned ${res.status}`);
-    }
-    return res.json();
-  }
-
-  async function apiPut(endpoint, body) {
-    const res = await fetch(`${CONFIG.API_BASE}${endpoint}`, {
-      method:  'PUT',
-      headers: getHeaders(),
-      body:    JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `API returned ${res.status}`);
-    }
-    return res.json();
-  }
-
-  async function apiDelete(endpoint) {
-    const res = await fetch(`${CONFIG.API_BASE}${endpoint}`, {
-      method:  'DELETE',
-      headers: getHeaders(),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `API returned ${res.status}`);
-    }
-    return res.json();
   }
 
   // ── MODAL CORE ─────────────────────────────────────────────────────────
 
   function open(title, bodyHTML, actions = []) {
-    close(); // Dismiss any existing modal first
+    close();
 
-    const overlay = document.createElement('div');
+    const overlay     = document.createElement('div');
     overlay.id        = 'ops-modal-overlay';
     overlay.className = 'ops-modal-overlay';
-    overlay.setAttribute('role', 'dialog');
-    overlay.setAttribute('aria-modal', 'true');
-    overlay.setAttribute('aria-label', title);
 
     overlay.innerHTML = `
-      <div class="ops-modal" onclick="event.stopPropagation()">
+      <div class="ops-modal" role="dialog" aria-modal="true" aria-label="${title}" onclick="event.stopPropagation()">
         <div class="ops-modal-header">
           <div class="ops-modal-title">${title}</div>
-          <button class="ops-modal-close" onclick="OpsModal.close()" aria-label="Close dialog">✕</button>
+          <button class="ops-modal-close" onclick="OpsModal.close()" aria-label="Close">✕</button>
         </div>
         <div class="ops-modal-body">${bodyHTML}</div>
         ${actions.length > 0 ? `
           <div class="ops-modal-footer">
             ${actions.map(a => `
-              <button
-                class="${a.class || 'btn-ghost'}"
+              <button class="${a.class || 'btn-ghost'}"
                 onclick="${a.onclick}"
-                ${a.id ? `id="${a.id}"` : ''}
-              >${a.label}</button>
-            `).join('')}
-          </div>
-        ` : ''}
-      </div>
-    `;
+                ${a.id ? `id="${a.id}"` : ''}>
+                ${a.label}
+              </button>`).join('')}
+          </div>` : ''}
+      </div>`;
 
     overlay.addEventListener('click', close);
     document.body.appendChild(overlay);
     requestAnimationFrame(() => overlay.classList.add('visible'));
 
-    // Focus first interactive element after transition
     setTimeout(() => {
-      const first = overlay.querySelector('input, select, textarea, button:not(.ops-modal-close)');
+      const first = overlay.querySelector('.ops-input, input:not([readonly]), select, textarea');
       if (first) first.focus();
-    }, 100);
+    }, 120);
   }
 
   function close() {
     const overlay = document.getElementById('ops-modal-overlay');
-    if (!overlay) return;
-    overlay.classList.remove('visible');
-    setTimeout(() => overlay.remove(), 200);
+    if (overlay) {
+      overlay.classList.remove('visible');
+      setTimeout(() => overlay.remove(), 220);
+    }
   }
 
   function setLoading(btnId, loading) {
     const btn = document.getElementById(btnId);
     if (!btn) return;
     if (loading) {
-      btn.dataset.originalText = btn.textContent;
-      btn.textContent          = 'Processing…';
-      btn.disabled             = true;
-      btn.style.opacity        = '0.6';
+      btn.dataset.originalHtml = btn.innerHTML;
+      btn.innerHTML = `<span style="display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;"></span>Processing…`;
+      btn.disabled  = true;
     } else {
-      btn.textContent   = btn.dataset.originalText || 'Submit';
-      btn.disabled      = false;
-      btn.style.opacity = '1';
+      btn.innerHTML = btn.dataset.originalHtml || btn.innerHTML;
+      btn.disabled  = false;
     }
   }
 
@@ -141,46 +92,38 @@ const OpsModal = (function () {
     const required    = options.required !== false ? 'required' : '';
     const placeholder = options.placeholder || '';
     const readonly    = options.readonly ? 'readonly' : '';
-    const extraStyle  = options.readonly ? 'opacity:0.6;cursor:not-allowed;' : '';
+    const extraStyle  = options.readonly ? 'opacity:.55;cursor:not-allowed;' : '';
 
     if (type === 'select') {
       const opts = (options.options || []).map(o => {
-        const v       = typeof o === 'object' ? o.value : o;
-        const l       = typeof o === 'object' ? o.label  : o;
-        const sel     = v === value ? 'selected' : '';
-        return `<option value="${v}" ${sel}>${l}</option>`;
+        const v = typeof o === 'object' ? o.value : o;
+        const l = typeof o === 'object' ? o.label : o;
+        return `<option value="${v}" ${v == value ? 'selected' : ''}>${l}</option>`;
       }).join('');
       return `
         <div class="ops-modal-field">
-          <label class="ops-label" for="field-${name}">${label}</label>
-          <select id="field-${name}" name="${name}" class="ops-input" ${required}>${opts}</select>
-        </div>
-      `;
+          <label class="ops-label">${label}</label>
+          <select name="${name}" class="ops-input" ${required}>${opts}</select>
+        </div>`;
     }
 
     if (type === 'textarea') {
       return `
         <div class="ops-modal-field">
-          <label class="ops-label" for="field-${name}">${label}</label>
-          <textarea
-            id="field-${name}" name="${name}" class="ops-input"
-            rows="${options.rows || 3}" placeholder="${placeholder}"
-            ${required} style="resize:vertical;${extraStyle}"
-          >${value}</textarea>
-        </div>
-      `;
+          <label class="ops-label">${label}</label>
+          <textarea name="${name}" class="ops-input" rows="${options.rows || 3}"
+            placeholder="${placeholder}" ${required}
+            style="resize:vertical;${extraStyle}">${value || ''}</textarea>
+        </div>`;
     }
 
     return `
       <div class="ops-modal-field">
-        <label class="ops-label" for="field-${name}">${label}</label>
-        <input
-          id="field-${name}" type="${type}" name="${name}" class="ops-input"
-          value="${value}" placeholder="${placeholder}"
-          ${required} ${readonly} style="${extraStyle}"
-        >
-      </div>
-    `;
+        <label class="ops-label">${label}</label>
+        <input type="${type}" name="${name}" class="ops-input"
+          value="${value || ''}" placeholder="${placeholder}"
+          ${required} ${readonly} style="${extraStyle}">
+      </div>`;
   }
 
   function row(fields) {
@@ -196,96 +139,122 @@ const OpsModal = (function () {
 
     container.querySelectorAll('input, select, textarea').forEach(el => {
       if (!el.name) return;
-      if (el.type === 'number')   data[el.name] = el.value ? parseFloat(el.value) : null;
+      if (el.type === 'number')        data[el.name] = el.value !== '' ? Number(el.value) : null;
       else if (el.type === 'checkbox') data[el.name] = el.checked;
-      else                        data[el.name] = el.value;
+      else                             data[el.name] = el.value;
     });
     return data;
   }
 
+  // ── API HELPERS ────────────────────────────────────────────────────────
+
+  async function apiGet(endpoint) {
+    const res = await fetch(`${CONFIG.API_BASE}${endpoint}`, { headers: getHeaders() });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `API ${res.status}`);
+    }
+    return await res.json();
+  }
+
+  async function apiPost(endpoint, body) {
+    const res = await fetch(`${CONFIG.API_BASE}${endpoint}`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `API ${res.status}`);
+    }
+    return await res.json();
+  }
+
+  async function apiPut(endpoint, body) {
+    const res = await fetch(`${CONFIG.API_BASE}${endpoint}`, {
+      method: 'PUT', headers: getHeaders(), body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `API ${res.status}`);
+    }
+    return await res.json();
+  }
+
+  async function apiDelete(endpoint) {
+    const res = await fetch(`${CONFIG.API_BASE}${endpoint}`, {
+      method: 'DELETE', headers: getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `API ${res.status}`);
+    }
+    return await res.json();
+  }
+
   // ── TOAST ──────────────────────────────────────────────────────────────
 
+  const TOAST_COLORS = {
+    nominal:  'var(--ok,#0a8a6a)',
+    watch:    'var(--warn,#b45309)',
+    warning:  'var(--caut,#c2410c)',
+    critical: 'var(--err,#dc2626)',
+  };
+
   function toast(msg, type = 'nominal') {
-    const existing = document.querySelectorAll('.ops-toast');
-    existing.forEach(t => t.remove());
+    document.querySelectorAll('.fg-toast').forEach(t => t.remove());
 
-    const t = document.createElement('div');
-    t.className = 'ops-toast';
-    t.setAttribute('role', 'status');
-    t.setAttribute('aria-live', 'polite');
+    const color = TOAST_COLORS[type] || TOAST_COLORS.nominal;
+    const el    = document.createElement('div');
+    el.className = 'fg-toast';
+    el.style.cssText = `
+      position:fixed; top:72px; right:20px; z-index:10001;
+      background:var(--surface,#fff);
+      border:1px solid var(--border,#dae6ef);
+      border-left:3px solid ${color};
+      border-radius:10px; padding:12px 18px;
+      display:flex; align-items:center; gap:10px;
+      box-shadow:0 4px 20px rgba(10,31,46,.1),0 1px 4px rgba(10,31,46,.06);
+      font-family:var(--ff-b,'Figtree',sans-serif);
+      font-size:.83rem; color:var(--ink-2,#2d5068);
+      max-width:340px;
+      opacity:0; transform:translateX(12px);
+      transition:opacity .25s,transform .25s cubic-bezier(.22,1,.36,1);`;
 
-    const colors = {
-      nominal:  { bg: 'var(--status-success-bg)',  border: 'var(--status-success)',  dot: 'var(--status-success)'  },
-      watch:    { bg: 'var(--status-warning-bg)',  border: 'var(--status-warning)',  dot: 'var(--status-warning)'  },
-      warning:  { bg: 'var(--status-caution-bg)',  border: 'var(--status-caution)',  dot: 'var(--status-caution)'  },
-      critical: { bg: 'var(--status-danger-bg)',   border: 'var(--status-danger)',   dot: 'var(--status-danger)'   },
-      error:    { bg: 'var(--status-danger-bg)',   border: 'var(--status-danger)',   dot: 'var(--status-danger)'   },
-      success:  { bg: 'var(--status-success-bg)',  border: 'var(--status-success)',  dot: 'var(--status-success)'  },
-    };
+    el.innerHTML = `
+      <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></div>
+      <span>${msg}</span>`;
 
-    const c = colors[type] || colors.nominal;
-    t.style.cssText = `
-      position: fixed;
-      top: 72px;
-      right: 20px;
-      background: var(--surface-1);
-      border: 1px solid ${c.border};
-      border-left: 3px solid ${c.dot};
-      padding: 12px 16px;
-      border-radius: var(--radius);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      z-index: 10001;
-      opacity: 0;
-      transition: opacity 0.25s, transform 0.25s;
-      transform: translateY(-6px);
-      box-shadow: var(--shadow-md);
-      min-width: 240px;
-      max-width: 360px;
-    `;
-
-    t.innerHTML = `
-      <span style="font-size: 12px; color: var(--text-primary); font-family: var(--ff-body);">${msg}</span>
-    `;
-
-    document.body.appendChild(t);
+    document.body.appendChild(el);
     requestAnimationFrame(() => {
-      t.style.opacity   = '1';
-      t.style.transform = 'translateY(0)';
+      el.style.opacity   = '1';
+      el.style.transform = 'translateX(0)';
     });
-
     setTimeout(() => {
-      t.style.opacity   = '0';
-      t.style.transform = 'translateY(-6px)';
-      setTimeout(() => t.remove(), 300);
-    }, 3500);
+      el.style.opacity   = '0';
+      el.style.transform = 'translateX(12px)';
+      setTimeout(() => el.remove(), 280);
+    }, 3200);
   }
 
   // ── CONFIRM DIALOG ─────────────────────────────────────────────────────
 
   function confirm(message, onConfirm) {
     const body = `
-      <div style="text-align:center; padding:12px 0;">
-        <div style="
-          width: 48px; height: 48px;
-          background: var(--status-danger-bg);
-          border-radius: 50%;
-          display: flex; align-items: center; justify-content: center;
-          margin: 0 auto 16px;
-        ">
-          <svg width="22" height="22" fill="none" stroke="var(--status-danger)" stroke-width="1.8" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+      <div style="text-align:center;padding:12px 0 4px;">
+        <div style="width:52px;height:52px;border-radius:14px;
+          background:var(--eb,#fef2f2);border:1px solid rgba(220,38,38,.2);
+          margin:0 auto 16px;display:flex;align-items:center;justify-content:center;">
+          <svg width="22" height="22" fill="none" stroke="var(--err,#dc2626)" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
           </svg>
         </div>
-        <div style="font-size:14px; color:var(--text-primary); font-weight:600; margin-bottom:6px;">${message}</div>
-        <div style="font-size:12px; color:var(--text-muted);">This action cannot be undone.</div>
-      </div>
-    `;
+        <div style="font-size:.9rem;font-weight:600;color:var(--ink,#0a1f2e);margin-bottom:6px;">${message}</div>
+        <div style="font-size:.78rem;color:var(--ink-3,#6b8fa3);">This action cannot be undone.</div>
+      </div>`;
 
     open('Confirm Action', body, [
-      { label: 'Cancel',    class: 'btn-ghost',   onclick: 'OpsModal.close()' },
-      { label: 'Confirm',   class: 'btn-danger',  onclick: `(${onConfirm.toString()})()`, id: 'modal-confirm-btn' },
+      { label: 'Cancel',  class: 'btn-ghost',  onclick: 'OpsModal.close()' },
+      { label: 'Confirm', class: 'btn-danger',  onclick: `(${onConfirm.toString()})()`, id: 'modal-confirm-btn' },
     ]);
   }
 

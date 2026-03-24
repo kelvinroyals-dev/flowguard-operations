@@ -8,6 +8,7 @@ const OpsAlerts = (function () {
 
   let _allAlerts = [];
   let _filter    = 'all';
+  let _pg        = null;
 
   function getToken() {
     return localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -271,7 +272,8 @@ const OpsAlerts = (function () {
       _allAlerts   = Array.isArray(data.data) ? data.data
                    : Array.isArray(data.alerts) ? data.alerts : [];
       updateStats(_allAlerts);
-      renderFeed(_allAlerts, _filter);
+      _pg = FGPaginator.create(_allAlerts, { pageSize: 20, containerId: 'al-feed-card' });
+      _pg.render((items) => renderFeed(items, _filter));
       if (typeof updateAlertCount === 'function') updateAlertCount(_allAlerts.length);
     } catch (err) {
       renderError(err.message);
@@ -306,7 +308,8 @@ const OpsAlerts = (function () {
       if (f === 'watch')    return s !== 'critical' && s !== 'high' && s !== 'warning';
       return true;
     });
-    renderFeed(filtered, f);
+    if (_pg) _pg.update(filtered);
+    else renderFeed(filtered, f);
   }
 
   function refresh() {

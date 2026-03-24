@@ -7,6 +7,30 @@ const OpsSettings = (function () {
   'use strict';
 
   let _settings = {};
+  let _dirty    = false;
+
+  function markDirty() {
+    if (_dirty) return;
+    _dirty = true;
+    const btn = document.getElementById('st-save-btn');
+    if (btn) {
+      btn.style.background  = 'var(--blue, #16a8d3)';
+      btn.style.boxShadow   = '0 4px 14px rgba(22,168,211,.35)';
+    }
+    const note = document.getElementById('st-dirty-note');
+    if (note) note.style.display = 'flex';
+  }
+
+  function markClean() {
+    _dirty = false;
+    const btn = document.getElementById('st-save-btn');
+    if (btn) {
+      btn.style.background = '';
+      btn.style.boxShadow  = '';
+    }
+    const note = document.getElementById('st-dirty-note');
+    if (note) note.style.display = 'none';
+  }
 
   function render(container) {
     container.innerHTML = `
@@ -433,20 +457,6 @@ const OpsSettings = (function () {
             </div>
             <div class="st-card-body">
 
-              <div class="st-toggle-row">
-                <div class="st-toggle-left">
-                  <div class="st-toggle-name">Demo Mode</div>
-                  <div class="st-toggle-desc">Use mock data instead of live API — for testing</div>
-                </div>
-                <label class="st-toggle-wrap">
-                  <input class="st-toggle-input demo" id="s-demo-mode" name="demo_mode" type="checkbox"
-                    ${typeof OpsStateManager !== 'undefined' && OpsStateManager.getDemoMode?.() ? 'checked' : ''}
-                    onchange="OpsSettings.toggleDemo(this.checked)">
-                  <div class="st-toggle-track"></div>
-                  <div class="st-toggle-thumb"></div>
-                </label>
-              </div>
-
               <div class="st-field">
                 <label class="st-label">API Base URL</label>
                 <input class="st-input" type="text" value="${typeof CONFIG !== 'undefined' ? CONFIG.API_BASE : '—'}" readonly style="opacity:.6;cursor:not-allowed;font-family:var(--ff-m);font-size:.76rem;">
@@ -468,6 +478,10 @@ const OpsSettings = (function () {
             Settings are saved to <strong>api.flowguard.ng</strong> and take effect immediately.
           </div>
           <div style="display:flex;gap:10px;align-items:center;">
+            <span id="st-dirty-note" style="display:none;align-items:center;gap:6px;font-size:.78rem;color:var(--warn);font-weight:600;">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Unsaved changes
+            </span>
             <span id="st-saved-msg" style="font-size:.78rem;color:var(--ok);font-weight:600;opacity:0;transition:opacity .3s;">✓ Saved</span>
             <button class="btn-ghost" onclick="OpsSettings.reset()" style="font-size:.8rem;">Reset to Defaults</button>
             <button class="btn-primary" id="st-save-btn" onclick="OpsSettings.save()">
@@ -598,11 +612,8 @@ const OpsSettings = (function () {
   }
 
   function toggleDemo(checked) {
-    if (typeof OpsStateManager !== 'undefined' && OpsStateManager.toggleDemoMode) {
-      OpsStateManager.toggleDemoMode();
-      OpsModal.toast(`Demo mode ${checked ? 'enabled' : 'disabled'} — reloading…`, 'watch');
-      setTimeout(() => location.reload(), 1200);
-    }
+    // Demo mode deprecated v3.2.1 — no-op
+    OpsModal.toast('Demo mode has been deprecated', 'watch');
   }
 
   return { render, save, reset, toggleDemo };

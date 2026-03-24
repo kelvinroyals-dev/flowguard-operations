@@ -7,6 +7,7 @@ const OpsTeams = (function () {
   'use strict';
 
   let _teams = [];
+  let _pg    = null;
 
   function render(container) {
     container.innerHTML = `
@@ -199,7 +200,12 @@ const OpsTeams = (function () {
       _teams    = res.data || res.teams || [];
       if (!Array.isArray(_teams)) _teams = [];
       updateStats(_teams);
-      renderTeams(_teams);
+      if (_teams.length > 12) {
+        _pg = FGPaginator.create(_teams, { pageSize: 12, containerId: 'tm-content' });
+        _pg.render(renderTeams);
+      } else {
+        renderTeams(_teams);
+      }
     } catch (err) {
       document.getElementById('tm-content').innerHTML = `
         <div style="padding:48px;text-align:center;">

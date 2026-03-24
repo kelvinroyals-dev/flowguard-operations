@@ -179,12 +179,15 @@ const OpsProperties = (function () {
     loadAreas();
   }
 
+  let _pg = null;
+
   async function loadAreas() {
     try {
       const res = await OpsModal.apiGet('/properties/all');
       _all      = res.data || [];
       renderPipeline(_all);
-      renderTable(_all);
+      _pg = FGPaginator.create(_all, { pageSize: 25, containerId: 'pr-table-body' });
+      _pg.render(renderTable);
     } catch (err) {
       document.getElementById('pr-table-body').innerHTML = `
         <div style="padding:48px;text-align:center;">
@@ -241,7 +244,8 @@ const OpsProperties = (function () {
     if (titleEl) titleEl.textContent = titleMap[stage] || 'All Areas';
 
     const filtered = stage === 'all' ? _all : _all.filter(a => stageOf(a) === stage);
-    renderTable(filtered);
+    if (_pg) _pg.update(filtered);
+    else renderTable(filtered);
   }
 
   function search(q) {
@@ -253,10 +257,9 @@ const OpsProperties = (function () {
           (a.client_name   || '').toLowerCase().includes(term) ||
           (a.city          || '').toLowerCase().includes(term))
       : base;
-    renderTable(filtered);
-  }
-
-  function pipelineBadge(s) {
+    if (_pg) _pg.update(filtered);
+    else renderTable(filtered);
+  }(s) {
     const m = { submitted:'watch', inspection_scheduled:'watch', inspection_ongoing:'warning', report_ready:'nominal', quote_sent:'watch', payment_pending:'warning', payment_completed:'nominal', deployment_scheduled:'watch', active:'nominal', suspended:'critical', cancelled:'offline' };
     return `<span class="status-badge ${m[s] || 'offline'}">${(s || 'unknown').replace(/_/g, ' ')}</span>`;
   }

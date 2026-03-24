@@ -160,13 +160,15 @@ const OpsClients = (function () {
   }
 
   let _all = [];
+  let _pg  = null;
 
   async function loadClients() {
     try {
-      const res     = await OpsModal.apiGet('/clients');
-      _all          = res.data || [];
+      const res = await OpsModal.apiGet('/clients');
+      _all      = res.data || [];
       renderStats(_all);
-      renderTable(_all);
+      _pg = FGPaginator.create(_all, { pageSize: 25, containerId: 'cl-table-body' });
+      _pg.render(renderTable);
     } catch (err) {
       document.getElementById('cl-table-body').innerHTML = `
         <div style="padding:48px;text-align:center;">
@@ -191,11 +193,12 @@ const OpsClients = (function () {
   }
 
   function search(q) {
-    const term = q.trim().toLowerCase();
+    const term     = q.trim().toLowerCase();
     const filtered = term
       ? _all.filter(c => (c.full_name || '').toLowerCase().includes(term) || (c.email || '').toLowerCase().includes(term))
       : _all;
-    renderTable(filtered);
+    if (_pg) _pg.update(filtered);
+    else renderTable(filtered);
   }
 
   function avatarColor(name) {

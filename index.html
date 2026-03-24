@@ -409,17 +409,7 @@
       color: var(--ok);
     }
 
-    #demo-pill {
-      display: none; align-items: center; gap: 6px;
-      padding: 5px 12px;
-      background: var(--amber-bg);
-      border: 1px solid rgba(245,166,35,.3);
-      border-radius: 20px;
-      font-size: .65rem; font-weight: 700;
-      letter-spacing: 1.2px; text-transform: uppercase;
-      color: var(--amber);
-    }
-    #demo-pill.visible { display: flex; }
+    /* demo-pill removed v3.2.1 */
 
     #current-time {
       font-family: var(--ff-m);
@@ -1090,7 +1080,7 @@
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/ops-modal.js"></script>
-<script src="js/ops-state-manager.js"></script>
+<script src="js/fg-paginator.js"></script>
 <script src="js/ops-dashboard.js"></script>
 <script src="js/ops-user-management.js"></script>
 <script src="js/ops-clients.js"></script>
@@ -1384,37 +1374,83 @@
     });
   }
 
+  // ── Tab switching with URL hash persistence ──────────────────────────
+  // Hash format: #alerts, #clients, etc.
+  // On refresh the browser keeps the hash → we restore the correct tab.
+
   function switchTab(name) {
     if (!Auth.hasNavAccess(name)) return;
+
     ALL_TABS.forEach(t => {
       document.getElementById(`content-${t}`)?.classList.remove('active');
       document.getElementById(`nav-${t}`)?.classList.remove('active');
     });
+
     document.getElementById(`content-${name}`)?.classList.add('active');
     document.getElementById(`nav-${name}`)?.classList.add('active');
+
     const m = TAB_META[name] || {};
     document.getElementById('topbar-module').textContent = m.module || name;
     document.getElementById('topbar-title').textContent  = m.title  || name;
+
+    // Persist tab in URL hash — survives refresh without server roundtrip
+    if (window.location.hash !== '#' + name) {
+      history.replaceState(null, '', '#' + name);
+    }
+
     renderTab(name);
   }
+
+  // ── Tab rendering with error boundary ────────────────────────────────
 
   function renderTab(name) {
     const c = document.getElementById(`content-${name}`);
     if (!c || c.hasAttribute('data-rendered')) return;
-    const mods = {
-      dashboard: () => typeof OpsDashboard      !== 'undefined' && OpsDashboard,
-      clients:   () => typeof OpsClients        !== 'undefined' && OpsClients,
-      properties:() => typeof OpsProperties     !== 'undefined' && OpsProperties,
-      alerts:    () => typeof OpsAlerts         !== 'undefined' && OpsAlerts,
-      teams:     () => typeof OpsTeams          !== 'undefined' && OpsTeams,
-      'team-members': () => typeof OpsUserManagement !== 'undefined' && OpsUserManagement,
-      reports:   () => typeof OpsReports        !== 'undefined' && OpsReports,
-      settings:  () => typeof OpsSettings       !== 'undefined' && OpsSettings,
+
+    const MODS = {
+      dashboard:      () => typeof OpsDashboard      !== 'undefined' ? OpsDashboard      : null,
+      clients:        () => typeof OpsClients        !== 'undefined' ? OpsClients        : null,
+      properties:     () => typeof OpsProperties     !== 'undefined' ? OpsProperties     : null,
+      alerts:         () => typeof OpsAlerts         !== 'undefined' ? OpsAlerts         : null,
+      teams:          () => typeof OpsTeams          !== 'undefined' ? OpsTeams          : null,
+      'team-members': () => typeof OpsUserManagement !== 'undefined' ? OpsUserManagement : null,
+      reports:        () => typeof OpsReports        !== 'undefined' ? OpsReports        : null,
+      settings:       () => typeof OpsSettings       !== 'undefined' ? OpsSettings       : null,
     };
-    const mod = mods[name]?.();
-    if (mod) { mod.render(c); }
-    else if (name === 'dashboard') { renderWelcome(c); }
-    c.setAttribute('data-rendered', 'true');
+
+    const mod = MODS[name]?.();
+
+    try {
+      if (mod) {
+        mod.render(c);
+      } else if (name === 'dashboard') {
+        renderWelcome(c);
+      } else {
+        renderTabError(c, name, 'Module not loaded');
+        return; // don't mark as rendered so retry works
+      }
+      c.setAttribute('data-rendered', 'true');
+    } catch (err) {
+      console.error(`[FlowGuard] Tab "${name}" render error:`, err);
+      renderTabError(c, name, err.message);
+    }
+  }
+
+  function renderTabError(container, name, message) {
+    container.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+        height:300px;color:var(--ink-3);">
+        <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.3"
+          viewBox="0 0 24 24" style="margin-bottom:14px;opacity:.3;">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        </svg>
+        <div style="font-size:.88rem;font-weight:600;color:var(--ink-2);margin-bottom:6px;">
+          Failed to load ${name}
+        </div>
+        <div style="font-size:.76rem;margin-bottom:18px;">${message || 'Unknown error'}</div>
+        <button class="btn-ghost" onclick="reloadTab('${name}')">Retry</button>
+      </div>`;
   }
 
   function reloadTab(name) {
@@ -1423,7 +1459,10 @@
     renderTab(name);
   }
 
-  function toggleAlertPanel() { document.getElementById('alertPanel').classList.toggle('open'); }
+  // ── Alert tray ────────────────────────────────────────────────────────
+  function toggleAlertPanel() {
+    document.getElementById('alertPanel').classList.toggle('open');
+  }
 
   function updateAlertCount(n) {
     const b = document.getElementById('nav-badge-alerts');
@@ -1437,11 +1476,37 @@
     }
   }
 
-  function updateSysBar() {
-    if (typeof OpsStateManager === 'undefined') return;
-    try { const s = OpsStateManager.getState?.(); if (s?.alerts !== undefined) updateAlertCount(s.alerts); } catch {}
+  // ── Alert polling — 60s interval ─────────────────────────────────────
+  // Keeps alert count in topbar fresh without a full page reload.
+  // Silently polls /alerts and updates the badge. Does NOT re-render the
+  // alerts tab unless the user is currently viewing it.
+
+  async function pollAlerts() {
+    try {
+      const token = Auth.getToken();
+      if (!token) return;
+      const res    = await fetch(`${CONFIG.API_BASE}/alerts`, {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!res.ok) return;
+      const data   = await res.json();
+      const alerts = data.data || data.alerts || [];
+      updateAlertCount(Array.isArray(alerts) ? alerts.length : 0);
+
+      // If alerts tab is currently active and rendered, silently refresh it
+      const alertTab = document.getElementById('content-alerts');
+      if (alertTab?.classList.contains('active') && typeof OpsAlerts !== 'undefined') {
+        alertTab.removeAttribute('data-rendered');
+        alertTab.innerHTML = '';
+        OpsAlerts.render(alertTab);
+        alertTab.setAttribute('data-rendered', 'true');
+      }
+    } catch {
+      // Silent — network issue, don't surface to user
+    }
   }
 
+  // ── Clock ─────────────────────────────────────────────────────────────
   function updateClock() {
     const now = new Date();
     const d = now.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
@@ -1451,25 +1516,40 @@
     if (sb) sb.textContent = now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
   }
 
+  // ── Logout ────────────────────────────────────────────────────────────
   function handleLogout() {
     OpsModal.confirm('Sign out of FlowGuard Operations Center?', () => Auth.logout());
   }
 
+  // ── Boot ─────────────────────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', () => {
     Auth.updateUserInfo();
     applyRoleNav();
     updateClock();
     setInterval(updateClock, 1000);
-    setInterval(updateSysBar, 5000);
-    renderTab(Auth.getDefaultTab());
-    updateSysBar();
-    if (typeof OpsStateManager !== 'undefined' && OpsStateManager.getDemoMode?.()) {
-      document.getElementById('demo-pill').classList.add('visible');
-    }
+    setInterval(pollAlerts, 60000); // alert polling every 60s
+
+    // ── Tab restore from URL hash ──────────────────────────────────────
+    // If the URL has a hash (#alerts, #clients, etc.) restore that tab.
+    // Falls back to the user's role-default tab if hash is invalid or inaccessible.
+    const hashTab = window.location.hash.replace('#', '');
+    const startTab = (hashTab && ALL_TABS.includes(hashTab) && Auth.hasNavAccess(hashTab))
+      ? hashTab
+      : Auth.getDefaultTab();
+
+    switchTab(startTab);
+
+    // Handle browser back/forward navigation updating the tab
+    window.addEventListener('popstate', () => {
+      const h = window.location.hash.replace('#', '');
+      if (h && ALL_TABS.includes(h) && Auth.hasNavAccess(h)) {
+        switchTab(h);
+      }
+    });
   });
 
-  window.switchTab = switchTab;
-  window.reloadTab = reloadTab;
+  window.switchTab        = switchTab;
+  window.reloadTab        = reloadTab;
   window.updateAlertCount = updateAlertCount;
 </script>
 </body>

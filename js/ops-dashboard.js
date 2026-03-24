@@ -464,13 +464,12 @@ const OpsDashboard = (function () {
   }
 
   async function loadAllData() {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    if (!token) return;
+    if (!Auth.isAuthenticated()) return;
 
     try {
       const [mapRes, kpiRes] = await Promise.all([
-        fetch(`${CONFIG.API_BASE}/analytics/map-data`, { headers: { 'Authorization': 'Bearer ' + token } }).then(r => r.json()),
-        fetch(`${CONFIG.API_BASE}/analytics/kpis`,     { headers: { 'Authorization': 'Bearer ' + token } }).then(r => r.json()),
+        OpsModal.apiGet('/analytics/map-data'),
+        OpsModal.apiGet('/analytics/kpis'),
       ]);
 
       const md   = mapRes.data || {};
