@@ -504,12 +504,23 @@ const OpsSettings = (function () {
       _settings = res.data || res.settings || {};
       populateForm(_settings);
     } catch {
-      // Settings endpoint may not exist yet — show form with defaults
       _settings = {};
     } finally {
       document.getElementById('st-loading').style.display = 'none';
       document.getElementById('st-body').style.display    = 'block';
+      // Attach change listeners AFTER form is visible
+      attachDirtyListeners();
     }
+  }
+
+  function attachDirtyListeners() {
+    const body = document.getElementById('st-body');
+    if (!body) return;
+    // All inputs, selects, textareas, checkboxes trigger dirty
+    body.querySelectorAll('input, select, textarea').forEach(el => {
+      const ev = el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input';
+      el.addEventListener(ev, markDirty, { once: false });
+    });
   }
 
   function populateForm(s) {
@@ -582,6 +593,7 @@ const OpsSettings = (function () {
 
       if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Save Settings'; }
       if (savedEl) { savedEl.style.opacity = '1'; setTimeout(() => { savedEl.style.opacity = '0'; }, 2500); }
+      markClean();
 
     } catch (err) {
       if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Save Settings'; }
@@ -602,6 +614,7 @@ const OpsSettings = (function () {
         weekly_digest:        false,
       };
       populateForm(defaults);
+      markClean();
       OpsModal.toast('Settings reset to defaults — click Save to apply', 'watch');
     });
   }

@@ -1035,6 +1035,7 @@
           <div class="ops-status-dot"></div>
           <span class="ops-status-label">Operational</span>
         </div>
+        <span id="topbar-sync" style="display:none;font-size:.68rem;color:var(--ink-4);font-family:var(--ff-m);"></span>
         <span id="current-time"></span>
         <button class="tb-btn" onclick="toggleAlertPanel()" aria-label="Alert tray">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
@@ -1374,8 +1375,15 @@
   // Hash format: #alerts, #clients, etc.
   // On refresh the browser keeps the hash → we restore the correct tab.
 
+  let _activeTab    = null;
+  let _switching    = false; // debounce — prevents duplicate renders on rapid clicks
+  const _syncTimes  = {};    // tracks when each tab last fetched data
+
   function switchTab(name) {
     if (!Auth.hasNavAccess(name)) return;
+    if (_switching) return; // ignore rapid clicks
+    _switching = true;
+    setTimeout(() => { _switching = false; }, 300);
 
     ALL_TABS.forEach(t => {
       document.getElementById(`content-${t}`)?.classList.remove('active');
@@ -1389,12 +1397,30 @@
     document.getElementById('topbar-module').textContent = m.module || name;
     document.getElementById('topbar-title').textContent  = m.title  || name;
 
+    _activeTab = name;
+    updateSyncBadge(name);
+
     // Persist tab in URL hash — survives refresh without server roundtrip
     if (window.location.hash !== '#' + name) {
       history.replaceState(null, '', '#' + name);
     }
 
     renderTab(name);
+  }
+
+  function stampSync(name) {
+    _syncTimes[name] = Date.now();
+    updateSyncBadge(name);
+  }
+
+  function updateSyncBadge(name) {
+    const el  = document.getElementById('topbar-sync');
+    const ts  = _syncTimes[name];
+    if (!el) return;
+    if (!ts) { el.textContent = ''; el.style.display = 'none'; return; }
+    const diff = Math.floor((Date.now() - ts) / 60000);
+    el.style.display  = 'inline';
+    el.textContent    = diff < 1 ? 'Just now' : diff === 1 ? '1 min ago' : `${diff} min ago`;
   }
 
   // ── Tab rendering with error boundary ────────────────────────────────
@@ -1426,6 +1452,7 @@
         return; // don't mark as rendered so retry works
       }
       c.setAttribute('data-rendered', 'true');
+      stampSync(name);
     } catch (err) {
       console.error(`[FlowGuard] Tab "${name}" render error:`, err);
       renderTabError(c, name, err.message);
@@ -1452,6 +1479,7 @@
   function reloadTab(name) {
     const c = document.getElementById(`content-${name}`);
     if (c) { c.removeAttribute('data-rendered'); c.innerHTML = ''; }
+    delete _syncTimes[name];
     renderTab(name);
   }
 
@@ -1523,6 +1551,7 @@
     applyRoleNav();
     updateClock();
     setInterval(updateClock, 1000);
+    setInterval(() => { if (_activeTab) updateSyncBadge(_activeTab); }, 60000);
     setInterval(pollAlerts, 60000); // alert polling every 60s
 
     // ── Tab restore from URL hash ──────────────────────────────────────
@@ -1547,6 +1576,7 @@
   window.switchTab        = switchTab;
   window.reloadTab        = reloadTab;
   window.updateAlertCount = updateAlertCount;
+  window.stampSync        = stampSync;
 </script>
 </body>
 </html>
