@@ -1,300 +1,769 @@
 // ============================================
-// ALERTS & REPORTS MODULES (NEON THEME)
-// Alert management and analytics reporting
+// ALERTS MODULE
+// Full redesign — viewAlert, assignAlert, resolveAlert all wired
 // ============================================
 
-const OpsAlerts = (function() {
-    
-    async function render(container) {
-        container.innerHTML = `
-            <div style="margin-bottom: 24px;">
-                <h2 style="font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; color: var(--text-bright); margin-bottom: 4px;">Live Alerts</h2>
-                <p style="font-size: 11px; color: var(--text-dim); letter-spacing: 0.5px;">Monitor and respond to system alerts</p>
+const OpsAlerts = (function () {
+  'use strict';
+
+  let _allAlerts = [];
+  let _filter    = 'all';
+
+  function getToken() {
+    return localStorage.getItem('token') || sessionStorage.getItem('token');
+  }
+
+  function render(container) {
+    container.innerHTML = `
+      <style>
+        /* ── Stats row ── */
+        .al-stats {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 14px;
+          margin-bottom: 20px;
+        }
+
+        .al-stat {
+          background: var(--surface, #fff);
+          border: 1px solid var(--border, #dae6ef);
+          border-radius: var(--r, 10px);
+          padding: 18px 20px;
+          position: relative; overflow: hidden;
+          box-shadow: var(--sh-xs, 0 1px 2px rgba(10,31,46,.06));
+          transition: all .2s;
+        }
+
+        .al-stat:hover { transform: translateY(-2px); box-shadow: var(--sh-md, 0 4px 20px rgba(10,31,46,.09)); }
+
+        .al-stat::after {
+          content: '';
+          position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+        }
+
+        .al-stat.critical::after { background: var(--err, #dc2626); }
+        .al-stat.warning::after  { background: var(--caut, #c2410c); }
+        .al-stat.watch::after    { background: var(--warn, #b45309); }
+        .al-stat.total::after    { background: linear-gradient(90deg, var(--navy, #0a2a3d), var(--blue, #16a8d3)); }
+
+        .al-stat-label {
+          font-size: .62rem; font-weight: 700;
+          letter-spacing: 1.5px; text-transform: uppercase;
+          color: var(--ink-3, #6b8fa3); margin-bottom: 6px;
+        }
+
+        .al-stat-val {
+          font-family: var(--ff-d, 'Playfair Display', serif);
+          font-size: 2.2rem; font-weight: 900;
+          line-height: 1; letter-spacing: -.03em;
+          color: var(--ink, #0a1f2e);
+        }
+
+        .al-stat-val.critical { color: var(--err, #dc2626); }
+        .al-stat-val.warning  { color: var(--caut, #c2410c); }
+        .al-stat-val.watch    { color: var(--warn, #b45309); }
+
+        /* ── Filter tabs ── */
+        .al-filters {
+          display: flex; align-items: center; gap: 6px;
+          margin-bottom: 16px;
+        }
+
+        .al-filter-btn {
+          padding: 6px 16px;
+          border-radius: 20px;
+          border: 1px solid var(--border, #dae6ef);
+          background: var(--surface, #fff);
+          font-family: var(--ff-b, 'Figtree', sans-serif);
+          font-size: .78rem; font-weight: 600;
+          color: var(--ink-3, #6b8fa3);
+          cursor: pointer; transition: all .18s;
+        }
+
+        .al-filter-btn:hover { border-color: var(--border-2, #b8d0de); color: var(--ink-2, #2d5068); }
+
+        .al-filter-btn.active {
+          background: var(--navy, #0a2a3d);
+          border-color: var(--navy, #0a2a3d);
+          color: white;
+        }
+
+        .al-filter-btn.active.critical { background: var(--err, #dc2626); border-color: var(--err, #dc2626); }
+        .al-filter-btn.active.warning  { background: var(--caut, #c2410c); border-color: var(--caut, #c2410c); }
+        .al-filter-btn.active.watch    { background: var(--warn, #b45309); border-color: var(--warn, #b45309); }
+
+        .al-count-pill {
+          display: inline-flex; align-items: center; justify-content: center;
+          width: 18px; height: 18px; border-radius: 50%;
+          font-size: .62rem; font-weight: 700;
+          background: rgba(255,255,255,.2);
+          margin-left: 4px;
+        }
+
+        /* ── Feed card ── */
+        .al-feed-card {
+          background: var(--surface, #fff);
+          border: 1px solid var(--border, #dae6ef);
+          border-radius: var(--r, 10px);
+          overflow: hidden;
+          box-shadow: var(--sh-xs, 0 1px 2px rgba(10,31,46,.06));
+        }
+
+        .al-feed-head {
+          padding: 14px 20px;
+          border-bottom: 1px solid var(--border, #dae6ef);
+          display: flex; align-items: center; justify-content: space-between;
+        }
+
+        .al-feed-title {
+          font-family: var(--ff-d, 'Playfair Display', serif);
+          font-size: .9rem; font-weight: 700; color: var(--ink, #0a1f2e);
+        }
+
+        .al-feed-body { display: flex; flex-direction: column; }
+
+        /* ── Individual alert row ── */
+        .al-row {
+          padding: 16px 20px;
+          border-bottom: 1px solid var(--border, #dae6ef);
+          display: flex; align-items: flex-start;
+          gap: 14px; transition: background .12s;
+          border-left: 3px solid transparent;
+        }
+
+        .al-row:last-child { border-bottom: none; }
+        .al-row:hover { background: var(--surface-2, #f7fafc); }
+
+        .al-row.severity-critical { border-left-color: var(--err, #dc2626); }
+        .al-row.severity-high,
+        .al-row.severity-warning  { border-left-color: var(--caut, #c2410c); }
+        .al-row.severity-moderate,
+        .al-row.severity-watch    { border-left-color: var(--warn, #b45309); }
+
+        .al-row-icon {
+          width: 36px; height: 36px; border-radius: 9px;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0; margin-top: 1px;
+        }
+
+        .al-row-body { flex: 1; min-width: 0; }
+
+        .al-row-top {
+          display: flex; align-items: center; gap: 8px;
+          margin-bottom: 4px; flex-wrap: wrap;
+        }
+
+        .al-row-title {
+          font-size: .88rem; font-weight: 700;
+          color: var(--ink, #0a1f2e);
+        }
+
+        .al-row-location {
+          font-size: .79rem; color: var(--ink-3, #6b8fa3);
+          margin-bottom: 3px;
+          display: flex; align-items: center; gap: 4px;
+        }
+
+        .al-row-meta {
+          display: flex; align-items: center; gap: 10px;
+          font-size: .72rem; color: var(--ink-4, #9eb8c8);
+          font-family: var(--ff-m, 'JetBrains Mono', monospace);
+        }
+
+        .al-row-assigned {
+          margin-top: 8px; padding: 6px 10px;
+          background: var(--surface-3, #eef4f8);
+          border-radius: 6px;
+          font-size: .75rem; color: var(--ink-2, #2d5068);
+          display: flex; align-items: center; gap: 6px;
+        }
+
+        .al-row-actions {
+          display: flex; align-items: center;
+          gap: 6px; flex-shrink: 0;
+        }
+
+        .al-action-btn {
+          padding: 6px 14px;
+          border-radius: var(--rs, 6px);
+          border: 1px solid var(--border, #dae6ef);
+          background: var(--surface-2, #f7fafc);
+          font-family: var(--ff-b, 'Figtree', sans-serif);
+          font-size: .75rem; font-weight: 600;
+          color: var(--ink-2, #2d5068);
+          cursor: pointer; transition: all .18s;
+          white-space: nowrap;
+        }
+
+        .al-action-btn:hover { border-color: var(--blue, #16a8d3); color: var(--blue, #16a8d3); background: rgba(22,168,211,.05); }
+        .al-action-btn.primary { background: var(--navy, #0a2a3d); border-color: var(--navy, #0a2a3d); color: white; }
+        .al-action-btn.primary:hover { background: var(--navy-mid, #0d3a54); }
+        .al-action-btn.resolve { background: var(--ok-bg, #e2f5ee); border-color: var(--ok, #0a8a6a); color: var(--ok, #0a8a6a); }
+        .al-action-btn.resolve:hover { background: var(--ok, #0a8a6a); color: white; }
+
+        /* Empty state */
+        .al-empty {
+          padding: 60px 20px; text-align: center;
+          color: var(--ink-3, #6b8fa3);
+        }
+
+        .al-empty svg { margin: 0 auto 14px; display: block; opacity: .25; }
+        .al-empty-title { font-size: .9rem; font-weight: 600; color: var(--ink-2, #2d5068); margin-bottom: 4px; }
+        .al-empty-sub   { font-size: .78rem; }
+      </style>
+
+      <!-- Stats -->
+      <div class="al-stats">
+        <div class="al-stat critical">
+          <div class="al-stat-label">Critical</div>
+          <div class="al-stat-val critical" id="al-critical">—</div>
+        </div>
+        <div class="al-stat warning">
+          <div class="al-stat-label">Warning</div>
+          <div class="al-stat-val warning" id="al-warning">—</div>
+        </div>
+        <div class="al-stat watch">
+          <div class="al-stat-label">Watch</div>
+          <div class="al-stat-val watch" id="al-watch">—</div>
+        </div>
+        <div class="al-stat total">
+          <div class="al-stat-label">Total Active</div>
+          <div class="al-stat-val" id="al-total">—</div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="al-filters">
+        <button class="al-filter-btn active" id="filter-all"      onclick="OpsAlerts.setFilter('all')">All</button>
+        <button class="al-filter-btn critical" id="filter-critical" onclick="OpsAlerts.setFilter('critical')">Critical</button>
+        <button class="al-filter-btn warning"  id="filter-warning"  onclick="OpsAlerts.setFilter('warning')">Warning</button>
+        <button class="al-filter-btn watch"    id="filter-watch"    onclick="OpsAlerts.setFilter('watch')">Watch</button>
+      </div>
+
+      <!-- Feed -->
+      <div class="al-feed-card">
+        <div class="al-feed-head">
+          <div class="al-feed-title">Active Incidents</div>
+          <button class="btn-ghost" onclick="OpsAlerts.refresh()" style="font-size:.76rem;padding:6px 12px;">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Refresh
+          </button>
+        </div>
+        <div class="al-feed-body" id="al-feed">
+          <div style="padding:40px;text-align:center;color:var(--ink-3);">
+            <div class="loading" style="margin:0 auto 12px;"></div>
+            <div style="font-size:.82rem;">Loading alerts…</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    loadAlerts();
+  }
+
+  async function loadAlerts() {
+    try {
+      const res    = await fetch(`${CONFIG.API_BASE}/alerts`, {
+        headers: { 'Authorization': `Bearer ${getToken()}` }
+      });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const data   = await res.json();
+      _allAlerts   = Array.isArray(data.data) ? data.data
+                   : Array.isArray(data.alerts) ? data.alerts : [];
+      updateStats(_allAlerts);
+      renderFeed(_allAlerts, _filter);
+      if (typeof updateAlertCount === 'function') updateAlertCount(_allAlerts.length);
+    } catch (err) {
+      renderError(err.message);
+    }
+  }
+
+  function updateStats(alerts) {
+    let critical = 0, warning = 0, watch = 0;
+    alerts.forEach(a => {
+      const s = a.severity?.toLowerCase();
+      if (s === 'critical')                        critical++;
+      else if (s === 'high' || s === 'warning')    warning++;
+      else                                         watch++;
+    });
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('al-critical', critical);
+    set('al-warning',  warning);
+    set('al-watch',    watch);
+    set('al-total',    alerts.length);
+  }
+
+  function setFilter(f) {
+    _filter = f;
+    ['all','critical','warning','watch'].forEach(k => {
+      const btn = document.getElementById(`filter-${k}`);
+      if (btn) btn.classList.toggle('active', k === f);
+    });
+    const filtered = f === 'all' ? _allAlerts : _allAlerts.filter(a => {
+      const s = a.severity?.toLowerCase();
+      if (f === 'critical') return s === 'critical';
+      if (f === 'warning')  return s === 'high' || s === 'warning';
+      if (f === 'watch')    return s !== 'critical' && s !== 'high' && s !== 'warning';
+      return true;
+    });
+    renderFeed(filtered, f);
+  }
+
+  function refresh() {
+    const feed = document.getElementById('al-feed');
+    if (feed) feed.innerHTML = '<div style="padding:40px;text-align:center;color:var(--ink-3);"><div class="loading" style="margin:0 auto 12px;"></div><div style="font-size:.82rem;">Refreshing…</div></div>';
+    // Remove data-rendered so reload works
+    const container = document.getElementById('content-alerts');
+    if (container) container.removeAttribute('data-rendered');
+    loadAlerts();
+  }
+
+  function severityClass(s) {
+    s = s?.toLowerCase();
+    if (s === 'critical')              return 'critical';
+    if (s === 'high' || s === 'warning') return 'warning';
+    return 'watch';
+  }
+
+  function severityIcon(s) {
+    s = s?.toLowerCase();
+    const colors = { critical: 'var(--err)', warning: 'var(--caut)', watch: 'var(--warn)' };
+    const bgs    = { critical: 'var(--eb)',   warning: 'var(--cb)',   watch: 'var(--wb)' };
+    const sc     = severityClass(s);
+    return { color: colors[sc] || 'var(--warn)', bg: bgs[sc] || 'var(--wb)' };
+  }
+
+  function renderFeed(alerts, filter) {
+    const feed = document.getElementById('al-feed');
+    if (!feed) return;
+
+    if (!alerts || alerts.length === 0) {
+      feed.innerHTML = `
+        <div class="al-empty">
+          <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <div class="al-empty-title">${filter === 'all' ? 'No active alerts' : `No ${filter} alerts`}</div>
+          <div class="al-empty-sub">All systems are operating normally</div>
+        </div>`;
+      return;
+    }
+
+    feed.innerHTML = alerts.map(a => {
+      const id       = a.alert_id || a.id;
+      const sc       = severityClass(a.severity);
+      const ico      = severityIcon(a.severity);
+      const isPending = !a.assigned_team && a.status !== 'resolved';
+      const time     = formatTime(a.timestamp || a.created_at);
+      const location = a.location || a.property || a.site_name || '—';
+      const type     = a.alert_type || a.type || 'System Alert';
+
+      return `
+        <div class="al-row severity-${sc}" id="al-row-${id}">
+          <div class="al-row-icon" style="background:${ico.bg};">
+            <svg width="16" height="16" fill="none" stroke="${ico.color}" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            </svg>
+          </div>
+
+          <div class="al-row-body">
+            <div class="al-row-top">
+              <span class="status-badge ${sc === 'watch' ? 'watch' : sc === 'warning' ? 'warning' : 'critical'}">${a.severity || sc}</span>
+              <span class="al-row-title">${type}</span>
             </div>
-            
-            <!-- Alert Stats -->
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px;">
-                <div class="ops-card">
-                    <div class="ops-card-body" style="text-align: center;">
-                        <div style="font-size: 10px; color: var(--text-dim); letter-spacing: 1px; margin-bottom: 6px;">CRITICAL</div>
-                        <div style="font-size: 28px; font-weight: 700; font-family: var(--font-mono); color: var(--s-critical);" id="alert-critical">—</div>
-                    </div>
-                </div>
-                <div class="ops-card">
-                    <div class="ops-card-body" style="text-align: center;">
-                        <div style="font-size: 10px; color: var(--text-dim); letter-spacing: 1px; margin-bottom: 6px;">WARNING</div>
-                        <div style="font-size: 28px; font-weight: 700; font-family: var(--font-mono); color: var(--s-warning);" id="alert-warning">—</div>
-                    </div>
-                </div>
-                <div class="ops-card">
-                    <div class="ops-card-body" style="text-align: center;">
-                        <div style="font-size: 10px; color: var(--text-dim); letter-spacing: 1px; margin-bottom: 6px;">WATCH</div>
-                        <div style="font-size: 28px; font-weight: 700; font-family: var(--font-mono); color: var(--s-watch);" id="alert-watch">—</div>
-                    </div>
-                </div>
-                <div class="ops-card">
-                    <div class="ops-card-body" style="text-align: center;">
-                        <div style="font-size: 10px; color: var(--text-dim); letter-spacing: 1px; margin-bottom: 6px;">TOTAL</div>
-                        <div style="font-size: 28px; font-weight: 700; font-family: var(--font-mono); color: var(--text-bright);" id="alert-total">—</div>
-                    </div>
-                </div>
+            <div class="al-row-location">
+              <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              ${location}
             </div>
-            
-            <!-- Alerts Feed -->
-            <div class="ops-card">
-                <div class="ops-card-header">
-                    <div class="ops-card-title">Active Alerts</div>
-                </div>
-                <div class="ops-card-body">
-                    <div id="alerts-feed" style="display: flex; flex-direction: column; gap: 12px;">
-                        <div style="text-align: center; padding: 20px; color: var(--text-dim);">
-                            <div class="loading" style="margin: 0 auto;"></div>
-                            <div style="margin-top: 12px; font-size: 12px;">Loading alerts...</div>
-                        </div>
-                    </div>
-                </div>
+            <div class="al-row-meta">
+              <span>${time}</span>
+              ${a.sensor_name ? `<span>· ${a.sensor_name}</span>` : ''}
+              ${a.time_to_overflow_min ? `<span style="color:var(--err);font-weight:600;">· Overflow in ${a.time_to_overflow_min} min</span>` : ''}
             </div>
-        `;
-        
-        loadAlerts();
+            ${a.assigned_team ? `
+              <div class="al-row-assigned">
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0112 0v2"/></svg>
+                Assigned to <strong>${a.assigned_team}</strong>
+              </div>` : ''}
+          </div>
+
+          <div class="al-row-actions">
+            ${isPending ? `
+              <button class="al-action-btn primary" onclick="OpsAlerts.assignAlert('${id}')">
+                Assign
+              </button>` : ''}
+            <button class="al-action-btn" onclick="OpsAlerts.viewAlert('${id}')">
+              View
+            </button>
+            ${a.status !== 'resolved' ? `
+              <button class="al-action-btn resolve" onclick="OpsAlerts.resolveAlert('${id}')">
+                Resolve
+              </button>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function formatTime(ds) {
+    if (!ds) return '—';
+    const diff = Date.now() - new Date(ds).getTime();
+    const mins = Math.floor(diff / 60000);
+    const hrs  = Math.floor(diff / 3600000);
+    if (mins < 1)  return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    if (hrs  < 24) return `${hrs}h ago`;
+    return new Date(ds).toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+  }
+
+  // ── View alert modal ──
+  async function viewAlert(id) {
+    const a = _allAlerts.find(x => (x.alert_id || x.id) == id);
+    if (!a) { OpsModal.toast('Alert not found', 'warning'); return; }
+
+    const sc    = severityClass(a.severity);
+    const ico   = severityIcon(a.severity);
+    const time  = a.timestamp || a.created_at;
+
+    OpsModal.open(`Incident — ${a.alert_type || 'Alert'}`, `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:14px 16px;background:${ico.bg};border-radius:10px;border:1px solid ${ico.color}25;">
+        <div style="width:40px;height:40px;border-radius:10px;background:${ico.color}20;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="18" height="18" fill="none" stroke="${ico.color}" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+          </svg>
+        </div>
+        <div>
+          <div style="font-family:var(--ff-d);font-size:1rem;font-weight:700;color:var(--ink);">${a.alert_type || 'System Alert'}</div>
+          <div style="font-size:.78rem;color:${ico.color};font-weight:600;text-transform:uppercase;letter-spacing:.5px;">${a.severity} severity</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div class="ops-modal-detail"><span class="label">Location</span><span class="value">${a.location || a.property || '—'}</span></div>
+        <div class="ops-modal-detail"><span class="label">Sensor</span><span class="value">${a.sensor_name || '—'}</span></div>
+        <div class="ops-modal-detail"><span class="label">Site</span><span class="value">${a.site_name || '—'}</span></div>
+        <div class="ops-modal-detail"><span class="label">Status</span><span class="value"><span class="status-badge ${a.status === 'resolved' ? 'nominal' : sc === 'critical' ? 'critical' : 'watch'}">${a.status || 'active'}</span></span></div>
+        <div class="ops-modal-detail"><span class="label">Reported</span><span class="value">${time ? new Date(time).toLocaleString() : '—'}</span></div>
+        <div class="ops-modal-detail"><span class="label">Assigned To</span><span class="value">${a.assigned_team || 'Unassigned'}</span></div>
+        ${a.time_to_overflow_min ? `<div class="ops-modal-detail" style="grid-column:1/-1;"><span class="label">Time to Overflow</span><span class="value" style="color:var(--err);font-weight:700;">${a.time_to_overflow_min} minutes</span></div>` : ''}
+      </div>
+
+      ${a.description ? `
+        <div style="margin-bottom:14px;">
+          <div style="font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;">Description</div>
+          <div style="font-size:.84rem;color:var(--ink-2);line-height:1.6;padding:12px 14px;background:var(--surface-2);border-radius:8px;">${a.description}</div>
+        </div>` : ''}
+
+      ${a.notes ? `
+        <div style="margin-bottom:14px;">
+          <div style="font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;">Field Notes</div>
+          <div style="font-size:.84rem;color:var(--ink-2);line-height:1.6;padding:12px 14px;background:var(--surface-2);border-radius:8px;">${a.notes}</div>
+        </div>` : ''}
+    `, [
+      { label: 'Close',         class: 'btn-ghost',    onclick: 'OpsModal.close()' },
+      { label: 'Assign Team',   class: 'btn-primary',  onclick: `OpsModal.close();OpsAlerts.assignAlert('${id}')`, id: 'modal-assign-btn' },
+      ...(a.status !== 'resolved' ? [{ label: 'Resolve', class: 'btn-ghost', onclick: `OpsModal.close();OpsAlerts.resolveAlert('${id}')` }] : []),
+    ]);
+  }
+
+  // ── Assign alert modal ──
+  async function assignAlert(id) {
+    // Load teams for the dropdown
+    let teams = [];
+    try {
+      const res = await OpsModal.apiGet('/teams');
+      teams = res.data || res.teams || [];
+    } catch { /* show modal anyway with empty list */ }
+
+    const a = _allAlerts.find(x => (x.alert_id || x.id) == id);
+    const alertLabel = a ? (a.alert_type || 'Alert') : 'Alert';
+    const location   = a ? (a.location || a.property || a.site_name || '') : '';
+
+    const teamOptions = teams.length > 0
+      ? teams.map(t => ({ value: t.team_id || t.id, label: t.team_name || t.name }))
+      : [{ value: '', label: 'No teams available' }];
+
+    OpsModal.open(`Assign Incident`, `
+      <div style="padding:12px 14px;background:var(--surface-2);border-radius:8px;margin-bottom:18px;">
+        <div style="font-size:.82rem;font-weight:600;color:var(--ink);">${alertLabel}</div>
+        ${location ? `<div style="font-size:.76rem;color:var(--ink-3);margin-top:2px;">${location}</div>` : ''}
+      </div>
+      ${OpsModal.field('Assign to Team', 'team_id', 'select', '', { options: teamOptions })}
+      ${OpsModal.field('Priority Instructions (optional)', 'notes', 'textarea', '', { placeholder: 'E.g. High-pressure hydro-jetting required. Report on arrival.', required: false, rows: 3 })}
+      ${OpsModal.field('ETA (minutes)', 'eta', 'number', '', { placeholder: '30', required: false })}
+    `, [
+      { label: 'Cancel',     class: 'btn-ghost',   onclick: 'OpsModal.close()' },
+      { label: 'Dispatch',   class: 'btn-primary',  onclick: `OpsAlerts.confirmAssign('${id}')`, id: 'modal-save-btn' },
+    ]);
+  }
+
+  async function confirmAssign(id) {
+    const data = OpsModal.getFormData();
+    if (!data.team_id) { OpsModal.toast('Please select a team', 'warning'); return; }
+
+    OpsModal.setLoading('modal-save-btn', true);
+    try {
+      await OpsModal.apiPost(`/alerts/${id}/assign`, {
+        team_id: data.team_id,
+        notes:   data.notes || null,
+        eta:     data.eta   ? parseInt(data.eta) : null,
+      });
+      OpsModal.close();
+      OpsModal.toast('Team dispatched successfully', 'nominal');
+
+      // Update local state optimistically
+      const a = _allAlerts.find(x => (x.alert_id || x.id) == id);
+      if (a) {
+        const teams    = await OpsModal.apiGet('/teams').catch(() => ({ data: [] }));
+        const team     = (teams.data || []).find(t => (t.team_id || t.id) == data.team_id);
+        a.assigned_team = team ? (team.team_name || team.name) : 'Team dispatched';
+      }
+
+      renderFeed(_filter === 'all' ? _allAlerts : _allAlerts.filter(a => severityClass(a.severity) === _filter), _filter);
+    } catch (err) {
+      OpsModal.toast('Failed to assign: ' + err.message, 'critical');
+      OpsModal.setLoading('modal-save-btn', false);
     }
-    
-    async function loadAlerts() {
-        try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                renderError('Not authenticated');
-                return;
-            }
-            
-            const response = await fetch('https://api.flowguard.ng/api/v1/alerts', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (!response.ok) throw new Error(`API returned ${response.status}`);
-            
-            const data = await response.json();
-            const alerts = data.data || data.alerts || [];
-            
-            renderAlertsFeed(Array.isArray(alerts) ? alerts : []);
-            updateAlertStats(alerts);
-            
-        } catch (error) {
-            console.error('Load alerts error:', error);
-            renderError(error.message);
-        }
-    }
-    
-    function updateAlertStats(alerts) {
-        const stats = alerts.reduce((acc, alert) => {
-            if (alert.severity === 'critical') acc.critical++;
-            else if (alert.severity === 'warning' || alert.severity === 'moderate') acc.warning++;
-            else acc.watch++;
-            return acc;
-        }, { critical: 0, warning: 0, watch: 0 });
-        
-        document.getElementById('alert-critical').textContent = stats.critical;
-        document.getElementById('alert-warning').textContent = stats.warning;
-        document.getElementById('alert-watch').textContent = stats.watch;
-        document.getElementById('alert-total').textContent = alerts.length;
-        
-        // Update global alert count for sys-bar
-        if (typeof updateAlertCount === 'function') {
-            updateAlertCount(alerts.length);
-        }
-    }
-    
-    function renderAlertsFeed(alerts) {
-        const container = document.getElementById('alerts-feed');
-        if (!container) return;
-        
-        if (!alerts || alerts.length === 0) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: var(--text-dim);">
-                    <svg style="width: 48px; height: 48px; margin: 0 auto 12px; opacity: 0.3;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <div style="font-size: 12px;">No active alerts</div>
-                    <div style="font-size: 10px; color: var(--text-dim); margin-top: 4px;">System nominal</div>
-                </div>
-            `;
-            return;
-        }
-        
-        container.innerHTML = alerts.map(alert => {
-            const severity = alert.severity || 'watch';
-            const borderColor = severity === 'critical' ? 'var(--s-critical)' : 
-                                severity === 'warning' ? 'var(--s-warning)' : 'var(--s-watch)';
-            
-            return `
-                <div style="padding: 14px; background: var(--surface); border-left: 3px solid ${borderColor}; border-radius: 8px;">
-                    <div style="display: flex; align-items: start; justify-content: space-between; margin-bottom: 8px;">
-                        <div style="flex: 1;">
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                                <span class="status-badge ${severity}">${severity}</span>
-                                <span style="font-weight: 600; color: var(--text-bright); font-size: 13px;">${alert.alert_type || alert.type || 'System Alert'}</span>
-                            </div>
-                            <div style="font-size: 12px; color: var(--text-mid); margin-bottom: 4px;">
-                                📍 ${alert.location || alert.property || '—'}
-                            </div>
-                            <div style="font-size: 10px; color: var(--text-dim); font-family: var(--font-mono);">
-                                ${formatTime(alert.timestamp || alert.created_at)}
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 6px;">
-                            ${alert.status === 'pending' ? `
-                                <button onclick="OpsAlerts.assignAlert('${alert.alert_id || alert.id}')" class="btn-secondary" style="font-size: 11px; padding: 6px 12px;">
-                                    Assign
-                                </button>
-                            ` : ''}
-                            <button onclick="OpsAlerts.viewAlert('${alert.alert_id || alert.id}')" class="btn-table-action">
-                                <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                    ${alert.assigned_team ? `
-                        <div style="padding-top: 8px; border-top: 1px solid var(--panel-edge); font-size: 11px; color: var(--text-dim);">
-                            Assigned to: <span style="color: var(--text-mid); font-weight: 600;">${alert.assigned_team}</span>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        }).join('');
-    }
-    
-    function formatTime(dateString) {
-        if (!dateString) return '—';
-        const date = new Date(dateString);
-        const now = new Date();
-        const diff = now - date;
-        const minutes = Math.floor(diff / 60000);
-        const hours = Math.floor(diff / 3600000);
-        
-        if (minutes < 60) return `${minutes} min ago`;
-        if (hours < 24) return `${hours}h ago`;
-        return date.toLocaleDateString();
-    }
-    
-    function renderError(message) {
-        const container = document.getElementById('alerts-feed');
-        if (container) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 40px;">
-                    <div style="color: var(--s-critical); font-weight: 600; margin-bottom: 8px;">Failed to Load Alerts</div>
-                    <div style="color: var(--text-dim); font-size: 11px; margin-bottom: 16px;">${message}</div>
-                    <button onclick="OpsAlerts.render(document.getElementById('content-alerts'))" class="btn-secondary">Retry</button>
-                </div>
-            `;
-        }
-    }
-    
-    function assignAlert(id) { showToast('Assign alert ' + id, 'watch'); }
-    function viewAlert(id) { showToast('Opening alert ' + id, 'nominal'); }
-    
-    function showToast(msg, type = 'nominal') {
-        const toast = document.createElement('div');
-        toast.style.cssText = 'position:fixed;top:80px;right:20px;background:var(--panel);border:1px solid var(--panel-edge);padding:12px 18px;border-radius:8px;display:flex;align-items:center;gap:10px;z-index:9999;opacity:0;transition:opacity 0.3s;';
-        toast.innerHTML = `<div class="pulse-dot ${type}"></div><span style="font-size:12px;">${msg}</span>`;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.style.opacity = '1', 10);
-        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
-    }
-    
-    return { render, assignAlert, viewAlert };
+  }
+
+  // ── Resolve alert ──
+  function resolveAlert(id) {
+    const a = _allAlerts.find(x => (x.alert_id || x.id) == id);
+    const label = a ? (a.alert_type || 'Alert') : 'Alert';
+
+    OpsModal.confirm(`Mark "${label}" as resolved?`, async function () {
+      OpsModal.setLoading('modal-confirm-btn', true);
+      try {
+        await OpsModal.apiPost(`/alerts/${id}/resolve`, {});
+        OpsModal.close();
+        OpsModal.toast('Alert resolved', 'nominal');
+
+        // Remove from local list
+        _allAlerts = _allAlerts.filter(x => (x.alert_id || x.id) != id);
+        updateStats(_allAlerts);
+        renderFeed(_filter === 'all' ? _allAlerts : _allAlerts.filter(a => severityClass(a.severity) === _filter), _filter);
+        if (typeof updateAlertCount === 'function') updateAlertCount(_allAlerts.length);
+      } catch (err) {
+        OpsModal.toast('Failed to resolve: ' + err.message, 'critical');
+        OpsModal.setLoading('modal-confirm-btn', false);
+      }
+    });
+  }
+
+  function renderError(message) {
+    const feed = document.getElementById('al-feed');
+    if (!feed) return;
+    feed.innerHTML = `
+      <div style="padding:48px;text-align:center;">
+        <div style="color:var(--err);font-weight:700;margin-bottom:8px;font-size:.88rem;">Failed to load alerts</div>
+        <div style="color:var(--ink-3);font-size:.78rem;margin-bottom:18px;">${message}</div>
+        <button class="btn-ghost" onclick="OpsAlerts.refresh()">Retry</button>
+      </div>`;
+  }
+
+  return { render, setFilter, refresh, viewAlert, assignAlert, confirmAssign, resolveAlert };
+
 })();
 
+
 // ============================================
-// REPORTS MODULE (NEON THEME)
+// REPORTS MODULE
 // ============================================
 
-const OpsReports = (function() {
-    
-    function render(container) {
-        container.innerHTML = `
-            <div style="margin-bottom: 24px;">
-                <h2 style="font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; color: var(--text-bright); margin-bottom: 4px;">Reports & Analytics</h2>
-                <p style="font-size: 11px; color: var(--text-dim); letter-spacing: 0.5px;">Generate and export operational reports</p>
-            </div>
-            
-            <!-- Report Types -->
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;">
-                <div class="ops-card" style="cursor: pointer; transition: all 0.2s;" onclick="OpsReports.generate('daily')" onmouseover="this.style.borderColor='var(--neon-dim)'" onmouseout="this.style.borderColor='var(--panel-edge)'">
-                    <div class="ops-card-body" style="text-align: center;">
-                        <div style="width: 48px; height: 48px; margin: 0 auto 12px; background: rgba(0,229,204,0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                            <svg style="width: 24px; height: 24px; color: var(--neon);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                            </svg>
-                        </div>
-                        <div style="font-weight: 600; color: var(--text-bright); margin-bottom: 4px;">Daily Operations</div>
-                        <div style="font-size: 10px; color: var(--text-dim);">Today's activity summary</div>
-                    </div>
-                </div>
-                
-                <div class="ops-card" style="cursor: pointer; transition: all 0.2s;" onclick="OpsReports.generate('weekly')" onmouseover="this.style.borderColor='var(--neon-dim)'" onmouseout="this.style.borderColor='var(--panel-edge)'">
-                    <div class="ops-card-body" style="text-align: center;">
-                        <div style="width: 48px; height: 48px; margin: 0 auto 12px; background: rgba(0,229,204,0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                            <svg style="width: 24px; height: 24px; color: var(--neon);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                            </svg>
-                        </div>
-                        <div style="font-weight: 600; color: var(--text-bright); margin-bottom: 4px;">Weekly Performance</div>
-                        <div style="font-size: 10px; color: var(--text-dim);">Team & system metrics</div>
-                    </div>
-                </div>
-                
-                <div class="ops-card" style="cursor: pointer; transition: all 0.2s;" onclick="OpsReports.generate('financial')" onmouseover="this.style.borderColor='var(--neon-dim)'" onmouseout="this.style.borderColor='var(--panel-edge)'">
-                    <div class="ops-card-body" style="text-align: center;">
-                        <div style="width: 48px; height: 48px; margin: 0 auto 12px; background: rgba(0,229,204,0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                            <svg style="width: 24px; height: 24px; color: var(--neon);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                        </div>
-                        <div style="font-weight: 600; color: var(--text-bright); margin-bottom: 4px;">Financial Report</div>
-                        <div style="font-size: 10px; color: var(--text-dim);">Revenue & billing</div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Recent Reports -->
-            <div class="ops-card">
-                <div class="ops-card-header">
-                    <div class="ops-card-title">Recent Reports</div>
-                </div>
-                <div class="ops-card-body">
-                    <div style="display: flex; flex-direction: column; gap: 12px;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface); border-radius: 8px;">
-                            <div>
-                                <div style="font-weight: 600; color: var(--text-bright); margin-bottom: 3px;">Daily Operations — Feb 23, 2026</div>
-                                <div style="font-size: 10px; color: var(--text-dim); font-family: var(--font-mono);">Generated today at 11:59 PM</div>
-                            </div>
-                            <button class="btn-secondary" style="font-size: 11px;">Download</button>
-                        </div>
-                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface); border-radius: 8px;">
-                            <div>
-                                <div style="font-weight: 600; color: var(--text-bright); margin-bottom: 3px;">Weekly Performance — Week 8</div>
-                                <div style="font-size: 10px; color: var(--text-dim); font-family: var(--font-mono);">Generated 2 days ago</div>
-                            </div>
-                            <button class="btn-secondary" style="font-size: 11px;">Download</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
+const OpsReports = (function () {
+  'use strict';
+
+  function render(container) {
+    container.innerHTML = `
+      <style>
+        .rp-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 24px; }
+
+        .rp-card {
+          background: var(--surface, #fff);
+          border: 1px solid var(--border, #dae6ef);
+          border-radius: var(--r, 10px);
+          padding: 24px 20px;
+          cursor: pointer;
+          transition: all .22s cubic-bezier(.22,1,.36,1);
+          box-shadow: var(--sh-xs, 0 1px 2px rgba(10,31,46,.06));
+          position: relative; overflow: hidden;
+        }
+
+        .rp-card::after {
+          content: '';
+          position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+          opacity: 0; transition: opacity .22s;
+        }
+
+        .rp-card:hover { transform: translateY(-3px); box-shadow: var(--sh-md, 0 4px 20px rgba(10,31,46,.09)); border-color: var(--border-2, #b8d0de); }
+        .rp-card:hover::after { opacity: 1; }
+
+        .rp-card.daily::after   { background: linear-gradient(90deg, var(--navy, #0a2a3d), var(--blue, #16a8d3)); }
+        .rp-card.weekly::after  { background: linear-gradient(90deg, var(--blue, #16a8d3), var(--ok, #0a8a6a)); }
+        .rp-card.finance::after { background: linear-gradient(90deg, var(--ok, #0a8a6a), #34d399); }
+
+        .rp-icon {
+          width: 46px; height: 46px;
+          border-radius: 12px;
+          display: flex; align-items: center; justify-content: center;
+          margin-bottom: 16px;
+        }
+
+        .rp-card-title { font-family: var(--ff-d, 'Playfair Display', serif); font-size: .95rem; font-weight: 700; color: var(--ink, #0a1f2e); margin-bottom: 4px; }
+        .rp-card-sub   { font-size: .76rem; color: var(--ink-3, #6b8fa3); line-height: 1.5; }
+
+        .rp-recent {
+          background: var(--surface, #fff);
+          border: 1px solid var(--border, #dae6ef);
+          border-radius: var(--r, 10px);
+          overflow: hidden;
+          box-shadow: var(--sh-xs, 0 1px 2px rgba(10,31,46,.06));
+        }
+
+        .rp-recent-head {
+          padding: 14px 20px;
+          border-bottom: 1px solid var(--border, #dae6ef);
+          display: flex; align-items: center; justify-content: space-between;
+        }
+
+        .rp-recent-title { font-family: var(--ff-d, 'Playfair Display', serif); font-size: .9rem; font-weight: 700; color: var(--ink, #0a1f2e); }
+
+        .rp-report-row {
+          padding: 14px 20px;
+          border-bottom: 1px solid var(--border, #dae6ef);
+          display: flex; align-items: center; gap: 14px;
+          transition: background .12s;
+        }
+
+        .rp-report-row:last-child { border-bottom: none; }
+        .rp-report-row:hover { background: var(--surface-2, #f7fafc); }
+
+        .rp-report-icon {
+          width: 36px; height: 36px; border-radius: 9px;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .rp-report-name  { font-size: .85rem; font-weight: 600; color: var(--ink, #0a1f2e); margin-bottom: 2px; }
+        .rp-report-meta  { font-size: .72rem; color: var(--ink-3, #6b8fa3); font-family: var(--ff-m, 'JetBrains Mono', monospace); }
+      </style>
+
+      <div class="rp-grid">
+        <div class="rp-card daily" onclick="OpsReports.generate('daily')">
+          <div class="rp-icon" style="background:rgba(10,42,61,.07);">
+            <svg width="20" height="20" fill="none" stroke="var(--navy)" stroke-width="1.8" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+          </div>
+          <div class="rp-card-title">Daily Operations</div>
+          <div class="rp-card-sub">Today's alert activity, team deployment summary, and incident resolution rate</div>
+        </div>
+
+        <div class="rp-card weekly" onclick="OpsReports.generate('weekly')">
+          <div class="rp-icon" style="background:rgba(22,168,211,.08);">
+            <svg width="20" height="20" fill="none" stroke="var(--blue)" stroke-width="1.8" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <div class="rp-card-title">Weekly Performance</div>
+          <div class="rp-card-sub">Sensor uptime, SLA compliance, response times, and pipeline movement</div>
+        </div>
+
+        <div class="rp-card finance" onclick="OpsReports.generate('financial')">
+          <div class="rp-icon" style="background:var(--ok-bg, #e2f5ee);">
+            <svg width="20" height="20" fill="none" stroke="var(--ok)" stroke-width="1.8" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <div class="rp-card-title">Financial Report</div>
+          <div class="rp-card-sub">MRR breakdown, client billing status, outstanding invoices, and revenue trends</div>
+        </div>
+      </div>
+
+      <div class="rp-recent">
+        <div class="rp-recent-head">
+          <div class="rp-recent-title">Recent Reports</div>
+        </div>
+        <div id="rp-list">
+          <div style="padding:40px;text-align:center;color:var(--ink-3);">
+            <div class="loading" style="margin:0 auto 12px;"></div>
+            <div style="font-size:.82rem;">Loading reports…</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    loadReports();
+  }
+
+  async function loadReports() {
+    try {
+      const res  = await OpsModal.apiGet('/reports');
+      const list = res.data || res.reports || [];
+      renderReports(list);
+    } catch {
+      renderReports([]);
     }
-    
-    function generate(type) {
-        const toast = document.createElement('div');
-        toast.style.cssText = 'position:fixed;top:80px;right:20px;background:var(--panel);border:1px solid var(--panel-edge);padding:12px 18px;border-radius:8px;display:flex;align-items:center;gap:10px;z-index:9999;opacity:0;transition:opacity 0.3s;';
-        toast.innerHTML = `<div class="pulse-dot watch"></div><span style="font-size:12px;">Generating ${type} report...</span>`;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.style.opacity = '1', 10);
-        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+  }
+
+  function renderReports(reports) {
+    const el = document.getElementById('rp-list');
+    if (!el) return;
+
+    if (reports.length === 0) {
+      el.innerHTML = `
+        <div style="padding:48px;text-align:center;color:var(--ink-3);">
+          <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" style="margin:0 auto 12px;opacity:.25;display:block;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          <div style="font-size:.84rem;font-weight:600;color:var(--ink-2);">No reports generated yet</div>
+          <div style="font-size:.76rem;margin-top:3px;">Generate your first report above</div>
+        </div>`;
+      return;
     }
-    
-    return { render, generate };
+
+    const typeConfig = {
+      daily:     { icon: 'var(--navy)',    bg: 'rgba(10,42,61,.07)',     label: 'Daily Operations' },
+      weekly:    { icon: 'var(--blue)',    bg: 'rgba(22,168,211,.08)',   label: 'Weekly Performance' },
+      financial: { icon: 'var(--ok)',      bg: 'var(--ok-bg)',           label: 'Financial Report' },
+    };
+
+    el.innerHTML = reports.map(r => {
+      const tc   = typeConfig[r.type] || typeConfig.daily;
+      const date = r.generated_at ? new Date(r.generated_at).toLocaleString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+      return `
+        <div class="rp-report-row">
+          <div class="rp-report-icon" style="background:${tc.bg};">
+            <svg width="16" height="16" fill="none" stroke="${tc.icon}" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div class="rp-report-name">${r.name || tc.label}</div>
+            <div class="rp-report-meta">${date}</div>
+          </div>
+          ${r.download_url ? `
+            <a href="${r.download_url}" target="_blank" rel="noopener">
+              <button class="btn-ghost" style="font-size:.76rem;padding:6px 12px;">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                Download
+              </button>
+            </a>` : ''}
+        </div>`;
+    }).join('');
+  }
+
+  async function generate(type) {
+    OpsModal.toast(`Generating ${type} report…`, 'watch');
+    try {
+      await OpsModal.apiPost('/reports/generate', { type });
+      OpsModal.toast('Report generated successfully', 'nominal');
+      loadReports();
+    } catch (err) {
+      OpsModal.toast('Failed to generate report: ' + err.message, 'critical');
+    }
+  }
+
+  return { render, generate };
+
 })();
