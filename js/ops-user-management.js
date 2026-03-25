@@ -13,6 +13,14 @@ const OpsUserManagement = (function () {
   let _teams = [];
   let _pg    = null;
 
+  // Only admins can permanently delete records
+  const _isAdmin = (() => {
+    try {
+      const u = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+      return u.role === 'admin';
+    } catch { return false; }
+  })();
+
   const ROLE_CONFIG = {
     admin:              { label:'Admin',             color:'#0a2a3d', bg:'rgba(10,42,61,.08)',   perms:['Full system access, all modules and configuration'] },
     super_admin:        { label:'Super Admin',       color:'#0a2a3d', bg:'rgba(10,42,61,.08)',   perms:['Full system access, all modules and configuration'] },
@@ -290,7 +298,7 @@ const OpsUserManagement = (function () {
                     ${isActive
                       ? `<button class="btn-ghost" onclick="OpsUserManagement.deactivateUser('${id}','${name.replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:.76rem;color:var(--warn);border-color:rgba(180,83,9,.2);">Deactivate</button>`
                       : `<button class="btn-ghost" onclick="OpsUserManagement.reactivateUser('${id}')" style="padding:6px 12px;font-size:.76rem;color:var(--ok);">Reactivate</button>`}
-                    <button class="btn-ghost" onclick="OpsUserManagement.deleteUser('${id}','${name.replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:.76rem;color:var(--err);border-color:rgba(220,38,38,.2);">Delete</button>
+                    ${_isAdmin ? `<button class="btn-ghost" onclick="OpsUserManagement.deleteUser('${id}','${name.replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:.76rem;color:var(--err);border-color:rgba(220,38,38,.2);">Delete</button>` : ''}
                   </div>
                 </td>
               </tr>`;

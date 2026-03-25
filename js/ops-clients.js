@@ -6,6 +6,14 @@
 const OpsClients = (function () {
   'use strict';
 
+  // Only admins can permanently delete records
+  const _isAdmin = (() => {
+    try {
+      const u = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+      return u.role === 'admin';
+    } catch { return false; }
+  })();
+
   function render(container) {
     container.innerHTML = `
       <style>
@@ -272,7 +280,7 @@ const OpsClients = (function () {
                   <div style="display:flex;gap:6px;justify-content:flex-end;">
                     <button class="btn-ghost" onclick="OpsClients.viewClient(${c.client_id})" style="padding:6px 12px;font-size:.76rem;">View</button>
                     <button class="btn-ghost" onclick="OpsClients.editClient(${c.client_id})" style="padding:6px 12px;font-size:.76rem;">Edit</button>
-                    <button class="btn-ghost" onclick="OpsClients.deleteClient(${c.client_id},'${(c.full_name||'').replace(/'/g,"\\'")}')" style="padding:6px 12px;font-size:.76rem;color:var(--err);border-color:rgba(220,38,38,.2);">Delete</button>
+                    ${_isAdmin ? `<button class="btn-ghost" onclick="OpsClients.deleteClient(${c.client_id},'${(c.full_name||'').replace(/'/g,"\\'")}')" style="padding:6px 12px;font-size:.76rem;color:var(--err);border-color:rgba(220,38,38,.2);">Delete</button>` : ''}
                   </div>
                 </td>
               </tr>`).join('')}

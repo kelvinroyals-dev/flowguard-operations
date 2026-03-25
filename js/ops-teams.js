@@ -11,6 +11,14 @@ const OpsTeams = (function () {
   let _teams = [];
   let _pg    = null;
 
+  // Only admins can permanently delete records
+  const _isAdmin = (() => {
+    try {
+      const u = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+      return u.role === 'admin';
+    } catch { return false; }
+  })();
+
   // ── RENDER ────────────────────────────────────────────────────────────
 
   function render(container) {
@@ -261,12 +269,12 @@ const OpsTeams = (function () {
               ? `<button class="btn-primary" onclick="OpsTeams.dispatch('${id}','${name.replace(/'/g, "\\'")}')
 " style="flex:1;justify-content:center;font-size:.76rem;">Dispatch</button>`
               : `<button class="btn-ghost" onclick="OpsTeams.viewTeam('${id}')" style="flex:1;justify-content:center;font-size:.76rem;">View Details</button>`}
-            <button class="btn-ghost" onclick="OpsTeams.deleteTeam('${id}','${name.replace(/'/g, "\\'")}')
+            ${_isAdmin ? `<button class="btn-ghost" onclick="OpsTeams.deleteTeam('${id}','${name.replace(/'/g, "\\'")}')
 " style="padding:7px 10px;color:var(--err);border-color:rgba(220,38,38,.2);" title="Delete team">
               <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
               </svg>
-            </button>
+            </button>` : ''}
           </div>
         </div>`;
     }).join('')}</div>`;

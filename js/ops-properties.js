@@ -10,6 +10,14 @@ const OpsProperties = (function () {
   let _all    = [];
   let _filter = 'all';
 
+  // Only admins can permanently delete records
+  const _isAdmin = (() => {
+    try {
+      const u = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+      return u.role === 'admin';
+    } catch { return false; }
+  })();
+
   function render(container) {
     container.innerHTML = `
       <style>
@@ -324,7 +332,7 @@ const OpsProperties = (function () {
                     ${a.status === 'submitted'
                       ? `<button class="btn-primary" onclick="OpsProperties.scheduleInspection('${pid}','${(a.property_name || '').replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:.76rem;">Schedule</button>`
                       : ''}
-                    <button class="btn-ghost" onclick="OpsProperties.deleteArea('${pid}','${(a.property_name||'').replace(/'/g,"\\'")}')" style="padding:6px 12px;font-size:.76rem;color:var(--err);border-color:rgba(220,38,38,.2);">Delete</button>
+                    ${_isAdmin ? `<button class="btn-ghost" onclick="OpsProperties.deleteArea('${pid}','${(a.property_name||'').replace(/'/g,"\\'")}')" style="padding:6px 12px;font-size:.76rem;color:var(--err);border-color:rgba(220,38,38,.2);">Delete</button>` : ''}
                   </div>
                 </td>
               </tr>`;
