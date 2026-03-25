@@ -261,6 +261,12 @@ const OpsTeams = (function () {
               ? `<button class="btn-primary" onclick="OpsTeams.dispatch('${id}','${name.replace(/'/g, "\\'")}')
 " style="flex:1;justify-content:center;font-size:.76rem;">Dispatch</button>`
               : `<button class="btn-ghost" onclick="OpsTeams.viewTeam('${id}')" style="flex:1;justify-content:center;font-size:.76rem;">View Details</button>`}
+            <button class="btn-ghost" onclick="OpsTeams.deleteTeam('${id}','${name.replace(/'/g, "\\'")}')
+" style="padding:7px 10px;color:var(--err);border-color:rgba(220,38,38,.2);" title="Delete team">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
           </div>
         </div>`;
     }).join('')}</div>`;
@@ -527,7 +533,7 @@ const OpsTeams = (function () {
     const data = OpsModal.getFormData();
     OpsModal.setLoading('modal-save-btn', true);
     try {
-      await OpsModal.apiPut(`/teams/${id}`, data);
+      await OpsModal.apiPut(`/teams/${id}/status`, { status: data.status, location: data.current_location });
       OpsModal.close();
       OpsModal.toast('Team status updated', 'nominal');
       reloadTab('teams');
@@ -571,10 +577,30 @@ const OpsTeams = (function () {
     }
   }
 
+  // ── DELETE TEAM ───────────────────────────────────────────────────────
+
+  function deleteTeam(id, name) {
+    OpsModal.confirm(
+      `Permanently delete team "${name}"? Members will be unassigned but their accounts are not deleted.`,
+      async function () {
+        OpsModal.setLoading('modal-confirm-btn', true);
+        try {
+          await OpsModal.apiDelete(`/teams/${id}`);
+          OpsModal.close();
+          OpsModal.toast(`Team "${name}" deleted`, 'nominal');
+          reloadTab('teams');
+        } catch (err) {
+          OpsModal.toast('Delete failed: ' + err.message, 'critical');
+          OpsModal.setLoading('modal-confirm-btn', false);
+        }
+      }
+    );
+  }
+
   return {
     render, manageMembers, addMemberToTeam, confirmAddMember,
     removeMember, viewTeam, dispatch, confirmDispatch,
-    editStatus, confirmStatus, createTeam, confirmCreate,
+    editStatus, confirmStatus, createTeam, confirmCreate, deleteTeam,
   };
 
 })();

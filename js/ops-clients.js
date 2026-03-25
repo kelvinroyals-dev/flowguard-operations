@@ -272,6 +272,7 @@ const OpsClients = (function () {
                   <div style="display:flex;gap:6px;justify-content:flex-end;">
                     <button class="btn-ghost" onclick="OpsClients.viewClient(${c.client_id})" style="padding:6px 12px;font-size:.76rem;">View</button>
                     <button class="btn-ghost" onclick="OpsClients.editClient(${c.client_id})" style="padding:6px 12px;font-size:.76rem;">Edit</button>
+                    <button class="btn-ghost" onclick="OpsClients.deleteClient(${c.client_id},'${(c.full_name||'').replace(/'/g,"\\'")}')" style="padding:6px 12px;font-size:.76rem;color:var(--err);border-color:rgba(220,38,38,.2);">Delete</button>
                   </div>
                 </td>
               </tr>`).join('')}
@@ -387,6 +388,26 @@ const OpsClients = (function () {
     }
   }
 
-  return { render, search, viewClient, editClient, saveClient };
+  // ── DELETE CLIENT ─────────────────────────────────────────────────────
+
+  function deleteClient(clientId, name) {
+    OpsModal.confirm(
+      `Permanently delete client "${name}"? This removes all their submitted areas and associated data.`,
+      async function () {
+        OpsModal.setLoading('modal-confirm-btn', true);
+        try {
+          await OpsModal.apiDelete('/clients/' + clientId);
+          OpsModal.close();
+          OpsModal.toast(`Client "${name}" deleted`, 'nominal');
+          reloadTab('clients');
+        } catch (err) {
+          OpsModal.toast('Delete failed: ' + err.message, 'critical');
+          OpsModal.setLoading('modal-confirm-btn', false);
+        }
+      }
+    );
+  }
+
+  return { render, search, viewClient, editClient, saveClient, deleteClient };
 
 })();

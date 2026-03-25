@@ -66,6 +66,7 @@ const OpsModal = (function () {
   }
 
   function close() {
+    _pendingConfirm = null;
     const overlay = document.getElementById('ops-modal-overlay');
     if (overlay) {
       overlay.classList.remove('visible');
@@ -236,8 +237,20 @@ const OpsModal = (function () {
   }
 
   // ── CONFIRM DIALOG ─────────────────────────────────────────────────────
+  //
+  // FIX: previously used (onConfirm.toString())() as the onclick string.
+  // That serializes the function, breaking all closure variables — they
+  // resolve against the element's own scope and the button's id="modal-confirm-btn"
+  // ends up as the value of any variable named `id`, `teamId`, etc.
+  //
+  // Fix: store the callback in _pendingConfirm and call it via _runConfirm().
+  // Closures are preserved because the function is never serialized.
+
+  let _pendingConfirm = null;
 
   function confirm(message, onConfirm) {
+    _pendingConfirm = onConfirm;
+
     const body = `
       <div style="text-align:center;padding:12px 0 4px;">
         <div style="width:52px;height:52px;border-radius:14px;
@@ -254,8 +267,14 @@ const OpsModal = (function () {
 
     open('Confirm Action', body, [
       { label: 'Cancel',  class: 'btn-ghost',  onclick: 'OpsModal.close()' },
-      { label: 'Confirm', class: 'btn-danger',  onclick: `(${onConfirm.toString()})()`, id: 'modal-confirm-btn' },
+      { label: 'Confirm', class: 'btn-danger',  onclick: 'OpsModal._runConfirm()', id: 'modal-confirm-btn' },
     ]);
+  }
+
+  function _runConfirm() {
+    const fn = _pendingConfirm;
+    _pendingConfirm = null;
+    if (typeof fn === 'function') fn();
   }
 
   // ── PUBLIC API ─────────────────────────────────────────────────────────
@@ -264,7 +283,7 @@ const OpsModal = (function () {
     open, close, setLoading,
     field, row, getFormData,
     apiGet, apiPost, apiPut, apiDelete,
-    toast, confirm,
+    toast, confirm, _runConfirm,
   };
 
 })();

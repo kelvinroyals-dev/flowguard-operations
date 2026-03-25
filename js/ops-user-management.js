@@ -288,8 +288,9 @@ const OpsUserManagement = (function () {
                   <div style="display:flex;gap:6px;justify-content:flex-end;">
                     <button class="btn-ghost" onclick="OpsUserManagement.editUser('${id}','${name.replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:.76rem;">Edit</button>
                     ${isActive
-                      ? `<button class="btn-ghost" onclick="OpsUserManagement.deactivateUser('${id}','${name.replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:.76rem;color:var(--err);border-color:rgba(220,38,38,.2);">Deactivate</button>`
+                      ? `<button class="btn-ghost" onclick="OpsUserManagement.deactivateUser('${id}','${name.replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:.76rem;color:var(--warn);border-color:rgba(180,83,9,.2);">Deactivate</button>`
                       : `<button class="btn-ghost" onclick="OpsUserManagement.reactivateUser('${id}')" style="padding:6px 12px;font-size:.76rem;color:var(--ok);">Reactivate</button>`}
+                    <button class="btn-ghost" onclick="OpsUserManagement.deleteUser('${id}','${name.replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:.76rem;color:var(--err);border-color:rgba(220,38,38,.2);">Delete</button>
                   </div>
                 </td>
               </tr>`;
@@ -410,7 +411,7 @@ const OpsUserManagement = (function () {
     OpsModal.confirm(`Deactivate "${name}"? They will lose access immediately.`, async function () {
       OpsModal.setLoading('modal-confirm-btn', true);
       try {
-        await OpsModal.apiPut(`/users/${id}`, { status: 'inactive' });
+        await OpsModal.apiPut(`/users/${id}`, { is_active: false, status: 'inactive' });
         OpsModal.close();
         OpsModal.toast('Member deactivated', 'nominal');
         reloadTab('team-members');
@@ -423,7 +424,7 @@ const OpsUserManagement = (function () {
 
   async function reactivateUser(id) {
     try {
-      await OpsModal.apiPut(`/users/${id}`, { status: 'active' });
+      await OpsModal.apiPut(`/users/${id}`, { status: 'active', is_active: true });
       OpsModal.toast('Member reactivated', 'nominal');
       reloadTab('team-members');
     } catch (err) {
@@ -431,11 +432,28 @@ const OpsUserManagement = (function () {
     }
   }
 
+  // ── DELETE USER (admin only — permanent) ──────────────────────────────
+
+  function deleteUser(id, name) {
+    OpsModal.confirm(`Permanently delete "${name}"? This removes the account and all associated data.`, async function () {
+      OpsModal.setLoading('modal-confirm-btn', true);
+      try {
+        await OpsModal.apiDelete(`/users/${id}`);
+        OpsModal.close();
+        OpsModal.toast(`${name} deleted`, 'nominal');
+        reloadTab('team-members');
+      } catch (err) {
+        OpsModal.toast('Delete failed: ' + err.message, 'critical');
+        OpsModal.setLoading('modal-confirm-btn', false);
+      }
+    });
+  }
+
   return {
     render, filterRole, filterTeam,
     openInvite, sendInvite,
     editUser, saveEdit,
-    deactivateUser, reactivateUser,
+    deactivateUser, reactivateUser, deleteUser,
   };
 
 })();

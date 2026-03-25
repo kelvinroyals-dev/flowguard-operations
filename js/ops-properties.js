@@ -324,6 +324,7 @@ const OpsProperties = (function () {
                     ${a.status === 'submitted'
                       ? `<button class="btn-primary" onclick="OpsProperties.scheduleInspection('${pid}','${(a.property_name || '').replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:.76rem;">Schedule</button>`
                       : ''}
+                    <button class="btn-ghost" onclick="OpsProperties.deleteArea('${pid}','${(a.property_name||'').replace(/'/g,"\\'")}')" style="padding:6px 12px;font-size:.76rem;color:var(--err);border-color:rgba(220,38,38,.2);">Delete</button>
                   </div>
                 </td>
               </tr>`;
@@ -463,6 +464,26 @@ const OpsProperties = (function () {
     }
   }
 
+  // ── DELETE AREA ───────────────────────────────────────────────────────
+
+  function deleteArea(propertyId, name) {
+    OpsModal.confirm(
+      `Permanently delete area "${name}"? All inspections, quotes, and invoices linked to this area will also be removed.`,
+      async function () {
+        OpsModal.setLoading('modal-confirm-btn', true);
+        try {
+          await OpsModal.apiDelete('/properties/' + propertyId);
+          OpsModal.close();
+          OpsModal.toast(`Area "${name}" deleted`, 'nominal');
+          reloadTab('properties');
+        } catch (err) {
+          OpsModal.toast('Delete failed: ' + err.message, 'critical');
+          OpsModal.setLoading('modal-confirm-btn', false);
+        }
+      }
+    );
+  }
+
   async function scheduleInspection(propertyId, propertyName) {
     // Load teams for assignment
     let teams = [];
@@ -507,6 +528,6 @@ const OpsProperties = (function () {
     }
   }
 
-  return { render, filterStage, search, viewArea, editArea, saveArea, scheduleInspection, confirmSchedule };
+  return { render, filterStage, search, viewArea, editArea, saveArea, deleteArea, scheduleInspection, confirmSchedule };
 
 })();
