@@ -751,7 +751,8 @@
         if (!remember) { localStorage.removeItem('token'); localStorage.removeItem('user'); }
         btxt.innerHTML = '✓ &nbsp;Access granted';
         showMsg('Authenticated. Loading your workspace…', 'success');
-        setTimeout(() => window.location.href = 'index.html', 800);
+        const dest = d.data.user.role === 'field_team' ? 'field.html' : 'index.html';
+        setTimeout(() => window.location.href = dest, 800);
       } else {
         btn.disabled = false;
         btxt.textContent = 'Sign in to Operations Center';

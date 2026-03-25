@@ -1,0 +1,27 @@
+{
+  "name": "FlowGuard Field",
+  "short_name": "FG Field",
+  "description": "FlowGuard field technician dispatch and job management",
+  "start_url": "/field.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#16a8d3",
+  "background_color": "#061824",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "lang": "en-NG"
+}
