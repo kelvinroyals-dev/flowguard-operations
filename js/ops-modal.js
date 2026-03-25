@@ -249,8 +249,6 @@ const OpsModal = (function () {
   let _pendingConfirm = null;
 
   function confirm(message, onConfirm) {
-    _pendingConfirm = onConfirm;
-
     const body = `
       <div style="text-align:center;padding:12px 0 4px;">
         <div style="width:52px;height:52px;border-radius:14px;
@@ -269,6 +267,9 @@ const OpsModal = (function () {
       { label: 'Cancel',  class: 'btn-ghost',  onclick: 'OpsModal.close()' },
       { label: 'Confirm', class: 'btn-danger',  onclick: 'OpsModal._runConfirm()', id: 'modal-confirm-btn' },
     ]);
+
+    // MUST be set after open() — open() calls close() internally which nulls _pendingConfirm
+    _pendingConfirm = onConfirm;
   }
 
   function _runConfirm() {
