@@ -5,678 +5,396 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>FlowGuard Field</title>
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#16a8d3">
+  <meta name="theme-color" content="#061824">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="FG Field">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='160 60 360 260'><defs><clipPath id='fc'><circle cx='340' cy='182' r='108'/></clipPath></defs><circle cx='340' cy='182' r='108' fill='%230a2a3d'/><g clip-path='url(%23fc)'><rect x='232' y='214' width='216' height='90' fill='%230d7fa0'/><path d='M232 214 Q254 200 276 214 Q298 228 320 214 Q342 200 364 214 Q386 228 408 214 Q430 200 448 210 L448 216 Q430 202 408 216 Q386 230 364 216 Q342 202 320 216 Q298 230 276 216 Q254 202 232 216 Z' fill='%2316a8d3'/></g><path d='M340 110 C358 132 374 148 374 166 C374 186 358 202 340 202 C322 202 306 186 306 166 C306 148 322 132 340 110 Z' fill='%2316a8d3'/><path d='M340 128 C352 144 361 156 361 166 C361 180 352 191 340 191 C328 191 319 180 319 166 C319 156 328 144 340 128 Z' fill='%230d7fa0'/><circle cx='340' cy='110' r='6' fill='%23f5a623'/></svg>">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    /* ── Reset ── */
-    *, *::before, *::after {
-      margin: 0; padding: 0; box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
-    /* ── Brand tokens — exact match to login.html + index.html ── */
     :root {
       --navy:       #0a2a3d;
       --navy-deep:  #061824;
       --navy-mid:   #0d3a54;
+      --navy-card:  #0c2e44;
+      --navy-up:    #0f3550;
       --blue:       #16a8d3;
       --blue-hi:    #1cb8e8;
+      --blue-dim:   rgba(22,168,211,0.12);
       --amber:      #f5a623;
+      --amber-dim:  rgba(245,166,35,0.13);
       --teal:       #0d7fa0;
-      --sky:        #cceeff;
-      --canvas:     #edf2f7;
-      --surface:    #ffffff;
-      --surface-2:  #f7fafc;
-      --surface-h:  #e8f2f8;
-      --border:     #dae6ef;
-      --border-2:   #b8d0de;
-      --ink:        #0a1f2e;
-      --ink-2:      #2d5068;
-      --ink-3:      #6b8fa3;
-      --ink-4:      #9eb8c8;
-      --ok:         #0a8a6a;   --ok-bg:    #e2f5ee;
-      --warn:       #b45309;   --warn-bg:  #fef3c7;
-      --caut:       #c2410c;   --caut-bg:  #fff0eb;
-      --err:        #dc2626;   --err-bg:   #fef2f2;
-      --off:        #64748b;   --off-bg:   #f1f5f9;
-      --sh-card: 0 0 0 1px rgba(10,31,46,.05), 0 2px 8px rgba(10,31,46,.06), 0 8px 24px rgba(10,31,46,.06);
-      --r:   10px; --rs: 6px; --rl: 16px;
+      --ok:         #22c55e;
+      --ok-dim:     rgba(34,197,94,0.13);
+      --warn:       #f59e0b;
+      --warn-dim:   rgba(245,158,11,0.13);
+      --caut:       #f97316;
+      --caut-dim:   rgba(249,115,22,0.13);
+      --err:        #ef4444;
+      --err-dim:    rgba(239,68,68,0.13);
+      --ink:        rgba(255,255,255,0.93);
+      --ink-2:      rgba(255,255,255,0.65);
+      --ink-3:      rgba(255,255,255,0.38);
+      --ink-4:      rgba(255,255,255,0.20);
+      --border:     rgba(255,255,255,0.07);
+      --border-hi:  rgba(22,168,211,0.25);
+      --r: 12px; --rs: 8px; --rl: 18px;
       --ff-b: 'Figtree', system-ui, sans-serif;
       --ff-m: 'JetBrains Mono', monospace;
     }
 
-    html, body {
-      height: 100%; overflow: hidden;
-      font-family: var(--ff-b);
-      background: var(--canvas);
-      color: var(--ink); font-size: 15px;
-    }
-    button { font-family: var(--ff-b); cursor: pointer; border: none; background: none; }
+    html, body { height:100%; overflow:hidden; font-family:var(--ff-b); background:var(--navy-deep); color:var(--ink); font-size:15px; }
+    button { font-family:var(--ff-b); cursor:pointer; border:none; background:none; }
 
-    /* ── Screen router ── */
-    .screen { display: none; height: 100%; flex-direction: column; }
-    .screen.active { display: flex; }
+    .screen { display:none; height:100%; flex-direction:column; }
+    .screen.active { display:flex; }
 
-    /* ════════════════════════════════════════
-       LOGIN SCREEN
-    ════════════════════════════════════════ */
-    #screen-login {
-      background: var(--navy-deep);
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-    }
+    /* ══ LOGIN ══ */
+    #screen-login { background:var(--navy-deep); overflow-y:auto; -webkit-overflow-scrolling:touch; }
 
     .login-hero {
-      flex-shrink: 0; position: relative; overflow: hidden;
-      padding: 56px 32px 40px;
-      display: flex; flex-direction: column;
-      align-items: center; gap: 14px;
+      flex-shrink:0; position:relative; overflow:hidden;
+      padding:60px 32px 44px;
+      display:flex; flex-direction:column; align-items:center; gap:16px;
     }
-    .login-hero-bg {
-      position: absolute; inset: 0;
+    .lh-bg {
+      position:absolute; inset:0;
       background:
-        radial-gradient(ellipse 130% 75% at 50% 115%, rgba(13,127,160,0.55) 0%, transparent 52%),
-        radial-gradient(ellipse 70% 55% at 85% -5%,  rgba(22,168,211,0.08) 0%, transparent 45%);
-      animation: heroBreathe 9s ease-in-out infinite alternate;
+        radial-gradient(ellipse 120% 80% at 50% 120%, rgba(13,127,160,0.65) 0%, transparent 55%),
+        radial-gradient(ellipse 60% 50% at 80% -10%, rgba(22,168,211,0.10) 0%, transparent 50%);
+      animation:heroBreathe 9s ease-in-out infinite alternate;
     }
-    @keyframes heroBreathe {
-      0%   { transform: scale(1); }
-      100% { transform: scale(1.05) translateY(-6px); }
+    @keyframes heroBreathe { 0%{transform:scale(1);} 100%{transform:scale(1.06) translateY(-8px);} }
+    .lh-grid {
+      position:absolute; inset:0; pointer-events:none;
+      background-image: linear-gradient(rgba(22,168,211,.04) 1px,transparent 1px), linear-gradient(90deg,rgba(22,168,211,.04) 1px,transparent 1px);
+      background-size:40px 40px;
     }
-    .login-hero-grid {
-      position: absolute; inset: 0;
-      background-image:
-        linear-gradient(rgba(22,168,211,0.032) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(22,168,211,0.032) 1px, transparent 1px);
-      background-size: 48px 48px; pointer-events: none;
+    .lh-scan { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+    .lh-scan::after {
+      content:''; position:absolute; left:-100%; top:0; width:40%; height:100%;
+      background:linear-gradient(90deg,transparent,rgba(22,168,211,.07),transparent);
+      animation:scanMove 7s ease-in-out infinite;
     }
-    .login-mark-wrap {
-      position: relative; z-index: 2;
-      width: 96px; height: 96px;
-    }
+    @keyframes scanMove { 0%{left:-40%;} 100%{left:140%;} }
+
+    .lmw { position:relative; z-index:2; width:108px; height:108px; }
     .lmr {
-      position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%,-50%);
-      border-radius: 50%; border: 1px solid rgba(22,168,211,0.4);
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      border-radius:50%; border:1px solid rgba(22,168,211,.3);
     }
-    .lmr-1 { animation: ringOut 3.8s .3s ease-out infinite; }
-    .lmr-2 { animation: ringOut 3.8s 1.5s ease-out infinite; }
-    @keyframes ringOut {
-      0%   { width:96px;  height:96px;  opacity:.5; }
-      100% { width:210px; height:210px; opacity:0;  }
-    }
-    .login-mark { width:96px; height:96px; position:relative; z-index:2; }
-    .amber-breathe { animation: ambBr 2.8s ease-in-out infinite; }
-    @keyframes ambBr { 0%,100%{opacity:1;} 50%{opacity:.4;} }
+    .lmr-1 { animation:ringOut 4.2s .2s ease-out infinite; }
+    .lmr-2 { animation:ringOut 4.2s 2s ease-out infinite; }
+    @keyframes ringOut { 0%{width:108px;height:108px;opacity:.5;} 100%{width:228px;height:228px;opacity:0;} }
+    .lm { width:108px; height:108px; position:relative; z-index:2; filter:drop-shadow(0 0 18px rgba(22,168,211,.32)); }
+    .ab { animation:ambBr 2.8s ease-in-out infinite; }
+    @keyframes ambBr { 0%,100%{opacity:1;} 50%{opacity:.3;} }
 
-    .login-brand { position:relative; z-index:2; text-align:center; }
-    .login-brand .wordmark {
-      font-size: 1.02rem; font-weight: 700;
-      color: rgba(255,255,255,0.93); display: block; letter-spacing: -.01em;
-    }
-    .login-brand .tag {
-      font-size: 0.57rem; font-weight: 700;
-      letter-spacing: 2.5px; text-transform: uppercase;
-      color: var(--blue); display: block; margin-top: 5px;
-    }
+    .lbrand { position:relative; z-index:2; text-align:center; }
+    .lbrand .wm { font-size:1.18rem; font-weight:800; color:rgba(255,255,255,.96); display:block; letter-spacing:.08em; text-transform:uppercase; }
+    .lbrand .tg { font-size:.57rem; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:var(--blue); display:block; margin-top:6px; opacity:.82; }
 
-    /* White form panel */
-    .login-panel {
-      flex: 1; background: var(--surface);
-      border-radius: 22px 22px 0 0;
-      padding: 0 26px calc(36px + env(safe-area-inset-bottom, 0px));
+    .lpanel {
+      flex:1; background:rgba(255,255,255,.03); border-radius:24px 24px 0 0;
+      border-top:1px solid rgba(255,255,255,.08);
+      padding:0 24px calc(40px + env(safe-area-inset-bottom,0px));
+      backdrop-filter:blur(20px);
     }
-    .login-panel-bar {
-      height: 3px;
-      background: linear-gradient(90deg, var(--navy), var(--blue), var(--blue-hi));
-      border-radius: 22px 22px 0 0;
-      margin-bottom: 32px;
-    }
-    .lp-title {
-      font-size: 1.42rem; font-weight: 700;
-      color: var(--navy); letter-spacing: -0.022em; margin-bottom: 5px;
-    }
-    .lp-sub { font-size: 0.82rem; color: var(--ink-3); margin-bottom: 28px; line-height:1.55; }
+    .lpbar { height:3px; background:linear-gradient(90deg,var(--teal),var(--blue),var(--blue-hi)); border-radius:24px 24px 0 0; margin-bottom:30px; }
+    .lptitle { font-size:1.5rem; font-weight:800; color:var(--ink); letter-spacing:-.03em; margin-bottom:4px; }
+    .lpsub { font-size:.8rem; color:var(--ink-3); margin-bottom:28px; line-height:1.55; }
 
-    .lf-field { margin-bottom: 18px; }
-    .lf-label {
-      display: block; font-size: 0.65rem; font-weight: 700;
-      letter-spacing: 1.2px; text-transform: uppercase;
-      color: var(--ink-3); margin-bottom: 8px;
+    .lff { margin-bottom:16px; }
+    .lflbl { display:block; font-size:.62rem; font-weight:700; letter-spacing:1.8px; text-transform:uppercase; color:var(--ink-3); margin-bottom:8px; }
+    .lfinp {
+      width:100%; padding:15px 16px;
+      background:rgba(255,255,255,.05); border:1.5px solid rgba(255,255,255,.10);
+      border-radius:var(--r); font-family:var(--ff-b); font-size:.96rem; font-weight:500;
+      color:var(--ink); outline:none; -webkit-appearance:none;
+      transition:border-color .2s, box-shadow .2s, background .2s;
     }
-    .lf-input {
-      width: 100%; padding: 14px 16px;
-      background: var(--surface-2);
-      border: 1.5px solid var(--border);
-      border-radius: var(--r);
-      font-family: var(--ff-b); font-size: 0.96rem; font-weight: 500;
-      color: var(--ink); outline: none; -webkit-appearance: none;
-      transition: border-color .2s, box-shadow .2s;
-    }
-    .lf-input:focus {
-      border-color: var(--blue);
-      box-shadow: 0 0 0 3px rgba(22,168,211,0.12);
-    }
-    .lf-input::placeholder { color: var(--ink-4); font-weight: 400; }
+    .lfinp:focus { border-color:var(--blue); background:rgba(22,168,211,.06); box-shadow:0 0 0 3px rgba(22,168,211,.14); }
+    .lfinp::placeholder { color:var(--ink-4); font-weight:400; }
 
-    .lf-submit {
-      width: 100%; padding: 16px 24px; margin-top: 8px;
-      background: var(--navy); border-radius: 12px;
-      color: white; font-size: 0.95rem; font-weight: 700; letter-spacing: .3px;
-      min-height: 52px; position: relative; overflow: hidden;
-      transition: background .2s, transform .15s, box-shadow .2s;
-      box-shadow: 0 4px 14px rgba(10,42,61,.22), 0 2px 4px rgba(10,42,61,.12);
+    .lfsub {
+      width:100%; padding:17px 24px; margin-top:8px;
+      background:linear-gradient(135deg,var(--blue),var(--teal)); border-radius:14px;
+      color:white; font-size:.95rem; font-weight:800; letter-spacing:.5px; text-transform:uppercase;
+      min-height:56px; position:relative; overflow:hidden;
+      transition:transform .15s, box-shadow .2s, opacity .2s;
+      box-shadow:0 4px 20px rgba(22,168,211,.35), 0 2px 6px rgba(22,168,211,.20);
     }
-    .lf-submit::after {
-      content: ''; position: absolute; top:0; left:-100%;
-      width: 60%; height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(22,168,211,.22), rgba(28,184,232,.12), transparent);
-      transform: skewX(-15deg); transition: left .5s ease;
+    .lfsub::after {
+      content:''; position:absolute; top:0; left:-100%; width:55%; height:100%;
+      background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);
+      transform:skewX(-15deg); transition:left .5s ease;
     }
-    .lf-submit:hover:not(:disabled)::after { left: 160%; }
-    .lf-submit:active:not(:disabled) { transform: scale(0.98); }
-    .lf-submit:disabled { opacity: .6; cursor: not-allowed; transform: none; }
-    .lf-btn-text { position: relative; z-index: 1; }
+    .lfsub:hover:not(:disabled)::after { left:160%; }
+    .lfsub:active:not(:disabled) { transform:scale(0.98); opacity:.9; }
+    .lfsub:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+    .lfsub-txt { position:relative; z-index:1; }
 
-    .lf-msg {
-      display: none; margin-top: 14px;
-      padding: 12px 14px; border-radius: var(--r);
-      font-size: 0.83rem; line-height: 1.5;
-    }
-    .lf-msg.error   { display:block; background:var(--err-bg); color:var(--err); border:1px solid rgba(220,38,38,.2); }
-    .lf-msg.success { display:block; background:rgba(22,168,211,.07); color:var(--teal); border:1px solid rgba(22,168,211,.25); }
+    .lfmsg { display:none; margin-top:14px; padding:12px 14px; border-radius:var(--r); font-size:.83rem; line-height:1.5; }
+    .lfmsg.error   { display:block; background:var(--err-dim); color:#fca5a5; border:1px solid rgba(239,68,68,.25); }
+    .lfmsg.success { display:block; background:var(--blue-dim); color:var(--blue-hi); border:1px solid rgba(22,168,211,.25); }
 
-    .spinner {
-      display: inline-block; width:13px; height:13px;
-      border: 2px solid rgba(255,255,255,.3); border-top-color: white;
-      border-radius: 50%; animation: spin .7s linear infinite;
-      vertical-align: middle; margin-right: 7px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { display:inline-block; width:13px; height:13px; border:2px solid rgba(255,255,255,.25); border-top-color:white; border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; margin-right:7px; }
+    @keyframes spin { to{transform:rotate(360deg);} }
 
-    /* ════════════════════════════════════════
-       DASHBOARD SCREEN
-    ════════════════════════════════════════ */
-    #screen-dash { overflow: hidden; }
+    /* ══ DASHBOARD ══ */
+    #screen-dash { overflow:hidden; background:var(--navy-deep); }
 
-    /* ── Header ── */
-    .dash-hdr {
-      flex-shrink: 0; height: 56px;
-      background: var(--navy-deep);
-      display: flex; align-items: center;
-      padding: 0 14px; gap: 10px;
-      position: relative; z-index: 50;
+    .dhdr {
+      flex-shrink:0; height:62px;
+      background:rgba(6,24,36,.96); backdrop-filter:blur(12px);
+      display:flex; align-items:center; padding:0 16px; gap:12px;
+      position:relative; z-index:50;
+      border-bottom:1px solid rgba(22,168,211,.12);
     }
-    .dash-hdr::after {
-      content: ''; position:absolute; bottom:0; left:0; right:0;
-      height:1px; background: rgba(22,168,211,0.14);
-    }
-    .hdr-logo { width:30px; height:30px; flex-shrink:0; }
-    .hdr-titles { flex:1; }
-    .hdr-name {
-      font-size: .88rem; font-weight:700;
-      color:rgba(255,255,255,.92); letter-spacing:-.01em; line-height:1;
-    }
-    .hdr-sub {
-      font-size:.58rem; font-weight:600;
-      letter-spacing:2px; text-transform:uppercase;
-      color:var(--blue); opacity:.8; margin-top:3px;
-    }
-    .ws-pill {
-      display:flex; align-items:center; gap:5px;
-      padding:3px 9px; border-radius:20px;
-      background:rgba(255,255,255,.05);
-      border:1px solid rgba(255,255,255,.07); flex-shrink:0;
-    }
-    .ws-dot { width:7px; height:7px; border-radius:50%; transition: background .3s; }
-    .ws-dot.ok  { background:var(--ok); }
-    .ws-dot.err { background:var(--err); }
-    .ws-dot.con { background:var(--amber); animation:dotPulse 1s ease-in-out infinite; }
-    @keyframes dotPulse { 0%,100%{opacity:1;} 50%{opacity:.3;} }
-    .ws-lbl { font-family:var(--ff-m); font-size:.58rem; color:rgba(255,255,255,.38); }
-    .hdr-logout {
-      width:40px; height:40px; min-width:40px;
-      color:rgba(255,255,255,.32);
-      border-radius:var(--rs);
-      display:flex; align-items:center; justify-content:center;
-      transition:color .2s, background .2s; margin-right:-4px;
-    }
-    .hdr-logout:hover { color:var(--err); background:rgba(220,38,38,.1); }
+    .hlogo { width:32px; height:32px; flex-shrink:0; filter:drop-shadow(0 0 8px rgba(22,168,211,.35)); }
+    .htitles { flex:1; }
+    .hname { font-size:.9rem; font-weight:800; color:var(--ink); letter-spacing:.02em; line-height:1; text-transform:uppercase; }
+    .hsub { font-size:.55rem; font-weight:600; letter-spacing:2.5px; text-transform:uppercase; color:var(--blue); margin-top:4px; opacity:.7; }
 
-    /* ── Scrollable body ── */
-    .dash-body {
-      flex:1; overflow-y:auto;
-      -webkit-overflow-scrolling:touch;
-      padding: 14px 14px calc(28px + env(safe-area-inset-bottom, 0px));
-      display:flex; flex-direction:column; gap:12px;
-    }
+    .wspill { display:flex; align-items:center; gap:5px; padding:5px 10px; border-radius:20px; background:rgba(255,255,255,.04); border:1px solid var(--border); flex-shrink:0; }
+    .wsdot { width:6px; height:6px; border-radius:50%; transition:background .3s; flex-shrink:0; }
+    .wsdot.ok  { background:var(--ok); box-shadow:0 0 6px rgba(34,197,94,.65); }
+    .wsdot.err { background:var(--err); }
+    .wsdot.con { background:var(--amber); animation:dotPulse 1s ease-in-out infinite; }
+    @keyframes dotPulse { 0%,100%{opacity:1;} 50%{opacity:.2;} }
+    .wslbl { font-family:var(--ff-m); font-size:.57rem; color:var(--ink-3); }
 
-    /* ── Push banner ── */
-    .push-banner {
-      display:none;
-      background: linear-gradient(135deg, rgba(245,166,35,.10), rgba(245,166,35,.04));
-      border: 1px solid rgba(245,166,35,.28);
-      border-radius: var(--rl); padding: 14px 15px;
-      gap: 11px; align-items: flex-start;
-    }
-    .push-banner.show { display:flex; }
-    .push-ico { font-size:1.25rem; flex-shrink:0; margin-top:1px; }
-    .push-copy { flex:1; }
-    .push-ttl { font-size:.85rem; font-weight:700; color:var(--navy); margin-bottom:3px; }
-    .push-sub { font-size:.77rem; color:var(--ink-2); line-height:1.45; }
-    .push-btns { display:flex; gap:8px; margin-top:10px; }
-    .push-allow {
-      flex:1; padding:10px 12px; background:var(--amber);
-      border-radius:8px; font-size:.82rem; font-weight:700;
-      color:var(--navy); min-height:48px;
-    }
-    .push-dismiss {
-      padding:10px 14px; border-radius:8px;
-      border:1px solid rgba(245,166,35,.3) !important;
-      font-size:.82rem; color:var(--ink-3); min-height:48px;
-    }
+    .hlogout { width:42px; height:42px; min-width:42px; color:var(--ink-3); border-radius:var(--rs); display:flex; align-items:center; justify-content:center; transition:color .2s,background .2s; border:1px solid transparent; }
+    .hlogout:hover { color:var(--err); background:rgba(239,68,68,.10); border-color:rgba(239,68,68,.2); }
 
-    /* ── New job banner ── */
-    .new-job-banner {
-      display:none;
-      background: linear-gradient(135deg, rgba(22,168,211,.12), rgba(22,168,211,.05));
-      border: 1.5px solid rgba(22,168,211,.36);
-      border-radius: var(--rl); padding: 14px 15px;
-      align-items:center; gap:11px;
-    }
-    .new-job-banner.show { display:flex; animation: slideDown .3s cubic-bezier(.22,1,.36,1); }
-    @keyframes slideDown {
-      from { opacity:0; transform:translateY(-8px); }
-      to   { opacity:1; transform:translateY(0); }
-    }
-    .njb-pulse {
-      width:10px; height:10px; border-radius:50%;
-      background:var(--blue); flex-shrink:0;
-      animation:dotPulse 1.1s ease-in-out infinite;
-    }
-    .njb-text { flex:1; font-size:.88rem; font-weight:600; color:var(--navy); }
-    .njb-btn {
-      padding:9px 16px; background:var(--blue);
-      border-radius:8px; font-size:.82rem; font-weight:700;
-      color:white; min-height:48px; white-space:nowrap;
-    }
+    .dbody { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:16px 14px calc(32px + env(safe-area-inset-bottom,0px)); display:flex; flex-direction:column; gap:12px; }
 
-    /* ── Spinner card ── */
-    .loading-card {
-      background:var(--surface); border-radius:var(--rl);
-      box-shadow:var(--sh-card); padding:32px 24px;
-      display:flex; align-items:center; justify-content:center;
-      gap:10px; color:var(--ink-3); font-size:.88rem;
-    }
-    .spin-sm {
-      width:18px; height:18px;
-      border:2px solid var(--border); border-top-color:var(--blue);
-      border-radius:50%; animation:spin .8s linear infinite; flex-shrink:0;
-    }
+    /* push banner */
+    .pushban { display:none; background:var(--amber-dim); border:1px solid rgba(245,166,35,.25); border-radius:var(--rl); padding:14px 15px; gap:12px; align-items:flex-start; }
+    .pushban.show { display:flex; }
+    .pushico { color:var(--amber); flex-shrink:0; margin-top:2px; }
+    .pushtxt { flex:1; }
+    .pushttl { font-size:.85rem; font-weight:700; color:var(--ink); margin-bottom:3px; }
+    .pushsub { font-size:.77rem; color:var(--ink-2); line-height:1.45; }
+    .pushbtns { display:flex; gap:8px; margin-top:10px; }
+    .pushallow { flex:1; padding:10px 12px; background:var(--amber); border-radius:8px; font-size:.82rem; font-weight:800; color:var(--navy-deep); min-height:48px; letter-spacing:.3px; }
+    .pushdismiss { padding:10px 14px; border-radius:8px; border:1px solid rgba(245,166,35,.3)!important; font-size:.82rem; color:var(--ink-3); min-height:48px; }
 
-    /* ── Empty states ── */
-    .empty-card {
-      background:var(--surface); border-radius:var(--rl);
-      box-shadow:var(--sh-card); padding:40px 22px; text-align:center;
-    }
-    .empty-ico { font-size:2.4rem; margin-bottom:12px; opacity:.4; }
-    .empty-ttl { font-size:1rem; font-weight:700; color:var(--navy); margin-bottom:6px; }
-    .empty-sub { font-size:.82rem; color:var(--ink-3); line-height:1.55; }
+    /* new job banner */
+    .njban { display:none; background:var(--blue-dim); border:1.5px solid var(--border-hi); border-radius:var(--rl); padding:14px 15px; align-items:center; gap:12px; }
+    .njban.show { display:flex; animation:slideDown .3s cubic-bezier(.22,1,.36,1); }
+    @keyframes slideDown { from{opacity:0;transform:translateY(-10px);} to{opacity:1;transform:translateY(0);} }
+    .njpulse { width:10px; height:10px; border-radius:50%; background:var(--blue); flex-shrink:0; animation:dotPulse 1.1s ease-in-out infinite; box-shadow:0 0 8px rgba(22,168,211,.7); }
+    .njtxt { flex:1; font-size:.88rem; font-weight:700; color:var(--ink); }
+    .njbtn { padding:9px 18px; background:var(--blue); border-radius:8px; font-size:.82rem; font-weight:800; color:white; min-height:48px; white-space:nowrap; letter-spacing:.3px; }
 
-    /* ── Job card ── */
-    .job-card {
-      background:var(--surface); border-radius:var(--rl);
-      box-shadow:var(--sh-card); overflow:hidden;
-    }
-    .job-card-top {
-      padding:14px 16px 12px; border-bottom:1px solid var(--border);
-      display:flex; align-items:flex-start; gap:10px;
-    }
-    .sev-badge {
-      padding:4px 10px; border-radius:20px;
-      font-size:.62rem; font-weight:800;
-      letter-spacing:1.5px; text-transform:uppercase; flex-shrink:0;
-    }
-    .sev-critical { background:var(--err-bg);  color:var(--err);  }
-    .sev-high     { background:var(--caut-bg); color:var(--caut); }
-    .sev-moderate { background:var(--warn-bg); color:var(--warn); }
-    .sev-minor    { background:var(--ok-bg);   color:var(--ok);   }
+    /* loading */
+    .ldcard { background:var(--navy-card); border-radius:var(--rl); border:1px solid var(--border); padding:36px 24px; display:flex; align-items:center; justify-content:center; gap:12px; color:var(--ink-3); font-size:.88rem; }
+    .spinsm { width:18px; height:18px; border:2px solid rgba(255,255,255,.10); border-top-color:var(--blue); border-radius:50%; animation:spin .8s linear infinite; flex-shrink:0; }
 
-    .job-hdr-info { flex:1; }
-    .job-type {
-      font-size:.98rem; font-weight:700;
-      color:var(--navy); letter-spacing:-.01em; line-height:1.2;
-    }
-    .job-site { font-size:.78rem; color:var(--ink-3); margin-top:3px; }
-    .job-age  { font-family:var(--ff-m); font-size:.68rem; color:var(--ink-4); flex-shrink:0; padding-top:2px; }
+    /* empty */
+    .emcard { background:var(--navy-card); border-radius:var(--rl); border:1px solid var(--border); padding:44px 24px; text-align:center; }
+    .emico { margin-bottom:14px; opacity:.22; }
+    .emtit { font-size:1rem; font-weight:800; color:var(--ink); margin-bottom:7px; letter-spacing:-.01em; }
+    .emsub { font-size:.82rem; color:var(--ink-3); line-height:1.6; }
 
-    .job-body { padding:14px 16px; display:flex; flex-direction:column; gap:11px; }
-    .job-row  { display:flex; align-items:flex-start; gap:10px; }
-    .job-row-ico  { color:var(--blue); flex-shrink:0; margin-top:1px; }
-    .job-row-lbl  { font-size:.62rem; font-weight:700; letter-spacing:1.1px; text-transform:uppercase; color:var(--ink-3); margin-bottom:1px; }
-    .job-row-val  { font-size:.88rem; font-weight:500; color:var(--navy); line-height:1.4; }
-    .overflow-val { color:var(--err); font-weight:700; }
-    .job-footer {
-      padding:8px 16px; background:var(--surface-2);
-      border-top:1px solid var(--border);
-      font-family:var(--ff-m); font-size:.63rem; color:var(--ink-4);
-    }
+    /* job card */
+    .jcard { background:var(--navy-card); border-radius:var(--rl); border:1px solid var(--border); overflow:hidden; position:relative; }
+    .jcard::before { content:''; position:absolute; left:0; top:0; bottom:0; width:4px; border-radius:var(--rl) 0 0 var(--rl); }
+    .jcard.sc-critical::before { background:var(--err); box-shadow:0 0 12px rgba(239,68,68,.55); }
+    .jcard.sc-high::before     { background:var(--caut); box-shadow:0 0 12px rgba(249,115,22,.45); }
+    .jcard.sc-moderate::before { background:var(--warn); box-shadow:0 0 12px rgba(245,158,11,.4); }
+    .jcard.sc-minor::before    { background:var(--ok); }
+    .jcard.sc-insp::before     { background:var(--blue); box-shadow:0 0 12px rgba(22,168,211,.45); }
 
-    /* ── Status action buttons ── */
-    .status-card {
-      background:var(--surface); border-radius:var(--rl);
-      box-shadow:var(--sh-card); padding:16px;
-    }
-    .sc-lbl {
-      font-size:.62rem; font-weight:700;
-      letter-spacing:1.5px; text-transform:uppercase;
-      color:var(--ink-3); margin-bottom:12px;
-    }
-    .status-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .jctop { padding:14px 16px 14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; gap:10px; }
+    .sevbadge { padding:4px 10px; border-radius:20px; font-size:.57rem; font-weight:800; letter-spacing:2px; text-transform:uppercase; flex-shrink:0; }
+    .sev-critical { background:var(--err-dim); color:#fca5a5; border:1px solid rgba(239,68,68,.25); }
+    .sev-high     { background:var(--caut-dim); color:#fdba74; border:1px solid rgba(249,115,22,.25); }
+    .sev-moderate { background:var(--warn-dim); color:#fcd34d; border:1px solid rgba(245,158,11,.25); }
+    .sev-minor    { background:var(--ok-dim); color:#86efac; border:1px solid rgba(34,197,94,.25); }
 
-    .action-btn {
-      display:flex; flex-direction:column;
-      align-items:center; justify-content:center;
-      gap:6px; padding:16px 12px;
-      border-radius:12px; min-height:80px;
-      font-size:.85rem; font-weight:700;
-      letter-spacing:-.01em; line-height:1.2;
-      transition: transform .15s, box-shadow .2s, opacity .2s;
-      position:relative; overflow:hidden;
-    }
-    .action-btn:active:not(:disabled) { transform:scale(0.96); }
-    .action-btn:disabled { opacity:.35; cursor:not-allowed; transform:none; }
-    .action-btn .abtn-ico { font-size:1.4rem; }
-    .action-btn .abtn-lbl { text-align:center; }
+    .jcinfo { flex:1; }
+    .jctype { font-size:.98rem; font-weight:800; color:var(--ink); letter-spacing:-.01em; line-height:1.2; }
+    .jcsite { font-size:.78rem; color:var(--ink-3); margin-top:4px; }
+    .jcage { font-family:var(--ff-m); font-size:.63rem; color:var(--ink-4); flex-shrink:0; padding-top:3px; }
 
-    /* current status top strip */
-    .action-btn.is-current::before {
-      content:''; position:absolute; top:0; left:0; right:0;
-      height:3px; opacity:.5;
-    }
-    .btn-enroute.is-current::before  { background:var(--amber); }
-    .btn-onsite.is-current::before   { background:var(--blue); }
-    .btn-returning.is-current::before { background:var(--ok); }
+    .jcbody { padding:16px 16px 16px 20px; display:flex; flex-direction:column; gap:14px; }
+    .jrow { display:flex; align-items:flex-start; gap:12px; }
+    .jrico { color:var(--blue); flex-shrink:0; margin-top:1px; opacity:.8; }
+    .jrlbl { font-size:.57rem; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-4); margin-bottom:3px; }
+    .jrval { font-size:.9rem; font-weight:500; color:var(--ink-2); line-height:1.4; }
+    .ovfval { color:var(--err); font-weight:800; font-family:var(--ff-m); font-size:1rem; display:inline-flex; align-items:center; gap:6px; }
+    .ovfpulse { width:8px; height:8px; border-radius:50%; background:var(--err); flex-shrink:0; animation:dotPulse .9s ease-in-out infinite; box-shadow:0 0 6px rgba(239,68,68,.65); }
+    .jcfoot { padding:10px 16px 10px 20px; background:rgba(0,0,0,.15); border-top:1px solid var(--border); font-family:var(--ff-m); font-size:.6rem; color:var(--ink-4); letter-spacing:.5px; }
 
-    /* En Route — amber tint */
-    .btn-enroute {
-      background:linear-gradient(135deg,#fef9ee,#fef3c7);
-      color:var(--warn);
-      border:1.5px solid rgba(245,166,35,.3);
-    }
-    .btn-enroute:hover:not(:disabled) { box-shadow:0 4px 14px rgba(245,166,35,.25); }
+    /* status card */
+    .stcard { background:var(--navy-card); border-radius:var(--rl); border:1px solid var(--border); padding:18px; }
+    .stlbl { font-size:.57rem; font-weight:800; letter-spacing:2.5px; text-transform:uppercase; color:var(--ink-4); margin-bottom:14px; }
+    .stgrid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 
-    /* On Site — teal tint */
-    .btn-onsite {
-      background:linear-gradient(135deg,#f0faff,#dff4fe);
-      color:var(--teal);
-      border:1.5px solid rgba(22,168,211,.25);
-    }
-    .btn-onsite:hover:not(:disabled) { box-shadow:0 4px 14px rgba(22,168,211,.2); }
+    .abtn { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; padding:18px 12px; border-radius:14px; min-height:88px; font-size:.82rem; font-weight:800; letter-spacing:.5px; text-transform:uppercase; line-height:1.2; transition:transform .15s, box-shadow .2s, opacity .2s; position:relative; overflow:hidden; border:1px solid transparent; }
+    .abtn:active:not(:disabled) { transform:scale(0.95); }
+    .abtn:disabled { opacity:.22; cursor:not-allowed; transform:none; }
+    .abtn .ai { font-size:1.5rem; }
+    .abtn .al { text-align:center; font-size:.72rem; }
 
-    /* Job Complete — green, full width, most prominent */
-    .btn-complete {
-      grid-column:1 / -1; min-height:72px;
-      background:linear-gradient(135deg,#16a34a,#15803d);
-      color:white; border:none; font-size:.98rem;
-      box-shadow:0 4px 16px rgba(22,163,74,.28), 0 2px 4px rgba(22,163,74,.16);
-    }
-    .btn-complete:hover:not(:disabled) {
-      box-shadow:0 8px 24px rgba(22,163,74,.36), 0 4px 8px rgba(22,163,74,.2);
-    }
+    .abtn.is-cur::after { content:'ACTIVE'; position:absolute; top:8px; right:8px; font-size:.47rem; font-weight:800; letter-spacing:1.5px; padding:2px 6px; border-radius:10px; }
+    .abenroute.is-cur::after  { background:var(--amber-dim); color:var(--amber); }
+    .abonsite.is-cur::after   { background:var(--blue-dim); color:var(--blue-hi); }
+    .abreturning.is-cur::after { background:var(--ok-dim); color:var(--ok); }
 
-    /* Returning to HQ — muted */
-    .btn-returning {
-      background:linear-gradient(135deg,var(--surface-2),#e2edf6);
-      color:var(--ink-2);
-      border:1.5px solid var(--border);
-    }
+    .abenroute { background:var(--amber-dim); color:var(--amber); border-color:rgba(245,166,35,.2); }
+    .abenroute:hover:not(:disabled) { box-shadow:0 4px 18px rgba(245,166,35,.22); background:rgba(245,166,35,.18); }
 
-    /* Request Backup — red, secondary */
-    .btn-backup {
-      background:linear-gradient(135deg,#fff8f8,var(--err-bg));
-      color:var(--err);
-      border:1.5px solid rgba(220,38,38,.22);
-    }
-    .btn-backup:hover:not(:disabled) { box-shadow:0 4px 14px rgba(220,38,38,.18); }
+    .abonsite { background:var(--blue-dim); color:var(--blue-hi); border-color:rgba(22,168,211,.18); }
+    .abonsite:hover:not(:disabled) { box-shadow:0 4px 18px rgba(22,168,211,.22); background:rgba(22,168,211,.16); }
 
-    /* ── Team card ── */
-    .team-card {
-      background:var(--surface); border-radius:var(--rl);
-      box-shadow:var(--sh-card); padding:16px;
-    }
-    .card-lbl {
-      font-size:.62rem; font-weight:700;
-      letter-spacing:1.5px; text-transform:uppercase;
-      color:var(--ink-3); margin-bottom:12px;
-    }
-    .team-row { display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
-    .team-name-txt { font-size:.96rem; font-weight:700; color:var(--navy); }
-    .team-spill {
-      padding:3px 9px; border-radius:20px;
-      font-size:.62rem; font-weight:700;
-      letter-spacing:1px; text-transform:uppercase;
-    }
-    .tsp-idle      { background:var(--off-bg);  color:var(--off); }
-    .tsp-en_route  { background:var(--warn-bg); color:var(--warn); }
-    .tsp-on_site   { background:rgba(22,168,211,.1); color:var(--teal); }
-    .tsp-returning { background:var(--ok-bg);   color:var(--ok); }
+    .abcomplete { grid-column:1/-1; min-height:76px; background:linear-gradient(135deg,#16a34a,#15803d); color:white; border-color:rgba(34,197,94,.25); font-size:.88rem; box-shadow:0 4px 20px rgba(22,163,74,.30); }
+    .abcomplete:hover:not(:disabled) { box-shadow:0 8px 28px rgba(22,163,74,.42); }
 
-    .members-list { display:flex; flex-direction:column; gap:9px; }
-    .member-row   { display:flex; align-items:center; gap:10px; }
-    .member-av {
-      width:34px; height:34px; flex-shrink:0;
-      border-radius:50%;
-      background:linear-gradient(135deg,var(--blue),var(--teal));
-      display:flex; align-items:center; justify-content:center;
-      font-size:.72rem; font-weight:700; color:white; letter-spacing:.5px;
-    }
-    .member-name { font-size:.88rem; font-weight:500; color:var(--ink-2); }
+    .abreturning { background:rgba(255,255,255,.04); color:var(--ink-3); border-color:var(--border); }
+    .abreturning.is-cur { color:var(--ok); background:var(--ok-dim); border-color:rgba(34,197,94,.2); }
+    .abreturning:hover:not(:disabled) { background:rgba(255,255,255,.07); }
 
-    /* ── Refresh btn ── */
-    .refresh-btn {
-      width:100%; padding:13px;
-      border:1.5px solid var(--border) !important;
-      border-radius:var(--r);
-      font-size:.86rem; font-weight:600; color:var(--ink-2);
-      display:flex; align-items:center; justify-content:center;
-      gap:8px; transition:background .2s; margin-top:14px;
-    }
-    .refresh-btn:hover { background:var(--surface-h); }
+    .abbackup { background:var(--err-dim); color:#fca5a5; border-color:rgba(239,68,68,.18); }
+    .abbackup:hover:not(:disabled) { box-shadow:0 4px 18px rgba(239,68,68,.20); background:rgba(239,68,68,.18); }
 
-    /* ── Bottom sheets ── */
-    .sheet-overlay {
-      display:none; position:fixed; inset:0;
-      background:rgba(6,24,36,.55);
-      backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
-      z-index:100;
-    }
-    .sheet-overlay.show { display:flex; align-items:flex-end; animation:fadeIn .2s ease; }
+    /* team card */
+    .tmcard { background:var(--navy-card); border-radius:var(--rl); border:1px solid var(--border); padding:18px; }
+    .cardlbl { font-size:.57rem; font-weight:800; letter-spacing:2.5px; text-transform:uppercase; color:var(--ink-4); margin-bottom:14px; }
+    .tmrow { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+    .tmname { font-size:.98rem; font-weight:800; color:var(--ink); letter-spacing:-.01em; }
+    .tmspill { padding:4px 10px; border-radius:20px; font-size:.6rem; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; }
+    .tsp-idle      { background:rgba(255,255,255,.06); color:var(--ink-4); border:1px solid var(--border); }
+    .tsp-en_route  { background:var(--amber-dim); color:var(--amber); border:1px solid rgba(245,166,35,.2); }
+    .tsp-on_site   { background:var(--blue-dim); color:var(--blue-hi); border:1px solid rgba(22,168,211,.2); }
+    .tsp-returning { background:var(--ok-dim); color:var(--ok); border:1px solid rgba(34,197,94,.2); }
+    .mlist { display:flex; flex-direction:column; gap:10px; }
+    .mrow { display:flex; align-items:center; gap:12px; }
+    .mav { width:36px; height:36px; flex-shrink:0; border-radius:10px; background:linear-gradient(135deg,var(--navy-mid),var(--teal)); border:1px solid rgba(22,168,211,.25); display:flex; align-items:center; justify-content:center; font-size:.72rem; font-weight:800; color:var(--blue-hi); letter-spacing:.5px; font-family:var(--ff-m); }
+    .mname { font-size:.88rem; font-weight:500; color:var(--ink-2); }
+
+    /* refresh btn */
+    .rfbtn { width:100%; padding:14px; border:1px solid var(--border)!important; border-radius:var(--r); font-size:.86rem; font-weight:700; color:var(--ink-3); display:flex; align-items:center; justify-content:center; gap:8px; transition:background .2s,color .2s; margin-top:14px; letter-spacing:.3px; }
+    .rfbtn:hover { background:rgba(255,255,255,.04); color:var(--ink-2); }
+
+    /* sheets */
+    .shovl { display:none; position:fixed; inset:0; background:rgba(6,24,36,.78); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:100; }
+    .shovl.show { display:flex; align-items:flex-end; animation:fadeIn .22s ease; }
     @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+    .sheet { width:100%; max-height:82vh; background:var(--navy-mid); border-radius:24px 24px 0 0; border-top:1px solid rgba(255,255,255,.10); padding:0 20px calc(32px + env(safe-area-inset-bottom,0px)); overflow-y:auto; animation:sheetUp .28s cubic-bezier(.22,1,.36,1); }
+    @keyframes sheetUp { from{transform:translateY(60px);opacity:0;} to{transform:translateY(0);opacity:1;} }
+    .shandle-w { padding:14px 0 6px; display:flex; justify-content:center; }
+    .shandle { width:40px; height:4px; border-radius:2px; background:rgba(255,255,255,.15); }
+    .shbar { height:3px; margin:0 -20px 24px; background:linear-gradient(90deg,var(--teal),var(--blue),var(--blue-hi)); }
+    .shtitle { font-size:1.12rem; font-weight:800; color:var(--ink); letter-spacing:-.02em; margin-bottom:6px; }
+    .shsub { font-size:.82rem; color:var(--ink-3); line-height:1.55; margin-bottom:22px; }
+    .shta { width:100%; min-height:120px; padding:14px 15px; background:rgba(255,255,255,.05); border:1.5px solid rgba(255,255,255,.10); border-radius:var(--r); font-family:var(--ff-b); font-size:.92rem; color:var(--ink); resize:vertical; outline:none; transition:border-color .2s,box-shadow .2s; line-height:1.55; }
+    .shta::placeholder { color:var(--ink-4); }
+    .shta:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(22,168,211,.14); }
+    .shmsg { display:none; margin-top:12px; padding:11px 14px; border-radius:var(--rs); font-size:.82rem; line-height:1.45; }
+    .shmsg.error   { display:block; background:var(--err-dim); color:#fca5a5; border:1px solid rgba(239,68,68,.25); }
+    .shmsg.success { display:block; background:var(--ok-dim); color:#86efac; border:1px solid rgba(34,197,94,.25); }
+    .shbtns { display:flex; gap:10px; margin-top:16px; }
+    .shcancel { flex:1; padding:16px; border-radius:12px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10)!important; font-size:.9rem; font-weight:700; color:var(--ink-3); min-height:56px; transition:background .2s; }
+    .shcancel:hover { background:rgba(255,255,255,.08); }
+    .shconfirm { flex:2; padding:16px; border-radius:12px; font-size:.9rem; font-weight:800; color:white; min-height:56px; transition:opacity .2s,transform .15s; letter-spacing:.3px; }
+    .shconfirm.green { background:linear-gradient(135deg,#16a34a,#15803d); box-shadow:0 4px 16px rgba(22,163,74,.30); }
+    .shconfirm.red   { background:linear-gradient(135deg,var(--err),#b91c1c); box-shadow:0 4px 16px rgba(239,68,68,.28); }
+    .shconfirm:active:not(:disabled) { transform:scale(0.98); }
+    .shconfirm:disabled { opacity:.4; cursor:not-allowed; }
 
-    .sheet {
-      width:100%; max-height:80vh;
-      background:var(--surface);
-      border-radius:22px 22px 0 0;
-      padding:0 20px calc(28px + env(safe-area-inset-bottom, 0px));
-      overflow-y:auto;
-      animation:sheetUp .25s cubic-bezier(.22,1,.36,1);
-    }
-    @keyframes sheetUp {
-      from{transform:translateY(60px);opacity:0;}
-      to  {transform:translateY(0);   opacity:1;}
-    }
-    .sheet-handle-wrap { padding:12px 0 6px; display:flex; justify-content:center; }
-    .sheet-handle { width:36px; height:4px; border-radius:2px; background:var(--border-2); }
-    .sheet-bar {
-      height:3px; margin:0 -20px 22px;
-      background:linear-gradient(90deg,var(--navy),var(--blue),var(--blue-hi));
-    }
-    .sheet-title {
-      font-size:1.08rem; font-weight:700;
-      color:var(--navy); letter-spacing:-.015em; margin-bottom:6px;
-    }
-    .sheet-sub { font-size:.82rem; color:var(--ink-3); line-height:1.5; margin-bottom:22px; }
-    .sheet-textarea {
-      width:100%; min-height:110px; padding:14px;
-      background:var(--surface-2);
-      border:1.5px solid var(--border);
-      border-radius:var(--r);
-      font-family:var(--ff-b); font-size:.9rem;
-      color:var(--ink); resize:vertical; outline:none;
-      transition:border-color .2s,box-shadow .2s;
-    }
-    .sheet-textarea:focus {
-      border-color:var(--blue);
-      box-shadow:0 0 0 3px rgba(22,168,211,.12);
-    }
-    .sheet-msg { display:none; margin-top:12px; padding:10px 13px; border-radius:var(--rs); font-size:.82rem; }
-    .sheet-msg.error   { display:block; background:var(--err-bg); color:var(--err); border:1px solid rgba(220,38,38,.2); }
-    .sheet-msg.success { display:block; background:var(--ok-bg);  color:var(--ok);  border:1px solid rgba(10,138,106,.2); }
+    /* toast */
+    .toast { display:none; position:fixed; bottom:calc(28px + env(safe-area-inset-bottom,0px)); left:50%; transform:translateX(-50%); z-index:200; padding:12px 22px; border-radius:30px; font-size:.84rem; font-weight:700; white-space:nowrap; pointer-events:none; letter-spacing:.2px; }
+    .toast.show { display:block; animation:toastIn .28s cubic-bezier(.22,1,.36,1); }
+    @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(14px);} to{opacity:1;transform:translateX(-50%) translateY(0);} }
+    .toast.ok  { background:var(--navy-up); color:var(--ink); border:1px solid var(--border); backdrop-filter:blur(12px); box-shadow:0 8px 24px rgba(0,0,0,.45); }
+    .toast.err { background:var(--err); color:white; box-shadow:0 8px 24px rgba(239,68,68,.42); }
 
-    .sheet-btns { display:flex; gap:10px; margin-top:14px; }
-    .sheet-cancel {
-      flex:1; padding:15px; border-radius:10px;
-      background:var(--surface-2);
-      border:1.5px solid var(--border) !important;
-      font-size:.9rem; font-weight:600; color:var(--ink-2); min-height:52px;
-    }
-    .sheet-confirm {
-      flex:2; padding:15px; border-radius:10px;
-      font-size:.9rem; font-weight:700; color:white; min-height:52px;
-      transition:opacity .2s,transform .15s;
-    }
-    .sheet-confirm.green { background:linear-gradient(135deg,#16a34a,#15803d); }
-    .sheet-confirm.red   { background:linear-gradient(135deg,var(--err),#b91c1c); }
-    .sheet-confirm:active:not(:disabled) { transform:scale(0.98); }
-    .sheet-confirm:disabled { opacity:.5; cursor:not-allowed; }
-
-    /* ── Toast ── */
-    .toast {
-      display:none; position:fixed;
-      bottom:calc(24px + env(safe-area-inset-bottom, 0px));
-      left:50%; transform:translateX(-50%);
-      z-index:200; padding:11px 20px; border-radius:30px;
-      font-size:.85rem; font-weight:600; white-space:nowrap;
-      pointer-events:none;
-    }
-    .toast.show { display:block; animation:toastIn .25s cubic-bezier(.22,1,.36,1); }
-    @keyframes toastIn {
-      from{opacity:0;transform:translateX(-50%) translateY(12px);}
-      to  {opacity:1;transform:translateX(-50%) translateY(0);}
-    }
-    .toast.ok  { background:var(--navy); color:white; }
-    .toast.err { background:var(--err);  color:white; }
-
-    @media (prefers-reduced-motion: reduce) {
-      .login-hero-bg,.lmr-1,.lmr-2,.amber-breathe,
-      .ws-dot.con,.njb-pulse,.spin-sm { animation:none!important; opacity:1; }
+    @media (prefers-reduced-motion:reduce) {
+      .lh-bg,.lmr-1,.lmr-2,.ab,.lh-scan::after,.wsdot.con,.njpulse,.ovfpulse,.spinsm { animation:none!important; opacity:1; }
     }
   </style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════
-     SCREEN: LOGIN
-══════════════════════════════════════ -->
+<!-- LOGIN -->
 <div id="screen-login" class="screen active">
-
   <div class="login-hero">
-    <div class="login-hero-bg"></div>
-    <div class="login-hero-grid"></div>
-
-    <div class="login-mark-wrap">
+    <div class="lh-bg"></div>
+    <div class="lh-grid"></div>
+    <div class="lh-scan"></div>
+    <div class="lmw">
       <div class="lmr lmr-1"></div>
       <div class="lmr lmr-2"></div>
-      <!-- Exact mark from flowguard_mark_B_brand_colours.svg -->
-      <svg class="login-mark" viewBox="160 60 360 260" xmlns="http://www.w3.org/2000/svg">
+      <svg class="lm" viewBox="160 60 360 260" xmlns="http://www.w3.org/2000/svg">
         <defs><clipPath id="mc"><circle cx="340" cy="182" r="108"/></clipPath></defs>
-        <circle cx="340" cy="182" r="148" fill="none" stroke="#16a8d3" stroke-width="1"   opacity="0.18"/>
-        <circle cx="340" cy="182" r="132" fill="none" stroke="#16a8d3" stroke-width="1.2" opacity="0.28"/>
-        <circle cx="340" cy="182" r="118" fill="none" stroke="#1cb8e8" stroke-width="1.5" opacity="0.38"/>
+        <circle cx="340" cy="182" r="148" fill="none" stroke="#16a8d3" stroke-width="1" opacity=".13"/>
+        <circle cx="340" cy="182" r="132" fill="none" stroke="#16a8d3" stroke-width="1.2" opacity=".20"/>
+        <circle cx="340" cy="182" r="118" fill="none" stroke="#1cb8e8" stroke-width="1.5" opacity=".30"/>
         <circle cx="340" cy="182" r="108" fill="#0a2a3d"/>
         <g clip-path="url(#mc)">
           <rect x="232" y="214" width="216" height="90" fill="#0d7fa0"/>
           <path d="M232 214 Q254 200 276 214 Q298 228 320 214 Q342 200 364 214 Q386 228 408 214 Q430 200 448 210 L448 216 Q430 202 408 216 Q386 230 364 216 Q342 202 320 216 Q298 230 276 216 Q254 202 232 216 Z" fill="#16a8d3"/>
-          <path d="M232 234 Q254 226 276 234 Q298 242 320 234 Q342 226 364 234 Q386 242 408 234 Q430 226 448 231" fill="none" stroke="#1cb8e8" stroke-width="1.5" opacity="0.5"/>
-          <ellipse cx="284" cy="250" rx="12" ry="3" fill="#cceeff" opacity="0.35"/>
-          <ellipse cx="362" cy="264" rx="8"  ry="2" fill="#cceeff" opacity="0.3"/>
+          <path d="M232 234 Q254 226 276 234 Q298 242 320 234 Q342 226 364 234 Q386 242 408 234 Q430 226 448 231" fill="none" stroke="#1cb8e8" stroke-width="1.5" opacity=".4"/>
+          <ellipse cx="284" cy="250" rx="12" ry="3" fill="#cceeff" opacity=".28"/>
+          <ellipse cx="362" cy="264" rx="8" ry="2" fill="#cceeff" opacity=".22"/>
         </g>
-        <circle cx="340" cy="182" r="108" fill="none" stroke="#1cb8e8" stroke-width="2.5" opacity="0.4"/>
+        <circle cx="340" cy="182" r="108" fill="none" stroke="#1cb8e8" stroke-width="2.5" opacity=".35"/>
         <path d="M340 110 C358 132 374 148 374 166 C374 186 358 202 340 202 C322 202 306 186 306 166 C306 148 322 132 340 110 Z" fill="#16a8d3"/>
         <path d="M340 120 C355 139 367 153 367 166 C367 183 355 196 340 196 C325 196 313 183 313 166 C313 153 325 139 340 120 Z" fill="#0a2a3d"/>
         <path d="M340 128 C352 144 361 156 361 166 C361 180 352 191 340 191 C328 191 319 180 319 166 C319 156 328 144 340 128 Z" fill="#0d7fa0"/>
-        <ellipse cx="331" cy="146" rx="5" ry="8" fill="#cceeff" opacity="0.55" transform="rotate(-18 331 146)"/>
-        <circle cx="340" cy="110" r="6"  fill="#f5a623" class="amber-breathe"/>
-        <circle cx="340" cy="110" r="10" fill="none" stroke="#f5a623" stroke-width="1.5" opacity="0.45" class="amber-breathe"/>
-        <circle cx="340" cy="110" r="15" fill="none" stroke="#f5a623" stroke-width="1"   opacity="0.22" class="amber-breathe"/>
-        <path d="M318 105 Q340 93 362 105"  fill="none" stroke="#1cb8e8" stroke-width="2"   stroke-linecap="round" opacity="0.75"/>
-        <path d="M307 93  Q340 77 373 93"   fill="none" stroke="#1cb8e8" stroke-width="1.5" stroke-linecap="round" opacity="0.38"/>
-        <line x1="340" y1="72"  x2="340" y2="62"  stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"/>
+        <ellipse cx="331" cy="146" rx="5" ry="8" fill="#cceeff" opacity=".48" transform="rotate(-18 331 146)"/>
+        <circle cx="340" cy="110" r="6" fill="#f5a623" class="ab"/>
+        <circle cx="340" cy="110" r="10" fill="none" stroke="#f5a623" stroke-width="1.5" opacity=".4" class="ab"/>
+        <circle cx="340" cy="110" r="15" fill="none" stroke="#f5a623" stroke-width="1" opacity=".18" class="ab"/>
+        <path d="M318 105 Q340 93 362 105" fill="none" stroke="#1cb8e8" stroke-width="2" stroke-linecap="round" opacity=".68"/>
+        <path d="M307 93 Q340 77 373 93" fill="none" stroke="#1cb8e8" stroke-width="1.5" stroke-linecap="round" opacity=".32"/>
+        <line x1="340" y1="72" x2="340" y2="62" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"/>
         <line x1="448" y1="182" x2="458" y2="182" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"/>
         <line x1="232" y1="182" x2="222" y2="182" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"/>
         <line x1="340" y1="292" x2="340" y2="302" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"/>
       </svg>
     </div>
-
-    <div class="login-brand">
-      <span class="wordmark">FlowGuard</span>
-      <span class="tag">Field Operations</span>
+    <div class="lbrand">
+      <span class="wm">FlowGuard</span>
+      <span class="tg">Field Operations</span>
     </div>
   </div>
 
-  <div class="login-panel">
-    <div class="login-panel-bar"></div>
-    <h1 class="lp-title">Sign in</h1>
-    <p class="lp-sub">Field technician access only</p>
-
-    <div class="lf-field">
-      <label class="lf-label" for="l-email">Email</label>
-      <input type="email" id="l-email" class="lf-input"
-        placeholder="you@flowguard.ng"
-        autocomplete="email" autocapitalize="none" inputmode="email">
+  <div class="lpanel">
+    <div class="lpbar"></div>
+    <h1 class="lptitle">Sign in</h1>
+    <p class="lpsub">Field technician access only</p>
+    <div class="lff">
+      <label class="lflbl" for="l-email">Email</label>
+      <input type="email" id="l-email" class="lfinp" placeholder="you@flowguard.ng" autocomplete="email" autocapitalize="none" inputmode="email">
     </div>
-
-    <div class="lf-field">
-      <label class="lf-label" for="l-pass">Password</label>
-      <input type="password" id="l-pass" class="lf-input"
-        placeholder="Your password"
-        autocomplete="current-password">
+    <div class="lff">
+      <label class="lflbl" for="l-pass">Password</label>
+      <input type="password" id="l-pass" class="lfinp" placeholder="Your password" autocomplete="current-password">
     </div>
-
-    <button class="lf-submit" id="l-btn">
-      <span class="lf-btn-text">Sign in</span>
-    </button>
-
-    <div class="lf-msg" id="l-msg"></div>
-
-    <div style="text-align:center;margin-top:18px;">
-      <button id="forgot-link" style="background:none;border:none;color:var(--ink-3);font-size:.78rem;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:3px;transition:color .2s;">
-        Forgot your password?
-      </button>
+    <button class="lfsub" id="l-btn"><span class="lfsub-txt">Sign in</span></button>
+    <div class="lfmsg" id="l-msg"></div>
+    <div style="text-align:center;margin-top:20px;">
+      <button id="forgot-link" style="background:none;border:none;color:var(--ink-4);font-size:.78rem;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px;letter-spacing:.3px;transition:color .2s;">Forgot your password?</button>
     </div>
   </div>
+</div>
 
-</div><!-- /screen-login -->
-
-
-<!-- ══════════════════════════════════════
-     SCREEN: FORGOT PASSWORD
-══════════════════════════════════════ -->
+<!-- FORGOT PASSWORD -->
 <div id="screen-forgot" class="screen" style="background:var(--navy-deep);overflow-y:auto;-webkit-overflow-scrolling:touch;">
-
-  <!-- Same hero as login but smaller -->
-  <div style="flex-shrink:0;position:relative;overflow:hidden;padding:40px 32px 28px;display:flex;flex-direction:column;align-items:center;gap:10px;">
-    <div style="position:absolute;inset:0;background:radial-gradient(ellipse 130% 75% at 50% 115%,rgba(13,127,160,0.5) 0%,transparent 52%);pointer-events:none;"></div>
-    <svg style="width:64px;height:64px;position:relative;z-index:2;" viewBox="160 60 360 260" xmlns="http://www.w3.org/2000/svg">
+  <div style="flex-shrink:0;position:relative;overflow:hidden;padding:44px 32px 32px;display:flex;flex-direction:column;align-items:center;gap:12px;">
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse 130% 75% at 50% 115%,rgba(13,127,160,.55) 0%,transparent 52%);pointer-events:none;"></div>
+    <svg style="width:68px;height:68px;position:relative;z-index:2;filter:drop-shadow(0 0 14px rgba(22,168,211,.28));" viewBox="160 60 360 260" xmlns="http://www.w3.org/2000/svg">
       <defs><clipPath id="fmc"><circle cx="340" cy="182" r="108"/></clipPath></defs>
       <circle cx="340" cy="182" r="108" fill="#0a2a3d"/>
       <g clip-path="url(#fmc)">
@@ -688,48 +406,33 @@
       <circle cx="340" cy="110" r="5" fill="#f5a623"/>
     </svg>
     <div style="position:relative;z-index:2;text-align:center;">
-      <div style="font-family:var(--ff-d);font-size:1rem;font-weight:700;color:rgba(255,255,255,.92);">FlowGuard</div>
-      <div style="font-size:.57rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--blue);margin-top:4px;">Field Operations</div>
+      <div style="font-size:1rem;font-weight:800;color:rgba(255,255,255,.96);letter-spacing:.08em;text-transform:uppercase;">FlowGuard</div>
+      <div style="font-size:.56rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--blue);margin-top:5px;opacity:.8;">Field Operations</div>
     </div>
   </div>
-
-  <div class="login-panel">
-    <div class="login-panel-bar"></div>
-    <h1 class="lp-title">Reset Password</h1>
-    <p class="lp-sub">Enter your email and we'll send you a reset link</p>
-
-    <div class="lf-field">
-      <label class="lf-label" for="fp-email">Email Address</label>
-      <input type="email" id="fp-email" class="lf-input"
-        placeholder="you@flowguard.ng"
-        autocomplete="email" autocapitalize="none" inputmode="email">
+  <div class="lpanel">
+    <div class="lpbar"></div>
+    <h1 class="lptitle">Reset Password</h1>
+    <p class="lpsub">Enter your email and we'll send you a reset link</p>
+    <div class="lff">
+      <label class="lflbl" for="fp-email">Email Address</label>
+      <input type="email" id="fp-email" class="lfinp" placeholder="you@flowguard.ng" autocomplete="email" autocapitalize="none" inputmode="email">
     </div>
-
-    <button class="lf-submit" id="fp-btn">
-      <span class="lf-btn-text">Send Reset Link</span>
-    </button>
-
-    <div class="lf-msg" id="fp-msg"></div>
-
-    <div style="text-align:center;margin-top:18px;">
-      <button id="back-to-login" style="background:none;border:none;color:var(--ink-3);font-size:.78rem;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:3px;transition:color .2s;display:inline-flex;align-items:center;gap:5px;">
-        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+    <button class="lfsub" id="fp-btn"><span class="lfsub-txt">Send Reset Link</span></button>
+    <div class="lfmsg" id="fp-msg"></div>
+    <div style="text-align:center;margin-top:20px;">
+      <button id="back-to-login" style="background:none;border:none;color:var(--ink-4);font-size:.78rem;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px;letter-spacing:.3px;display:inline-flex;align-items:center;gap:5px;transition:color .2s;">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
         Back to Sign in
       </button>
     </div>
   </div>
+</div>
 
-</div><!-- /screen-forgot -->
-
-
-<!-- ══════════════════════════════════════
-     SCREEN: DASHBOARD
-══════════════════════════════════════ -->
+<!-- DASHBOARD -->
 <div id="screen-dash" class="screen">
-
-  <div class="dash-hdr">
-    <!-- Simplified mark for 30px header -->
-    <svg class="hdr-logo" viewBox="160 60 360 260" xmlns="http://www.w3.org/2000/svg">
+  <div class="dhdr">
+    <svg class="hlogo" viewBox="160 60 360 260" xmlns="http://www.w3.org/2000/svg">
       <defs><clipPath id="hmc"><circle cx="340" cy="182" r="108"/></clipPath></defs>
       <circle cx="340" cy="182" r="108" fill="#0a2a3d"/>
       <g clip-path="url(#hmc)">
@@ -740,1021 +443,399 @@
       <path d="M340 128 C352 144 361 156 361 166 C361 180 352 191 340 191 C328 191 319 180 319 166 C319 156 328 144 340 128 Z" fill="#0d7fa0"/>
       <circle cx="340" cy="110" r="5" fill="#f5a623"/>
     </svg>
-
-    <div class="hdr-titles">
-      <div class="hdr-name" id="hdr-name">Loading…</div>
-      <div class="hdr-sub">Field Technician</div>
+    <div class="htitles">
+      <div class="hname" id="hdr-name">Loading…</div>
+      <div class="hsub">Field Technician</div>
     </div>
-
-    <div class="ws-pill">
-      <div class="ws-dot con" id="ws-dot"></div>
-      <span class="ws-lbl" id="ws-lbl">WS</span>
+    <div class="wspill">
+      <div class="wsdot con" id="ws-dot"></div>
+      <span class="wslbl" id="ws-lbl">WS</span>
     </div>
-
-    <button class="hdr-logout" id="btn-logout" aria-label="Sign out" title="Sign out">
+    <button class="hlogout" id="btn-logout" aria-label="Sign out">
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
       </svg>
     </button>
   </div>
 
-  <div class="dash-body" id="dash-body">
-
-    <!-- Push notification banner -->
-    <div class="push-banner" id="push-banner">
-      <div class="push-ico">
+  <div class="dbody" id="dash-body">
+    <div class="pushban" id="push-banner">
+      <div class="pushico">
         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
         </svg>
       </div>
-      <div class="push-copy">
-        <div class="push-ttl">Enable push notifications</div>
-        <div class="push-sub">Receive dispatch alerts on this device, even when FlowGuard Field is closed.</div>
-        <div class="push-btns">
-          <button class="push-allow" id="push-allow">Enable notifications</button>
-          <button class="push-dismiss" id="push-dismiss">Not now</button>
+      <div class="pushtxt">
+        <div class="pushttl">Enable push notifications</div>
+        <div class="pushsub">Receive dispatch alerts on this device, even when FlowGuard Field is closed.</div>
+        <div class="pushbtns">
+          <button class="pushallow" id="push-allow">Enable notifications</button>
+          <button class="pushdismiss" id="push-dismiss">Not now</button>
         </div>
       </div>
     </div>
 
-    <!-- New job banner (WebSocket driven) -->
-    <div class="new-job-banner" id="new-job-banner">
-      <div class="njb-pulse"></div>
-      <div class="njb-text" id="njb-text">New job dispatched to your team</div>
-      <button class="njb-btn" id="njb-refresh">View</button>
+    <div class="njban" id="new-job-banner">
+      <div class="njpulse"></div>
+      <div class="njtxt" id="njb-text">New job dispatched to your team</div>
+      <button class="njbtn" id="njb-refresh">View</button>
     </div>
 
-    <!-- Dynamic content -->
     <div id="content-area">
-      <div class="loading-card">
-        <div class="spin-sm"></div>
-        Loading your assignment…
-      </div>
-    </div>
-
-  </div>
-</div><!-- /screen-dash -->
-
-
-<!-- Bottom sheet: Job Complete -->
-<div class="sheet-overlay" id="sheet-complete">
-  <div class="sheet">
-    <div class="sheet-handle-wrap"><div class="sheet-handle"></div></div>
-    <div class="sheet-bar"></div>
-    <div class="sheet-title">Mark Job Complete</div>
-    <div class="sheet-sub">Add a brief completion note. The alert will be resolved and your team set to Returning to HQ.</div>
-    <textarea class="sheet-textarea" id="complete-notes" placeholder="e.g. Drain cleared, flow restored. No structural damage noted."></textarea>
-    <div class="sheet-msg" id="complete-msg"></div>
-    <div class="sheet-btns">
-      <button class="sheet-cancel" id="complete-cancel">Cancel</button>
-      <button class="sheet-confirm green" id="complete-confirm">Confirm Complete</button>
+      <div class="ldcard"><div class="spinsm"></div>Loading your assignment…</div>
     </div>
   </div>
 </div>
 
-<!-- Bottom sheet: Request Backup -->
-<div class="sheet-overlay" id="sheet-backup">
+<!-- Sheet: Job Complete -->
+<div class="shovl" id="sheet-complete">
   <div class="sheet">
-    <div class="sheet-handle-wrap"><div class="sheet-handle"></div></div>
-    <div class="sheet-bar"></div>
-    <div class="sheet-title">Request Backup</div>
-    <div class="sheet-sub">Describe the situation. Ops will be notified immediately.</div>
-    <textarea class="sheet-textarea" id="backup-notes" placeholder="e.g. Drain collapsed — require additional excavation team and equipment."></textarea>
-    <div class="sheet-msg" id="backup-msg"></div>
-    <div class="sheet-btns">
-      <button class="sheet-cancel" id="backup-cancel">Cancel</button>
-      <button class="sheet-confirm red" id="backup-confirm">Send Backup Request</button>
+    <div class="shandle-w"><div class="shandle"></div></div>
+    <div class="shbar"></div>
+    <div class="shtitle">Mark Job Complete</div>
+    <div class="shsub">Add a brief completion note. The alert will be resolved and your team set to Returning to HQ.</div>
+    <textarea class="shta" id="complete-notes" placeholder="e.g. Drain cleared, flow restored. No structural damage noted."></textarea>
+    <div class="shmsg" id="complete-msg"></div>
+    <div class="shbtns">
+      <button class="shcancel" id="complete-cancel">Cancel</button>
+      <button class="shconfirm green" id="complete-confirm">Confirm Complete</button>
     </div>
   </div>
 </div>
 
-<!-- Toast notification -->
+<!-- Sheet: Request Backup -->
+<div class="shovl" id="sheet-backup">
+  <div class="sheet">
+    <div class="shandle-w"><div class="shandle"></div></div>
+    <div class="shbar"></div>
+    <div class="shtitle">Request Backup</div>
+    <div class="shsub">Describe the situation. Ops will be notified immediately.</div>
+    <textarea class="shta" id="backup-notes" placeholder="e.g. Drain collapsed — require additional excavation team and equipment."></textarea>
+    <div class="shmsg" id="backup-msg"></div>
+    <div class="shbtns">
+      <button class="shcancel" id="backup-cancel">Cancel</button>
+      <button class="shconfirm red" id="backup-confirm">Send Backup Request</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
-
 <script src="https://api.flowguard.ng/socket.io/socket.io.js"></script>
-
 <script>
 'use strict';
 
-/* ─────────────────────────────────────────
-   CONFIG
-───────────────────────────────────────── */
 const CONFIG = {
-  API:      'https://api.flowguard.ng/api/v1',
-  WS:       'https://api.flowguard.ng',
-  // Paste VAPID public key here after:  npx web-push generate-vapid-keys
+  API:       'https://api.flowguard.ng/api/v1',
+  WS:        'https://api.flowguard.ng',
   VAPID_KEY: '',
   TOKEN_KEY: 'fg_token'
 };
 
-/* ─────────────────────────────────────────
-   STATE
-───────────────────────────────────────── */
-let S = {
-  token:  null,
-  user:   null,   // { id, email, fullName, role }
-  team:   null,   // from GET /teams — members is array of objects [{user_id, full_name,...}]
-  alert:      null,   // active dispatched alert for this team
-  inspection: null,   // active scheduled/in_progress inspection for this team
-  socket: null,
-  swReg:  null
-};
+let S = { token:null, user:null, team:null, alert:null, inspection:null, socket:null, swReg:null };
 
-/* ─────────────────────────────────────────
-   HELPERS
-───────────────────────────────────────── */
 const $  = id => document.getElementById(id);
 const on = (id, ev, fn) => $(id).addEventListener(ev, fn);
 
 function readToken() {
-  // Support both 'fg_token' (this app) and 'token' (login.html writes 'token')
-  return (
-    localStorage.getItem(CONFIG.TOKEN_KEY)   ||
-    sessionStorage.getItem(CONFIG.TOKEN_KEY) ||
-    localStorage.getItem('token')            ||
-    sessionStorage.getItem('token')          ||
-    null
-  );
+  return localStorage.getItem(CONFIG.TOKEN_KEY) || sessionStorage.getItem(CONFIG.TOKEN_KEY) ||
+         localStorage.getItem('token') || sessionStorage.getItem('token') || null;
 }
-
 function clearSession() {
-  ['fg_token', 'token', 'user'].forEach(k => {
-    localStorage.removeItem(k);
-    sessionStorage.removeItem(k);
-  });
+  ['fg_token','token','user'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); });
 }
-
 async function api(method, path, body) {
   const r = await fetch(`${CONFIG.API}${path}`, {
-    method,
-    headers: {
-      'Content-Type':  'application/json',
-      'Authorization': `Bearer ${S.token}`
-    },
-    ...(body ? { body: JSON.stringify(body) } : {})
+    method, headers:{'Content-Type':'application/json','Authorization':`Bearer ${S.token}`},
+    ...(body ? {body:JSON.stringify(body)} : {})
   });
   return r.json();
 }
-
-function toast(msg, type = 'ok', ms = 3000) {
-  const el = $('toast');
-  el.textContent = msg;
-  el.className = `toast show ${type}`;
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.className = 'toast', ms);
+function toast(msg, type='ok', ms=3000) {
+  const el=$('toast'); el.textContent=msg; el.className=`toast show ${type}`;
+  clearTimeout(el._t); el._t=setTimeout(()=>el.className='toast',ms);
 }
-
 function ageStr(ts) {
-  if (!ts) return '';
-  const m = Math.floor((Date.now() - new Date(ts)) / 60000);
-  if (m < 60)  return `${m}m ago`;
-  if (m < 1440) return `${Math.floor(m/60)}h ago`;
-  return `${Math.floor(m/1440)}d ago`;
+  if(!ts) return '';
+  const m=Math.floor((Date.now()-new Date(ts))/60000);
+  if(m<60) return `${m}m ago`; if(m<1440) return `${Math.floor(m/60)}h ago`; return `${Math.floor(m/1440)}d ago`;
 }
-
 function initials(name) {
-  if (!name) return '?';
-  const p = name.trim().split(/\s+/);
-  return p.length === 1
-    ? p[0].slice(0, 2).toUpperCase()
-    : (p[0][0] + p[p.length - 1][0]).toUpperCase();
+  if(!name) return '?';
+  const p=name.trim().split(/\s+/);
+  return p.length===1 ? p[0].slice(0,2).toUpperCase() : (p[0][0]+p[p.length-1][0]).toUpperCase();
 }
-
-function escHtml(s) {
-  return String(s ?? '')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
-
-function sevClass(sev) { return `sev-${(sev||'minor').toLowerCase()}`; }
-
-function tsClass(s) {
-  const m = { en_route:'tsp-en_route', on_site:'tsp-on_site', returning:'tsp-returning' };
-  return m[s] || 'tsp-idle';
-}
-function tsLabel(s) {
-  const m = { idle:'Idle', en_route:'En Route', on_site:'On Site', returning:'Returning' };
-  return m[s] || (s || 'Idle');
-}
-
+function escHtml(s) { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function sevBadgeClass(sev) { return `sev-${(sev||'minor').toLowerCase()}`; }
+function sevCardClass(sev)  { return `sc-${(sev||'minor').toLowerCase()}`; }
+function tsClass(s) { return ({en_route:'tsp-en_route',on_site:'tsp-on_site',returning:'tsp-returning'})[s]||'tsp-idle'; }
+function tsLabel(s) { return ({idle:'Idle',en_route:'En Route',on_site:'On Site',returning:'Returning'})[s]||(s||'Idle'); }
 function urlB64ToUint8Array(b64) {
-  const pad  = '='.repeat((4 - b64.length % 4) % 4);
-  const raw  = atob((b64 + pad).replace(/-/g,'+').replace(/_/g,'/'));
-  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+  const pad='='.repeat((4-b64.length%4)%4), raw=atob((b64+pad).replace(/-/g,'+').replace(/_/g,'/'));
+  return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
 }
 
+function showScreen(id) { document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); $(id).classList.add('active'); }
 
-/* ─────────────────────────────────────────
-   SCREENS
-───────────────────────────────────────── */
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  $(id).classList.add('active');
-}
-
-
-/* ─────────────────────────────────────────
-   LOGIN
-───────────────────────────────────────── */
-function loginMsg(txt, type) {
-  const el = $('l-msg');
-  el.textContent = txt;
-  el.className = `lf-msg ${type}`;
-}
+/* LOGIN */
+function loginMsg(txt,type) { const el=$('l-msg'); el.textContent=txt; el.className=`lfmsg ${type}`; }
 
 async function doLogin() {
-  const email = $('l-email').value.trim();
-  const pass  = $('l-pass').value;
-  if (!email || !pass) { loginMsg('Please enter your email and password.', 'error'); return; }
-
-  const btn  = $('l-btn');
-  const btxt = btn.querySelector('.lf-btn-text');
-  btn.disabled = true;
-  btxt.innerHTML = '<span class="spinner"></span>Signing in…';
-  $('l-msg').className = 'lf-msg';
-
+  const email=$('l-email').value.trim(), pass=$('l-pass').value;
+  if(!email||!pass){loginMsg('Please enter your email and password.','error');return;}
+  const btn=$('l-btn'), btxt=btn.querySelector('.lfsub-txt');
+  btn.disabled=true; btxt.innerHTML='<span class="spinner"></span>Signing in…'; $('l-msg').className='lfmsg';
   try {
-    const d = await fetch(`${CONFIG.API}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password: pass })
-    }).then(r => r.json());
-
-    if (!d.success) {
-      btn.disabled = false; btxt.textContent = 'Sign in';
-      loginMsg(d.error || 'Invalid credentials.', 'error');
-      return;
-    }
-
-    if (d.data.user.role !== 'field_team') {
-      btn.disabled = false; btxt.textContent = 'Sign in';
-      loginMsg('This portal is for field technicians only. Use the Ops Center for other roles.', 'error');
-      return;
-    }
-
-    localStorage.setItem(CONFIG.TOKEN_KEY, d.data.token);
-    S.token = d.data.token;
-    S.user  = {
-      id:       d.data.user.id,
-      email:    d.data.user.email,
-      fullName: d.data.user.fullName,
-      role:     d.data.user.role
-    };
-
-    btxt.innerHTML = '✓ &nbsp;Access granted';
-    loginMsg('Authenticated. Loading your assignment…', 'success');
-    setTimeout(initDashboard, 700);
-
-  } catch {
-    btn.disabled = false; btxt.textContent = 'Sign in';
-    loginMsg('Connection failed. Check your network and retry.', 'error');
-  }
+    const d=await fetch(`${CONFIG.API}/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})}).then(r=>r.json());
+    if(!d.success){btn.disabled=false;btxt.textContent='Sign in';loginMsg(d.error||'Invalid credentials.','error');return;}
+    if(d.data.user.role!=='field_team'){btn.disabled=false;btxt.textContent='Sign in';loginMsg('This portal is for field technicians only. Use the Ops Center for other roles.','error');return;}
+    localStorage.setItem(CONFIG.TOKEN_KEY,d.data.token);
+    S.token=d.data.token;
+    S.user={id:d.data.user.id,email:d.data.user.email,fullName:d.data.user.fullName,role:d.data.user.role};
+    btxt.innerHTML='✓ &nbsp;Access granted'; loginMsg('Authenticated. Loading your assignment…','success');
+    setTimeout(initDashboard,700);
+  } catch { btn.disabled=false; btxt.textContent='Sign in'; loginMsg('Connection failed. Check your network and retry.','error'); }
 }
+on('l-btn','click',doLogin);
+on('l-pass','keydown',e=>{if(e.key==='Enter')doLogin();});
+on('forgot-link','click',()=>showScreen('screen-forgot'));
+on('back-to-login','click',()=>{showScreen('screen-login');$('fp-msg').className='lfmsg';$('fp-email').value='';$('fp-btn').disabled=false;$('fp-btn').querySelector('.lfsub-txt').textContent='Send Reset Link';});
 
-on('l-btn',  'click', doLogin);
-on('l-pass', 'keydown', e => { if (e.key === 'Enter') doLogin(); });
-
-/* ── Forgot password navigation ── */
-on('forgot-link',   'click', () => showScreen('screen-forgot'));
-on('back-to-login', 'click', () => {
-  showScreen('screen-login');
-  $('fp-msg').className = 'lf-msg';
-  $('fp-email').value = '';
-  $('fp-btn').disabled = false;
-  $('fp-btn').querySelector('.lf-btn-text').textContent = 'Send Reset Link';
-});
-
-/* ── Forgot password submit ── */
 async function doForgotPassword() {
-  const email = $('fp-email').value.trim();
-  if (!email) {
-    $('fp-msg').className = 'lf-msg error';
-    $('fp-msg').textContent = 'Please enter your email address.';
-    return;
-  }
-
-  const btn  = $('fp-btn');
-  const btxt = btn.querySelector('.lf-btn-text');
-  btn.disabled = true;
-  btxt.innerHTML = '<span class="spinner"></span>Sending…';
-  $('fp-msg').className = 'lf-msg';
-
+  const email=$('fp-email').value.trim();
+  if(!email){$('fp-msg').className='lfmsg error';$('fp-msg').textContent='Please enter your email address.';return;}
+  const btn=$('fp-btn'),btxt=btn.querySelector('.lfsub-txt');
+  btn.disabled=true;btxt.innerHTML='<span class="spinner"></span>Sending…';$('fp-msg').className='lfmsg';
   try {
-    const d = await fetch(`${CONFIG.API}/auth/forgot-password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
-    }).then(r => r.json());
-
-    // API always returns success to prevent email enumeration
-    $('fp-msg').className = 'lf-msg success';
-    $('fp-msg').textContent = 'If an account exists for this email, a reset link has been sent. Check your inbox.';
-    btxt.textContent = '✓ Email sent';
-
-    // Auto-return to login after 4 seconds
-    setTimeout(() => {
-      showScreen('screen-login');
-      $('fp-msg').className = 'lf-msg';
-      $('fp-email').value = '';
-      btn.disabled = false;
-      btxt.textContent = 'Send Reset Link';
-    }, 4000);
-
-  } catch {
-    $('fp-msg').className = 'lf-msg error';
-    $('fp-msg').textContent = 'Connection failed. Check your network and retry.';
-    btn.disabled = false;
-    btxt.textContent = 'Send Reset Link';
-  }
+    await fetch(`${CONFIG.API}/auth/forgot-password`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})}).then(r=>r.json());
+    $('fp-msg').className='lfmsg success';$('fp-msg').textContent='If an account exists for this email, a reset link has been sent. Check your inbox.';btxt.textContent='✓ Email sent';
+    setTimeout(()=>{showScreen('screen-login');$('fp-msg').className='lfmsg';$('fp-email').value='';btn.disabled=false;btxt.textContent='Send Reset Link';},4000);
+  } catch {$('fp-msg').className='lfmsg error';$('fp-msg').textContent='Connection failed. Check your network and retry.';btn.disabled=false;btxt.textContent='Send Reset Link';}
 }
+on('fp-btn','click',doForgotPassword);
+on('fp-email','keydown',e=>{if(e.key==='Enter')doForgotPassword();});
 
-on('fp-btn',    'click', doForgotPassword);
-on('fp-email',  'keydown', e => { if (e.key === 'Enter') doForgotPassword(); });
-
-
-/* ─────────────────────────────────────────
-   SESSION CHECK (page load)
-───────────────────────────────────────── */
+/* SESSION */
 async function checkSession() {
-  const token = readToken();
-  if (!token) return false;
-  S.token = token;
+  const token=readToken(); if(!token) return false; S.token=token;
   try {
-    const d = await api('GET', '/auth/me');
-    if (!d.success || d.data.role !== 'field_team') { clearSession(); return false; }
-    S.user = {
-      id:       d.data.id,
-      email:    d.data.email,
-      fullName: d.data.full_name,
-      role:     d.data.role
-    };
-    return true;
-  } catch { clearSession(); return false; }
+    const d=await api('GET','/auth/me');
+    if(!d.success||d.data.role!=='field_team'){clearSession();return false;}
+    S.user={id:d.data.id,email:d.data.email,fullName:d.data.full_name,role:d.data.role}; return true;
+  } catch {clearSession();return false;}
 }
 
-
-/* ─────────────────────────────────────────
-   DASHBOARD INIT
-───────────────────────────────────────── */
+/* DASHBOARD */
 async function initDashboard() {
   showScreen('screen-dash');
-  if (S.user) $('hdr-name').textContent = S.user.fullName || S.user.email;
-  initWS();
-  await loadData();
-  checkPush();
-  registerSW();
+  if(S.user) $('hdr-name').textContent=S.user.fullName||S.user.email;
+  initWS(); await loadData(); checkPush(); registerSW();
 }
 
-
-/* ─────────────────────────────────────────
-   DATA — load team + alert
-───────────────────────────────────────── */
 async function loadData() {
   renderLoading();
   try {
-    // 1. Find team via GET /teams
-    //    ops-routes now returns members as array of objects [{user_id, full_name,...}]
-    //    Older versions returned a CSV string — handle both shapes defensively.
-    const tRes = await api('GET', '/teams');
-    if (!tRes.success) throw new Error(tRes.error || 'Failed to load teams');
-
-    const myName = (S.user?.fullName || '').toLowerCase();
-    const myId   = S.user?.id;
-
-    const myTeam = tRes.data.find(t => {
-      if (!t.members) return false;
-      // Array of objects (current ops-routes)
-      if (Array.isArray(t.members)) {
-        return t.members.some(m =>
-          (myId   && (m.user_id === myId || String(m.user_id) === String(myId))) ||
-          (myName && (m.full_name || '').toLowerCase().includes(myName))
-        );
-      }
-      // CSV string (legacy fallback)
-      return myName && t.members.toLowerCase().includes(myName);
+    const tRes=await api('GET','/teams');
+    if(!tRes.success) throw new Error(tRes.error||'Failed to load teams');
+    const myName=(S.user?.fullName||'').toLowerCase(), myId=S.user?.id;
+    const myTeam=tRes.data.find(t=>{
+      if(!t.members) return false;
+      if(Array.isArray(t.members)) return t.members.some(m=>(myId&&(m.user_id===myId||String(m.user_id)===String(myId)))||(myName&&(m.full_name||'').toLowerCase().includes(myName)));
+      return myName&&t.members.toLowerCase().includes(myName);
     });
-    if (!myTeam) { renderNoTeam(); return; }
-
-    // 2. Hydrate full team detail
-    const tdRes = await api('GET', `/teams/${myTeam.team_id}`);
-    S.team = tdRes.success ? tdRes.data : myTeam;
-
-    // 3. Get alerts AND inspections for this team
-    //    assigned_team may be team name OR team_id — normalise both
-    const teamName = (S.team.name || '').trim().toLowerCase();
-    const teamId   = S.team.team_id;
-
-    const [aRes, iRes] = await Promise.all([
-      api('GET', '/alerts'),
-      api('GET', '/inspections'),
-    ]);
-
-    const ACTIVE_ALERT = new Set(['dispatched', 'active', 'acknowledged']);
-    const ACTIVE_INSP  = new Set(['scheduled', 'in_progress']);
-
-    // Match helper — team name or team_id, case-insensitive
-    function teamMatch(val) {
-      if (!val) return false;
-      const v = String(val).trim().toLowerCase();
-      return v === teamName || v === (teamId || '').toLowerCase();
-    }
-
-    S.alert      = null;
-    S.inspection = null;
-
-    if (aRes.success) {
-      S.alert = aRes.data.find(a =>
-        teamMatch(a.assigned_team) && ACTIVE_ALERT.has(a.status)
-      ) || null;
-    }
-
-    if (iRes.success) {
-      S.inspection = iRes.data.find(i =>
-        teamMatch(i.assigned_team) && ACTIVE_INSP.has(i.status)
-      ) || null;
-    }
-
+    if(!myTeam){renderNoTeam();return;}
+    const tdRes=await api('GET',`/teams/${myTeam.team_id}`);
+    S.team=tdRes.success?tdRes.data:myTeam;
+    const teamName=(S.team.name||'').trim().toLowerCase(), teamId=S.team.team_id;
+    const [aRes,iRes]=await Promise.all([api('GET','/alerts'),api('GET','/inspections')]);
+    const ACTIVE_ALERT=new Set(['dispatched','active','acknowledged']), ACTIVE_INSP=new Set(['scheduled','in_progress']);
+    function teamMatch(val){if(!val)return false;const v=String(val).trim().toLowerCase();return v===teamName||v===(teamId||'').toLowerCase();}
+    S.alert=null; S.inspection=null;
+    if(aRes.success) S.alert=aRes.data.find(a=>teamMatch(a.assigned_team)&&ACTIVE_ALERT.has(a.status))||null;
+    if(iRes.success) S.inspection=iRes.data.find(i=>teamMatch(i.assigned_team)&&ACTIVE_INSP.has(i.status))||null;
     renderDashboard();
-  } catch (err) {
-    console.error('loadData:', err);
-    renderError(err.message);
-  }
+  } catch(err){console.error('loadData:',err);renderError(err.message);}
 }
 
-function renderLoading() {
-  $('content-area').innerHTML =
-    `<div class="loading-card"><div class="spin-sm"></div>Loading your assignment…</div>`;
-}
+function renderLoading() { $('content-area').innerHTML=`<div class="ldcard"><div class="spinsm"></div>Loading your assignment…</div>`; }
 
 function renderNoTeam() {
-  $('content-area').innerHTML = `
-    <div class="empty-card">
-      <div class="empty-ico">
-        <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" opacity=".3">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-      </div>
-      <div class="empty-ttl">No team assignment found</div>
-      <div class="empty-sub">
-        You haven't been added to a team yet.<br>Contact your dispatcher to get assigned.
-      </div>
-    </div>`;
+  $('content-area').innerHTML=`<div class="emcard"><div class="emico"><svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div class="emtit">No team assignment</div><div class="emsub">You haven't been added to a team yet.<br>Contact your dispatcher to get assigned.</div></div>`;
 }
 
 function renderError(msg) {
-  $('content-area').innerHTML = `
-    <div class="empty-card">
-      <div class="empty-ico">
-        <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" opacity=".3">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-        </svg>
-      </div>
-      <div class="empty-ttl">Failed to load</div>
-      <div class="empty-sub">${escHtml(msg || 'An unexpected error occurred.')}</div>
-      <button class="refresh-btn" onclick="loadData()">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-        </svg>
-        Retry
-      </button>
-    </div>`;
+  $('content-area').innerHTML=`<div class="emcard"><div class="emico"><svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></div><div class="emtit">Failed to load</div><div class="emsub">${escHtml(msg||'An unexpected error occurred.')}</div><button class="rfbtn" onclick="loadData()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Retry</button></div>`;
 }
 
 function renderDashboard() {
-  const t   = S.team;
-  const a   = S.alert;
-  const ins = S.inspection;
-  const ts  = t.status || 'idle';
-  const hasJob = !!(a || ins);
-  let html = '';
+  const t=S.team, a=S.alert, ins=S.inspection, ts=t.status||'idle', hasJob=!!(a||ins);
+  let html='';
 
-  /* ── Alert job card ── */
-  if (a) {
-    const sev  = (a.severity || 'minor').toLowerCase();
-    const type = a.alert_type || 'Drainage Alert';
-    const site = a.site_name  || a.client_name || '—';
-    const loc  = a.location   || '—';
-    const desc = a.description || '—';
-    const ovf  = a.time_to_overflow_min;
-    html += `
-    <div class="job-card">
-      <div class="job-card-top">
-        <span class="sev-badge ${sevClass(sev)}">${sev}</span>
-        <div class="job-hdr-info">
-          <div class="job-type">${escHtml(type)}</div>
-          <div class="job-site">${escHtml(site)}</div>
-        </div>
-        <div class="job-age">${ageStr(a.created_at)}</div>
+  if(a) {
+    const sev=(a.severity||'minor').toLowerCase(), type=a.alert_type||'Drainage Alert', site=a.site_name||a.client_name||'—', loc=a.location||'—', desc=a.description||'—', ovf=a.time_to_overflow_min;
+    html+=`<div class="jcard ${sevCardClass(sev)}">
+      <div class="jctop">
+        <span class="sevbadge ${sevBadgeClass(sev)}">${sev}</span>
+        <div class="jcinfo"><div class="jctype">${escHtml(type)}</div><div class="jcsite">${escHtml(site)}</div></div>
+        <div class="jcage">${ageStr(a.created_at)}</div>
       </div>
-      <div class="job-body">
-        <div class="job-row">
-          <div class="job-row-ico">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-            </svg>
-          </div>
-          <div>
-            <div class="job-row-lbl">Location</div>
-            <div class="job-row-val">${escHtml(loc)}</div>
-          </div>
-        </div>
-        ${ovf != null ? `
-        <div class="job-row">
-          <div class="job-row-ico">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10"/>
-              <path stroke-linecap="round" d="M12 6v6l4 2"/>
-            </svg>
-          </div>
-          <div>
-            <div class="job-row-lbl">Time to overflow</div>
-            <div class="job-row-val overflow-val">${escHtml(String(ovf))} min</div>
-          </div>
-        </div>` : ''}
-        <div class="job-row">
-          <div class="job-row-ico">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
-          </div>
-          <div>
-            <div class="job-row-lbl">Notes from ops</div>
-            <div class="job-row-val">${escHtml(desc)}</div>
-          </div>
-        </div>
+      <div class="jcbody">
+        <div class="jrow"><div class="jrico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div><div class="jrlbl">Location</div><div class="jrval">${escHtml(loc)}</div></div></div>
+        ${ovf!=null?`<div class="jrow"><div class="jrico" style="color:var(--err)"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg></div><div><div class="jrlbl">Time to overflow</div><div class="jrval"><span class="ovfval"><span class="ovfpulse"></span>${escHtml(String(ovf))} min</span></div></div></div>`:''}
+        <div class="jrow"><div class="jrico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><div><div class="jrlbl">Notes from ops</div><div class="jrval">${escHtml(desc)}</div></div></div>
       </div>
-      <div class="job-footer">Alert — ${escHtml(a.alert_id || String(a.id))}</div>
+      <div class="jcfoot">ALERT · ${escHtml(a.alert_id||String(a.id))}</div>
     </div>`;
   }
 
-  /* ── Inspection job card ── */
-  if (ins) {
-    const propName   = ins.property_name || ins.area_name || '—';
-    const schedDate  = ins.scheduled_date
-      ? new Date(ins.scheduled_date).toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' })
-      : '—';
-    const schedTime  = ins.scheduled_time_start || '';
-    const statusLbl  = ins.status === 'in_progress' ? 'In Progress' : 'Scheduled';
-    const statusCls  = ins.status === 'in_progress' ? 'sev-critical' : 'sev-moderate';
-    html += `
-    <div class="job-card" style="border-color:rgba(22,168,211,.25);">
-      <div class="job-card-top">
-        <span class="sev-badge ${statusCls}" style="background:rgba(22,168,211,.12);color:var(--blue);border-color:rgba(22,168,211,.25);">${escHtml(statusLbl)}</span>
-        <div class="job-hdr-info">
-          <div class="job-type">Drainage Inspection</div>
-          <div class="job-site">${escHtml(propName)}</div>
-        </div>
-        <div class="job-age">${ageStr(ins.created_at)}</div>
+  if(ins) {
+    const propName=ins.property_name||ins.area_name||'—';
+    const schedDate=ins.scheduled_date?new Date(ins.scheduled_date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'—';
+    const schedTime=ins.scheduled_time_start||'', statusLbl=ins.status==='in_progress'?'In Progress':'Scheduled';
+    html+=`<div class="jcard sc-insp">
+      <div class="jctop">
+        <span class="sevbadge" style="background:rgba(22,168,211,.12);color:var(--blue-hi);border:1px solid rgba(22,168,211,.25);">${escHtml(statusLbl)}</span>
+        <div class="jcinfo"><div class="jctype">Drainage Inspection</div><div class="jcsite">${escHtml(propName)}</div></div>
+        <div class="jcage">${ageStr(ins.created_at)}</div>
       </div>
-      <div class="job-body">
-        <div class="job-row">
-          <div class="job-row-ico">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-          </div>
-          <div>
-            <div class="job-row-lbl">Scheduled</div>
-            <div class="job-row-val">${escHtml(schedDate)}${schedTime ? ' · ' + escHtml(schedTime) : ''}</div>
-          </div>
-        </div>
-        ${ins.city || ins.state ? `
-        <div class="job-row">
-          <div class="job-row-ico">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-            </svg>
-          </div>
-          <div>
-            <div class="job-row-lbl">Location</div>
-            <div class="job-row-val">${escHtml([ins.city, ins.state].filter(Boolean).join(', '))}</div>
-          </div>
-        </div>` : ''}
-        ${ins.property_type ? `
-        <div class="job-row">
-          <div class="job-row-ico">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-            </svg>
-          </div>
-          <div>
-            <div class="job-row-lbl">Property Type</div>
-            <div class="job-row-val">${escHtml(ins.property_type)}</div>
-          </div>
-        </div>` : ''}
-        ${ins.notes ? `
-        <div class="job-row">
-          <div class="job-row-ico">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
-          </div>
-          <div>
-            <div class="job-row-lbl">Notes</div>
-            <div class="job-row-val">${escHtml(ins.notes)}</div>
-          </div>
-        </div>` : ''}
+      <div class="jcbody">
+        <div class="jrow"><div class="jrico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div><div class="jrlbl">Scheduled</div><div class="jrval">${escHtml(schedDate)}${schedTime?' · '+escHtml(schedTime):''}</div></div></div>
+        ${ins.city||ins.state?`<div class="jrow"><div class="jrico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div><div class="jrlbl">Location</div><div class="jrval">${escHtml([ins.city,ins.state].filter(Boolean).join(', '))}</div></div></div>`:''}
+        ${ins.property_type?`<div class="jrow"><div class="jrico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><div><div class="jrlbl">Property Type</div><div class="jrval">${escHtml(ins.property_type)}</div></div></div>`:''}
+        ${ins.notes?`<div class="jrow"><div class="jrico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><div><div class="jrlbl">Notes</div><div class="jrval">${escHtml(ins.notes)}</div></div></div>`:''}
       </div>
-      <div class="job-footer">Inspection — ${escHtml(ins.inspection_id || String(ins.id))}</div>
+      <div class="jcfoot">INSPECTION · ${escHtml(ins.inspection_id||String(ins.id))}</div>
     </div>`;
   }
 
-  /* ── No active job ── */
-  if (!hasJob) {
-    html += `
-    <div class="empty-card">
-      <div class="empty-ico">
-        <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" opacity=".3">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-      </div>
-      <div class="empty-ttl">No active job</div>
-      <div class="empty-sub">You have no dispatched alert or scheduled inspection right now.<br>A new job will appear here when assigned.</div>
-    </div>`;
+  if(!hasJob) {
+    html+=`<div class="emcard"><div class="emico"><svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="emtit">No active job</div><div class="emsub">No dispatched alert or scheduled inspection right now.<br>A new job will appear here when assigned.</div></div>`;
   }
 
-  /* ── Status buttons ── */
-  html += `
-  <div class="status-card">
-    <div class="sc-lbl">Update Status</div>
-    <div class="status-grid">
+  html+=`<div class="stcard"><div class="stlbl">Update Status</div><div class="stgrid">
+    <button class="abtn abenroute${ts==='en_route'?' is-cur':''}" id="btn-enroute" ${ts==='en_route'?'disabled':''}>
+      <span class="ai"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg></span>
+      <span class="al">En Route</span>
+    </button>
+    <button class="abtn abonsite${ts==='on_site'?' is-cur':''}" id="btn-onsite" ${ts==='on_site'?'disabled':''}>
+      <span class="ai"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span>
+      <span class="al">On Site</span>
+    </button>
+    <button class="abtn abcomplete" id="btn-complete" ${!hasJob?'disabled':''}>
+      <span class="ai"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span>
+      <span class="al">Job Complete</span>
+    </button>
+    <button class="abtn abreturning${ts==='returning'?' is-cur':''}" id="btn-returning" ${ts==='returning'?'disabled':''}>
+      <span class="ai"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline stroke-linecap="round" stroke-linejoin="round" points="9 22 9 12 15 12 15 22"/></svg></span>
+      <span class="al">Return to HQ</span>
+    </button>
+    <button class="abtn abbackup" id="btn-backup" ${!hasJob?'disabled':''}>
+      <span class="ai"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg></span>
+      <span class="al">Request Backup</span>
+    </button>
+  </div></div>`;
 
-      <button class="action-btn btn-enroute${ts==='en_route'?' is-current':''}"
-        id="btn-enroute" ${ts==='en_route'?'disabled':''}>
-        <span class="abtn-ico">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z"/></svg>
-        </span>
-        <span class="abtn-lbl">En Route</span>
-      </button>
+  let memberNames=[];
+  if(Array.isArray(t.members)) memberNames=t.members.map(m=>m.full_name||m.name||'').filter(Boolean);
+  else if(t.members) memberNames=t.members.split(',').map(s=>s.trim()).filter(Boolean);
 
-      <button class="action-btn btn-onsite${ts==='on_site'?' is-current':''}"
-        id="btn-onsite" ${ts==='on_site'?'disabled':''}>
-        <span class="abtn-ico">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-        </span>
-        <span class="abtn-lbl">On Site</span>
-      </button>
-
-      <button class="action-btn btn-complete"
-        id="btn-complete" ${!hasJob?'disabled':''}>
-        <span class="abtn-ico">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        </span>
-        <span class="abtn-lbl">Job Complete</span>
-      </button>
-
-      <button class="action-btn btn-returning${ts==='returning'?' is-current':''}"
-        id="btn-returning" ${ts==='returning'?'disabled':''}>
-        <span class="abtn-ico">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline stroke-linecap="round" stroke-linejoin="round" points="9 22 9 12 15 12 15 22"/></svg>
-        </span>
-        <span class="abtn-lbl">Returning to HQ</span>
-      </button>
-
-      <button class="action-btn btn-backup"
-        id="btn-backup" ${!hasJob?'disabled':''}>
-        <span class="abtn-ico">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-        </span>
-        <span class="abtn-lbl">Request Backup</span>
-      </button>
-
+  html+=`<div class="tmcard"><div class="cardlbl">Your Team</div>
+    <div class="tmrow"><span class="tmname">${escHtml(t.name)}</span><span class="tmspill ${tsClass(ts)}">${tsLabel(ts)}</span></div>
+    <div class="mlist">
+      ${memberNames.map(n=>`<div class="mrow"><div class="mav">${initials(n)}</div><div class="mname">${escHtml(n)}</div></div>`).join('')}
+      ${memberNames.length===0?'<div style="font-size:.82rem;color:var(--ink-4)">No members listed</div>':''}
     </div>
   </div>`;
 
-  /* ── Team card ── */
-  // members can be array of objects (current ops-routes) or CSV string (legacy)
-  let memberNames = [];
-  if (Array.isArray(t.members)) {
-    memberNames = t.members.map(m => m.full_name || m.name || '').filter(Boolean);
-  } else if (t.members) {
-    memberNames = t.members.split(',').map(s => s.trim()).filter(Boolean);
-  }
-
-  html += `
-  <div class="team-card">
-    <div class="card-lbl">Your Team</div>
-    <div class="team-row">
-      <span class="team-name-txt">${escHtml(t.name)}</span>
-      <span class="team-spill ${tsClass(ts)}">${tsLabel(ts)}</span>
-    </div>
-    <div class="members-list">
-      ${memberNames.map(n => `
-        <div class="member-row">
-          <div class="member-av">${initials(n)}</div>
-          <div class="member-name">${escHtml(n)}</div>
-        </div>`).join('')}
-      ${memberNames.length === 0
-        ? '<div style="font-size:.82rem;color:var(--ink-3)">No members listed</div>'
-        : ''}
-    </div>
-  </div>`;
-
-  $('content-area').innerHTML = html;
+  $('content-area').innerHTML=html;
   bindButtons();
 }
 
-
-/* ─────────────────────────────────────────
-   STATUS BUTTON WIRING
-───────────────────────────────────────── */
 function bindButtons() {
-  async function setStatus(status, label) {
-    if (!S.team) return;
-    try {
-      const d = await api('PUT', `/teams/${S.team.team_id}/status`, { status });
-      if (!d.success) throw new Error(d.error || 'Failed');
-      S.team.status = status;
-      toast(`Status: ${label}`, 'ok');
-      await loadData();
-    } catch (e) { toast(e.message || 'Update failed', 'err'); }
+  async function setStatus(status,label) {
+    if(!S.team) return;
+    try { const d=await api('PUT',`/teams/${S.team.team_id}/status`,{status}); if(!d.success) throw new Error(d.error||'Failed'); S.team.status=status; toast(`Status: ${label}`,'ok'); await loadData(); }
+    catch(e){toast(e.message||'Update failed','err');}
   }
-
-  const b = id => $(id);
-  if (b('btn-enroute'))   b('btn-enroute').onclick   = () => setStatus('en_route', 'En Route');
-  if (b('btn-onsite'))    b('btn-onsite').onclick     = () => setStatus('on_site',  'On Site');
-  if (b('btn-returning')) b('btn-returning').onclick  = () => setStatus('returning','Returning to HQ');
-
-  if (b('btn-complete')) b('btn-complete').onclick = () => {
-    $('complete-notes').value = '';
-    $('complete-msg').className = 'sheet-msg';
-    $('sheet-complete').classList.add('show');
-  };
-
-  if (b('btn-backup')) b('btn-backup').onclick = () => {
-    $('backup-notes').value = '';
-    $('backup-msg').className = 'sheet-msg';
-    $('sheet-backup').classList.add('show');
-  };
+  const b=id=>$(id);
+  if(b('btn-enroute'))   b('btn-enroute').onclick  =()=>setStatus('en_route','En Route');
+  if(b('btn-onsite'))    b('btn-onsite').onclick    =()=>setStatus('on_site','On Site');
+  if(b('btn-returning')) b('btn-returning').onclick =()=>setStatus('returning','Returning to HQ');
+  if(b('btn-complete'))  b('btn-complete').onclick  =()=>{$('complete-notes').value='';$('complete-msg').className='shmsg';$('sheet-complete').classList.add('show');};
+  if(b('btn-backup'))    b('btn-backup').onclick    =()=>{$('backup-notes').value='';$('backup-msg').className='shmsg';$('sheet-backup').classList.add('show');};
 }
 
-
-/* ─────────────────────────────────────────
-   SHEET — JOB COMPLETE
-───────────────────────────────────────── */
-on('complete-cancel', 'click', () => $('sheet-complete').classList.remove('show'));
-on('sheet-complete',  'click', e => {
-  if (e.target === $('sheet-complete')) $('sheet-complete').classList.remove('show');
-});
-
-on('complete-confirm', 'click', async () => {
-  const notes = $('complete-notes').value.trim();
-  const btn   = $('complete-confirm');
-  const msg   = $('complete-msg');
-  const a     = S.alert;
-  const ins   = S.inspection;
-  const t     = S.team;
-  if (!a && !ins) return;
-
-  btn.disabled    = true;
-  btn.textContent = 'Submitting…';
-  msg.className   = 'sheet-msg';
-
+/* SHEET — COMPLETE */
+on('complete-cancel','click',()=>$('sheet-complete').classList.remove('show'));
+on('sheet-complete','click',e=>{if(e.target===$('sheet-complete'))$('sheet-complete').classList.remove('show');});
+on('complete-confirm','click',async()=>{
+  const notes=$('complete-notes').value.trim(),btn=$('complete-confirm'),msg=$('complete-msg'),a=S.alert,ins=S.inspection,t=S.team;
+  if(!a&&!ins) return;
+  btn.disabled=true;btn.textContent='Submitting…';msg.className='shmsg';
   try {
-    if (a) {
-      // Resolve the alert
-      const r1 = await api('PUT', `/alerts/${a.alert_id || a.id}`, {
-        status: 'resolved',
-        ...(notes ? { notes } : {})
-      });
-      if (!r1.success) throw new Error(r1.error || 'Failed to resolve alert');
-    }
-
-    if (ins) {
-      // Mark inspection as completed
-      const r1 = await api('PUT', `/inspections/${ins.inspection_id || ins.id}`, {
-        status: 'completed',
-        ...(notes ? { findings: notes } : {})
-      });
-      if (!r1.success) throw new Error(r1.error || 'Failed to complete inspection');
-    }
-
-    const r2 = await api('PUT', `/teams/${t.team_id}/status`, { status: 'returning' });
-    if (!r2.success) throw new Error(r2.error || 'Failed to update team status');
-
-    msg.className   = 'sheet-msg success';
-    msg.textContent = 'Job complete. Team set to Returning to HQ.';
-    btn.textContent = '✓ Done';
-
-    setTimeout(() => {
-      $('sheet-complete').classList.remove('show');
-      btn.disabled    = false;
-      btn.textContent = 'Confirm Complete';
-      S.alert       = null;
-      S.team.status = 'returning';
-      loadData();
-    }, 1200);
-
-  } catch (e) {
-    msg.className   = 'sheet-msg error';
-    msg.textContent = e.message || 'Something went wrong.';
-    btn.disabled    = false;
-    btn.textContent = 'Confirm Complete';
-  }
+    if(a){const r1=await api('PUT',`/alerts/${a.alert_id||a.id}`,{status:'resolved',...(notes?{notes}:{})});if(!r1.success)throw new Error(r1.error||'Failed to resolve alert');}
+    if(ins){const r1=await api('PUT',`/inspections/${ins.inspection_id||ins.id}`,{status:'completed',...(notes?{findings:notes}:{})});if(!r1.success)throw new Error(r1.error||'Failed to complete inspection');}
+    const r2=await api('PUT',`/teams/${t.team_id}/status`,{status:'returning'});if(!r2.success)throw new Error(r2.error||'Failed to update team status');
+    msg.className='shmsg success';msg.textContent='Job complete. Team set to Returning to HQ.';btn.textContent='✓ Done';
+    setTimeout(()=>{$('sheet-complete').classList.remove('show');btn.disabled=false;btn.textContent='Confirm Complete';S.alert=null;S.team.status='returning';loadData();},1200);
+  } catch(e){msg.className='shmsg error';msg.textContent=e.message||'Something went wrong.';btn.disabled=false;btn.textContent='Confirm Complete';}
 });
 
-
-/* ─────────────────────────────────────────
-   SHEET — BACKUP
-───────────────────────────────────────── */
-on('backup-cancel', 'click', () => $('sheet-backup').classList.remove('show'));
-on('sheet-backup',  'click', e => {
-  if (e.target === $('sheet-backup')) $('sheet-backup').classList.remove('show');
-});
-
-on('backup-confirm', 'click', async () => {
-  const notes = $('backup-notes').value.trim();
-  if (!notes) {
-    $('backup-msg').className   = 'sheet-msg error';
-    $('backup-msg').textContent = 'Please describe the situation before sending.';
-    return;
-  }
-  const btn = $('backup-confirm');
-  const msg = $('backup-msg');
-  const a   = S.alert;
-  if (!a) return;
-
-  btn.disabled    = true;
-  btn.textContent = 'Sending…';
-  msg.className   = 'sheet-msg';
-
+/* SHEET — BACKUP */
+on('backup-cancel','click',()=>$('sheet-backup').classList.remove('show'));
+on('sheet-backup','click',e=>{if(e.target===$('sheet-backup'))$('sheet-backup').classList.remove('show');});
+on('backup-confirm','click',async()=>{
+  const notes=$('backup-notes').value.trim();
+  if(!notes){$('backup-msg').className='shmsg error';$('backup-msg').textContent='Please describe the situation before sending.';return;}
+  const btn=$('backup-confirm'),msg=$('backup-msg'),a=S.alert;
+  if(!a) return;
+  btn.disabled=true;btn.textContent='Sending…';msg.className='shmsg';
   try {
-    const a = S.alert;
-    if (a) {
-      const d = await api('PUT', `/alerts/${a.alert_id || a.id}`, {
-        notes: `BACKUP REQUESTED: ${notes}`
-      });
-      if (!d.success) throw new Error(d.error || 'Failed');
-    } else {
-      // No alert — just flag team status so ops sees it
-      const d = await api('PUT', `/teams/${S.team.team_id}/status`, {
-        notes: `BACKUP REQUESTED: ${notes}`
-      });
-      if (!d.success) throw new Error(d.error || 'Failed');
-    }
-
-    msg.className   = 'sheet-msg success';
-    msg.textContent = 'Backup request sent to Ops.';
-    btn.textContent = '✓ Sent';
-
-    setTimeout(() => {
-      $('sheet-backup').classList.remove('show');
-      btn.disabled    = false;
-      btn.textContent = 'Send Backup Request';
-    }, 1500);
-
-  } catch (e) {
-    msg.className   = 'sheet-msg error';
-    msg.textContent = e.message || 'Failed to send. Try again.';
-    btn.disabled    = false;
-    btn.textContent = 'Send Backup Request';
-  }
+    const a=S.alert;
+    if(a){const d=await api('PUT',`/alerts/${a.alert_id||a.id}`,{notes:`BACKUP REQUESTED: ${notes}`});if(!d.success)throw new Error(d.error||'Failed');}
+    else {const d=await api('PUT',`/teams/${S.team.team_id}/status`,{notes:`BACKUP REQUESTED: ${notes}`});if(!d.success)throw new Error(d.error||'Failed');}
+    msg.className='shmsg success';msg.textContent='Backup request sent to Ops.';btn.textContent='✓ Sent';
+    setTimeout(()=>{$('sheet-backup').classList.remove('show');btn.disabled=false;btn.textContent='Send Backup Request';},1500);
+  } catch(e){msg.className='shmsg error';msg.textContent=e.message||'Failed to send. Try again.';btn.disabled=false;btn.textContent='Send Backup Request';}
 });
 
-
-/* ─────────────────────────────────────────
-   WEBSOCKET
-───────────────────────────────────────── */
-function wsStatus(s) {
-  const dot = $('ws-dot');
-  const lbl = $('ws-lbl');
-  dot.className = `ws-dot ${s}`;
-  lbl.textContent = s === 'ok' ? 'Live' : s === 'err' ? 'Off' : 'WS';
-}
-
+/* WS */
+function wsStatus(s){const dot=$('ws-dot'),lbl=$('ws-lbl');dot.className=`wsdot ${s}`;lbl.textContent=s==='ok'?'Live':s==='err'?'Off':'WS';}
 function initWS() {
-  if (typeof io === 'undefined') { wsStatus('err'); return; }
+  if(typeof io==='undefined'){wsStatus('err');return;}
   wsStatus('con');
-
-  const socket = io(CONFIG.WS, {
-    auth:       { token: S.token },
-    transports: ['websocket', 'polling']
-  });
-  S.socket = socket;
-
-  socket.on('connect', () => {
-    wsStatus('ok');
-    socket.emit('subscribe', 'teams');
-    socket.emit('subscribe', 'alerts');
-  });
-
-  socket.on('disconnect',    () => wsStatus('err'));
-  socket.on('connect_error', () => wsStatus('err'));
-
-  // Team status changed from ops center
-  // server.js: global.broadcastTeamUpdate → io.to('teams').emit('team:status', team)
-  socket.on('team:status', data => {
-    if (S.team && data.team_id === S.team.team_id) {
-      S.team.status = data.status;
-      loadData();
-    }
-  });
-
-  // New alert dispatched
-  // server.js: global.broadcastAlert → io.to('alerts').emit('alert:new', alert)
-  socket.on('alert:new', data => {
-    if (!S.team) return;
-    if (data.assigned_team === S.team.name) {
-      $('njb-text').textContent =
-        `New job dispatched: ${data.alert_type || 'Drainage Alert'}`;
-      $('new-job-banner').classList.add('show');
-    }
-  });
-
-  // Alert resolved
-  socket.on('alert:resolved', () => loadData());
+  const socket=io(CONFIG.WS,{auth:{token:S.token},transports:['websocket','polling']});
+  S.socket=socket;
+  socket.on('connect',()=>{wsStatus('ok');socket.emit('subscribe','teams');socket.emit('subscribe','alerts');});
+  socket.on('disconnect',()=>wsStatus('err'));
+  socket.on('connect_error',()=>wsStatus('err'));
+  socket.on('team:status',data=>{if(S.team&&data.team_id===S.team.team_id){S.team.status=data.status;loadData();}});
+  socket.on('alert:new',data=>{if(!S.team)return;if(data.assigned_team===S.team.name){$('njb-text').textContent=`New job dispatched: ${data.alert_type||'Drainage Alert'}`;$('new-job-banner').classList.add('show');}});
+  socket.on('alert:resolved',()=>loadData());
 }
+on('njb-refresh','click',()=>{$('new-job-banner').classList.remove('show');loadData();});
 
-on('njb-refresh', 'click', () => {
-  $('new-job-banner').classList.remove('show');
-  loadData();
-});
+/* PUSH */
+function checkPush(){if(!('Notification'in window)||!('serviceWorker'in navigator))return;if(Notification.permission==='default')$('push-banner').classList.add('show');}
+on('push-allow','click',async()=>{const perm=await Notification.requestPermission();$('push-banner').classList.remove('show');if(perm==='granted')await subscribePush();});
+on('push-dismiss','click',()=>$('push-banner').classList.remove('show'));
+async function subscribePush(){if(!S.swReg||!CONFIG.VAPID_KEY){console.warn('Push: SW not ready or VAPID_KEY empty');return;}try{const sub=await S.swReg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8Array(CONFIG.VAPID_KEY)});await api('POST','/push/subscribe',{subscription:sub.toJSON(),user_id:S.user?.id});console.log('✅ Push subscribed');}catch(e){console.warn('Push subscribe failed:',e);}}
 
+/* SW */
+async function registerSW(){if(!('serviceWorker'in navigator))return;try{S.swReg=await navigator.serviceWorker.register('/field-sw.js');console.log('✅ SW registered');}catch(e){console.warn('SW registration failed:',e);}}
 
-/* ─────────────────────────────────────────
-   PUSH NOTIFICATIONS
-───────────────────────────────────────── */
-function checkPush() {
-  if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
-  if (Notification.permission === 'default') {
-    $('push-banner').classList.add('show');
-  }
-}
-
-on('push-allow', 'click', async () => {
-  const perm = await Notification.requestPermission();
-  $('push-banner').classList.remove('show');
-  if (perm === 'granted') await subscribePush();
-});
-
-on('push-dismiss', 'click', () => $('push-banner').classList.remove('show'));
-
-async function subscribePush() {
-  if (!S.swReg || !CONFIG.VAPID_KEY) {
-    console.warn('Push: SW not ready or VAPID_KEY empty');
-    return;
-  }
-  try {
-    const sub = await S.swReg.pushManager.subscribe({
-      userVisibleOnly:      true,
-      applicationServerKey: urlB64ToUint8Array(CONFIG.VAPID_KEY)
-    });
-    // POST /push/subscribe — see push-route-snippet.js for backend route
-    await api('POST', '/push/subscribe', {
-      subscription: sub.toJSON(),
-      user_id:      S.user?.id
-    });
-    console.log('✅ Push subscribed');
-  } catch (e) {
-    console.warn('Push subscribe failed:', e);
-  }
-}
-
-
-/* ─────────────────────────────────────────
-   SERVICE WORKER
-───────────────────────────────────────── */
-async function registerSW() {
-  if (!('serviceWorker' in navigator)) return;
-  try {
-    S.swReg = await navigator.serviceWorker.register('/field-sw.js');
-    console.log('✅ SW registered');
-  } catch (e) {
-    console.warn('SW registration failed:', e);
-  }
-}
-
-
-/* ─────────────────────────────────────────
-   LOGOUT
-───────────────────────────────────────── */
-on('btn-logout', 'click', () => {
-  if (S.socket) S.socket.disconnect();
+/* LOGOUT */
+on('btn-logout','click',()=>{
+  if(S.socket)S.socket.disconnect();
   clearSession();
-  S = { token:null, user:null, team:null, alert:null, socket:null, swReg:null };
+  S={token:null,user:null,team:null,alert:null,socket:null,swReg:null};
   showScreen('screen-login');
-  $('l-btn').disabled = false;
-  $('l-btn').querySelector('.lf-btn-text').textContent = 'Sign in';
-  $('l-msg').className = 'lf-msg';
-  $('l-email').value = '';
-  $('l-pass').value  = '';
+  $('l-btn').disabled=false;$('l-btn').querySelector('.lfsub-txt').textContent='Sign in';
+  $('l-msg').className='lfmsg';$('l-email').value='';$('l-pass').value='';
 });
 
-
-/* ─────────────────────────────────────────
-   BOOT
-───────────────────────────────────────── */
-(async () => {
-  if (await checkSession()) {
-    await initDashboard();
-  } else {
-    showScreen('screen-login');
-  }
-})();
+/* BOOT */
+(async()=>{if(await checkSession()){await initDashboard();}else{showScreen('screen-login');}})();
 </script>
 </body>
 </html>
