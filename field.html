@@ -657,9 +657,69 @@
     </button>
 
     <div class="lf-msg" id="l-msg"></div>
+
+    <div style="text-align:center;margin-top:18px;">
+      <button id="forgot-link" style="background:none;border:none;color:var(--ink-3);font-size:.78rem;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:3px;transition:color .2s;">
+        Forgot your password?
+      </button>
+    </div>
   </div>
 
 </div><!-- /screen-login -->
+
+
+<!-- ══════════════════════════════════════
+     SCREEN: FORGOT PASSWORD
+══════════════════════════════════════ -->
+<div id="screen-forgot" class="screen" style="background:var(--navy-deep);overflow-y:auto;-webkit-overflow-scrolling:touch;">
+
+  <!-- Same hero as login but smaller -->
+  <div style="flex-shrink:0;position:relative;overflow:hidden;padding:40px 32px 28px;display:flex;flex-direction:column;align-items:center;gap:10px;">
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse 130% 75% at 50% 115%,rgba(13,127,160,0.5) 0%,transparent 52%);pointer-events:none;"></div>
+    <svg style="width:64px;height:64px;position:relative;z-index:2;" viewBox="160 60 360 260" xmlns="http://www.w3.org/2000/svg">
+      <defs><clipPath id="fmc"><circle cx="340" cy="182" r="108"/></clipPath></defs>
+      <circle cx="340" cy="182" r="108" fill="#0a2a3d"/>
+      <g clip-path="url(#fmc)">
+        <rect x="232" y="214" width="216" height="90" fill="#0d7fa0"/>
+        <path d="M232 214 Q254 200 276 214 Q298 228 320 214 Q342 200 364 214 Q386 228 408 214 Q430 200 448 210 L448 216 Q430 202 408 216 Q386 230 364 216 Q342 202 320 216 Q298 230 276 216 Q254 202 232 216 Z" fill="#16a8d3"/>
+      </g>
+      <path d="M340 110 C358 132 374 148 374 166 C374 186 358 202 340 202 C322 202 306 186 306 166 C306 148 322 132 340 110 Z" fill="#16a8d3"/>
+      <path d="M340 128 C352 144 361 156 361 166 C361 180 352 191 340 191 C328 191 319 180 319 166 C319 156 328 144 340 128 Z" fill="#0d7fa0"/>
+      <circle cx="340" cy="110" r="5" fill="#f5a623"/>
+    </svg>
+    <div style="position:relative;z-index:2;text-align:center;">
+      <div style="font-family:var(--ff-d);font-size:1rem;font-weight:700;color:rgba(255,255,255,.92);">FlowGuard</div>
+      <div style="font-size:.57rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--blue);margin-top:4px;">Field Operations</div>
+    </div>
+  </div>
+
+  <div class="login-panel">
+    <div class="login-panel-bar"></div>
+    <h1 class="lp-title">Reset Password</h1>
+    <p class="lp-sub">Enter your email and we'll send you a reset link</p>
+
+    <div class="lf-field">
+      <label class="lf-label" for="fp-email">Email Address</label>
+      <input type="email" id="fp-email" class="lf-input"
+        placeholder="you@flowguard.ng"
+        autocomplete="email" autocapitalize="none" inputmode="email">
+    </div>
+
+    <button class="lf-submit" id="fp-btn">
+      <span class="lf-btn-text">Send Reset Link</span>
+    </button>
+
+    <div class="lf-msg" id="fp-msg"></div>
+
+    <div style="text-align:center;margin-top:18px;">
+      <button id="back-to-login" style="background:none;border:none;color:var(--ink-3);font-size:.78rem;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:3px;transition:color .2s;display:inline-flex;align-items:center;gap:5px;">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        Back to Sign in
+      </button>
+    </div>
+  </div>
+
+</div><!-- /screen-forgot -->
 
 
 <!-- ══════════════════════════════════════
@@ -780,7 +840,7 @@ const CONFIG = {
   API:      'https://api.flowguard.ng/api/v1',
   WS:       'https://api.flowguard.ng',
   // Paste VAPID public key here after:  npx web-push generate-vapid-keys
-  VAPID_KEY: 'BJnd1da2ZlKlUrLftoLnaWnwNpXgHgDpqch97rM3jpbPuCgRT-pwbQQYQxGjLK2Z7w1kZbLcOQNdIDA3gUwBbNQ',
+  VAPID_KEY: '',
   TOKEN_KEY: 'fg_token'
 };
 
@@ -790,7 +850,7 @@ const CONFIG = {
 let S = {
   token:  null,
   user:   null,   // { id, email, fullName, role }
-  team:   null,   // from GET /teams — { team_id, name, status, members (CSV string) }
+  team:   null,   // from GET /teams — members is array of objects [{user_id, full_name,...}]
   alert:  null,   // active dispatched alert for this team
   socket: null,
   swReg:  null
@@ -950,6 +1010,63 @@ async function doLogin() {
 on('l-btn',  'click', doLogin);
 on('l-pass', 'keydown', e => { if (e.key === 'Enter') doLogin(); });
 
+/* ── Forgot password navigation ── */
+on('forgot-link',   'click', () => showScreen('screen-forgot'));
+on('back-to-login', 'click', () => {
+  showScreen('screen-login');
+  $('fp-msg').className = 'lf-msg';
+  $('fp-email').value = '';
+  $('fp-btn').disabled = false;
+  $('fp-btn').querySelector('.lf-btn-text').textContent = 'Send Reset Link';
+});
+
+/* ── Forgot password submit ── */
+async function doForgotPassword() {
+  const email = $('fp-email').value.trim();
+  if (!email) {
+    $('fp-msg').className = 'lf-msg error';
+    $('fp-msg').textContent = 'Please enter your email address.';
+    return;
+  }
+
+  const btn  = $('fp-btn');
+  const btxt = btn.querySelector('.lf-btn-text');
+  btn.disabled = true;
+  btxt.innerHTML = '<span class="spinner"></span>Sending…';
+  $('fp-msg').className = 'lf-msg';
+
+  try {
+    const d = await fetch(`${CONFIG.API}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    }).then(r => r.json());
+
+    // API always returns success to prevent email enumeration
+    $('fp-msg').className = 'lf-msg success';
+    $('fp-msg').textContent = 'If an account exists for this email, a reset link has been sent. Check your inbox.';
+    btxt.textContent = '✓ Email sent';
+
+    // Auto-return to login after 4 seconds
+    setTimeout(() => {
+      showScreen('screen-login');
+      $('fp-msg').className = 'lf-msg';
+      $('fp-email').value = '';
+      btn.disabled = false;
+      btxt.textContent = 'Send Reset Link';
+    }, 4000);
+
+  } catch {
+    $('fp-msg').className = 'lf-msg error';
+    $('fp-msg').textContent = 'Connection failed. Check your network and retry.';
+    btn.disabled = false;
+    btxt.textContent = 'Send Reset Link';
+  }
+}
+
+on('fp-btn',    'click', doForgotPassword);
+on('fp-email',  'keydown', e => { if (e.key === 'Enter') doForgotPassword(); });
+
 
 /* ─────────────────────────────────────────
    SESSION CHECK (page load)
@@ -991,14 +1108,27 @@ async function initDashboard() {
 async function loadData() {
   renderLoading();
   try {
-    // 1. Find team via GET /teams — match full_name in members string aggregate
+    // 1. Find team via GET /teams
+    //    ops-routes now returns members as array of objects [{user_id, full_name,...}]
+    //    Older versions returned a CSV string — handle both shapes defensively.
     const tRes = await api('GET', '/teams');
     if (!tRes.success) throw new Error(tRes.error || 'Failed to load teams');
 
     const myName = (S.user?.fullName || '').toLowerCase();
-    const myTeam = tRes.data.find(t =>
-      t.members && myName && t.members.toLowerCase().includes(myName)
-    );
+    const myId   = S.user?.id;
+
+    const myTeam = tRes.data.find(t => {
+      if (!t.members) return false;
+      // Array of objects (current ops-routes)
+      if (Array.isArray(t.members)) {
+        return t.members.some(m =>
+          (myId   && (m.user_id === myId || String(m.user_id) === String(myId))) ||
+          (myName && (m.full_name || '').toLowerCase().includes(myName))
+        );
+      }
+      // CSV string (legacy fallback)
+      return myName && t.members.toLowerCase().includes(myName);
+    });
     if (!myTeam) { renderNoTeam(); return; }
 
     // 2. Hydrate full team detail
@@ -1167,8 +1297,13 @@ function renderDashboard() {
   </div>`;
 
   /* ── Team card ── */
-  const memberNames = (t.members || '')
-    .split(',').map(s => s.trim()).filter(Boolean);
+  // members can be array of objects (current ops-routes) or CSV string (legacy)
+  let memberNames = [];
+  if (Array.isArray(t.members)) {
+    memberNames = t.members.map(m => m.full_name || m.name || '').filter(Boolean);
+  } else if (t.members) {
+    memberNames = t.members.split(',').map(s => s.trim()).filter(Boolean);
+  }
 
   html += `
   <div class="team-card">
