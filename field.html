@@ -15,506 +15,826 @@
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <style>
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
     :root {
-      --navy:       #0a2a3d;
-      --navy-deep:  #061824;
-      --navy-mid:   #0d3a54;
-      --navy-card:  #0c2e44;
-      --navy-up:    #0f3550;
-      --blue:       #16a8d3;
-      --blue-hi:    #1cb8e8;
-      --blue-dim:   rgba(22,168,211,0.12);
-      --amber:      #f5a623;
-      --amber-dim:  rgba(245,166,35,0.13);
-      --teal:       #0d7fa0;
-      --ok:         #22c55e;
-      --ok-dim:     rgba(34,197,94,0.13);
-      --warn:       #f59e0b;
-      --warn-dim:   rgba(245,158,11,0.13);
-      --caut:       #f97316;
-      --caut-dim:   rgba(249,115,22,0.13);
-      --err:        #ef4444;
-      --err-dim:    rgba(239,68,68,0.13);
-      --ink:        rgba(255,255,255,0.93);
-      --ink-2:      rgba(255,255,255,0.65);
-      --ink-3:      rgba(255,255,255,0.38);
-      --ink-4:      rgba(255,255,255,0.20);
-      --border:     rgba(255,255,255,0.07);
-      --border-hi:  rgba(22,168,211,0.25);
-      --r: 12px; --rs: 8px; --rl: 18px;
-      --ff-b: 'Figtree', system-ui, sans-serif;
-      --ff-m: 'JetBrains Mono', monospace;
+      --navy:      #0a2a3d;
+      --deep:      #061824;
+      --mid:       #0d3a54;
+      --raised:    #0f3d5c;
+      --blue:      #16a8d3;
+      --blue-hi:   #3dbfe8;
+      --teal:      #0d7fa0;
+      --amber:     #f5a623;
+      --ok:        #22c55e;
+      --warn:      #eab308;
+      --orange:    #f97316;
+      --red:       #ef4444;
+      --ink:       #ffffff;
+      --ink-2:     rgba(255,255,255,.72);
+      --ink-3:     rgba(255,255,255,.42);
+      --ink-4:     rgba(255,255,255,.22);
+      --glass:     rgba(255,255,255,.06);
+      --glass-b:   rgba(255,255,255,.10);
+      --ff:        'Figtree', system-ui, sans-serif;
+      --mono:      'JetBrains Mono', monospace;
     }
 
-    html, body { height:100%; overflow:hidden; font-family:var(--ff-b); background:var(--navy-deep); color:var(--ink); font-size:15px; }
-    button { font-family:var(--ff-b); cursor:pointer; border:none; background:none; }
+    html, body { height:100%; overflow:hidden; font-family:var(--ff); background:var(--deep); color:var(--ink); font-size:15px; }
+    button { font-family:var(--ff); cursor:pointer; border:none; background:none; }
+    input, textarea { font-family:var(--ff); }
 
     .screen { display:none; height:100%; flex-direction:column; }
     .screen.active { display:flex; }
 
-    /* ══ LOGIN ══ */
-    #screen-login { background:var(--navy-deep); overflow-y:auto; -webkit-overflow-scrolling:touch; }
+    /* ═══════════════════════════════
+       LOGIN
+    ═══════════════════════════════ */
+    #screen-login { background:var(--deep); overflow-y:auto; -webkit-overflow-scrolling:touch; }
 
-    .login-hero {
-      flex-shrink:0; position:relative; overflow:hidden;
-      padding:60px 32px 44px;
-      display:flex; flex-direction:column; align-items:center; gap:16px;
+    .login-wrap {
+      min-height:100%;
+      display:flex; flex-direction:column;
     }
-    .lh-bg {
+
+    /* Hero — full bleed dark with brand mark centred */
+    .hero {
+      flex-shrink:0;
+      position:relative; overflow:hidden;
+      padding:56px 0 52px;
+      display:flex; flex-direction:column; align-items:center; gap:0;
+    }
+    /* Glow pool */
+    .hero::before {
+      content:'';
       position:absolute; inset:0;
-      background:
-        radial-gradient(ellipse 120% 80% at 50% 120%, rgba(13,127,160,0.65) 0%, transparent 55%),
-        radial-gradient(ellipse 60% 50% at 80% -10%, rgba(22,168,211,0.10) 0%, transparent 50%);
-      animation:heroBreathe 9s ease-in-out infinite alternate;
+      background: radial-gradient(ellipse 100% 90% at 50% 110%, rgba(13,127,160,.70) 0%, transparent 60%);
+      animation: poolBreath 8s ease-in-out infinite alternate;
     }
-    @keyframes heroBreathe { 0%{transform:scale(1);} 100%{transform:scale(1.06) translateY(-8px);} }
-    .lh-grid {
-      position:absolute; inset:0; pointer-events:none;
-      background-image: linear-gradient(rgba(22,168,211,.04) 1px,transparent 1px), linear-gradient(90deg,rgba(22,168,211,.04) 1px,transparent 1px);
-      background-size:40px 40px;
-    }
-    .lh-scan { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
-    .lh-scan::after {
-      content:''; position:absolute; left:-100%; top:0; width:40%; height:100%;
-      background:linear-gradient(90deg,transparent,rgba(22,168,211,.07),transparent);
-      animation:scanMove 7s ease-in-out infinite;
-    }
-    @keyframes scanMove { 0%{left:-40%;} 100%{left:140%;} }
+    @keyframes poolBreath { 0%{opacity:.8;} 100%{opacity:1; transform:scaleY(1.08);} }
 
-    .lmw { position:relative; z-index:2; width:108px; height:108px; }
-    .lmr {
+    /* Hexagonal grid */
+    .hero-hex {
+      position:absolute; inset:0; pointer-events:none; overflow:hidden;
+    }
+    .hero-hex svg { width:100%; height:100%; opacity:.07; }
+
+    /* Scan sweep */
+    .hero::after {
+      content:'';
+      position:absolute; top:0; left:-60%; width:40%; height:100%;
+      background:linear-gradient(90deg, transparent, rgba(22,168,211,.08), transparent);
+      animation: sweep 6s ease-in-out infinite;
+    }
+    @keyframes sweep { 0%{left:-60%;} 100%{left:160%;} }
+
+    .hero-mark {
+      position:relative; z-index:2;
+      width:100px; height:100px;
+      margin-bottom:20px;
+    }
+    .ring {
       position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
       border-radius:50%; border:1px solid rgba(22,168,211,.3);
     }
-    .lmr-1 { animation:ringOut 4.2s .2s ease-out infinite; }
-    .lmr-2 { animation:ringOut 4.2s 2s ease-out infinite; }
-    @keyframes ringOut { 0%{width:108px;height:108px;opacity:.5;} 100%{width:228px;height:228px;opacity:0;} }
-    .lm { width:108px; height:108px; position:relative; z-index:2; filter:drop-shadow(0 0 18px rgba(22,168,211,.32)); }
-    .ab { animation:ambBr 2.8s ease-in-out infinite; }
-    @keyframes ambBr { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+    .ring-1 { animation:expand 4s .3s ease-out infinite; }
+    .ring-2 { animation:expand 4s 2s ease-out infinite; }
+    @keyframes expand { 0%{width:100px;height:100px;opacity:.55;} 100%{width:220px;height:220px;opacity:0;} }
+    .mark-svg { width:100px; height:100px; position:relative; z-index:2; filter:drop-shadow(0 0 20px rgba(22,168,211,.4)); }
+    .ab { animation:abreathe 2.8s ease-in-out infinite; }
+    @keyframes abreathe { 0%,100%{opacity:1;} 50%{opacity:.3;} }
 
-    .lbrand { position:relative; z-index:2; text-align:center; }
-    .lbrand .wm { font-size:1.18rem; font-weight:800; color:rgba(255,255,255,.96); display:block; letter-spacing:.08em; text-transform:uppercase; }
-    .lbrand .tg { font-size:.57rem; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:var(--blue); display:block; margin-top:6px; opacity:.82; }
-
-    .lpanel {
-      flex:1; background:rgba(255,255,255,.03); border-radius:24px 24px 0 0;
-      border-top:1px solid rgba(255,255,255,.08);
-      padding:0 24px calc(40px + env(safe-area-inset-bottom,0px));
-      backdrop-filter:blur(20px);
+    .hero-label {
+      position:relative; z-index:2;
+      text-align:center;
     }
-    .lpbar { height:3px; background:linear-gradient(90deg,var(--teal),var(--blue),var(--blue-hi)); border-radius:24px 24px 0 0; margin-bottom:30px; }
-    .lptitle { font-size:1.5rem; font-weight:800; color:var(--ink); letter-spacing:-.03em; margin-bottom:4px; }
-    .lpsub { font-size:.8rem; color:var(--ink-3); margin-bottom:28px; line-height:1.55; }
+    .hero-name {
+      display:block;
+      font-size:1.6rem; font-weight:900;
+      letter-spacing:.12em; text-transform:uppercase;
+      color:#fff;
+      text-shadow: 0 0 40px rgba(22,168,211,.35);
+    }
+    .hero-tag {
+      display:block; margin-top:8px;
+      font-family:var(--mono); font-size:.62rem; font-weight:600;
+      letter-spacing:.22em; text-transform:uppercase;
+      color:var(--blue); opacity:.85;
+    }
 
-    .lff { margin-bottom:16px; }
-    .lflbl { display:block; font-size:.62rem; font-weight:700; letter-spacing:1.8px; text-transform:uppercase; color:var(--ink-3); margin-bottom:8px; }
-    .lfinp {
+    /* Form card */
+    .login-card {
+      flex:1;
+      background:var(--navy);
+      border-radius:28px 28px 0 0;
+      border-top:1px solid rgba(255,255,255,.09);
+      padding:0 22px calc(env(safe-area-inset-bottom,0px) + 36px);
+      position:relative;
+    }
+    /* gradient rule at top of card */
+    .login-card::before {
+      content:'';
+      position:absolute; top:0; left:0; right:0; height:2px;
+      background:linear-gradient(90deg, transparent 0%, var(--teal) 20%, var(--blue) 50%, var(--blue-hi) 80%, transparent 100%);
+      border-radius:28px 28px 0 0;
+    }
+
+    /* pill handle */
+    .card-pull { padding:14px 0 24px; display:flex; justify-content:center; }
+    .card-pill { width:36px; height:4px; border-radius:2px; background:rgba(255,255,255,.15); }
+
+    .form-heading {
+      margin-bottom:24px;
+    }
+    .form-title { font-size:1.7rem; font-weight:900; letter-spacing:-.04em; line-height:1; color:var(--ink); }
+    .form-sub { font-size:.8rem; color:var(--ink-3); margin-top:5px; }
+
+    .field { margin-bottom:14px; }
+    .field-label {
+      display:block; font-family:var(--mono);
+      font-size:.6rem; font-weight:600;
+      letter-spacing:.18em; text-transform:uppercase;
+      color:var(--ink-3); margin-bottom:9px;
+    }
+    .field-input {
       width:100%; padding:15px 16px;
-      background:rgba(255,255,255,.05); border:1.5px solid rgba(255,255,255,.10);
-      border-radius:var(--r); font-family:var(--ff-b); font-size:.96rem; font-weight:500;
-      color:var(--ink); outline:none; -webkit-appearance:none;
+      background:rgba(255,255,255,.05);
+      border:1.5px solid rgba(255,255,255,.09);
+      border-radius:14px;
+      font-size:.97rem; font-weight:500; color:var(--ink);
+      outline:none; -webkit-appearance:none;
       transition:border-color .2s, box-shadow .2s, background .2s;
     }
-    .lfinp:focus { border-color:var(--blue); background:rgba(22,168,211,.06); box-shadow:0 0 0 3px rgba(22,168,211,.14); }
-    .lfinp::placeholder { color:var(--ink-4); font-weight:400; }
-
-    .lfsub {
-      width:100%; padding:17px 24px; margin-top:8px;
-      background:linear-gradient(135deg,var(--blue),var(--teal)); border-radius:14px;
-      color:white; font-size:.95rem; font-weight:800; letter-spacing:.5px; text-transform:uppercase;
-      min-height:56px; position:relative; overflow:hidden;
-      transition:transform .15s, box-shadow .2s, opacity .2s;
-      box-shadow:0 4px 20px rgba(22,168,211,.35), 0 2px 6px rgba(22,168,211,.20);
+    .field-input:focus {
+      border-color:var(--blue);
+      background:rgba(22,168,211,.07);
+      box-shadow:0 0 0 3px rgba(22,168,211,.15);
     }
-    .lfsub::after {
-      content:''; position:absolute; top:0; left:-100%; width:55%; height:100%;
-      background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);
-      transform:skewX(-15deg); transition:left .5s ease;
+    .field-input::placeholder { color:var(--ink-4); }
+
+    /* CTA — gradient pill, full width */
+    .cta {
+      width:100%; margin-top:10px;
+      min-height:58px; padding:0 24px;
+      border-radius:16px;
+      background:linear-gradient(135deg, var(--blue) 0%, var(--teal) 100%);
+      color:#fff; font-size:1rem; font-weight:900;
+      letter-spacing:.04em; text-transform:uppercase;
+      position:relative; overflow:hidden;
+      transition:transform .12s, box-shadow .2s, opacity .2s;
+      box-shadow: 0 4px 24px rgba(22,168,211,.40), 0 1px 4px rgba(0,0,0,.3);
     }
-    .lfsub:hover:not(:disabled)::after { left:160%; }
-    .lfsub:active:not(:disabled) { transform:scale(0.98); opacity:.9; }
-    .lfsub:disabled { opacity:.4; cursor:not-allowed; transform:none; }
-    .lfsub-txt { position:relative; z-index:1; }
+    .cta-shine {
+      position:absolute; top:-50%; left:-80%; width:60%; height:200%;
+      background:linear-gradient(105deg, transparent, rgba(255,255,255,.18), transparent);
+      transform:skewX(-20deg);
+      transition:left .55s ease;
+    }
+    .cta:hover:not(:disabled) .cta-shine { left:140%; }
+    .cta:active:not(:disabled) { transform:scale(0.97); }
+    .cta:disabled { opacity:.38; cursor:not-allowed; }
+    .cta-txt { position:relative; z-index:1; }
 
-    .lfmsg { display:none; margin-top:14px; padding:12px 14px; border-radius:var(--r); font-size:.83rem; line-height:1.5; }
-    .lfmsg.error   { display:block; background:var(--err-dim); color:#fca5a5; border:1px solid rgba(239,68,68,.25); }
-    .lfmsg.success { display:block; background:var(--blue-dim); color:var(--blue-hi); border:1px solid rgba(22,168,211,.25); }
+    .form-msg { display:none; margin-top:13px; padding:13px 15px; border-radius:12px; font-size:.84rem; line-height:1.5; }
+    .form-msg.error   { display:block; background:rgba(239,68,68,.12); color:#fca5a5; border:1px solid rgba(239,68,68,.25); }
+    .form-msg.success { display:block; background:rgba(22,168,211,.10); color:var(--blue-hi); border:1px solid rgba(22,168,211,.25); }
 
-    .spinner { display:inline-block; width:13px; height:13px; border:2px solid rgba(255,255,255,.25); border-top-color:white; border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; margin-right:7px; }
+    .forgot-link {
+      display:block; text-align:center; margin-top:18px;
+      background:none; border:none;
+      font-family:var(--mono); font-size:.65rem; letter-spacing:.1em; text-transform:uppercase;
+      color:var(--ink-4); cursor:pointer;
+      transition:color .2s;
+    }
+    .forgot-link:hover { color:var(--blue); }
+
+    .spinner {
+      display:inline-block; width:14px; height:14px;
+      border:2px solid rgba(255,255,255,.25); border-top-color:#fff;
+      border-radius:50%; animation:spin .7s linear infinite;
+      vertical-align:middle; margin-right:8px;
+    }
     @keyframes spin { to{transform:rotate(360deg);} }
 
-    /* ══ DASHBOARD ══ */
-    #screen-dash { overflow:hidden; background:var(--navy-deep); }
+    /* ═══════════════════════════════
+       DASHBOARD
+    ═══════════════════════════════ */
+    #screen-dash { overflow:hidden; }
 
-    .dhdr {
-      flex-shrink:0; height:62px;
-      background:rgba(6,24,36,.96); backdrop-filter:blur(12px);
-      display:flex; align-items:center; padding:0 16px; gap:12px;
+    /* ── Slim topbar ── */
+    .topbar {
+      flex-shrink:0;
+      height:58px;
+      background:var(--deep);
+      border-bottom:1px solid rgba(22,168,211,.10);
+      display:flex; align-items:center;
+      padding:0 14px; gap:10px;
       position:relative; z-index:50;
-      border-bottom:1px solid rgba(22,168,211,.12);
     }
-    .hlogo { width:32px; height:32px; flex-shrink:0; filter:drop-shadow(0 0 8px rgba(22,168,211,.35)); }
-    .htitles { flex:1; }
-    .hname { font-size:.9rem; font-weight:800; color:var(--ink); letter-spacing:.02em; line-height:1; text-transform:uppercase; }
-    .hsub { font-size:.55rem; font-weight:600; letter-spacing:2.5px; text-transform:uppercase; color:var(--blue); margin-top:4px; opacity:.7; }
+    .topbar-logo {
+      width:30px; height:30px; flex-shrink:0;
+      filter:drop-shadow(0 0 6px rgba(22,168,211,.3));
+    }
+    .topbar-id { flex:1; overflow:hidden; }
+    .topbar-name {
+      font-size:.88rem; font-weight:800;
+      color:var(--ink); letter-spacing:.02em;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      text-transform:uppercase;
+    }
+    .topbar-role {
+      font-family:var(--mono); font-size:.52rem; font-weight:500;
+      letter-spacing:.16em; color:var(--blue); opacity:.75;
+      text-transform:uppercase; margin-top:3px;
+    }
+    /* live indicator */
+    .live-chip {
+      display:flex; align-items:center; gap:5px;
+      padding:5px 10px 5px 8px; border-radius:20px;
+      background:var(--glass); border:1px solid var(--glass-b);
+      flex-shrink:0;
+    }
+    .live-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; transition:background .3s; }
+    .live-dot.ok  { background:var(--ok); box-shadow:0 0 5px rgba(34,197,94,.7); }
+    .live-dot.err { background:var(--red); }
+    .live-dot.con { background:var(--amber); animation:blink 1s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.2;} }
+    .live-lbl { font-family:var(--mono); font-size:.55rem; color:var(--ink-3); }
+    .logout-btn {
+      width:40px; height:40px; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center;
+      border-radius:10px; color:var(--ink-3);
+      border:1px solid transparent;
+      transition:color .2s, background .2s, border-color .2s;
+    }
+    .logout-btn:hover { color:var(--red); background:rgba(239,68,68,.10); border-color:rgba(239,68,68,.2); }
 
-    .wspill { display:flex; align-items:center; gap:5px; padding:5px 10px; border-radius:20px; background:rgba(255,255,255,.04); border:1px solid var(--border); flex-shrink:0; }
-    .wsdot { width:6px; height:6px; border-radius:50%; transition:background .3s; flex-shrink:0; }
-    .wsdot.ok  { background:var(--ok); box-shadow:0 0 6px rgba(34,197,94,.65); }
-    .wsdot.err { background:var(--err); }
-    .wsdot.con { background:var(--amber); animation:dotPulse 1s ease-in-out infinite; }
-    @keyframes dotPulse { 0%,100%{opacity:1;} 50%{opacity:.2;} }
-    .wslbl { font-family:var(--ff-m); font-size:.57rem; color:var(--ink-3); }
+    /* ── Scrollable body ── */
+    .scroll-body {
+      flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;
+      padding:14px 14px calc(env(safe-area-inset-bottom,0px) + 28px);
+      display:flex; flex-direction:column; gap:12px;
+    }
 
-    .hlogout { width:42px; height:42px; min-width:42px; color:var(--ink-3); border-radius:var(--rs); display:flex; align-items:center; justify-content:center; transition:color .2s,background .2s; border:1px solid transparent; }
-    .hlogout:hover { color:var(--err); background:rgba(239,68,68,.10); border-color:rgba(239,68,68,.2); }
+    /* ── Floating new job banner ── */
+    .newjob-strip {
+      display:none;
+      align-items:center; gap:10px;
+      padding:12px 14px;
+      background:rgba(22,168,211,.12);
+      border:1.5px solid rgba(22,168,211,.35);
+      border-radius:14px;
+    }
+    .newjob-strip.show { display:flex; animation:slideIn .3s cubic-bezier(.22,1,.36,1); }
+    @keyframes slideIn { from{opacity:0;transform:translateY(-8px);} to{opacity:1;transform:translateY(0);} }
+    .newjob-dot { width:9px; height:9px; border-radius:50%; background:var(--blue); flex-shrink:0; animation:blink 1s ease-in-out infinite; box-shadow:0 0 8px rgba(22,168,211,.8); }
+    .newjob-txt { flex:1; font-size:.88rem; font-weight:700; color:var(--ink); }
+    .newjob-cta { padding:8px 16px; background:var(--blue); border-radius:8px; font-size:.8rem; font-weight:800; color:#fff; white-space:nowrap; min-height:44px; }
 
-    .dbody { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:16px 14px calc(32px + env(safe-area-inset-bottom,0px)); display:flex; flex-direction:column; gap:12px; }
+    /* ── Push banner ── */
+    .push-strip {
+      display:none; align-items:flex-start; gap:12px;
+      padding:14px; border-radius:14px;
+      background:rgba(245,166,35,.10); border:1px solid rgba(245,166,35,.22);
+    }
+    .push-strip.show { display:flex; }
+    .push-ico-wrap { color:var(--amber); flex-shrink:0; padding-top:1px; }
+    .push-body { flex:1; }
+    .push-ttl { font-size:.88rem; font-weight:700; color:var(--ink); margin-bottom:3px; }
+    .push-sub { font-size:.77rem; color:var(--ink-3); line-height:1.45; }
+    .push-acts { display:flex; gap:8px; margin-top:10px; }
+    .push-yes { flex:1; padding:10px 12px; background:var(--amber); border-radius:10px; font-size:.82rem; font-weight:800; color:var(--deep); min-height:46px; }
+    .push-no  { padding:10px 14px; border-radius:10px; font-size:.82rem; color:var(--ink-3); min-height:46px; border:1px solid rgba(255,255,255,.10)!important; }
 
-    /* push banner */
-    .pushban { display:none; background:var(--amber-dim); border:1px solid rgba(245,166,35,.25); border-radius:var(--rl); padding:14px 15px; gap:12px; align-items:flex-start; }
-    .pushban.show { display:flex; }
-    .pushico { color:var(--amber); flex-shrink:0; margin-top:2px; }
-    .pushtxt { flex:1; }
-    .pushttl { font-size:.85rem; font-weight:700; color:var(--ink); margin-bottom:3px; }
-    .pushsub { font-size:.77rem; color:var(--ink-2); line-height:1.45; }
-    .pushbtns { display:flex; gap:8px; margin-top:10px; }
-    .pushallow { flex:1; padding:10px 12px; background:var(--amber); border-radius:8px; font-size:.82rem; font-weight:800; color:var(--navy-deep); min-height:48px; letter-spacing:.3px; }
-    .pushdismiss { padding:10px 14px; border-radius:8px; border:1px solid rgba(245,166,35,.3)!important; font-size:.82rem; color:var(--ink-3); min-height:48px; }
+    /* ── Spinner / empty card ── */
+    .state-card {
+      background:var(--navy); border-radius:20px;
+      border:1px solid rgba(255,255,255,.07);
+      padding:40px 24px; text-align:center;
+    }
+    .state-spin { display:flex; align-items:center; justify-content:center; gap:12px; color:var(--ink-3); font-size:.9rem; padding:36px 24px; }
+    .spn { width:20px; height:20px; border:2px solid rgba(255,255,255,.10); border-top-color:var(--blue); border-radius:50%; animation:spin .8s linear infinite; flex-shrink:0; }
+    .state-icon { margin-bottom:16px; opacity:.2; }
+    .state-title { font-size:1.05rem; font-weight:800; color:var(--ink); margin-bottom:8px; letter-spacing:-.02em; }
+    .state-sub { font-size:.83rem; color:var(--ink-3); line-height:1.6; }
+    .retry-btn { display:inline-flex; align-items:center; gap:8px; margin-top:16px; padding:12px 20px; border-radius:10px; border:1px solid rgba(255,255,255,.12)!important; font-size:.84rem; font-weight:700; color:var(--ink-3); transition:background .2s; }
+    .retry-btn:hover { background:var(--glass); }
 
-    /* new job banner */
-    .njban { display:none; background:var(--blue-dim); border:1.5px solid var(--border-hi); border-radius:var(--rl); padding:14px 15px; align-items:center; gap:12px; }
-    .njban.show { display:flex; animation:slideDown .3s cubic-bezier(.22,1,.36,1); }
-    @keyframes slideDown { from{opacity:0;transform:translateY(-10px);} to{opacity:1;transform:translateY(0);} }
-    .njpulse { width:10px; height:10px; border-radius:50%; background:var(--blue); flex-shrink:0; animation:dotPulse 1.1s ease-in-out infinite; box-shadow:0 0 8px rgba(22,168,211,.7); }
-    .njtxt { flex:1; font-size:.88rem; font-weight:700; color:var(--ink); }
-    .njbtn { padding:9px 18px; background:var(--blue); border-radius:8px; font-size:.82rem; font-weight:800; color:white; min-height:48px; white-space:nowrap; letter-spacing:.3px; }
+    /* ═══════════════════════════════
+       JOB CARD — new anatomy
+    ═══════════════════════════════ */
+    .job-card {
+      background:var(--navy); border-radius:20px;
+      border:1px solid rgba(255,255,255,.07);
+      overflow:hidden; position:relative;
+    }
 
-    /* loading */
-    .ldcard { background:var(--navy-card); border-radius:var(--rl); border:1px solid var(--border); padding:36px 24px; display:flex; align-items:center; justify-content:center; gap:12px; color:var(--ink-3); font-size:.88rem; }
-    .spinsm { width:18px; height:18px; border:2px solid rgba(255,255,255,.10); border-top-color:var(--blue); border-radius:50%; animation:spin .8s linear infinite; flex-shrink:0; }
+    /* Severity header band — full width coloured header */
+    .job-header {
+      padding:16px 18px 14px;
+      position:relative; overflow:hidden;
+    }
+    .job-header::after {
+      content:'';
+      position:absolute; inset:0;
+      background:linear-gradient(180deg, rgba(0,0,0,.18) 0%, transparent 100%);
+      pointer-events:none;
+    }
+    .jh-critical { background:linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%); }
+    .jh-high     { background:linear-gradient(135deg, #7c2d12 0%, #9a3412 100%); }
+    .jh-moderate { background:linear-gradient(135deg, #78350f 0%, #92400e 100%); }
+    .jh-minor    { background:linear-gradient(135deg, #14532d 0%, #166534 100%); }
+    .jh-insp     { background:linear-gradient(135deg, #0c3d5e 0%, var(--mid) 100%); }
 
-    /* empty */
-    .emcard { background:var(--navy-card); border-radius:var(--rl); border:1px solid var(--border); padding:44px 24px; text-align:center; }
-    .emico { margin-bottom:14px; opacity:.22; }
-    .emtit { font-size:1rem; font-weight:800; color:var(--ink); margin-bottom:7px; letter-spacing:-.01em; }
-    .emsub { font-size:.82rem; color:var(--ink-3); line-height:1.6; }
+    .jh-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; position:relative; z-index:1; }
+    .jh-badge {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:4px 10px; border-radius:20px;
+      background:rgba(0,0,0,.30); border:1px solid rgba(255,255,255,.18);
+      font-family:var(--mono); font-size:.58rem; font-weight:700;
+      letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.90);
+    }
+    .jh-badge-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+    .jh-critical .jh-badge-dot { background:#fca5a5; }
+    .jh-high     .jh-badge-dot { background:#fdba74; }
+    .jh-moderate .jh-badge-dot { background:#fde68a; }
+    .jh-minor    .jh-badge-dot { background:#86efac; }
+    .jh-insp     .jh-badge-dot { background:var(--blue-hi); }
+    .jh-age {
+      font-family:var(--mono); font-size:.62rem;
+      color:rgba(255,255,255,.55); flex-shrink:0;
+    }
+    /* Giant job type headline */
+    .jh-type {
+      margin-top:10px; position:relative; z-index:1;
+      font-size:1.45rem; font-weight:900;
+      color:#fff; letter-spacing:-.03em; line-height:1.1;
+      text-shadow:0 2px 10px rgba(0,0,0,.3);
+    }
+    .jh-site { font-size:.82rem; color:rgba(255,255,255,.65); margin-top:4px; position:relative; z-index:1; }
 
-    /* job card */
-    .jcard { background:var(--navy-card); border-radius:var(--rl); border:1px solid var(--border); overflow:hidden; position:relative; }
-    .jcard::before { content:''; position:absolute; left:0; top:0; bottom:0; width:4px; border-radius:var(--rl) 0 0 var(--rl); }
-    .jcard.sc-critical::before { background:var(--err); box-shadow:0 0 12px rgba(239,68,68,.55); }
-    .jcard.sc-high::before     { background:var(--caut); box-shadow:0 0 12px rgba(249,115,22,.45); }
-    .jcard.sc-moderate::before { background:var(--warn); box-shadow:0 0 12px rgba(245,158,11,.4); }
-    .jcard.sc-minor::before    { background:var(--ok); }
-    .jcard.sc-insp::before     { background:var(--blue); box-shadow:0 0 12px rgba(22,168,211,.45); }
+    /* Overflow countdown — big alarming number */
+    .overflow-alarm {
+      margin:0 18px 0;
+      padding:14px 16px;
+      background:rgba(239,68,68,.14);
+      border:1px solid rgba(239,68,68,.30);
+      border-radius:12px;
+      display:flex; align-items:center; gap:12px;
+    }
+    .oa-icon { color:var(--red); flex-shrink:0; animation:blink .9s ease-in-out infinite; }
+    .oa-lbl { font-family:var(--mono); font-size:.58rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:rgba(239,68,68,.8); }
+    .oa-num { font-family:var(--mono); font-size:1.8rem; font-weight:700; color:var(--red); line-height:1; letter-spacing:-.02em; }
+    .oa-unit { font-family:var(--mono); font-size:.7rem; color:rgba(239,68,68,.7); }
 
-    .jctop { padding:14px 16px 14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; gap:10px; }
-    .sevbadge { padding:4px 10px; border-radius:20px; font-size:.57rem; font-weight:800; letter-spacing:2px; text-transform:uppercase; flex-shrink:0; }
-    .sev-critical { background:var(--err-dim); color:#fca5a5; border:1px solid rgba(239,68,68,.25); }
-    .sev-high     { background:var(--caut-dim); color:#fdba74; border:1px solid rgba(249,115,22,.25); }
-    .sev-moderate { background:var(--warn-dim); color:#fcd34d; border:1px solid rgba(245,158,11,.25); }
-    .sev-minor    { background:var(--ok-dim); color:#86efac; border:1px solid rgba(34,197,94,.25); }
+    /* Job details rows */
+    .job-details { padding:14px 18px 16px; display:flex; flex-direction:column; gap:12px; }
+    .jd-row { display:flex; gap:12px; align-items:flex-start; }
+    .jd-ico { color:var(--blue); flex-shrink:0; margin-top:1px; }
+    .jd-label { font-family:var(--mono); font-size:.55rem; font-weight:600; letter-spacing:.15em; text-transform:uppercase; color:var(--ink-4); margin-bottom:3px; }
+    .jd-value { font-size:.9rem; font-weight:500; color:var(--ink-2); line-height:1.45; }
 
-    .jcinfo { flex:1; }
-    .jctype { font-size:.98rem; font-weight:800; color:var(--ink); letter-spacing:-.01em; line-height:1.2; }
-    .jcsite { font-size:.78rem; color:var(--ink-3); margin-top:4px; }
-    .jcage { font-family:var(--ff-m); font-size:.63rem; color:var(--ink-4); flex-shrink:0; padding-top:3px; }
+    /* Job footer */
+    .job-footer {
+      padding:9px 18px;
+      background:rgba(0,0,0,.2);
+      border-top:1px solid rgba(255,255,255,.05);
+      font-family:var(--mono); font-size:.58rem;
+      color:var(--ink-4); letter-spacing:.08em;
+      display:flex; align-items:center; justify-content:space-between;
+    }
 
-    .jcbody { padding:16px 16px 16px 20px; display:flex; flex-direction:column; gap:14px; }
-    .jrow { display:flex; align-items:flex-start; gap:12px; }
-    .jrico { color:var(--blue); flex-shrink:0; margin-top:1px; opacity:.8; }
-    .jrlbl { font-size:.57rem; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-4); margin-bottom:3px; }
-    .jrval { font-size:.9rem; font-weight:500; color:var(--ink-2); line-height:1.4; }
-    .ovfval { color:var(--err); font-weight:800; font-family:var(--ff-m); font-size:1rem; display:inline-flex; align-items:center; gap:6px; }
-    .ovfpulse { width:8px; height:8px; border-radius:50%; background:var(--err); flex-shrink:0; animation:dotPulse .9s ease-in-out infinite; box-shadow:0 0 6px rgba(239,68,68,.65); }
-    .jcfoot { padding:10px 16px 10px 20px; background:rgba(0,0,0,.15); border-top:1px solid var(--border); font-family:var(--ff-m); font-size:.6rem; color:var(--ink-4); letter-spacing:.5px; }
+    /* ═══════════════════════════════
+       STATUS BUTTONS — redesigned
+       Large thumb-friendly tiles
+    ═══════════════════════════════ */
+    .status-section { display:flex; flex-direction:column; gap:10px; }
+    .status-label {
+      font-family:var(--mono); font-size:.6rem; font-weight:600;
+      letter-spacing:.18em; text-transform:uppercase;
+      color:var(--ink-4); padding:0 2px;
+    }
 
-    /* status card */
-    .stcard { background:var(--navy-card); border-radius:var(--rl); border:1px solid var(--border); padding:18px; }
-    .stlbl { font-size:.57rem; font-weight:800; letter-spacing:2.5px; text-transform:uppercase; color:var(--ink-4); margin-bottom:14px; }
-    .stgrid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    /* Top row: 3 equal status tiles */
+    .status-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
 
-    .abtn { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; padding:18px 12px; border-radius:14px; min-height:88px; font-size:.82rem; font-weight:800; letter-spacing:.5px; text-transform:uppercase; line-height:1.2; transition:transform .15s, box-shadow .2s, opacity .2s; position:relative; overflow:hidden; border:1px solid transparent; }
-    .abtn:active:not(:disabled) { transform:scale(0.95); }
-    .abtn:disabled { opacity:.22; cursor:not-allowed; transform:none; }
-    .abtn .ai { font-size:1.5rem; }
-    .abtn .al { text-align:center; font-size:.72rem; }
+    .s-tile {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:6px; padding:18px 8px;
+      border-radius:16px; min-height:90px;
+      position:relative; overflow:hidden;
+      border:1.5px solid transparent;
+      transition:transform .12s, box-shadow .2s, opacity .15s;
+    }
+    .s-tile:active:not(:disabled) { transform:scale(0.94); }
+    .s-tile:disabled { opacity:.25; cursor:not-allowed; }
+    .s-tile-ico { font-size:0; line-height:0; }
+    .s-tile-lbl {
+      font-size:.68rem; font-weight:800;
+      text-align:center; line-height:1.2;
+      letter-spacing:.02em; text-transform:uppercase;
+    }
+    /* active state crown */
+    .s-tile.active-state::before {
+      content:'●'; position:absolute; top:8px; right:9px;
+      font-size:.45rem; line-height:1;
+    }
 
-    .abtn.is-cur::after { content:'ACTIVE'; position:absolute; top:8px; right:8px; font-size:.47rem; font-weight:800; letter-spacing:1.5px; padding:2px 6px; border-radius:10px; }
-    .abenroute.is-cur::after  { background:var(--amber-dim); color:var(--amber); }
-    .abonsite.is-cur::after   { background:var(--blue-dim); color:var(--blue-hi); }
-    .abreturning.is-cur::after { background:var(--ok-dim); color:var(--ok); }
+    /* En Route */
+    .s-enroute {
+      background:rgba(245,166,35,.10);
+      border-color:rgba(245,166,35,.20);
+      color:var(--amber);
+    }
+    .s-enroute.active-state { background:rgba(245,166,35,.18); border-color:rgba(245,166,35,.40); box-shadow:0 4px 16px rgba(245,166,35,.18); }
+    .s-enroute:hover:not(:disabled):not(.active-state) { background:rgba(245,166,35,.15); }
+    /* On Site */
+    .s-onsite {
+      background:rgba(22,168,211,.10);
+      border-color:rgba(22,168,211,.20);
+      color:var(--blue-hi);
+    }
+    .s-onsite.active-state { background:rgba(22,168,211,.18); border-color:rgba(22,168,211,.40); box-shadow:0 4px 16px rgba(22,168,211,.18); }
+    .s-onsite:hover:not(:disabled):not(.active-state) { background:rgba(22,168,211,.15); }
+    /* Returning */
+    .s-returning {
+      background:rgba(34,197,94,.08);
+      border-color:rgba(34,197,94,.16);
+      color:var(--ok);
+    }
+    .s-returning.active-state { background:rgba(34,197,94,.15); border-color:rgba(34,197,94,.35); box-shadow:0 4px 16px rgba(34,197,94,.16); }
+    .s-returning:hover:not(:disabled):not(.active-state) { background:rgba(34,197,94,.12); }
 
-    .abenroute { background:var(--amber-dim); color:var(--amber); border-color:rgba(245,166,35,.2); }
-    .abenroute:hover:not(:disabled) { box-shadow:0 4px 18px rgba(245,166,35,.22); background:rgba(245,166,35,.18); }
+    /* Complete — full-width prominent green */
+    .s-complete {
+      width:100%; min-height:68px; padding:0 24px;
+      border-radius:16px;
+      background:linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+      border:1.5px solid rgba(34,197,94,.25);
+      color:#fff;
+      display:flex; align-items:center; justify-content:center; gap:12px;
+      font-size:.95rem; font-weight:900; letter-spacing:.03em; text-transform:uppercase;
+      transition:transform .12s, box-shadow .2s, opacity .15s;
+      box-shadow:0 4px 20px rgba(22,163,74,.30);
+    }
+    .s-complete:hover:not(:disabled) { box-shadow:0 8px 28px rgba(22,163,74,.40); }
+    .s-complete:active:not(:disabled) { transform:scale(0.97); }
+    .s-complete:disabled { opacity:.25; cursor:not-allowed; }
 
-    .abonsite { background:var(--blue-dim); color:var(--blue-hi); border-color:rgba(22,168,211,.18); }
-    .abonsite:hover:not(:disabled) { box-shadow:0 4px 18px rgba(22,168,211,.22); background:rgba(22,168,211,.16); }
+    /* Backup — full-width red outline */
+    .s-backup {
+      width:100%; min-height:58px; padding:0 24px;
+      border-radius:16px;
+      background:rgba(239,68,68,.08);
+      border:1.5px solid rgba(239,68,68,.22);
+      color:#fca5a5;
+      display:flex; align-items:center; justify-content:center; gap:12px;
+      font-size:.88rem; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
+      transition:transform .12s, box-shadow .2s, opacity .15s, background .2s;
+    }
+    .s-backup:hover:not(:disabled) { background:rgba(239,68,68,.14); box-shadow:0 4px 16px rgba(239,68,68,.18); }
+    .s-backup:active:not(:disabled) { transform:scale(0.97); }
+    .s-backup:disabled { opacity:.25; cursor:not-allowed; }
 
-    .abcomplete { grid-column:1/-1; min-height:76px; background:linear-gradient(135deg,#16a34a,#15803d); color:white; border-color:rgba(34,197,94,.25); font-size:.88rem; box-shadow:0 4px 20px rgba(22,163,74,.30); }
-    .abcomplete:hover:not(:disabled) { box-shadow:0 8px 28px rgba(22,163,74,.42); }
+    /* ═══════════════════════════════
+       TEAM CARD — horizontal avatars
+    ═══════════════════════════════ */
+    .team-card {
+      background:var(--navy); border-radius:20px;
+      border:1px solid rgba(255,255,255,.07);
+      padding:16px 18px;
+    }
+    .tc-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+    .tc-lbl { font-family:var(--mono); font-size:.58rem; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-4); }
+    .tc-name { font-size:.95rem; font-weight:800; color:var(--ink); letter-spacing:-.01em; }
+    .tc-status { padding:4px 10px; border-radius:20px; font-family:var(--mono); font-size:.58rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+    .tcs-idle      { background:rgba(255,255,255,.06); color:var(--ink-4); border:1px solid rgba(255,255,255,.08); }
+    .tcs-en_route  { background:rgba(245,166,35,.13); color:var(--amber); border:1px solid rgba(245,166,35,.22); }
+    .tcs-on_site   { background:rgba(22,168,211,.13); color:var(--blue-hi); border:1px solid rgba(22,168,211,.22); }
+    .tcs-returning { background:rgba(34,197,94,.13); color:var(--ok); border:1px solid rgba(34,197,94,.22); }
 
-    .abreturning { background:rgba(255,255,255,.04); color:var(--ink-3); border-color:var(--border); }
-    .abreturning.is-cur { color:var(--ok); background:var(--ok-dim); border-color:rgba(34,197,94,.2); }
-    .abreturning:hover:not(:disabled) { background:rgba(255,255,255,.07); }
+    /* Horizontal member chips */
+    .member-row { display:flex; flex-wrap:wrap; gap:8px; }
+    .member-chip {
+      display:flex; align-items:center; gap:8px;
+      padding:6px 12px 6px 6px; border-radius:10px;
+      background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.07);
+    }
+    .m-av {
+      width:30px; height:30px; border-radius:8px; flex-shrink:0;
+      background:linear-gradient(135deg, var(--mid), var(--teal));
+      border:1px solid rgba(22,168,211,.25);
+      display:flex; align-items:center; justify-content:center;
+      font-family:var(--mono); font-size:.65rem; font-weight:700; color:var(--blue-hi);
+    }
+    .m-name { font-size:.82rem; font-weight:600; color:var(--ink-2); white-space:nowrap; }
 
-    .abbackup { background:var(--err-dim); color:#fca5a5; border-color:rgba(239,68,68,.18); }
-    .abbackup:hover:not(:disabled) { box-shadow:0 4px 18px rgba(239,68,68,.20); background:rgba(239,68,68,.18); }
+    /* ═══════════════════════════════
+       BOTTOM SHEETS
+    ═══════════════════════════════ */
+    .sh-overlay {
+      display:none; position:fixed; inset:0;
+      background:rgba(6,24,36,.80); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+      z-index:100; align-items:flex-end;
+    }
+    .sh-overlay.show { display:flex; animation:ovlIn .22s ease; }
+    @keyframes ovlIn { from{opacity:0;} to{opacity:1;} }
 
-    /* team card */
-    .tmcard { background:var(--navy-card); border-radius:var(--rl); border:1px solid var(--border); padding:18px; }
-    .cardlbl { font-size:.57rem; font-weight:800; letter-spacing:2.5px; text-transform:uppercase; color:var(--ink-4); margin-bottom:14px; }
-    .tmrow { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
-    .tmname { font-size:.98rem; font-weight:800; color:var(--ink); letter-spacing:-.01em; }
-    .tmspill { padding:4px 10px; border-radius:20px; font-size:.6rem; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; }
-    .tsp-idle      { background:rgba(255,255,255,.06); color:var(--ink-4); border:1px solid var(--border); }
-    .tsp-en_route  { background:var(--amber-dim); color:var(--amber); border:1px solid rgba(245,166,35,.2); }
-    .tsp-on_site   { background:var(--blue-dim); color:var(--blue-hi); border:1px solid rgba(22,168,211,.2); }
-    .tsp-returning { background:var(--ok-dim); color:var(--ok); border:1px solid rgba(34,197,94,.2); }
-    .mlist { display:flex; flex-direction:column; gap:10px; }
-    .mrow { display:flex; align-items:center; gap:12px; }
-    .mav { width:36px; height:36px; flex-shrink:0; border-radius:10px; background:linear-gradient(135deg,var(--navy-mid),var(--teal)); border:1px solid rgba(22,168,211,.25); display:flex; align-items:center; justify-content:center; font-size:.72rem; font-weight:800; color:var(--blue-hi); letter-spacing:.5px; font-family:var(--ff-m); }
-    .mname { font-size:.88rem; font-weight:500; color:var(--ink-2); }
+    .sh-panel {
+      width:100%; max-height:82vh; overflow-y:auto;
+      background:var(--mid);
+      border-radius:26px 26px 0 0;
+      border-top:1px solid rgba(255,255,255,.10);
+      padding:0 20px calc(env(safe-area-inset-bottom,0px) + 28px);
+      animation:panelUp .28s cubic-bezier(.22,1,.36,1);
+    }
+    @keyframes panelUp { from{transform:translateY(60px);opacity:0;} to{transform:translateY(0);opacity:1;} }
 
-    /* refresh btn */
-    .rfbtn { width:100%; padding:14px; border:1px solid var(--border)!important; border-radius:var(--r); font-size:.86rem; font-weight:700; color:var(--ink-3); display:flex; align-items:center; justify-content:center; gap:8px; transition:background .2s,color .2s; margin-top:14px; letter-spacing:.3px; }
-    .rfbtn:hover { background:rgba(255,255,255,.04); color:var(--ink-2); }
+    .sh-handle-row { padding:14px 0 6px; display:flex; justify-content:center; }
+    .sh-handle { width:40px; height:4px; border-radius:2px; background:rgba(255,255,255,.15); }
 
-    /* sheets */
-    .shovl { display:none; position:fixed; inset:0; background:rgba(6,24,36,.78); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:100; }
-    .shovl.show { display:flex; align-items:flex-end; animation:fadeIn .22s ease; }
-    @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
-    .sheet { width:100%; max-height:82vh; background:var(--navy-mid); border-radius:24px 24px 0 0; border-top:1px solid rgba(255,255,255,.10); padding:0 20px calc(32px + env(safe-area-inset-bottom,0px)); overflow-y:auto; animation:sheetUp .28s cubic-bezier(.22,1,.36,1); }
-    @keyframes sheetUp { from{transform:translateY(60px);opacity:0;} to{transform:translateY(0);opacity:1;} }
-    .shandle-w { padding:14px 0 6px; display:flex; justify-content:center; }
-    .shandle { width:40px; height:4px; border-radius:2px; background:rgba(255,255,255,.15); }
-    .shbar { height:3px; margin:0 -20px 24px; background:linear-gradient(90deg,var(--teal),var(--blue),var(--blue-hi)); }
-    .shtitle { font-size:1.12rem; font-weight:800; color:var(--ink); letter-spacing:-.02em; margin-bottom:6px; }
-    .shsub { font-size:.82rem; color:var(--ink-3); line-height:1.55; margin-bottom:22px; }
-    .shta { width:100%; min-height:120px; padding:14px 15px; background:rgba(255,255,255,.05); border:1.5px solid rgba(255,255,255,.10); border-radius:var(--r); font-family:var(--ff-b); font-size:.92rem; color:var(--ink); resize:vertical; outline:none; transition:border-color .2s,box-shadow .2s; line-height:1.55; }
-    .shta::placeholder { color:var(--ink-4); }
-    .shta:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(22,168,211,.14); }
-    .shmsg { display:none; margin-top:12px; padding:11px 14px; border-radius:var(--rs); font-size:.82rem; line-height:1.45; }
-    .shmsg.error   { display:block; background:var(--err-dim); color:#fca5a5; border:1px solid rgba(239,68,68,.25); }
-    .shmsg.success { display:block; background:var(--ok-dim); color:#86efac; border:1px solid rgba(34,197,94,.25); }
-    .shbtns { display:flex; gap:10px; margin-top:16px; }
-    .shcancel { flex:1; padding:16px; border-radius:12px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10)!important; font-size:.9rem; font-weight:700; color:var(--ink-3); min-height:56px; transition:background .2s; }
-    .shcancel:hover { background:rgba(255,255,255,.08); }
-    .shconfirm { flex:2; padding:16px; border-radius:12px; font-size:.9rem; font-weight:800; color:white; min-height:56px; transition:opacity .2s,transform .15s; letter-spacing:.3px; }
-    .shconfirm.green { background:linear-gradient(135deg,#16a34a,#15803d); box-shadow:0 4px 16px rgba(22,163,74,.30); }
-    .shconfirm.red   { background:linear-gradient(135deg,var(--err),#b91c1c); box-shadow:0 4px 16px rgba(239,68,68,.28); }
-    .shconfirm:active:not(:disabled) { transform:scale(0.98); }
-    .shconfirm:disabled { opacity:.4; cursor:not-allowed; }
+    .sh-accent { height:2px; margin:0 -20px 22px; background:linear-gradient(90deg, transparent, var(--teal), var(--blue), var(--blue-hi), transparent); }
 
-    /* toast */
-    .toast { display:none; position:fixed; bottom:calc(28px + env(safe-area-inset-bottom,0px)); left:50%; transform:translateX(-50%); z-index:200; padding:12px 22px; border-radius:30px; font-size:.84rem; font-weight:700; white-space:nowrap; pointer-events:none; letter-spacing:.2px; }
-    .toast.show { display:block; animation:toastIn .28s cubic-bezier(.22,1,.36,1); }
-    @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(14px);} to{opacity:1;transform:translateX(-50%) translateY(0);} }
-    .toast.ok  { background:var(--navy-up); color:var(--ink); border:1px solid var(--border); backdrop-filter:blur(12px); box-shadow:0 8px 24px rgba(0,0,0,.45); }
-    .toast.err { background:var(--err); color:white; box-shadow:0 8px 24px rgba(239,68,68,.42); }
+    .sh-title { font-size:1.15rem; font-weight:900; letter-spacing:-.03em; color:var(--ink); margin-bottom:6px; }
+    .sh-sub { font-size:.82rem; color:var(--ink-3); line-height:1.55; margin-bottom:20px; }
+
+    .sh-textarea {
+      width:100%; min-height:118px; padding:14px 15px;
+      background:rgba(255,255,255,.05); border:1.5px solid rgba(255,255,255,.10);
+      border-radius:14px; font-size:.92rem; color:var(--ink);
+      resize:vertical; outline:none; line-height:1.6;
+      transition:border-color .2s, box-shadow .2s;
+    }
+    .sh-textarea::placeholder { color:var(--ink-4); }
+    .sh-textarea:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(22,168,211,.14); }
+
+    .sh-msg { display:none; margin-top:12px; padding:11px 14px; border-radius:10px; font-size:.83rem; line-height:1.45; }
+    .sh-msg.error   { display:block; background:rgba(239,68,68,.12); color:#fca5a5; border:1px solid rgba(239,68,68,.25); }
+    .sh-msg.success { display:block; background:rgba(34,197,94,.12); color:#86efac; border:1px solid rgba(34,197,94,.25); }
+
+    .sh-actions { display:flex; gap:10px; margin-top:16px; }
+    .sh-cancel {
+      flex:1; padding:16px; border-radius:14px; min-height:56px;
+      background:rgba(255,255,255,.05); border:1.5px solid rgba(255,255,255,.10)!important;
+      font-size:.9rem; font-weight:700; color:var(--ink-3);
+      transition:background .18s;
+    }
+    .sh-cancel:hover { background:rgba(255,255,255,.08); }
+    .sh-confirm {
+      flex:2; padding:16px; border-radius:14px; min-height:56px;
+      font-size:.9rem; font-weight:900; color:#fff; letter-spacing:.02em;
+      transition:transform .12s, opacity .15s;
+    }
+    .sh-confirm.green { background:linear-gradient(135deg,#16a34a,#15803d); box-shadow:0 4px 16px rgba(22,163,74,.28); }
+    .sh-confirm.red   { background:linear-gradient(135deg,var(--red),#b91c1c); box-shadow:0 4px 16px rgba(239,68,68,.26); }
+    .sh-confirm:active:not(:disabled) { transform:scale(0.98); }
+    .sh-confirm:disabled { opacity:.38; cursor:not-allowed; }
+
+    /* ═══════════════════════════════
+       TOAST
+    ═══════════════════════════════ */
+    .toast {
+      display:none; position:fixed;
+      bottom:calc(env(safe-area-inset-bottom,0px) + 26px); left:50%;
+      transform:translateX(-50%); z-index:200;
+      padding:12px 22px; border-radius:30px;
+      font-size:.85rem; font-weight:700; white-space:nowrap; pointer-events:none;
+    }
+    .toast.show { display:block; animation:toastPop .26s cubic-bezier(.22,1,.36,1); }
+    @keyframes toastPop { from{opacity:0;transform:translateX(-50%) translateY(12px);} to{opacity:1;transform:translateX(-50%) translateY(0);} }
+    .toast.ok  { background:var(--raised); color:var(--ink); border:1px solid rgba(255,255,255,.10); backdrop-filter:blur(12px); box-shadow:0 8px 24px rgba(0,0,0,.45); }
+    .toast.err { background:var(--red); color:#fff; box-shadow:0 8px 24px rgba(239,68,68,.45); }
 
     @media (prefers-reduced-motion:reduce) {
-      .lh-bg,.lmr-1,.lmr-2,.ab,.lh-scan::after,.wsdot.con,.njpulse,.ovfpulse,.spinsm { animation:none!important; opacity:1; }
+      .hero::before,.hero::after,.ring-1,.ring-2,.ab,.live-dot.con,.newjob-dot,.oa-icon,.spn { animation:none!important; opacity:1; }
     }
   </style>
 </head>
 <body>
 
-<!-- LOGIN -->
+<!-- ═══════════════ LOGIN ═══════════════ -->
 <div id="screen-login" class="screen active">
-  <div class="login-hero">
-    <div class="lh-bg"></div>
-    <div class="lh-grid"></div>
-    <div class="lh-scan"></div>
-    <div class="lmw">
-      <div class="lmr lmr-1"></div>
-      <div class="lmr lmr-2"></div>
-      <svg class="lm" viewBox="160 60 360 260" xmlns="http://www.w3.org/2000/svg">
-        <defs><clipPath id="mc"><circle cx="340" cy="182" r="108"/></clipPath></defs>
-        <circle cx="340" cy="182" r="148" fill="none" stroke="#16a8d3" stroke-width="1" opacity=".13"/>
-        <circle cx="340" cy="182" r="132" fill="none" stroke="#16a8d3" stroke-width="1.2" opacity=".20"/>
-        <circle cx="340" cy="182" r="118" fill="none" stroke="#1cb8e8" stroke-width="1.5" opacity=".30"/>
-        <circle cx="340" cy="182" r="108" fill="#0a2a3d"/>
-        <g clip-path="url(#mc)">
-          <rect x="232" y="214" width="216" height="90" fill="#0d7fa0"/>
-          <path d="M232 214 Q254 200 276 214 Q298 228 320 214 Q342 200 364 214 Q386 228 408 214 Q430 200 448 210 L448 216 Q430 202 408 216 Q386 230 364 216 Q342 202 320 216 Q298 230 276 216 Q254 202 232 216 Z" fill="#16a8d3"/>
-          <path d="M232 234 Q254 226 276 234 Q298 242 320 234 Q342 226 364 234 Q386 242 408 234 Q430 226 448 231" fill="none" stroke="#1cb8e8" stroke-width="1.5" opacity=".4"/>
-          <ellipse cx="284" cy="250" rx="12" ry="3" fill="#cceeff" opacity=".28"/>
-          <ellipse cx="362" cy="264" rx="8" ry="2" fill="#cceeff" opacity=".22"/>
-        </g>
-        <circle cx="340" cy="182" r="108" fill="none" stroke="#1cb8e8" stroke-width="2.5" opacity=".35"/>
-        <path d="M340 110 C358 132 374 148 374 166 C374 186 358 202 340 202 C322 202 306 186 306 166 C306 148 322 132 340 110 Z" fill="#16a8d3"/>
-        <path d="M340 120 C355 139 367 153 367 166 C367 183 355 196 340 196 C325 196 313 183 313 166 C313 153 325 139 340 120 Z" fill="#0a2a3d"/>
-        <path d="M340 128 C352 144 361 156 361 166 C361 180 352 191 340 191 C328 191 319 180 319 166 C319 156 328 144 340 128 Z" fill="#0d7fa0"/>
-        <ellipse cx="331" cy="146" rx="5" ry="8" fill="#cceeff" opacity=".48" transform="rotate(-18 331 146)"/>
-        <circle cx="340" cy="110" r="6" fill="#f5a623" class="ab"/>
-        <circle cx="340" cy="110" r="10" fill="none" stroke="#f5a623" stroke-width="1.5" opacity=".4" class="ab"/>
-        <circle cx="340" cy="110" r="15" fill="none" stroke="#f5a623" stroke-width="1" opacity=".18" class="ab"/>
-        <path d="M318 105 Q340 93 362 105" fill="none" stroke="#1cb8e8" stroke-width="2" stroke-linecap="round" opacity=".68"/>
-        <path d="M307 93 Q340 77 373 93" fill="none" stroke="#1cb8e8" stroke-width="1.5" stroke-linecap="round" opacity=".32"/>
-        <line x1="340" y1="72" x2="340" y2="62" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"/>
-        <line x1="448" y1="182" x2="458" y2="182" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"/>
-        <line x1="232" y1="182" x2="222" y2="182" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"/>
-        <line x1="340" y1="292" x2="340" y2="302" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"/>
-      </svg>
-    </div>
-    <div class="lbrand">
-      <span class="wm">FlowGuard</span>
-      <span class="tg">Field Operations</span>
-    </div>
-  </div>
+  <div class="login-wrap">
 
-  <div class="lpanel">
-    <div class="lpbar"></div>
-    <h1 class="lptitle">Sign in</h1>
-    <p class="lpsub">Field technician access only</p>
-    <div class="lff">
-      <label class="lflbl" for="l-email">Email</label>
-      <input type="email" id="l-email" class="lfinp" placeholder="you@flowguard.ng" autocomplete="email" autocapitalize="none" inputmode="email">
+    <div class="hero">
+      <!-- Hex grid texture -->
+      <div class="hero-hex">
+        <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="hex" width="60" height="52" patternUnits="userSpaceOnUse" patternTransform="scale(1.2)">
+              <polygon points="30,2 58,17 58,47 30,62 2,47 2,17" fill="none" stroke="white" stroke-width="1"/>
+            </pattern>
+          </defs>
+          <rect width="400" height="300" fill="url(#hex)"/>
+        </svg>
+      </div>
+
+      <!-- Brand mark -->
+      <div class="hero-mark">
+        <div class="ring ring-1"></div>
+        <div class="ring ring-2"></div>
+        <svg class="mark-svg" viewBox="160 60 360 260" xmlns="http://www.w3.org/2000/svg">
+          <defs><clipPath id="mc"><circle cx="340" cy="182" r="108"/></clipPath></defs>
+          <circle cx="340" cy="182" r="148" fill="none" stroke="#16a8d3" stroke-width="1" opacity=".13"/>
+          <circle cx="340" cy="182" r="132" fill="none" stroke="#16a8d3" stroke-width="1.2" opacity=".22"/>
+          <circle cx="340" cy="182" r="118" fill="none" stroke="#1cb8e8" stroke-width="1.5" opacity=".32"/>
+          <circle cx="340" cy="182" r="108" fill="#0a2a3d"/>
+          <g clip-path="url(#mc)">
+            <rect x="232" y="214" width="216" height="90" fill="#0d7fa0"/>
+            <path d="M232 214 Q254 200 276 214 Q298 228 320 214 Q342 200 364 214 Q386 228 408 214 Q430 200 448 210 L448 216 Q430 202 408 216 Q386 230 364 216 Q342 202 320 216 Q298 230 276 216 Q254 202 232 216 Z" fill="#16a8d3"/>
+            <path d="M232 234 Q254 226 276 234 Q298 242 320 234 Q342 226 364 234 Q386 242 408 234 Q430 226 448 231" fill="none" stroke="#1cb8e8" stroke-width="1.5" opacity=".4"/>
+            <ellipse cx="284" cy="250" rx="12" ry="3" fill="#cceeff" opacity=".28"/>
+          </g>
+          <circle cx="340" cy="182" r="108" fill="none" stroke="#1cb8e8" stroke-width="2.5" opacity=".35"/>
+          <path d="M340 110 C358 132 374 148 374 166 C374 186 358 202 340 202 C322 202 306 186 306 166 C306 148 322 132 340 110 Z" fill="#16a8d3"/>
+          <path d="M340 120 C355 139 367 153 367 166 C367 183 355 196 340 196 C325 196 313 183 313 166 C313 153 325 139 340 120 Z" fill="#0a2a3d"/>
+          <path d="M340 128 C352 144 361 156 361 166 C361 180 352 191 340 191 C328 191 319 180 319 166 C319 156 328 144 340 128 Z" fill="#0d7fa0"/>
+          <ellipse cx="331" cy="146" rx="5" ry="8" fill="#cceeff" opacity=".48" transform="rotate(-18 331 146)"/>
+          <circle cx="340" cy="110" r="6" fill="#f5a623" class="ab"/>
+          <circle cx="340" cy="110" r="10" fill="none" stroke="#f5a623" stroke-width="1.5" opacity=".4" class="ab"/>
+          <circle cx="340" cy="110" r="15" fill="none" stroke="#f5a623" stroke-width="1" opacity=".18" class="ab"/>
+          <path d="M318 105 Q340 93 362 105" fill="none" stroke="#1cb8e8" stroke-width="2" stroke-linecap="round" opacity=".68"/>
+          <path d="M307 93 Q340 77 373 93" fill="none" stroke="#1cb8e8" stroke-width="1.5" stroke-linecap="round" opacity=".32"/>
+          <line x1="340" y1="72" x2="340" y2="62" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="448" y1="182" x2="458" y2="182" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="232" y1="182" x2="222" y2="182" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="340" y1="292" x2="340" y2="302" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <div class="hero-label">
+        <span class="hero-name">FlowGuard</span>
+        <span class="hero-tag">Field Operations</span>
+      </div>
     </div>
-    <div class="lff">
-      <label class="lflbl" for="l-pass">Password</label>
-      <input type="password" id="l-pass" class="lfinp" placeholder="Your password" autocomplete="current-password">
+
+    <!-- Form -->
+    <div class="login-card">
+      <div class="card-pull"><div class="card-pill"></div></div>
+
+      <div class="form-heading">
+        <div class="form-title">Sign in</div>
+        <div class="form-sub">Field technician access only</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="l-email">Email</label>
+        <input type="email" id="l-email" class="field-input" placeholder="you@flowguard.ng" autocomplete="email" autocapitalize="none" inputmode="email">
+      </div>
+      <div class="field">
+        <label class="field-label" for="l-pass">Password</label>
+        <input type="password" id="l-pass" class="field-input" placeholder="Your password" autocomplete="current-password">
+      </div>
+
+      <button class="cta" id="l-btn">
+        <span class="cta-shine"></span>
+        <span class="cta-txt">Sign in</span>
+      </button>
+      <div class="form-msg" id="l-msg"></div>
+      <button class="forgot-link" id="forgot-link">Forgot password?</button>
     </div>
-    <button class="lfsub" id="l-btn"><span class="lfsub-txt">Sign in</span></button>
-    <div class="lfmsg" id="l-msg"></div>
-    <div style="text-align:center;margin-top:20px;">
-      <button id="forgot-link" style="background:none;border:none;color:var(--ink-4);font-size:.78rem;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px;letter-spacing:.3px;transition:color .2s;">Forgot your password?</button>
-    </div>
+
   </div>
 </div>
 
-<!-- FORGOT PASSWORD -->
-<div id="screen-forgot" class="screen" style="background:var(--navy-deep);overflow-y:auto;-webkit-overflow-scrolling:touch;">
-  <div style="flex-shrink:0;position:relative;overflow:hidden;padding:44px 32px 32px;display:flex;flex-direction:column;align-items:center;gap:12px;">
-    <div style="position:absolute;inset:0;background:radial-gradient(ellipse 130% 75% at 50% 115%,rgba(13,127,160,.55) 0%,transparent 52%);pointer-events:none;"></div>
-    <svg style="width:68px;height:68px;position:relative;z-index:2;filter:drop-shadow(0 0 14px rgba(22,168,211,.28));" viewBox="160 60 360 260" xmlns="http://www.w3.org/2000/svg">
-      <defs><clipPath id="fmc"><circle cx="340" cy="182" r="108"/></clipPath></defs>
-      <circle cx="340" cy="182" r="108" fill="#0a2a3d"/>
-      <g clip-path="url(#fmc)">
-        <rect x="232" y="214" width="216" height="90" fill="#0d7fa0"/>
-        <path d="M232 214 Q254 200 276 214 Q298 228 320 214 Q342 200 364 214 Q386 228 408 214 Q430 200 448 210 L448 216 Q430 202 408 216 Q386 230 364 216 Q342 202 320 216 Q298 230 276 216 Q254 202 232 216 Z" fill="#16a8d3"/>
-      </g>
-      <path d="M340 110 C358 132 374 148 374 166 C374 186 358 202 340 202 C322 202 306 186 306 166 C306 148 322 132 340 110 Z" fill="#16a8d3"/>
-      <path d="M340 128 C352 144 361 156 361 166 C361 180 352 191 340 191 C328 191 319 180 319 166 C319 156 328 144 340 128 Z" fill="#0d7fa0"/>
-      <circle cx="340" cy="110" r="5" fill="#f5a623"/>
-    </svg>
-    <div style="position:relative;z-index:2;text-align:center;">
-      <div style="font-size:1rem;font-weight:800;color:rgba(255,255,255,.96);letter-spacing:.08em;text-transform:uppercase;">FlowGuard</div>
-      <div style="font-size:.56rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--blue);margin-top:5px;opacity:.8;">Field Operations</div>
+<!-- ═══════════════ FORGOT ═══════════════ -->
+<div id="screen-forgot" class="screen" style="background:var(--deep);overflow-y:auto;">
+  <div class="login-wrap">
+    <div class="hero" style="padding:44px 0 38px;">
+      <div class="hero-hex">
+        <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+          <defs><pattern id="hex2" width="60" height="52" patternUnits="userSpaceOnUse"><polygon points="30,2 58,17 58,47 30,62 2,47 2,17" fill="none" stroke="white" stroke-width="1"/></pattern></defs>
+          <rect width="400" height="300" fill="url(#hex2)" opacity=".07"/>
+        </svg>
+      </div>
+      <div style="position:relative;z-index:2;">
+        <svg style="width:72px;height:72px;filter:drop-shadow(0 0 14px rgba(22,168,211,.3));" viewBox="160 60 360 260" xmlns="http://www.w3.org/2000/svg">
+          <defs><clipPath id="fmc"><circle cx="340" cy="182" r="108"/></clipPath></defs>
+          <circle cx="340" cy="182" r="108" fill="#0a2a3d"/>
+          <g clip-path="url(#fmc)"><rect x="232" y="214" width="216" height="90" fill="#0d7fa0"/><path d="M232 214 Q254 200 276 214 Q298 228 320 214 Q342 200 364 214 Q386 228 408 214 Q430 200 448 210 L448 216 Q430 202 408 216 Q386 230 364 216 Q342 202 320 216 Q298 230 276 216 Q254 202 232 216 Z" fill="#16a8d3"/></g>
+          <path d="M340 110 C358 132 374 148 374 166 C374 186 358 202 340 202 C322 202 306 186 306 166 C306 148 322 132 340 110 Z" fill="#16a8d3"/>
+          <path d="M340 128 C352 144 361 156 361 166 C361 180 352 191 340 191 C328 191 319 180 319 166 C319 156 328 144 340 128 Z" fill="#0d7fa0"/>
+          <circle cx="340" cy="110" r="5" fill="#f5a623"/>
+        </svg>
+      </div>
+      <div class="hero-label">
+        <span class="hero-name" style="font-size:1.3rem;">FlowGuard</span>
+        <span class="hero-tag">Field Operations</span>
+      </div>
     </div>
-  </div>
-  <div class="lpanel">
-    <div class="lpbar"></div>
-    <h1 class="lptitle">Reset Password</h1>
-    <p class="lpsub">Enter your email and we'll send you a reset link</p>
-    <div class="lff">
-      <label class="lflbl" for="fp-email">Email Address</label>
-      <input type="email" id="fp-email" class="lfinp" placeholder="you@flowguard.ng" autocomplete="email" autocapitalize="none" inputmode="email">
-    </div>
-    <button class="lfsub" id="fp-btn"><span class="lfsub-txt">Send Reset Link</span></button>
-    <div class="lfmsg" id="fp-msg"></div>
-    <div style="text-align:center;margin-top:20px;">
-      <button id="back-to-login" style="background:none;border:none;color:var(--ink-4);font-size:.78rem;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px;letter-spacing:.3px;display:inline-flex;align-items:center;gap:5px;transition:color .2s;">
-        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+    <div class="login-card">
+      <div class="card-pull"><div class="card-pill"></div></div>
+      <div class="form-heading">
+        <div class="form-title">Reset Password</div>
+        <div class="form-sub">We'll send a reset link to your email</div>
+      </div>
+      <div class="field">
+        <label class="field-label" for="fp-email">Email Address</label>
+        <input type="email" id="fp-email" class="field-input" placeholder="you@flowguard.ng" autocomplete="email" autocapitalize="none" inputmode="email">
+      </div>
+      <button class="cta" id="fp-btn">
+        <span class="cta-shine"></span>
+        <span class="cta-txt">Send Reset Link</span>
+      </button>
+      <div class="form-msg" id="fp-msg"></div>
+      <button class="forgot-link" id="back-to-login" style="display:inline-flex;align-items:center;gap:5px;justify-content:center;">
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
         Back to Sign in
       </button>
     </div>
   </div>
 </div>
 
-<!-- DASHBOARD -->
+<!-- ═══════════════ DASHBOARD ═══════════════ -->
 <div id="screen-dash" class="screen">
-  <div class="dhdr">
-    <svg class="hlogo" viewBox="160 60 360 260" xmlns="http://www.w3.org/2000/svg">
+
+  <div class="topbar">
+    <svg class="topbar-logo" viewBox="160 60 360 260" xmlns="http://www.w3.org/2000/svg">
       <defs><clipPath id="hmc"><circle cx="340" cy="182" r="108"/></clipPath></defs>
       <circle cx="340" cy="182" r="108" fill="#0a2a3d"/>
-      <g clip-path="url(#hmc)">
-        <rect x="232" y="214" width="216" height="90" fill="#0d7fa0"/>
-        <path d="M232 214 Q254 200 276 214 Q298 228 320 214 Q342 200 364 214 Q386 228 408 214 Q430 200 448 210 L448 216 Q430 202 408 216 Q386 230 364 216 Q342 202 320 216 Q298 230 276 216 Q254 202 232 216 Z" fill="#16a8d3"/>
-      </g>
+      <g clip-path="url(#hmc)"><rect x="232" y="214" width="216" height="90" fill="#0d7fa0"/><path d="M232 214 Q254 200 276 214 Q298 228 320 214 Q342 200 364 214 Q386 228 408 214 Q430 200 448 210 L448 216 Q430 202 408 216 Q386 230 364 216 Q342 202 320 216 Q298 230 276 216 Q254 202 232 216 Z" fill="#16a8d3"/></g>
       <path d="M340 110 C358 132 374 148 374 166 C374 186 358 202 340 202 C322 202 306 186 306 166 C306 148 322 132 340 110 Z" fill="#16a8d3"/>
       <path d="M340 128 C352 144 361 156 361 166 C361 180 352 191 340 191 C328 191 319 180 319 166 C319 156 328 144 340 128 Z" fill="#0d7fa0"/>
       <circle cx="340" cy="110" r="5" fill="#f5a623"/>
     </svg>
-    <div class="htitles">
-      <div class="hname" id="hdr-name">Loading…</div>
-      <div class="hsub">Field Technician</div>
+    <div class="topbar-id">
+      <div class="topbar-name" id="hdr-name">Loading…</div>
+      <div class="topbar-role">Field Technician</div>
     </div>
-    <div class="wspill">
-      <div class="wsdot con" id="ws-dot"></div>
-      <span class="wslbl" id="ws-lbl">WS</span>
+    <div class="live-chip">
+      <div class="live-dot con" id="ws-dot"></div>
+      <span class="live-lbl" id="ws-lbl">WS</span>
     </div>
-    <button class="hlogout" id="btn-logout" aria-label="Sign out">
+    <button class="logout-btn" id="btn-logout" aria-label="Sign out">
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
       </svg>
     </button>
   </div>
 
-  <div class="dbody" id="dash-body">
-    <div class="pushban" id="push-banner">
-      <div class="pushico">
-        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-        </svg>
+  <div class="scroll-body" id="dash-body">
+
+    <!-- Push banner -->
+    <div class="push-strip" id="push-banner">
+      <div class="push-ico-wrap">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
       </div>
-      <div class="pushtxt">
-        <div class="pushttl">Enable push notifications</div>
-        <div class="pushsub">Receive dispatch alerts on this device, even when FlowGuard Field is closed.</div>
-        <div class="pushbtns">
-          <button class="pushallow" id="push-allow">Enable notifications</button>
-          <button class="pushdismiss" id="push-dismiss">Not now</button>
+      <div class="push-body">
+        <div class="push-ttl">Enable notifications</div>
+        <div class="push-sub">Get instant dispatch alerts even when the app is closed.</div>
+        <div class="push-acts">
+          <button class="push-yes" id="push-allow">Enable</button>
+          <button class="push-no" id="push-dismiss">Not now</button>
         </div>
       </div>
     </div>
 
-    <div class="njban" id="new-job-banner">
-      <div class="njpulse"></div>
-      <div class="njtxt" id="njb-text">New job dispatched to your team</div>
-      <button class="njbtn" id="njb-refresh">View</button>
+    <!-- New job banner -->
+    <div class="newjob-strip" id="new-job-banner">
+      <div class="newjob-dot"></div>
+      <div class="newjob-txt" id="njb-text">New job dispatched to your team</div>
+      <button class="newjob-cta" id="njb-refresh">View</button>
     </div>
 
+    <!-- Dynamic content -->
     <div id="content-area">
-      <div class="ldcard"><div class="spinsm"></div>Loading your assignment…</div>
+      <div class="state-spin"><div class="spn"></div>Loading your assignment…</div>
     </div>
+
   </div>
 </div>
 
 <!-- Sheet: Job Complete -->
-<div class="shovl" id="sheet-complete">
-  <div class="sheet">
-    <div class="shandle-w"><div class="shandle"></div></div>
-    <div class="shbar"></div>
-    <div class="shtitle">Mark Job Complete</div>
-    <div class="shsub">Add a brief completion note. The alert will be resolved and your team set to Returning to HQ.</div>
-    <textarea class="shta" id="complete-notes" placeholder="e.g. Drain cleared, flow restored. No structural damage noted."></textarea>
-    <div class="shmsg" id="complete-msg"></div>
-    <div class="shbtns">
-      <button class="shcancel" id="complete-cancel">Cancel</button>
-      <button class="shconfirm green" id="complete-confirm">Confirm Complete</button>
+<div class="sh-overlay" id="sheet-complete">
+  <div class="sh-panel">
+    <div class="sh-handle-row"><div class="sh-handle"></div></div>
+    <div class="sh-accent"></div>
+    <div class="sh-title">Mark Job Complete</div>
+    <div class="sh-sub">Add a brief completion note. The alert will be resolved and your team set to Returning to HQ.</div>
+    <textarea class="sh-textarea" id="complete-notes" placeholder="e.g. Drain cleared, flow restored. No structural damage noted."></textarea>
+    <div class="sh-msg" id="complete-msg"></div>
+    <div class="sh-actions">
+      <button class="sh-cancel" id="complete-cancel">Cancel</button>
+      <button class="sh-confirm green" id="complete-confirm">Confirm Complete</button>
     </div>
   </div>
 </div>
 
 <!-- Sheet: Request Backup -->
-<div class="shovl" id="sheet-backup">
-  <div class="sheet">
-    <div class="shandle-w"><div class="shandle"></div></div>
-    <div class="shbar"></div>
-    <div class="shtitle">Request Backup</div>
-    <div class="shsub">Describe the situation. Ops will be notified immediately.</div>
-    <textarea class="shta" id="backup-notes" placeholder="e.g. Drain collapsed — require additional excavation team and equipment."></textarea>
-    <div class="shmsg" id="backup-msg"></div>
-    <div class="shbtns">
-      <button class="shcancel" id="backup-cancel">Cancel</button>
-      <button class="shconfirm red" id="backup-confirm">Send Backup Request</button>
+<div class="sh-overlay" id="sheet-backup">
+  <div class="sh-panel">
+    <div class="sh-handle-row"><div class="sh-handle"></div></div>
+    <div class="sh-accent"></div>
+    <div class="sh-title">Request Backup</div>
+    <div class="sh-sub">Describe the situation. Ops will be notified immediately.</div>
+    <textarea class="sh-textarea" id="backup-notes" placeholder="e.g. Drain collapsed — require additional excavation team and equipment."></textarea>
+    <div class="sh-msg" id="backup-msg"></div>
+    <div class="sh-actions">
+      <button class="sh-cancel" id="backup-cancel">Cancel</button>
+      <button class="sh-confirm red" id="backup-confirm">Send Backup Request</button>
     </div>
   </div>
 </div>
@@ -542,12 +862,12 @@ function readToken() {
          localStorage.getItem('token') || sessionStorage.getItem('token') || null;
 }
 function clearSession() {
-  ['fg_token','token','user'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); });
+  ['fg_token','token','user'].forEach(k=>{ localStorage.removeItem(k); sessionStorage.removeItem(k); });
 }
 async function api(method, path, body) {
   const r = await fetch(`${CONFIG.API}${path}`, {
     method, headers:{'Content-Type':'application/json','Authorization':`Bearer ${S.token}`},
-    ...(body ? {body:JSON.stringify(body)} : {})
+    ...(body?{body:JSON.stringify(body)}:{})
   });
   return r.json();
 }
@@ -565,10 +885,11 @@ function initials(name) {
   const p=name.trim().split(/\s+/);
   return p.length===1 ? p[0].slice(0,2).toUpperCase() : (p[0][0]+p[p.length-1][0]).toUpperCase();
 }
-function escHtml(s) { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-function sevBadgeClass(sev) { return `sev-${(sev||'minor').toLowerCase()}`; }
-function sevCardClass(sev)  { return `sc-${(sev||'minor').toLowerCase()}`; }
-function tsClass(s) { return ({en_route:'tsp-en_route',on_site:'tsp-on_site',returning:'tsp-returning'})[s]||'tsp-idle'; }
+function escHtml(s) {
+  return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function sevHdrClass(sev) { return `jh-${(sev||'minor').toLowerCase()}`; }
+function tsStatusClass(s) { return ({en_route:'tcs-en_route',on_site:'tcs-on_site',returning:'tcs-returning'})[s]||'tcs-idle'; }
 function tsLabel(s) { return ({idle:'Idle',en_route:'En Route',on_site:'On Site',returning:'Returning'})[s]||(s||'Idle'); }
 function urlB64ToUint8Array(b64) {
   const pad='='.repeat((4-b64.length%4)%4), raw=atob((b64+pad).replace(/-/g,'+').replace(/_/g,'/'));
@@ -577,18 +898,18 @@ function urlB64ToUint8Array(b64) {
 
 function showScreen(id) { document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); $(id).classList.add('active'); }
 
-/* LOGIN */
-function loginMsg(txt,type) { const el=$('l-msg'); el.textContent=txt; el.className=`lfmsg ${type}`; }
+/* ── LOGIN ── */
+function loginMsg(txt, type) { const el=$('l-msg'); el.textContent=txt; el.className=`form-msg ${type}`; }
 
 async function doLogin() {
   const email=$('l-email').value.trim(), pass=$('l-pass').value;
   if(!email||!pass){loginMsg('Please enter your email and password.','error');return;}
-  const btn=$('l-btn'), btxt=btn.querySelector('.lfsub-txt');
-  btn.disabled=true; btxt.innerHTML='<span class="spinner"></span>Signing in…'; $('l-msg').className='lfmsg';
+  const btn=$('l-btn'), btxt=btn.querySelector('.cta-txt');
+  btn.disabled=true; btxt.innerHTML='<span class="spinner"></span>Signing in…'; $('l-msg').className='form-msg';
   try {
     const d=await fetch(`${CONFIG.API}/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})}).then(r=>r.json());
     if(!d.success){btn.disabled=false;btxt.textContent='Sign in';loginMsg(d.error||'Invalid credentials.','error');return;}
-    if(d.data.user.role!=='field_team'){btn.disabled=false;btxt.textContent='Sign in';loginMsg('This portal is for field technicians only. Use the Ops Center for other roles.','error');return;}
+    if(d.data.user.role!=='field_team'){btn.disabled=false;btxt.textContent='Sign in';loginMsg('This portal is for field technicians only.','error');return;}
     localStorage.setItem(CONFIG.TOKEN_KEY,d.data.token);
     S.token=d.data.token;
     S.user={id:d.data.user.id,email:d.data.user.email,fullName:d.data.user.fullName,role:d.data.user.role};
@@ -599,23 +920,23 @@ async function doLogin() {
 on('l-btn','click',doLogin);
 on('l-pass','keydown',e=>{if(e.key==='Enter')doLogin();});
 on('forgot-link','click',()=>showScreen('screen-forgot'));
-on('back-to-login','click',()=>{showScreen('screen-login');$('fp-msg').className='lfmsg';$('fp-email').value='';$('fp-btn').disabled=false;$('fp-btn').querySelector('.lfsub-txt').textContent='Send Reset Link';});
+on('back-to-login','click',()=>{showScreen('screen-login');$('fp-msg').className='form-msg';$('fp-email').value='';$('fp-btn').disabled=false;$('fp-btn').querySelector('.cta-txt').textContent='Send Reset Link';});
 
 async function doForgotPassword() {
   const email=$('fp-email').value.trim();
-  if(!email){$('fp-msg').className='lfmsg error';$('fp-msg').textContent='Please enter your email address.';return;}
-  const btn=$('fp-btn'),btxt=btn.querySelector('.lfsub-txt');
-  btn.disabled=true;btxt.innerHTML='<span class="spinner"></span>Sending…';$('fp-msg').className='lfmsg';
+  if(!email){$('fp-msg').className='form-msg error';$('fp-msg').textContent='Please enter your email address.';return;}
+  const btn=$('fp-btn'),btxt=btn.querySelector('.cta-txt');
+  btn.disabled=true; btxt.innerHTML='<span class="spinner"></span>Sending…'; $('fp-msg').className='form-msg';
   try {
     await fetch(`${CONFIG.API}/auth/forgot-password`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})}).then(r=>r.json());
-    $('fp-msg').className='lfmsg success';$('fp-msg').textContent='If an account exists for this email, a reset link has been sent. Check your inbox.';btxt.textContent='✓ Email sent';
-    setTimeout(()=>{showScreen('screen-login');$('fp-msg').className='lfmsg';$('fp-email').value='';btn.disabled=false;btxt.textContent='Send Reset Link';},4000);
-  } catch {$('fp-msg').className='lfmsg error';$('fp-msg').textContent='Connection failed. Check your network and retry.';btn.disabled=false;btxt.textContent='Send Reset Link';}
+    $('fp-msg').className='form-msg success'; $('fp-msg').textContent='If an account exists, a reset link has been sent. Check your inbox.'; btxt.textContent='✓ Email sent';
+    setTimeout(()=>{showScreen('screen-login');$('fp-msg').className='form-msg';$('fp-email').value='';btn.disabled=false;btxt.textContent='Send Reset Link';},4000);
+  } catch { $('fp-msg').className='form-msg error'; $('fp-msg').textContent='Connection failed. Check your network.'; btn.disabled=false; btxt.textContent='Send Reset Link'; }
 }
 on('fp-btn','click',doForgotPassword);
 on('fp-email','keydown',e=>{if(e.key==='Enter')doForgotPassword();});
 
-/* SESSION */
+/* ── SESSION ── */
 async function checkSession() {
   const token=readToken(); if(!token) return false; S.token=token;
   try {
@@ -625,7 +946,7 @@ async function checkSession() {
   } catch {clearSession();return false;}
 }
 
-/* DASHBOARD */
+/* ── DASHBOARD ── */
 async function initDashboard() {
   showScreen('screen-dash');
   if(S.user) $('hdr-name').textContent=S.user.fullName||S.user.email;
@@ -649,7 +970,7 @@ async function loadData() {
     const teamName=(S.team.name||'').trim().toLowerCase(), teamId=S.team.team_id;
     const [aRes,iRes]=await Promise.all([api('GET','/alerts'),api('GET','/inspections')]);
     const ACTIVE_ALERT=new Set(['dispatched','active','acknowledged']), ACTIVE_INSP=new Set(['scheduled','in_progress']);
-    function teamMatch(val){if(!val)return false;const v=String(val).trim().toLowerCase();return v===teamName||v===(teamId||'').toLowerCase();}
+    const teamMatch=val=>{if(!val) return false;const v=String(val).trim().toLowerCase();return v===teamName||v===(teamId||'').toLowerCase();};
     S.alert=null; S.inspection=null;
     if(aRes.success) S.alert=aRes.data.find(a=>teamMatch(a.assigned_team)&&ACTIVE_ALERT.has(a.status))||null;
     if(iRes.success) S.inspection=iRes.data.find(i=>teamMatch(i.assigned_team)&&ACTIVE_INSP.has(i.status))||null;
@@ -657,93 +978,132 @@ async function loadData() {
   } catch(err){console.error('loadData:',err);renderError(err.message);}
 }
 
-function renderLoading() { $('content-area').innerHTML=`<div class="ldcard"><div class="spinsm"></div>Loading your assignment…</div>`; }
-
-function renderNoTeam() {
-  $('content-area').innerHTML=`<div class="emcard"><div class="emico"><svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div class="emtit">No team assignment</div><div class="emsub">You haven't been added to a team yet.<br>Contact your dispatcher to get assigned.</div></div>`;
+function renderLoading() {
+  $('content-area').innerHTML=`<div class="state-spin"><div class="spn"></div>Loading your assignment…</div>`;
 }
-
+function renderNoTeam() {
+  $('content-area').innerHTML=`<div class="state-card"><div class="state-icon"><svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div class="state-title">No team assignment</div><div class="state-sub">You haven't been added to a team yet.<br>Contact your dispatcher to get assigned.</div></div>`;
+}
 function renderError(msg) {
-  $('content-area').innerHTML=`<div class="emcard"><div class="emico"><svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></div><div class="emtit">Failed to load</div><div class="emsub">${escHtml(msg||'An unexpected error occurred.')}</div><button class="rfbtn" onclick="loadData()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Retry</button></div>`;
+  $('content-area').innerHTML=`<div class="state-card"><div class="state-icon"><svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></div><div class="state-title">Failed to load</div><div class="state-sub">${escHtml(msg||'An unexpected error occurred.')}</div><button class="retry-btn" onclick="loadData()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Retry</button></div>`;
 }
 
 function renderDashboard() {
   const t=S.team, a=S.alert, ins=S.inspection, ts=t.status||'idle', hasJob=!!(a||ins);
   let html='';
 
+  /* ── Alert job card ── */
   if(a) {
-    const sev=(a.severity||'minor').toLowerCase(), type=a.alert_type||'Drainage Alert', site=a.site_name||a.client_name||'—', loc=a.location||'—', desc=a.description||'—', ovf=a.time_to_overflow_min;
-    html+=`<div class="jcard ${sevCardClass(sev)}">
-      <div class="jctop">
-        <span class="sevbadge ${sevBadgeClass(sev)}">${sev}</span>
-        <div class="jcinfo"><div class="jctype">${escHtml(type)}</div><div class="jcsite">${escHtml(site)}</div></div>
-        <div class="jcage">${ageStr(a.created_at)}</div>
+    const sev=(a.severity||'minor').toLowerCase();
+    const type=a.alert_type||'Drainage Alert', site=a.site_name||a.client_name||'—';
+    const loc=a.location||'—', desc=a.description||'—', ovf=a.time_to_overflow_min;
+    html+=`
+    <div class="job-card">
+      <div class="job-header ${sevHdrClass(sev)}">
+        <div class="jh-top">
+          <span class="jh-badge"><span class="jh-badge-dot"></span>${sev}</span>
+          <span class="jh-age">${ageStr(a.created_at)}</span>
+        </div>
+        <div class="jh-type">${escHtml(type)}</div>
+        <div class="jh-site">${escHtml(site)}</div>
       </div>
-      <div class="jcbody">
-        <div class="jrow"><div class="jrico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div><div class="jrlbl">Location</div><div class="jrval">${escHtml(loc)}</div></div></div>
-        ${ovf!=null?`<div class="jrow"><div class="jrico" style="color:var(--err)"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg></div><div><div class="jrlbl">Time to overflow</div><div class="jrval"><span class="ovfval"><span class="ovfpulse"></span>${escHtml(String(ovf))} min</span></div></div></div>`:''}
-        <div class="jrow"><div class="jrico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><div><div class="jrlbl">Notes from ops</div><div class="jrval">${escHtml(desc)}</div></div></div>
+      ${ovf!=null?`
+      <div class="overflow-alarm" style="margin-top:14px;">
+        <div class="oa-icon"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg></div>
+        <div>
+          <div class="oa-lbl">Time to overflow</div>
+          <div><span class="oa-num">${escHtml(String(ovf))}</span> <span class="oa-unit">min</span></div>
+        </div>
+      </div>`:''}
+      <div class="job-details">
+        <div class="jd-row">
+          <div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
+          <div><div class="jd-label">Location</div><div class="jd-value">${escHtml(loc)}</div></div>
+        </div>
+        <div class="jd-row">
+          <div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+          <div><div class="jd-label">Ops Notes</div><div class="jd-value">${escHtml(desc)}</div></div>
+        </div>
       </div>
-      <div class="jcfoot">ALERT · ${escHtml(a.alert_id||String(a.id))}</div>
+      <div class="job-footer">
+        <span>ALERT</span>
+        <span>${escHtml(a.alert_id||String(a.id))}</span>
+      </div>
     </div>`;
   }
 
+  /* ── Inspection card ── */
   if(ins) {
     const propName=ins.property_name||ins.area_name||'—';
     const schedDate=ins.scheduled_date?new Date(ins.scheduled_date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'—';
     const schedTime=ins.scheduled_time_start||'', statusLbl=ins.status==='in_progress'?'In Progress':'Scheduled';
-    html+=`<div class="jcard sc-insp">
-      <div class="jctop">
-        <span class="sevbadge" style="background:rgba(22,168,211,.12);color:var(--blue-hi);border:1px solid rgba(22,168,211,.25);">${escHtml(statusLbl)}</span>
-        <div class="jcinfo"><div class="jctype">Drainage Inspection</div><div class="jcsite">${escHtml(propName)}</div></div>
-        <div class="jcage">${ageStr(ins.created_at)}</div>
+    html+=`
+    <div class="job-card">
+      <div class="job-header jh-insp">
+        <div class="jh-top">
+          <span class="jh-badge"><span class="jh-badge-dot"></span>${escHtml(statusLbl)}</span>
+          <span class="jh-age">${ageStr(ins.created_at)}</span>
+        </div>
+        <div class="jh-type">Drainage Inspection</div>
+        <div class="jh-site">${escHtml(propName)}</div>
       </div>
-      <div class="jcbody">
-        <div class="jrow"><div class="jrico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div><div class="jrlbl">Scheduled</div><div class="jrval">${escHtml(schedDate)}${schedTime?' · '+escHtml(schedTime):''}</div></div></div>
-        ${ins.city||ins.state?`<div class="jrow"><div class="jrico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div><div class="jrlbl">Location</div><div class="jrval">${escHtml([ins.city,ins.state].filter(Boolean).join(', '))}</div></div></div>`:''}
-        ${ins.property_type?`<div class="jrow"><div class="jrico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><div><div class="jrlbl">Property Type</div><div class="jrval">${escHtml(ins.property_type)}</div></div></div>`:''}
-        ${ins.notes?`<div class="jrow"><div class="jrico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><div><div class="jrlbl">Notes</div><div class="jrval">${escHtml(ins.notes)}</div></div></div>`:''}
+      <div class="job-details">
+        <div class="jd-row"><div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div><div class="jd-label">Scheduled</div><div class="jd-value">${escHtml(schedDate)}${schedTime?' · '+escHtml(schedTime):''}</div></div></div>
+        ${ins.city||ins.state?`<div class="jd-row"><div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div><div class="jd-label">Location</div><div class="jd-value">${escHtml([ins.city,ins.state].filter(Boolean).join(', '))}</div></div></div>`:''}
+        ${ins.property_type?`<div class="jd-row"><div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><div><div class="jd-label">Property Type</div><div class="jd-value">${escHtml(ins.property_type)}</div></div></div>`:''}
+        ${ins.notes?`<div class="jd-row"><div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><div><div class="jd-label">Notes</div><div class="jd-value">${escHtml(ins.notes)}</div></div></div>`:''}
       </div>
-      <div class="jcfoot">INSPECTION · ${escHtml(ins.inspection_id||String(ins.id))}</div>
+      <div class="job-footer"><span>INSPECTION</span><span>${escHtml(ins.inspection_id||String(ins.id))}</span></div>
     </div>`;
   }
 
+  /* ── No job ── */
   if(!hasJob) {
-    html+=`<div class="emcard"><div class="emico"><svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="emtit">No active job</div><div class="emsub">No dispatched alert or scheduled inspection right now.<br>A new job will appear here when assigned.</div></div>`;
+    html+=`<div class="state-card"><div class="state-icon"><svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="state-title">No active job</div><div class="state-sub">No dispatched alert or scheduled inspection right now.<br>A new job will appear here when assigned.</div></div>`;
   }
 
-  html+=`<div class="stcard"><div class="stlbl">Update Status</div><div class="stgrid">
-    <button class="abtn abenroute${ts==='en_route'?' is-cur':''}" id="btn-enroute" ${ts==='en_route'?'disabled':''}>
-      <span class="ai"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg></span>
-      <span class="al">En Route</span>
+  /* ── Status section ── */
+  html+=`
+  <div class="status-section">
+    <div class="status-label">Update Status</div>
+    <div class="status-row">
+      <button class="s-tile s-enroute${ts==='en_route'?' active-state':''}" id="btn-enroute" ${ts==='en_route'?'disabled':''}>
+        <span class="s-tile-ico"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg></span>
+        <span class="s-tile-lbl">En Route</span>
+      </button>
+      <button class="s-tile s-onsite${ts==='on_site'?' active-state':''}" id="btn-onsite" ${ts==='on_site'?'disabled':''}>
+        <span class="s-tile-ico"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span>
+        <span class="s-tile-lbl">On Site</span>
+      </button>
+      <button class="s-tile s-returning${ts==='returning'?' active-state':''}" id="btn-returning" ${ts==='returning'?'disabled':''}>
+        <span class="s-tile-ico"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline stroke-linecap="round" stroke-linejoin="round" points="9 22 9 12 15 12 15 22"/></svg></span>
+        <span class="s-tile-lbl">Return HQ</span>
+      </button>
+    </div>
+    <button class="s-complete" id="btn-complete" ${!hasJob?'disabled':''}>
+      <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      Job Complete
     </button>
-    <button class="abtn abonsite${ts==='on_site'?' is-cur':''}" id="btn-onsite" ${ts==='on_site'?'disabled':''}>
-      <span class="ai"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span>
-      <span class="al">On Site</span>
+    <button class="s-backup" id="btn-backup" ${!hasJob?'disabled':''}>
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+      Request Backup
     </button>
-    <button class="abtn abcomplete" id="btn-complete" ${!hasJob?'disabled':''}>
-      <span class="ai"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span>
-      <span class="al">Job Complete</span>
-    </button>
-    <button class="abtn abreturning${ts==='returning'?' is-cur':''}" id="btn-returning" ${ts==='returning'?'disabled':''}>
-      <span class="ai"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline stroke-linecap="round" stroke-linejoin="round" points="9 22 9 12 15 12 15 22"/></svg></span>
-      <span class="al">Return to HQ</span>
-    </button>
-    <button class="abtn abbackup" id="btn-backup" ${!hasJob?'disabled':''}>
-      <span class="ai"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg></span>
-      <span class="al">Request Backup</span>
-    </button>
-  </div></div>`;
+  </div>`;
 
+  /* ── Team card ── */
   let memberNames=[];
   if(Array.isArray(t.members)) memberNames=t.members.map(m=>m.full_name||m.name||'').filter(Boolean);
   else if(t.members) memberNames=t.members.split(',').map(s=>s.trim()).filter(Boolean);
 
-  html+=`<div class="tmcard"><div class="cardlbl">Your Team</div>
-    <div class="tmrow"><span class="tmname">${escHtml(t.name)}</span><span class="tmspill ${tsClass(ts)}">${tsLabel(ts)}</span></div>
-    <div class="mlist">
-      ${memberNames.map(n=>`<div class="mrow"><div class="mav">${initials(n)}</div><div class="mname">${escHtml(n)}</div></div>`).join('')}
-      ${memberNames.length===0?'<div style="font-size:.82rem;color:var(--ink-4)">No members listed</div>':''}
+  html+=`
+  <div class="team-card">
+    <div class="tc-header">
+      <div><div class="tc-lbl">Your Team</div><div class="tc-name">${escHtml(t.name)}</div></div>
+      <span class="tc-status ${tsStatusClass(ts)}">${tsLabel(ts)}</span>
+    </div>
+    <div class="member-row">
+      ${memberNames.map(n=>`<div class="member-chip"><div class="m-av">${initials(n)}</div><div class="m-name">${escHtml(n)}</div></div>`).join('')}
+      ${memberNames.length===0?'<span style="font-size:.82rem;color:var(--ink-4);">No members listed</span>':''}
     </div>
   </div>`;
 
@@ -752,7 +1112,7 @@ function renderDashboard() {
 }
 
 function bindButtons() {
-  async function setStatus(status,label) {
+  async function setStatus(status, label) {
     if(!S.team) return;
     try { const d=await api('PUT',`/teams/${S.team.team_id}/status`,{status}); if(!d.success) throw new Error(d.error||'Failed'); S.team.status=status; toast(`Status: ${label}`,'ok'); await loadData(); }
     catch(e){toast(e.message||'Update failed','err');}
@@ -761,47 +1121,46 @@ function bindButtons() {
   if(b('btn-enroute'))   b('btn-enroute').onclick  =()=>setStatus('en_route','En Route');
   if(b('btn-onsite'))    b('btn-onsite').onclick    =()=>setStatus('on_site','On Site');
   if(b('btn-returning')) b('btn-returning').onclick =()=>setStatus('returning','Returning to HQ');
-  if(b('btn-complete'))  b('btn-complete').onclick  =()=>{$('complete-notes').value='';$('complete-msg').className='shmsg';$('sheet-complete').classList.add('show');};
-  if(b('btn-backup'))    b('btn-backup').onclick    =()=>{$('backup-notes').value='';$('backup-msg').className='shmsg';$('sheet-backup').classList.add('show');};
+  if(b('btn-complete'))  b('btn-complete').onclick  =()=>{$('complete-notes').value='';$('complete-msg').className='sh-msg';$('sheet-complete').classList.add('show');};
+  if(b('btn-backup'))    b('btn-backup').onclick    =()=>{$('backup-notes').value='';$('backup-msg').className='sh-msg';$('sheet-backup').classList.add('show');};
 }
 
-/* SHEET — COMPLETE */
+/* ── Sheets ── */
 on('complete-cancel','click',()=>$('sheet-complete').classList.remove('show'));
 on('sheet-complete','click',e=>{if(e.target===$('sheet-complete'))$('sheet-complete').classList.remove('show');});
 on('complete-confirm','click',async()=>{
-  const notes=$('complete-notes').value.trim(),btn=$('complete-confirm'),msg=$('complete-msg'),a=S.alert,ins=S.inspection,t=S.team;
+  const notes=$('complete-notes').value.trim(), btn=$('complete-confirm'), msg=$('complete-msg'), a=S.alert, ins=S.inspection, t=S.team;
   if(!a&&!ins) return;
-  btn.disabled=true;btn.textContent='Submitting…';msg.className='shmsg';
+  btn.disabled=true; btn.textContent='Submitting…'; msg.className='sh-msg';
   try {
     if(a){const r1=await api('PUT',`/alerts/${a.alert_id||a.id}`,{status:'resolved',...(notes?{notes}:{})});if(!r1.success)throw new Error(r1.error||'Failed to resolve alert');}
     if(ins){const r1=await api('PUT',`/inspections/${ins.inspection_id||ins.id}`,{status:'completed',...(notes?{findings:notes}:{})});if(!r1.success)throw new Error(r1.error||'Failed to complete inspection');}
-    const r2=await api('PUT',`/teams/${t.team_id}/status`,{status:'returning'});if(!r2.success)throw new Error(r2.error||'Failed to update team status');
-    msg.className='shmsg success';msg.textContent='Job complete. Team set to Returning to HQ.';btn.textContent='✓ Done';
+    const r2=await api('PUT',`/teams/${t.team_id}/status`,{status:'returning'}); if(!r2.success) throw new Error(r2.error||'Failed to update team status');
+    msg.className='sh-msg success'; msg.textContent='Job complete. Team set to Returning to HQ.'; btn.textContent='✓ Done';
     setTimeout(()=>{$('sheet-complete').classList.remove('show');btn.disabled=false;btn.textContent='Confirm Complete';S.alert=null;S.team.status='returning';loadData();},1200);
-  } catch(e){msg.className='shmsg error';msg.textContent=e.message||'Something went wrong.';btn.disabled=false;btn.textContent='Confirm Complete';}
+  } catch(e){msg.className='sh-msg error';msg.textContent=e.message||'Something went wrong.';btn.disabled=false;btn.textContent='Confirm Complete';}
 });
 
-/* SHEET — BACKUP */
 on('backup-cancel','click',()=>$('sheet-backup').classList.remove('show'));
 on('sheet-backup','click',e=>{if(e.target===$('sheet-backup'))$('sheet-backup').classList.remove('show');});
 on('backup-confirm','click',async()=>{
   const notes=$('backup-notes').value.trim();
-  if(!notes){$('backup-msg').className='shmsg error';$('backup-msg').textContent='Please describe the situation before sending.';return;}
-  const btn=$('backup-confirm'),msg=$('backup-msg'),a=S.alert;
+  if(!notes){$('backup-msg').className='sh-msg error';$('backup-msg').textContent='Please describe the situation before sending.';return;}
+  const btn=$('backup-confirm'), msg=$('backup-msg'), a=S.alert;
   if(!a) return;
-  btn.disabled=true;btn.textContent='Sending…';msg.className='shmsg';
+  btn.disabled=true; btn.textContent='Sending…'; msg.className='sh-msg';
   try {
-    const a=S.alert;
-    if(a){const d=await api('PUT',`/alerts/${a.alert_id||a.id}`,{notes:`BACKUP REQUESTED: ${notes}`});if(!d.success)throw new Error(d.error||'Failed');}
-    else {const d=await api('PUT',`/teams/${S.team.team_id}/status`,{notes:`BACKUP REQUESTED: ${notes}`});if(!d.success)throw new Error(d.error||'Failed');}
-    msg.className='shmsg success';msg.textContent='Backup request sent to Ops.';btn.textContent='✓ Sent';
+    const target=S.alert;
+    if(target){const d=await api('PUT',`/alerts/${target.alert_id||target.id}`,{notes:`BACKUP REQUESTED: ${notes}`});if(!d.success)throw new Error(d.error||'Failed');}
+    else{const d=await api('PUT',`/teams/${S.team.team_id}/status`,{notes:`BACKUP REQUESTED: ${notes}`});if(!d.success)throw new Error(d.error||'Failed');}
+    msg.className='sh-msg success'; msg.textContent='Backup request sent to Ops.'; btn.textContent='✓ Sent';
     setTimeout(()=>{$('sheet-backup').classList.remove('show');btn.disabled=false;btn.textContent='Send Backup Request';},1500);
-  } catch(e){msg.className='shmsg error';msg.textContent=e.message||'Failed to send. Try again.';btn.disabled=false;btn.textContent='Send Backup Request';}
+  } catch(e){msg.className='sh-msg error';msg.textContent=e.message||'Failed to send. Try again.';btn.disabled=false;btn.textContent='Send Backup Request';}
 });
 
-/* WS */
-function wsStatus(s){const dot=$('ws-dot'),lbl=$('ws-lbl');dot.className=`wsdot ${s}`;lbl.textContent=s==='ok'?'Live':s==='err'?'Off':'WS';}
-function initWS() {
+/* ── WS ── */
+function wsStatus(s){const dot=$('ws-dot'),lbl=$('ws-lbl');dot.className=`live-dot ${s}`;lbl.textContent=s==='ok'?'Live':s==='err'?'Off':'WS';}
+function initWS(){
   if(typeof io==='undefined'){wsStatus('err');return;}
   wsStatus('con');
   const socket=io(CONFIG.WS,{auth:{token:S.token},transports:['websocket','polling']});
@@ -815,27 +1174,25 @@ function initWS() {
 }
 on('njb-refresh','click',()=>{$('new-job-banner').classList.remove('show');loadData();});
 
-/* PUSH */
+/* ── Push ── */
 function checkPush(){if(!('Notification'in window)||!('serviceWorker'in navigator))return;if(Notification.permission==='default')$('push-banner').classList.add('show');}
 on('push-allow','click',async()=>{const perm=await Notification.requestPermission();$('push-banner').classList.remove('show');if(perm==='granted')await subscribePush();});
 on('push-dismiss','click',()=>$('push-banner').classList.remove('show'));
 async function subscribePush(){if(!S.swReg||!CONFIG.VAPID_KEY){console.warn('Push: SW not ready or VAPID_KEY empty');return;}try{const sub=await S.swReg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8Array(CONFIG.VAPID_KEY)});await api('POST','/push/subscribe',{subscription:sub.toJSON(),user_id:S.user?.id});console.log('✅ Push subscribed');}catch(e){console.warn('Push subscribe failed:',e);}}
-
-/* SW */
 async function registerSW(){if(!('serviceWorker'in navigator))return;try{S.swReg=await navigator.serviceWorker.register('/field-sw.js');console.log('✅ SW registered');}catch(e){console.warn('SW registration failed:',e);}}
 
-/* LOGOUT */
+/* ── Logout ── */
 on('btn-logout','click',()=>{
   if(S.socket)S.socket.disconnect();
   clearSession();
   S={token:null,user:null,team:null,alert:null,socket:null,swReg:null};
   showScreen('screen-login');
-  $('l-btn').disabled=false;$('l-btn').querySelector('.lfsub-txt').textContent='Sign in';
-  $('l-msg').className='lfmsg';$('l-email').value='';$('l-pass').value='';
+  $('l-btn').disabled=false; $('l-btn').querySelector('.cta-txt').textContent='Sign in';
+  $('l-msg').className='form-msg'; $('l-email').value=''; $('l-pass').value='';
 });
 
-/* BOOT */
-(async()=>{if(await checkSession()){await initDashboard();}else{showScreen('screen-login');}})();
+/* ── Boot ── */
+(async()=>{ if(await checkSession()){await initDashboard();}else{showScreen('screen-login');} })();
 </script>
 </body>
 </html>
