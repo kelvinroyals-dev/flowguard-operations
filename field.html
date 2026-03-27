@@ -608,6 +608,93 @@
     .toast.ok  { background:var(--raised); color:var(--ink); border:1px solid rgba(255,255,255,.10); backdrop-filter:blur(12px); box-shadow:0 8px 24px rgba(0,0,0,.45); }
     .toast.err { background:var(--red); color:#fff; box-shadow:0 8px 24px rgba(239,68,68,.45); }
 
+    /* ═══════════════════════════════
+       WRITE REPORT BUTTON
+    ═══════════════════════════════ */
+    .s-report {
+      width:100%; min-height:52px; padding:0 20px;
+      border-radius:14px;
+      background:rgba(61,191,232,.08);
+      border:1.5px solid rgba(61,191,232,.18);
+      color:var(--blue-hi);
+      display:flex; align-items:center; justify-content:center; gap:10px;
+      font-size:.84rem; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
+      transition:transform .12s, background .2s;
+    }
+    .s-report:hover { background:rgba(61,191,232,.14); }
+    .s-report:active { transform:scale(0.97); }
+
+    /* ═══════════════════════════════
+       REPORT SHEET — multi-step
+    ═══════════════════════════════ */
+    .rfield { margin-bottom:14px; }
+    .rfield-label {
+      display:block; font-family:var(--mono);
+      font-size:.58rem; font-weight:600; letter-spacing:.16em; text-transform:uppercase;
+      color:var(--ink-3); margin-bottom:7px;
+    }
+    .rfield-input {
+      width:100%; padding:13px 14px;
+      background:rgba(255,255,255,.05);
+      border:1.5px solid rgba(255,255,255,.10);
+      border-radius:12px; font-size:.9rem; font-weight:500;
+      color:var(--ink); outline:none; -webkit-appearance:none;
+      transition:border-color .2s, box-shadow .2s;
+    }
+    .rfield-input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(22,168,211,.14); }
+    .rfield-input::placeholder { color:var(--ink-4); }
+    .rfield-ta {
+      width:100%; padding:13px 14px; min-height:90px;
+      background:rgba(255,255,255,.05);
+      border:1.5px solid rgba(255,255,255,.10);
+      border-radius:12px; font-size:.88rem; color:var(--ink);
+      resize:vertical; outline:none; line-height:1.55;
+      transition:border-color .2s, box-shadow .2s;
+    }
+    .rfield-ta:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(22,168,211,.14); }
+    .rfield-ta::placeholder { color:var(--ink-4); }
+    .rfield-select {
+      width:100%; padding:13px 14px;
+      background:rgba(255,255,255,.05);
+      border:1.5px solid rgba(255,255,255,.10);
+      border-radius:12px; font-size:.9rem; color:var(--ink);
+      outline:none; -webkit-appearance:none;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='rgba(255,255,255,.4)' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+      background-repeat:no-repeat; background-position:right 14px center;
+      padding-right:36px;
+      transition:border-color .2s;
+    }
+    .rfield-select:focus { border-color:var(--blue); }
+    .rfield-select option { background:#0d3a54; color:#fff; }
+
+    /* report type pills */
+    .rtype-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
+    .rtype-pill {
+      padding:8px 16px; border-radius:20px; cursor:pointer;
+      font-size:.78rem; font-weight:700; letter-spacing:.5px; text-transform:uppercase;
+      border:1.5px solid transparent; transition:all .15s;
+    }
+    .rtype-pill.incident  { background:rgba(239,68,68,.10);    color:#fca5a5; border-color:rgba(239,68,68,.20); }
+    .rtype-pill.inspection{ background:rgba(22,168,211,.10);   color:var(--blue-hi); border-color:rgba(22,168,211,.20); }
+    .rtype-pill.general   { background:rgba(255,255,255,.07);  color:var(--ink-3); border-color:rgba(255,255,255,.12); }
+    .rtype-pill.selected  { box-shadow:0 0 0 2px currentColor; opacity:1; }
+    .rtype-pill:not(.selected) { opacity:.55; }
+
+    /* progress steps at top of report sheet */
+    .rstep-bar { display:flex; gap:6px; margin-bottom:24px; }
+    .rstep { flex:1; height:3px; border-radius:2px; background:rgba(255,255,255,.10); transition:background .3s; }
+    .rstep.done { background:var(--blue); }
+    .rstep.active { background:var(--blue-hi); }
+
+    /* draft badge */
+    .draft-badge {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:3px 10px; border-radius:12px;
+      font-family:var(--mono); font-size:.56rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase;
+      background:rgba(234,179,8,.12); color:var(--warn); border:1px solid rgba(234,179,8,.2);
+      margin-bottom:18px;
+    }
+
     @media (prefers-reduced-motion:reduce) {
       .hero::before,.hero::after,.ring-1,.ring-2,.ab,.live-dot.con,.newjob-dot,.oa-icon,.spn { animation:none!important; opacity:1; }
     }
@@ -836,6 +923,93 @@
       <button class="sh-cancel" id="backup-cancel">Cancel</button>
       <button class="sh-confirm red" id="backup-confirm">Send Backup Request</button>
     </div>
+  </div>
+</div>
+
+<!-- Sheet: Write Report (3-step) -->
+<div class="sh-overlay" id="sheet-report">
+  <div class="sh-panel" id="sheet-report-panel">
+    <div class="sh-handle-row"><div class="sh-handle"></div></div>
+    <div class="sh-accent"></div>
+
+    <!-- Step indicator -->
+    <div class="rstep-bar" id="r-steps">
+      <div class="rstep active" id="rstep-1"></div>
+      <div class="rstep" id="rstep-2"></div>
+      <div class="rstep" id="rstep-3"></div>
+    </div>
+
+    <!-- STEP 1: Type + Summary -->
+    <div id="r-step1">
+      <div class="sh-title">Write Report</div>
+      <div class="sh-sub" id="r-job-context">Job report</div>
+
+      <div class="rtype-row" id="rtype-row">
+        <button class="rtype-pill incident"   data-type="incident"   onclick="ReportWriter.selectType('incident')">Incident</button>
+        <button class="rtype-pill inspection" data-type="inspection" onclick="ReportWriter.selectType('inspection')">Inspection</button>
+        <button class="rtype-pill general"    data-type="general"    onclick="ReportWriter.selectType('general')">General</button>
+      </div>
+
+      <div class="rfield">
+        <label class="rfield-label">Report Title</label>
+        <input id="r-title" class="rfield-input" type="text" placeholder="e.g. Drain blockage cleared — Lekki Phase 1">
+      </div>
+      <div class="rfield">
+        <label class="rfield-label">Summary — What happened?</label>
+        <textarea id="r-summary" class="rfield-ta" placeholder="Brief overview of the job, what the team was dispatched for and what was done…"></textarea>
+      </div>
+
+      <div class="sh-actions">
+        <button class="sh-cancel" onclick="ReportWriter.close()">Cancel</button>
+        <button class="sh-confirm green" onclick="ReportWriter.goStep(2)">Next →</button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Findings + Recommendations -->
+    <div id="r-step2" style="display:none;">
+      <div class="sh-title">Findings &amp; Recommendations</div>
+      <div class="sh-sub">Detail what was found on site and what the next steps are.</div>
+
+      <div class="rfield">
+        <label class="rfield-label">On-site Findings</label>
+        <textarea id="r-findings" class="rfield-ta" style="min-height:110px;" placeholder="What was the condition of the drain / area? Any damage, debris, blockage detail, sensor readings observed…"></textarea>
+      </div>
+      <div class="rfield">
+        <label class="rfield-label">Recommendations</label>
+        <textarea id="r-recommendations" class="rfield-ta" placeholder="What should happen next? Follow-up inspections, repairs, replacements…"></textarea>
+      </div>
+      <div class="rfield">
+        <label class="rfield-label">Materials / Equipment Used <span style="opacity:.4;font-weight:400;font-family:var(--ff);text-transform:none;letter-spacing:0;font-size:.75rem;">(optional)</span></label>
+        <input id="r-materials" class="rfield-input" type="text" placeholder="e.g. 2× HDPE pipe joints, bio-enzyme dose 5L">
+      </div>
+
+      <div class="sh-actions">
+        <button class="sh-cancel" onclick="ReportWriter.goStep(1)">← Back</button>
+        <button class="sh-confirm green" onclick="ReportWriter.goStep(3)">Next →</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Review + Submit -->
+    <div id="r-step3" style="display:none;">
+      <div class="sh-title">Review &amp; Submit</div>
+      <div class="sh-sub">Check everything looks right. You can save as draft or submit immediately.</div>
+
+      <div id="r-review-box" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;margin-bottom:16px;font-size:.84rem;line-height:1.6;color:var(--ink-2);"></div>
+
+      <div class="rfield">
+        <label class="rfield-label">Work Duration <span style="opacity:.4;font-weight:400;font-family:var(--ff);text-transform:none;letter-spacing:0;font-size:.75rem;">(minutes, optional)</span></label>
+        <input id="r-duration" class="rfield-input" type="number" min="0" placeholder="e.g. 90">
+      </div>
+
+      <div class="sh-msg" id="r-msg"></div>
+
+      <div class="sh-actions" style="flex-wrap:wrap;gap:8px;">
+        <button class="sh-cancel" style="flex:none;padding:14px 18px;" onclick="ReportWriter.goStep(2)">← Back</button>
+        <button class="sh-cancel" style="flex:1;" id="r-btn-draft" onclick="ReportWriter.submit('draft')">Save Draft</button>
+        <button class="sh-confirm green" style="flex:2;" id="r-btn-submit" onclick="ReportWriter.submit('submitted')">Submit Report</button>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -1088,6 +1262,10 @@ function renderDashboard() {
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
       Request Backup
     </button>
+    <button class="s-report" id="btn-write-report">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+      Write Report
+    </button>
   </div>`;
 
   /* ── Team card ── */
@@ -1123,6 +1301,7 @@ function bindButtons() {
   if(b('btn-returning')) b('btn-returning').onclick =()=>setStatus('returning','Returning to HQ');
   if(b('btn-complete'))  b('btn-complete').onclick  =()=>{$('complete-notes').value='';$('complete-msg').className='sh-msg';$('sheet-complete').classList.add('show');};
   if(b('btn-backup'))    b('btn-backup').onclick    =()=>{$('backup-notes').value='';$('backup-msg').className='sh-msg';$('sheet-backup').classList.add('show');};
+  if(b('btn-write-report')) b('btn-write-report').onclick = ()=> ReportWriter.open();
 }
 
 /* ── Sheets ── */
@@ -1137,7 +1316,13 @@ on('complete-confirm','click',async()=>{
     if(ins){const r1=await api('PUT',`/inspections/${ins.inspection_id||ins.id}`,{status:'completed',...(notes?{findings:notes}:{})});if(!r1.success)throw new Error(r1.error||'Failed to complete inspection');}
     const r2=await api('PUT',`/teams/${t.team_id}/status`,{status:'returning'}); if(!r2.success) throw new Error(r2.error||'Failed to update team status');
     msg.className='sh-msg success'; msg.textContent='Job complete. Team set to Returning to HQ.'; btn.textContent='✓ Done';
-    setTimeout(()=>{$('sheet-complete').classList.remove('show');btn.disabled=false;btn.textContent='Confirm Complete';S.alert=null;S.team.status='returning';loadData();},1200);
+    setTimeout(()=>{
+      $('sheet-complete').classList.remove('show');
+      btn.disabled=false; btn.textContent='Confirm Complete';
+      S.alert=null; S.team.status='returning'; loadData();
+      // Auto-prompt report writer
+      setTimeout(()=> ReportWriter.open({ autoTriggered: true }), 600);
+    },1200);
   } catch(e){msg.className='sh-msg error';msg.textContent=e.message||'Something went wrong.';btn.disabled=false;btn.textContent='Confirm Complete';}
 });
 
@@ -1192,6 +1377,142 @@ on('btn-logout','click',()=>{
 });
 
 /* ── Boot ── */
+
+/* ─────────────────────────────────────────
+   REPORT WRITER
+   3-step bottom sheet. Submits to POST /field-reports.
+───────────────────────────────────────── */
+const ReportWriter = (function() {
+  let _type = 'general';
+
+  function open(opts = {}) {
+    _type = S.alert ? 'incident' : S.inspection ? 'inspection' : 'general';
+
+    const jobTitle = S.alert
+      ? (S.alert.alert_type || 'Drainage Incident') + (S.alert.site_name ? ' — ' + S.alert.site_name : '')
+      : S.inspection
+        ? 'Drainage Inspection — ' + (S.inspection.area_name || S.inspection.property_name || '')
+        : '';
+
+    const jobContext = opts.autoTriggered
+      ? '✓ Job marked complete — write your report now'
+      : S.alert
+        ? 'Incident report for alert ' + (S.alert.alert_id || S.alert.id)
+        : S.inspection
+          ? 'Inspection: ' + (S.inspection.area_name || S.inspection.inspection_id)
+          : 'General field report';
+
+    $('r-title').value = jobTitle;
+    $('r-summary').value = '';
+    $('r-findings').value = '';
+    $('r-recommendations').value = '';
+    $('r-materials').value = '';
+    $('r-duration').value = '';
+    $('r-msg').className = 'sh-msg';
+    $('r-job-context').textContent = jobContext;
+
+    // Show/hide type pills
+    document.querySelectorAll('.rtype-pill').forEach(p => {
+      p.style.display = (S.alert || S.inspection) && p.dataset.type !== _type ? 'none' : '';
+    });
+    selectType(_type);
+    goStep(1);
+    $('sheet-report').classList.add('show');
+  }
+
+  function close() { $('sheet-report').classList.remove('show'); }
+
+  function selectType(t) {
+    _type = t;
+    document.querySelectorAll('.rtype-pill').forEach(p =>
+      p.classList.toggle('selected', p.dataset.type === t)
+    );
+  }
+
+  function goStep(n) {
+    ['r-step1','r-step2','r-step3'].forEach((id, i) => {
+      $(id).style.display = (i + 1 === n) ? '' : 'none';
+    });
+    ['rstep-1','rstep-2','rstep-3'].forEach((id, i) => {
+      const el = $(id); if(!el) return;
+      el.className = 'rstep ' + (i + 1 < n ? 'done' : i + 1 === n ? 'active' : '');
+    });
+    if (n === 3) _buildReview();
+    const panel = $('sheet-report-panel');
+    if (panel) panel.scrollTop = 0;
+  }
+
+  function _esc(s) { return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function _buildReview() {
+    const title    = ($('r-title').value||'').trim();
+    const summary  = ($('r-summary').value||'').trim();
+    const findings = ($('r-findings').value||'').trim();
+    const recs     = ($('r-recommendations').value||'').trim();
+    const mats     = ($('r-materials').value||'').trim();
+    const box = $('r-review-box');
+    box.innerHTML = [
+      `<div style="font-size:.58rem;font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-4);margin-bottom:8px;">${_type.toUpperCase()} REPORT</div>`,
+      title    && `<div style="font-weight:800;font-size:.95rem;color:var(--ink);margin-bottom:10px;">${_esc(title)}</div>`,
+      summary  && `<div style="margin-bottom:10px;"><span style="font-size:.55rem;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);">SUMMARY</span><br><span style="color:var(--ink-2)">${_esc(summary)}</span></div>`,
+      findings && `<div style="margin-bottom:10px;"><span style="font-size:.55rem;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);">FINDINGS</span><br><span style="color:var(--ink-2)">${_esc(findings)}</span></div>`,
+      recs     && `<div style="margin-bottom:10px;"><span style="font-size:.55rem;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);">RECOMMENDATIONS</span><br><span style="color:var(--ink-2)">${_esc(recs)}</span></div>`,
+      mats     && `<div><span style="font-size:.55rem;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);">MATERIALS</span><br><span style="color:var(--ink-2)">${_esc(mats)}</span></div>`,
+    ].filter(Boolean).join('');
+  }
+
+  async function submit(status) {
+    const title    = ($('r-title').value||'').trim();
+    const summary  = ($('r-summary').value||'').trim();
+    if (!title && !summary) {
+      $('r-msg').className = 'sh-msg error';
+      $('r-msg').textContent = 'Please add at least a title or summary before saving.';
+      return;
+    }
+    const db = $('r-btn-draft'), sb = $('r-btn-submit'), msg = $('r-msg');
+    db.disabled = sb.disabled = true;
+    sb.textContent = 'Saving…';
+    msg.className = 'sh-msg';
+    try {
+      const body = {
+        report_type:   _type,
+        alert_id:      S.alert      ? (S.alert.alert_id      || String(S.alert.id))           : undefined,
+        inspection_id: S.inspection ? (S.inspection.inspection_id || String(S.inspection.id)) : undefined,
+        property_id:   S.inspection ? S.inspection.property_id || null                         : undefined,
+        title,
+        summary,
+        findings:         ($('r-findings').value||'').trim(),
+        recommendations:  ($('r-recommendations').value||'').trim(),
+        materials_used:   ($('r-materials').value||'').trim() || undefined,
+        work_duration_min: parseInt($('r-duration').value)||undefined,
+        status
+      };
+      const res = await api('POST', '/field-reports', body);
+      if (!res.success) throw new Error(res.error || 'Server error');
+      msg.className = 'sh-msg success';
+      msg.textContent = status === 'submitted' ? '✓ Report submitted to Ops.' : '✓ Draft saved.';
+      setTimeout(() => {
+        close();
+        db.disabled = sb.disabled = false;
+        sb.textContent = 'Submit Report';
+        toast(status === 'submitted' ? 'Report submitted' : 'Draft saved', 'ok');
+      }, 1300);
+    } catch(e) {
+      msg.className = 'sh-msg error';
+      msg.textContent = e.message || 'Save failed. Check your connection.';
+      db.disabled = sb.disabled = false;
+      sb.textContent = 'Submit Report';
+    }
+  }
+
+  return { open, close, selectType, goStep, submit };
+})();
+
+// Sheet backdrop close
+document.addEventListener('click', e => {
+  if (e.target && e.target.id === 'sheet-report') ReportWriter.close();
+});
+
 (async()=>{ if(await checkSession()){await initDashboard();}else{showScreen('screen-login');} })();
 </script>
 </body>
