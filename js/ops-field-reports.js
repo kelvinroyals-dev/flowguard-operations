@@ -13,7 +13,7 @@
 //   replaces the hardcoded DEMO_ALERTS version in ops-alerts-reports.js
 // ============================================
 
-const OpsFieldReports = (function () {
+window.OpsFieldReports = (function () {
 
     // ── State ──────────────────────────────────────────────────────────────
 
@@ -494,7 +494,9 @@ const OpsFieldReports = (function () {
 // Load AFTER ops-alerts-reports.js to override it.
 // ============================================
 
-const OpsAlerts = (function () {
+// Override the stub OpsAlerts from ops-alerts-reports.js with live data version.
+// window.OpsAlerts instead of const avoids duplicate-declaration syntax error.
+window.OpsAlerts = (function () {
 
     async function render(container) {
         container.innerHTML = `
