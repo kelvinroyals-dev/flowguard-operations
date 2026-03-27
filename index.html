@@ -994,6 +994,11 @@
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="9.5" y1="14" x2="14.5" y2="14"/></svg>
         <span class="nav-label">Team Members</span>
       </button>
+      <button class="nav-item" id="nav-field-reports" onclick="switchTab('field-reports')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+        <span class="nav-label">Field Reports</span>
+        <span class="nav-badge" id="nav-badge-field-reports" style="display:none;">0</span>
+      </button>
       <div class="nav-sect">Intelligence</div>
       <button class="nav-item" id="nav-reports" onclick="switchTab('reports')">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
@@ -1065,6 +1070,7 @@
       <div id="content-alerts"       class="tab-content"></div>
       <div id="content-teams"        class="tab-content"></div>
       <div id="content-team-members" class="tab-content"></div>
+      <div id="content-field-reports" class="tab-content"></div>
       <div id="content-reports"      class="tab-content"></div>
       <div id="content-billing"      class="tab-content"></div>
       <div id="content-sla"          class="tab-content"></div>
@@ -1100,6 +1106,7 @@
 <script src="js/ops-properties.js"></script>
 <script src="js/ops-teams.js"></script>
 <script src="js/ops-alerts-reports.js"></script>
+<script src="js/ops-field-reports.js"></script>
 <script src="js/ops-billing.js"></script>
 <script src="js/ops-sla.js"></script>
 <script src="js/ops-audit.js"></script>
@@ -1110,17 +1117,18 @@
   Auth.install401Interceptor();
 
   const TAB_META = {
-    dashboard:      { module:'Dashboard',    title:'Operations Overview'         },
-    clients:        { module:'Clients',      title:'Client Accounts'             },
-    properties:     { module:'Properties',   title:'Asset Registry'              },
-    alerts:         { module:'Alerts',       title:'Incident Management'         },
-    teams:          { module:'Field',        title:'Team Dispatch'               },
-    'team-members': { module:'Field',        title:'Team Members'                },
-    reports:        { module:'Intelligence', title:'Reports & Analytics'         },
-    billing:        { module:'Intelligence', title:'Billing & Revenue'           },
-    sla:            { module:'Intelligence', title:'SLA Tracker'                 },
-    audit:          { module:'Intelligence', title:'Audit Log'                   },
-    settings:       { module:'System',       title:'Settings & Configuration'    },
+    dashboard:        { module:'Dashboard',    title:'Operations Overview'         },
+    clients:          { module:'Clients',      title:'Client Accounts'             },
+    properties:       { module:'Properties',   title:'Asset Registry'              },
+    alerts:           { module:'Alerts',       title:'Incident Management'         },
+    teams:            { module:'Field',        title:'Team Dispatch'               },
+    'team-members':   { module:'Field',        title:'Team Members'                },
+    'field-reports':  { module:'Field',        title:'Field Reports'               },
+    reports:          { module:'Intelligence', title:'Reports & Analytics'         },
+    billing:          { module:'Intelligence', title:'Billing & Revenue'           },
+    sla:              { module:'Intelligence', title:'SLA Tracker'                 },
+    audit:            { module:'Intelligence', title:'Audit Log'                   },
+    settings:         { module:'System',       title:'Settings & Configuration'    },
   };
 
   const ALL_TABS = Object.keys(TAB_META);
@@ -1452,17 +1460,18 @@
     if (!c || c.hasAttribute('data-rendered')) return;
 
     const MODS = {
-      dashboard:      () => typeof OpsDashboard      !== 'undefined' ? OpsDashboard      : null,
-      clients:        () => typeof OpsClients        !== 'undefined' ? OpsClients        : null,
-      properties:     () => typeof OpsProperties     !== 'undefined' ? OpsProperties     : null,
-      alerts:         () => typeof OpsAlerts         !== 'undefined' ? OpsAlerts         : null,
-      teams:          () => typeof OpsTeams          !== 'undefined' ? OpsTeams          : null,
-      'team-members': () => typeof OpsUserManagement !== 'undefined' ? OpsUserManagement : null,
-      reports:        () => typeof OpsReports        !== 'undefined' ? OpsReports        : null,
-      billing:        () => typeof OpsBilling        !== 'undefined' ? OpsBilling        : null,
-      sla:            () => typeof OpsSLA            !== 'undefined' ? OpsSLA            : null,
-      audit:          () => typeof OpsAudit          !== 'undefined' ? OpsAudit          : null,
-      settings:       () => typeof OpsSettings       !== 'undefined' ? OpsSettings       : null,
+      dashboard:        () => typeof OpsDashboard      !== 'undefined' ? OpsDashboard      : null,
+      clients:          () => typeof OpsClients        !== 'undefined' ? OpsClients        : null,
+      properties:       () => typeof OpsProperties     !== 'undefined' ? OpsProperties     : null,
+      alerts:           () => typeof OpsAlerts         !== 'undefined' ? OpsAlerts         : null,
+      teams:            () => typeof OpsTeams          !== 'undefined' ? OpsTeams          : null,
+      'team-members':   () => typeof OpsUserManagement !== 'undefined' ? OpsUserManagement : null,
+      'field-reports':  () => typeof OpsFieldReports   !== 'undefined' ? OpsFieldReports   : null,
+      reports:          () => typeof OpsReports        !== 'undefined' ? OpsReports        : null,
+      billing:          () => typeof OpsBilling        !== 'undefined' ? OpsBilling        : null,
+      sla:              () => typeof OpsSLA            !== 'undefined' ? OpsSLA            : null,
+      audit:            () => typeof OpsAudit          !== 'undefined' ? OpsAudit          : null,
+      settings:         () => typeof OpsSettings       !== 'undefined' ? OpsSettings       : null,
     };
 
     const mod = MODS[name]?.();
@@ -1553,6 +1562,23 @@
     } catch {
       // Silent — network issue, don't surface to user
     }
+
+    // Poll field reports awaiting review — update sidebar badge
+    try {
+      const token = Auth.getToken();
+      if (!token) return;
+      const res = await fetch(`${CONFIG.API_BASE}/field-reports?status=submitted&limit=100`, {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const pending = (data.data || []).length;
+      const badge = document.getElementById('nav-badge-field-reports');
+      if (badge) {
+        if (pending > 0) { badge.textContent = pending; badge.style.display = 'inline-flex'; }
+        else             { badge.style.display = 'none'; }
+      }
+    } catch { /* silent */ }
   }
 
   // ── Clock ─────────────────────────────────────────────────────────────
