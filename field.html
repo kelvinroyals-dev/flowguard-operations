@@ -324,31 +324,27 @@
     .retry-btn:hover { background:var(--glass); }
 
     /* ═══════════════════════════════
-       JOB CARD — new anatomy
+       JOB CARD
     ═══════════════════════════════ */
     .job-card {
       background:var(--navy); border-radius:20px;
       border:1px solid rgba(255,255,255,.07);
-      overflow:hidden; position:relative;
+      overflow:hidden;
     }
-
-    /* Severity header band — full width coloured header */
     .job-header {
-      padding:16px 18px 14px;
+      padding:20px 20px 16px;
       position:relative; overflow:hidden;
     }
     .job-header::after {
-      content:'';
-      position:absolute; inset:0;
-      background:linear-gradient(180deg, rgba(0,0,0,.18) 0%, transparent 100%);
+      content:''; position:absolute; inset:0;
+      background:linear-gradient(180deg,rgba(0,0,0,.2) 0%,transparent 100%);
       pointer-events:none;
     }
-    .jh-critical { background:linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%); }
-    .jh-high     { background:linear-gradient(135deg, #7c2d12 0%, #9a3412 100%); }
-    .jh-moderate { background:linear-gradient(135deg, #78350f 0%, #92400e 100%); }
-    .jh-minor    { background:linear-gradient(135deg, #14532d 0%, #166534 100%); }
-    .jh-insp     { background:linear-gradient(135deg, #0c3d5e 0%, var(--mid) 100%); }
-
+    .jh-critical { background:linear-gradient(135deg,#7f1d1d 0%,#991b1b 100%); }
+    .jh-high     { background:linear-gradient(135deg,#7c2d12 0%,#9a3412 100%); }
+    .jh-moderate { background:linear-gradient(135deg,#78350f 0%,#92400e 100%); }
+    .jh-minor    { background:linear-gradient(135deg,#14532d 0%,#166534 100%); }
+    .jh-insp     { background:linear-gradient(135deg,#0c3d5e 0%,var(--mid) 100%); }
     .jh-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; position:relative; z-index:1; }
     .jh-badge {
       display:inline-flex; align-items:center; gap:5px;
@@ -363,44 +359,26 @@
     .jh-moderate .jh-badge-dot { background:#fde68a; }
     .jh-minor    .jh-badge-dot { background:#86efac; }
     .jh-insp     .jh-badge-dot { background:var(--blue-hi); }
-    .jh-age {
-      font-family:var(--mono); font-size:.62rem;
-      color:rgba(255,255,255,.55); flex-shrink:0;
-    }
-    /* Giant job type headline */
-    .jh-type {
-      margin-top:10px; position:relative; z-index:1;
-      font-size:1.45rem; font-weight:900;
-      color:#fff; letter-spacing:-.03em; line-height:1.1;
-      text-shadow:0 2px 10px rgba(0,0,0,.3);
-    }
-    .jh-site { font-size:.82rem; color:rgba(255,255,255,.65); margin-top:4px; position:relative; z-index:1; }
-
-    /* Overflow countdown — big alarming number */
+    .jh-age { font-family:var(--mono); font-size:.62rem; color:rgba(255,255,255,.55); flex-shrink:0; }
+    .jh-type { margin-top:12px; position:relative; z-index:1; font-size:1.55rem; font-weight:900; color:#fff; letter-spacing:-.03em; line-height:1.1; }
+    .jh-site { font-size:.84rem; color:rgba(255,255,255,.65); margin-top:5px; position:relative; z-index:1; }
     .overflow-alarm {
-      margin:0 18px 0;
-      padding:14px 16px;
-      background:rgba(239,68,68,.14);
-      border:1px solid rgba(239,68,68,.30);
-      border-radius:12px;
-      display:flex; align-items:center; gap:12px;
+      margin:0 16px 4px; padding:12px 14px;
+      background:rgba(239,68,68,.14); border:1px solid rgba(239,68,68,.30);
+      border-radius:12px; display:flex; align-items:center; gap:12px;
     }
     .oa-icon { color:var(--red); flex-shrink:0; animation:blink .9s ease-in-out infinite; }
-    .oa-lbl { font-family:var(--mono); font-size:.58rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:rgba(239,68,68,.8); }
+    .oa-lbl { font-family:var(--mono); font-size:.56rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:rgba(239,68,68,.8); }
     .oa-num { font-family:var(--mono); font-size:1.8rem; font-weight:700; color:var(--red); line-height:1; letter-spacing:-.02em; }
     .oa-unit { font-family:var(--mono); font-size:.7rem; color:rgba(239,68,68,.7); }
-
-    /* Job details rows */
-    .job-details { padding:14px 18px 16px; display:flex; flex-direction:column; gap:12px; }
+    .job-details { padding:16px 20px 18px; display:flex; flex-direction:column; gap:13px; }
     .jd-row { display:flex; gap:12px; align-items:flex-start; }
-    .jd-ico { color:var(--blue); flex-shrink:0; margin-top:1px; }
-    .jd-label { font-family:var(--mono); font-size:.55rem; font-weight:600; letter-spacing:.15em; text-transform:uppercase; color:var(--ink-4); margin-bottom:3px; }
-    .jd-value { font-size:.9rem; font-weight:500; color:var(--ink-2); line-height:1.45; }
-
-    /* Job footer */
+    .jd-ico { color:var(--blue); flex-shrink:0; margin-top:2px; }
+    .jd-label { font-family:var(--mono); font-size:.54rem; font-weight:600; letter-spacing:.15em; text-transform:uppercase; color:var(--ink-4); margin-bottom:3px; }
+    .jd-value { font-size:.92rem; font-weight:500; color:var(--ink-2); line-height:1.45; }
     .job-footer {
-      padding:9px 18px;
-      background:rgba(0,0,0,.2);
+      padding:10px 20px;
+      background:rgba(0,0,0,.20);
       border-top:1px solid rgba(255,255,255,.05);
       font-family:var(--mono); font-size:.58rem;
       color:var(--ink-4); letter-spacing:.08em;
@@ -408,192 +386,175 @@
     }
 
     /* ═══════════════════════════════
-       JOB SELECTION QUEUE
+       PROGRESS TRACKER
     ═══════════════════════════════ */
-    .queue-header {
-      font-family:var(--mono); font-size:.6rem; font-weight:600;
-      letter-spacing:.18em; text-transform:uppercase;
-      color:var(--ink-4); padding:0 2px;
-      display:flex; align-items:center; justify-content:space-between;
-      margin-bottom:8px;
-    }
-    .queue-count-badge {
-      background:var(--amber); color:#000;
-      font-size:.52rem; font-weight:800; letter-spacing:.06em;
-      padding:2px 8px; border-radius:20px;
-    }
-    .queue-card {
-      background:var(--navy);
-      border:1.5px solid rgba(255,255,255,.08);
-      border-radius:18px; overflow:hidden;
-      cursor:pointer;
-      transition:border-color .15s, transform .1s;
-      -webkit-tap-highlight-color:transparent;
-    }
-    .queue-card:active { transform:scale(0.985); }
-    .queue-card-header {
-      padding:14px 16px 10px;
-      display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
-    }
-    .queue-card-type {
-      font-family:var(--mono); font-size:.55rem; font-weight:700;
-      letter-spacing:.14em; text-transform:uppercase; color:var(--ink-4);
-      margin-bottom:4px;
-    }
-    .queue-card-title {
-      font-size:1rem; font-weight:800; color:var(--ink); letter-spacing:-.01em; line-height:1.2;
-    }
-    .queue-card-sub { font-size:.78rem; color:var(--ink-3); margin-top:3px; }
-    .queue-sev-pill {
-      padding:4px 10px; border-radius:20px; flex-shrink:0;
-      font-family:var(--mono); font-size:.55rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
-    }
-    .qsp-critical { background:rgba(239,68,68,.18); color:#fca5a5; border:1px solid rgba(239,68,68,.28); }
-    .qsp-high     { background:rgba(249,115,22,.18); color:#fdba74; border:1px solid rgba(249,115,22,.28); }
-    .qsp-moderate { background:rgba(234,179,8,.18);  color:#fde68a; border:1px solid rgba(234,179,8,.28); }
-    .qsp-minor    { background:rgba(34,197,94,.18);  color:#86efac; border:1px solid rgba(34,197,94,.28); }
-    .qsp-insp     { background:rgba(22,168,211,.18); color:var(--blue-hi); border:1px solid rgba(22,168,211,.28); }
-    .queue-card-footer {
-      padding:9px 16px;
-      border-top:1px solid rgba(255,255,255,.05);
-      background:rgba(0,0,0,.15);
-      display:flex; align-items:center; justify-content:space-between;
-      font-family:var(--mono); font-size:.58rem; color:var(--ink-4); letter-spacing:.06em;
-    }
-    .queue-card-cta {
-      font-size:.72rem; font-weight:800; color:var(--blue-hi);
-      display:flex; align-items:center; gap:5px;
-    }
-
-    /* ═══════════════════════════════
-       ACTIVE JOB CONTEXT BANNER
-       "Now working on: X"
-    ═══════════════════════════════ */
-    .job-context-banner {
-      display:flex; align-items:center; gap:10px;
-      padding:11px 14px; border-radius:14px;
-      background:rgba(22,168,211,.10);
-      border:1.5px solid rgba(22,168,211,.22);
-    }
-    .jcb-dot {
-      width:8px; height:8px; border-radius:50%; flex-shrink:0;
-      background:var(--blue); box-shadow:0 0 8px var(--blue);
-      animation:blink .9s ease-in-out infinite;
-    }
-    .jcb-label {
-      font-family:var(--mono); font-size:.54rem; font-weight:600;
-      letter-spacing:.14em; text-transform:uppercase; color:var(--blue-hi); opacity:.7;
-    }
-    .jcb-title {
-      font-size:.88rem; font-weight:700; color:var(--ink); line-height:1.2;
-    }
-    .jcb-back {
-      margin-left:auto; flex-shrink:0;
-      font-family:var(--mono); font-size:.58rem; font-weight:700;
-      letter-spacing:.08em; text-transform:uppercase;
-      color:var(--ink-4); padding:6px 10px;
-      border-radius:8px; border:1px solid rgba(255,255,255,.1);
-      background:rgba(255,255,255,.05);
-    }
-
-    /* ═══════════════════════════════
-       PROGRESS STEPS
-       En Route → On Site → Complete
-    ═══════════════════════════════ */
-    .progress-track {
-      display:flex; align-items:center; gap:0;
-      background:var(--navy); border-radius:16px;
+    .prog-wrap {
+      background:var(--navy); border-radius:18px;
       border:1px solid rgba(255,255,255,.07);
-      padding:14px 16px; position:relative;
+      padding:18px 20px 16px;
     }
-    .prog-step {
-      flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;
-      position:relative; z-index:1;
+    .prog-label {
+      font-family:var(--mono); font-size:.54rem; font-weight:600;
+      letter-spacing:.18em; text-transform:uppercase;
+      color:var(--ink-4); margin-bottom:16px;
     }
-    .prog-step::after {
+    .prog-steps {
+      display:grid; grid-template-columns:1fr 1fr 1fr;
+      position:relative;
+    }
+    /* connector lines */
+    .prog-steps::before {
       content:''; position:absolute;
-      top:14px; left:calc(50% + 14px); right:calc(-50% + 14px);
+      top:13px; left:calc(16.67% + 6px); right:calc(16.67% + 6px);
       height:2px; background:rgba(255,255,255,.08);
+      z-index:0;
     }
-    .prog-step:last-child::after { display:none; }
-    .prog-step.done::after { background:var(--blue); opacity:.5; }
+    .prog-step { display:flex; flex-direction:column; align-items:center; gap:8px; position:relative; z-index:1; }
     .prog-dot {
       width:28px; height:28px; border-radius:50%;
       display:flex; align-items:center; justify-content:center;
-      font-size:.65rem; font-weight:800;
-      background:rgba(255,255,255,.07); border:2px solid rgba(255,255,255,.12);
+      font-size:.68rem; font-weight:800; letter-spacing:0;
+      background:rgba(255,255,255,.07);
+      border:2px solid rgba(255,255,255,.12);
       color:var(--ink-4);
-      transition:all .2s;
+      transition:all .25s;
     }
-    .prog-step.done .prog-dot {
-      background:var(--blue); border-color:var(--blue);
-      color:#fff; box-shadow:0 0 12px rgba(22,168,211,.4);
-    }
-    .prog-step.active .prog-dot {
-      background:var(--amber); border-color:var(--amber);
-      color:#000; box-shadow:0 0 12px rgba(245,166,35,.4);
-      animation:blink .9s ease-in-out infinite;
-    }
-    .prog-lbl {
-      font-family:var(--mono); font-size:.54rem; font-weight:600;
-      letter-spacing:.1em; text-transform:uppercase;
-      color:var(--ink-4); text-align:center;
-    }
-    .prog-step.done .prog-lbl  { color:var(--blue-hi); }
+    .prog-step.done  .prog-dot { background:var(--blue); border-color:var(--blue); color:#fff; box-shadow:0 0 10px rgba(22,168,211,.35); }
+    .prog-step.active .prog-dot { background:var(--amber); border-color:var(--amber); color:#000; box-shadow:0 0 14px rgba(245,166,35,.5); }
+    .prog-lbl { font-family:var(--mono); font-size:.54rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-4); text-align:center; }
+    .prog-step.done  .prog-lbl  { color:rgba(22,168,211,.8); }
     .prog-step.active .prog-lbl { color:var(--amber); }
+    /* connector fill for done steps */
+    .prog-done-line {
+      position:absolute; top:13px; height:2px;
+      background:var(--blue); opacity:.5; z-index:0;
+    }
 
     /* ═══════════════════════════════
-       ACTION BUTTONS — consistent
+       PRIMARY CTA — THE ONE BUTTON
     ═══════════════════════════════ */
-    .status-section { display:flex; flex-direction:column; gap:10px; }
+    .cta-wrap { display:flex; flex-direction:column; gap:0; }
+    .cta-hint {
+      font-family:var(--mono); font-size:.54rem; font-weight:600;
+      letter-spacing:.16em; text-transform:uppercase;
+      color:var(--ink-4); text-align:center; margin-bottom:10px;
+    }
+    .main-cta {
+      width:100%; min-height:72px; padding:0 28px;
+      border-radius:18px; border:none;
+      display:flex; align-items:center; justify-content:center; gap:14px;
+      font-family:var(--ff); font-size:1.05rem; font-weight:900;
+      letter-spacing:-.01em;
+      transition:transform .12s, box-shadow .2s, filter .15s;
+      position:relative; overflow:hidden;
+    }
+    .main-cta::after {
+      content:''; position:absolute; inset:0;
+      background:linear-gradient(135deg,rgba(255,255,255,.12) 0%,transparent 60%);
+      pointer-events:none;
+    }
+    .main-cta:active:not(:disabled) { transform:scale(0.97); }
+    .main-cta:disabled { opacity:.28; cursor:not-allowed; }
+    /* States */
+    .main-cta.go-enroute {
+      background:linear-gradient(135deg,#d97706 0%,#b45309 100%);
+      color:#fff; box-shadow:0 6px 24px rgba(217,119,6,.38);
+    }
+    .main-cta.go-enroute:hover:not(:disabled) { filter:brightness(1.08); }
+    .main-cta.go-onsite {
+      background:linear-gradient(135deg,#0d7fa0 0%,#0e6a87 100%);
+      color:#fff; box-shadow:0 6px 24px rgba(22,168,211,.38);
+    }
+    .main-cta.go-onsite:hover:not(:disabled) { filter:brightness(1.08); }
+    .main-cta.go-complete {
+      background:linear-gradient(135deg,#16a34a 0%,#15803d 100%);
+      color:#fff; box-shadow:0 6px 24px rgba(22,163,74,.40);
+    }
+    .main-cta.go-complete:hover:not(:disabled) { filter:brightness(1.08); }
+    .cta-icon { flex-shrink:0; }
+    .cta-text { display:flex; flex-direction:column; align-items:flex-start; gap:1px; }
+    .cta-action { font-size:1.02rem; font-weight:900; letter-spacing:-.01em; }
+    .cta-sub { font-size:.7rem; font-weight:500; opacity:.75; letter-spacing:.01em; }
 
-    .s-primary {
-      width:100%; min-height:64px; padding:0 24px;
-      border-radius:16px;
-      display:flex; align-items:center; justify-content:center; gap:12px;
-      font-size:.92rem; font-weight:900; letter-spacing:.03em; text-transform:uppercase;
-      transition:transform .12s, box-shadow .2s, opacity .15s;
-      border:none;
+    /* Secondary row */
+    .secondary-row {
+      display:grid; grid-template-columns:1fr 1fr; gap:10px;
+      margin-top:10px;
     }
-    .s-primary.enroute {
-      background:linear-gradient(135deg, #d97706 0%, #b45309 100%);
-      color:#fff; box-shadow:0 4px 20px rgba(217,119,6,.30);
-    }
-    .s-primary.onsite {
-      background:linear-gradient(135deg, #0d7fa0 0%, #0e6a87 100%);
-      color:#fff; box-shadow:0 4px 20px rgba(22,168,211,.30);
-    }
-    .s-primary.complete {
-      background:linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-      color:#fff; box-shadow:0 4px 20px rgba(22,163,74,.30);
-    }
-    .s-primary:hover:not(:disabled) { filter:brightness(1.1); }
-    .s-primary:active:not(:disabled) { transform:scale(0.97); }
-    .s-primary:disabled { opacity:.28; cursor:not-allowed; }
-
-    .s-secondary-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-
-    .s-secondary {
-      min-height:56px; padding:0 16px;
-      border-radius:14px;
+    .sec-btn {
+      min-height:56px; padding:0 14px;
+      border-radius:14px; border:1.5px solid;
       display:flex; align-items:center; justify-content:center; gap:9px;
-      font-size:.78rem; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
-      transition:transform .12s, background .2s;
-      border:1.5px solid;
+      font-family:var(--ff); font-size:.78rem; font-weight:800;
+      letter-spacing:.01em; text-transform:uppercase;
+      transition:background .15s, transform .1s;
     }
-    .s-secondary.backup {
-      background:rgba(239,68,68,.08); border-color:rgba(239,68,68,.22); color:#fca5a5;
+    .sec-btn:active { transform:scale(0.97); }
+    .sec-btn.backup  { background:rgba(239,68,68,.08); border-color:rgba(239,68,68,.22); color:#fca5a5; }
+    .sec-btn.backup:hover  { background:rgba(239,68,68,.14); }
+    .sec-btn.report  { background:rgba(61,191,232,.08); border-color:rgba(61,191,232,.20); color:var(--blue-hi); }
+    .sec-btn.report:hover  { background:rgba(61,191,232,.14); }
+    .sec-btn:disabled { opacity:.25; cursor:not-allowed; }
+
+    /* Done state — no CTA, just status bar */
+    .done-bar {
+      padding:18px 20px; border-radius:18px;
+      background:rgba(34,197,94,.08);
+      border:1.5px solid rgba(34,197,94,.22);
+      display:flex; align-items:center; gap:14px;
     }
-    .s-secondary.backup:hover:not(:disabled) { background:rgba(239,68,68,.14); }
-    .s-secondary.report {
-      background:rgba(61,191,232,.08); border-color:rgba(61,191,232,.18); color:var(--blue-hi);
-    }
-    .s-secondary.report:hover:not(:disabled) { background:rgba(61,191,232,.14); }
-    .s-secondary:active:not(:disabled) { transform:scale(0.97); }
-    .s-secondary:disabled { opacity:.25; cursor:not-allowed; }
+    .done-bar-ico { color:var(--ok); flex-shrink:0; }
+    .done-bar-title { font-size:.96rem; font-weight:800; color:var(--ok); }
+    .done-bar-sub { font-size:.75rem; color:rgba(34,197,94,.65); margin-top:2px; }
 
     /* ═══════════════════════════════
-       TEAM CARD — horizontal avatars
+       JOB QUEUE (multiple assignments)
+    ═══════════════════════════════ */
+    .queue-header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:0 2px;
+    }
+    .queue-title { font-size:1.1rem; font-weight:800; color:var(--ink); letter-spacing:-.02em; }
+    .queue-sub { font-size:.8rem; color:var(--ink-3); margin-top:3px; }
+    .queue-badge {
+      background:var(--amber); color:#000;
+      font-family:var(--mono); font-size:.6rem; font-weight:800;
+      padding:3px 9px; border-radius:20px; flex-shrink:0;
+    }
+    .queue-list { display:flex; flex-direction:column; gap:10px; }
+    .qjob-card {
+      background:var(--navy); border-radius:18px;
+      border:1.5px solid rgba(255,255,255,.08);
+      overflow:hidden; cursor:pointer;
+      transition:border-color .15s, transform .1s;
+    }
+    .qjob-card:active { transform:scale(0.985); }
+    .qjob-card:hover  { border-color:rgba(22,168,211,.3); }
+    .qjob-body { padding:16px 18px 12px; display:flex; align-items:flex-start; gap:14px; }
+    .qjob-sev {
+      width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:5px;
+    }
+    .qjob-sev.critical { background:var(--red); box-shadow:0 0 8px rgba(239,68,68,.6); }
+    .qjob-sev.high     { background:var(--orange); box-shadow:0 0 8px rgba(249,115,22,.5); }
+    .qjob-sev.moderate { background:var(--warn); box-shadow:0 0 8px rgba(234,179,8,.5); }
+    .qjob-sev.minor    { background:var(--ok); }
+    .qjob-sev.inspection { background:var(--blue); }
+    .qjob-info { flex:1; min-width:0; }
+    .qjob-type { font-family:var(--mono); font-size:.54rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-4); margin-bottom:4px; }
+    .qjob-name { font-size:1rem; font-weight:800; color:var(--ink); line-height:1.2; }
+    .qjob-meta { font-size:.78rem; color:var(--ink-3); margin-top:4px; }
+    .qjob-arrow { color:var(--blue-hi); flex-shrink:0; margin-top:4px; opacity:.6; }
+    .qjob-footer {
+      padding:10px 18px;
+      border-top:1px solid rgba(255,255,255,.05);
+      background:rgba(0,0,0,.15);
+      display:flex; align-items:center; justify-content:space-between;
+      font-family:var(--mono); font-size:.56rem; color:var(--ink-4); letter-spacing:.06em;
+    }
+    .qjob-cta { color:var(--blue-hi); font-weight:700; font-size:.68rem; }
+
+    /* ═══════════════════════════════
+       TEAM CARD
     ═══════════════════════════════ */
     .team-card {
       background:var(--navy); border-radius:20px;
@@ -601,15 +562,13 @@
       padding:16px 18px;
     }
     .tc-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
-    .tc-lbl { font-family:var(--mono); font-size:.58rem; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-4); }
-    .tc-name { font-size:.95rem; font-weight:800; color:var(--ink); letter-spacing:-.01em; }
-    .tc-status { padding:4px 10px; border-radius:20px; font-family:var(--mono); font-size:.58rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+    .tc-lbl { font-family:var(--mono); font-size:.56rem; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-4); }
+    .tc-name { font-size:.95rem; font-weight:800; color:var(--ink); letter-spacing:-.01em; margin-top:2px; }
+    .tc-status { padding:5px 12px; border-radius:20px; font-family:var(--mono); font-size:.58rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
     .tcs-idle      { background:rgba(255,255,255,.06); color:var(--ink-4); border:1px solid rgba(255,255,255,.08); }
     .tcs-en_route  { background:rgba(245,166,35,.13); color:var(--amber); border:1px solid rgba(245,166,35,.22); }
     .tcs-on_site   { background:rgba(22,168,211,.13); color:var(--blue-hi); border:1px solid rgba(22,168,211,.22); }
     .tcs-returning { background:rgba(34,197,94,.13); color:var(--ok); border:1px solid rgba(34,197,94,.22); }
-
-    /* Horizontal member chips */
     .member-row { display:flex; flex-wrap:wrap; gap:8px; }
     .member-chip {
       display:flex; align-items:center; gap:8px;
@@ -618,14 +577,15 @@
     }
     .m-av {
       width:30px; height:30px; border-radius:8px; flex-shrink:0;
-      background:linear-gradient(135deg, var(--mid), var(--teal));
+      background:linear-gradient(135deg,var(--mid),var(--teal));
       border:1px solid rgba(22,168,211,.25);
       display:flex; align-items:center; justify-content:center;
-      font-family:var(--mono); font-size:.65rem; font-weight:700; color:var(--blue-hi);
+      font-family:var(--mono); font-size:.62rem; font-weight:700; color:var(--blue-hi);
     }
-    .m-name { font-size:.82rem; font-weight:600; color:var(--ink-2); white-space:nowrap; }
+    .m-name { font-size:.82rem; font-weight:600; color:var(--ink-2); }
 
-    /* ═══════════════════════════════
+
+        /* ═══════════════════════════════
        BOTTOM SHEETS
     ═══════════════════════════════ */
     .sh-overlay {
@@ -1242,108 +1202,52 @@ async function loadData() {
 }
 
 function renderLoading() {
-  $('content-area').innerHTML=`<div class="state-spin"><div class="spn"></div>Loading your assignment…</div>`;
+  $('content-area').innerHTML='<div class="state-spin"><div class="spn"></div>Loading your assignment…</div>';
 }
 function renderNoTeam() {
-  $('content-area').innerHTML=`<div class="state-card"><div class="state-icon"><svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div class="state-title">No team assignment</div><div class="state-sub">You haven't been added to a team yet.<br>Contact your dispatcher to get assigned.</div></div>`;
+  $('content-area').innerHTML='<div class="state-card"><div class="state-icon"><svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div class="state-title">No team assignment</div><div class="state-sub">You haven\'t been added to a team yet.<br>Contact your dispatcher to get assigned.</div></div>';
 }
 function renderError(msg) {
-  $('content-area').innerHTML=`<div class="state-card"><div class="state-icon"><svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></div><div class="state-title">Failed to load</div><div class="state-sub">${escHtml(msg||'An unexpected error occurred.')}</div><button class="retry-btn" onclick="loadData()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Retry</button></div>`;
+  $('content-area').innerHTML='<div class="state-card"><div class="state-icon"><svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></div><div class="state-title">Failed to load</div><div class="state-sub">'+escHtml(msg||'An unexpected error occurred.')+'</div><button class="retry-btn" onclick="loadData()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Retry</button></div>';
 }
 
 function renderDashboard() {
   const t=S.team, a=S.alert, ins=S.inspection, ts=t.status||'idle';
   const totalJobs = S.allAlerts.length + S.allInspections.length;
-  const hasActive = !!(a||ins);
+  const hasJob = !!(a||ins);
 
-  // If multiple jobs and none selected yet → show selection queue
-  if(totalJobs > 1 && !hasActive) {
-    renderJobQueue();
-    return;
-  }
+  // Multiple jobs and none selected → show queue
+  if(totalJobs > 1 && !hasJob) { renderJobQueue(); return; }
 
-  let html='';
+  let html = '';
 
-  // ── Context banner — always show which job is active ──
-  if(hasActive) {
-    const jobName = a
-      ? (a.alert_type||'Drainage Alert') + (a.site_name||a.client_name ? ' — '+(a.site_name||a.client_name) : '')
-      : 'Inspection — '+(ins.property_name||ins.area_name||'—');
-    const hasMore = totalJobs > 1;
-    html+=`
-    <div class="job-context-banner">
-      <div class="jcb-dot"></div>
-      <div style="flex:1;min-width:0;">
-        <div class="jcb-label">Now Working On</div>
-        <div class="jcb-title">${escHtml(jobName)}</div>
-      </div>
-      ${hasMore?`<button class="jcb-back" onclick="switchJob()">Switch Job</button>`:''}
-    </div>`;
-  }
-
-  // ── Progress track ──
-  if(hasActive) {
-    const step = ts==='en_route'?1 : ts==='on_site'?2 : ts==='returning'||ts==='idle'?0 : 0;
-    html+=`
-    <div class="progress-track">
-      <div class="prog-step ${step>0?'done':step===0?'active':''}">
-        <div class="prog-dot">${step>0?'✓':'1'}</div>
-        <div class="prog-lbl">En Route</div>
-      </div>
-      <div class="prog-step ${step>1?'done':step===1?'active':''}">
-        <div class="prog-dot">${step>1?'✓':'2'}</div>
-        <div class="prog-lbl">On Site</div>
-      </div>
-      <div class="prog-step ${step===2?'active':''}">
-        <div class="prog-dot">3</div>
-        <div class="prog-lbl">Complete</div>
-      </div>
-    </div>`;
-  }
-
-  // ── Alert job card ──
+  // ── Job card ──
   if(a) {
     const sev=(a.severity||'minor').toLowerCase();
     const type=a.alert_type||'Drainage Alert', site=a.site_name||a.client_name||'—';
     const loc=a.location||'—', desc=a.description||'—', ovf=a.time_to_overflow_min;
-    html+=`
-    <div class="job-card">
+    html+=`<div class="job-card">
       <div class="job-header ${sevHdrClass(sev)}">
-        <div class="jh-top">
-          <span class="jh-badge"><span class="jh-badge-dot"></span>${sev}</span>
-          <span class="jh-age">${ageStr(a.created_at)}</span>
-        </div>
+        <div class="jh-top"><span class="jh-badge"><span class="jh-badge-dot"></span>${sev}</span><span class="jh-age">${ageStr(a.created_at)}</span></div>
         <div class="jh-type">${escHtml(type)}</div>
         <div class="jh-site">${escHtml(site)}</div>
       </div>
-      ${ovf!=null?`
-      <div class="overflow-alarm" style="margin-top:14px;">
-        <div class="oa-icon"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg></div>
-        <div><div class="oa-lbl">Time to overflow</div>
-        <div><span class="oa-num">${escHtml(String(ovf))}</span> <span class="oa-unit">min</span></div></div>
-      </div>`:''}
+      ${ovf!=null?`<div class="overflow-alarm"><div class="oa-icon"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg></div><div><div class="oa-lbl">Time to overflow</div><div><span class="oa-num">${escHtml(String(ovf))}</span> <span class="oa-unit">min</span></div></div></div>`:''}
       <div class="job-details">
-        <div class="jd-row"><div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
-          <div><div class="jd-label">Location</div><div class="jd-value">${escHtml(loc)}</div></div></div>
-        <div class="jd-row"><div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
-          <div><div class="jd-label">Ops Notes</div><div class="jd-value">${escHtml(desc)}</div></div></div>
+        <div class="jd-row"><div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div><div class="jd-label">Location</div><div class="jd-value">${escHtml(loc)}</div></div></div>
+        <div class="jd-row"><div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><div><div class="jd-label">Ops Notes</div><div class="jd-value">${escHtml(desc)}</div></div></div>
       </div>
       <div class="job-footer"><span>ALERT</span><span>${escHtml(a.alert_id||String(a.id))}</span></div>
     </div>`;
   }
 
-  // ── Inspection card ──
   if(ins) {
     const propName=ins.property_name||ins.area_name||'—';
     const schedDate=ins.scheduled_date?new Date(ins.scheduled_date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'—';
     const schedTime=ins.scheduled_time_start||'', statusLbl=ins.status==='in_progress'?'In Progress':'Scheduled';
-    html+=`
-    <div class="job-card">
+    html+=`<div class="job-card">
       <div class="job-header jh-insp">
-        <div class="jh-top">
-          <span class="jh-badge"><span class="jh-badge-dot"></span>${escHtml(statusLbl)}</span>
-          <span class="jh-age">${ageStr(ins.created_at)}</span>
-        </div>
+        <div class="jh-top"><span class="jh-badge"><span class="jh-badge-dot"></span>${escHtml(statusLbl)}</span><span class="jh-age">${ageStr(ins.created_at)}</span></div>
         <div class="jh-type">Drainage Inspection</div>
         <div class="jh-site">${escHtml(propName)}</div>
       </div>
@@ -1356,55 +1260,88 @@ function renderDashboard() {
     </div>`;
   }
 
-  // ── No job ──
-  if(!hasActive) {
-    html+=`<div class="state-card"><div class="state-icon"><svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="state-title">No active job</div><div class="state-sub">No dispatched alert or scheduled inspection right now.<br>A new job will appear here when assigned.</div></div>`;
+  if(!hasJob) {
+    html+=`<div class="state-card"><div class="state-icon"><svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="state-title">No active job</div><div class="state-sub">No dispatched alert or scheduled inspection.<br>A new job will appear here when assigned.</div></div>`;
   }
 
-  // ── Action buttons ──
-  // Primary: one contextual button that moves the story forward
-  const primaryBtn = !hasActive ? '' :
-    ts==='idle' || ts===undefined ?
-      `<button class="s-primary enroute" id="btn-enroute">
-        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-        I'm En Route
-      </button>` :
-    ts==='en_route' ?
-      `<button class="s-primary onsite" id="btn-onsite">
-        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-        I've Arrived — On Site
-      </button>` :
-    ts==='on_site' ?
-      `<button class="s-primary complete" id="btn-complete">
-        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        Mark Job Complete
-      </button>` :
-    ts==='returning' ?
-      `<div style="padding:14px 16px;background:rgba(34,197,94,.08);border:1.5px solid rgba(34,197,94,.2);border-radius:14px;display:flex;align-items:center;gap:10px;">
-        <svg width="18" height="18" fill="none" stroke="var(--ok)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        <span style="font-size:.82rem;font-weight:700;color:var(--ok);">Job complete — Returning to HQ</span>
-      </div>` : '';
+  // ── Progress tracker ──
+  // stepNum: 0=not started, 1=en_route active, 2=on_site active, 3=done
+  const stepNum = ts==='en_route'?1 : ts==='on_site'?2 : (ts==='returning'||ts==='completed')?3 : 0;
 
-  html+=`<div class="status-section">
-    ${primaryBtn}
-    <div class="s-secondary-row">
-      <button class="s-secondary backup" id="btn-backup" ${!hasActive?'disabled':''}>
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-        Request Backup
-      </button>
-      <button class="s-secondary report" id="btn-write-report">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-        Write Report
-      </button>
-    </div>
+  if(hasJob) {
+    const steps=[{lbl:'En Route',n:1},{lbl:'On Site',n:2},{lbl:'Complete',n:3}];
+    const stepsHtml = steps.map(s=>{
+      const cls = stepNum > s.n ? 'done' : stepNum===s.n ? 'active' : '';
+      return `<div class="prog-step ${cls}"><div class="prog-dot">${stepNum>s.n?'&#10003;':String(s.n)}</div><div class="prog-lbl">${s.lbl}</div></div>`;
+    }).join('');
+    const lineW = stepNum===0?'width:0' : stepNum===1?'left:calc(16.67% + 8px);width:calc(33.33% - 16px)' : 'left:calc(16.67% + 8px);width:calc(66.67% - 16px)';
+    html+=`<div class="prog-wrap"><div class="prog-label">Progress</div><div class="prog-steps">${stepsHtml}<div class="prog-done-line" style="${lineW}"></div></div></div>`;
+  }
+
+  // ── ONE big CTA — changes every step ──
+  let ctaHtml = '';
+  if(hasJob) {
+    if(ts==='returning'||ts==='completed') {
+      ctaHtml = `
+      <div class="done-bar">
+        <div class="done-bar-ico"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+        <div><div class="done-bar-title">Job Complete</div><div class="done-bar-sub">Returning to HQ &mdash; write your report now</div></div>
+      </div>
+      <div class="cta-wrap">
+        <div class="cta-hint">Required — Submit Before Returning</div>
+        <button class="main-cta go-complete" id="btn-write-report">
+          <div class="cta-icon"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></div>
+          <div class="cta-text"><span class="cta-action">Write Your Report</span><span class="cta-sub">Submit findings to Ops</span></div>
+        </button>
+      </div>`;
+    } else if(ts==='idle'||!ts) {
+      ctaHtml = `<div class="cta-wrap">
+        <div class="cta-hint">Next Step</div>
+        <button class="main-cta go-enroute" id="btn-enroute">
+          <div class="cta-icon"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg></div>
+          <div class="cta-text"><span class="cta-action">Head to Site</span><span class="cta-sub">Tap when you start travelling</span></div>
+        </button>
+      </div>`;
+    } else if(ts==='en_route') {
+      ctaHtml = `<div class="cta-wrap">
+        <div class="cta-hint">Next Step</div>
+        <button class="main-cta go-onsite" id="btn-onsite">
+          <div class="cta-icon"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
+          <div class="cta-text"><span class="cta-action">I've Arrived</span><span class="cta-sub">Tap when you reach the site</span></div>
+        </button>
+      </div>`;
+    } else if(ts==='on_site') {
+      ctaHtml = `<div class="cta-wrap">
+        <div class="cta-hint">Next Step</div>
+        <button class="main-cta go-complete" id="btn-complete">
+          <div class="cta-icon"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+          <div class="cta-text"><span class="cta-action">Mark Job Complete</span><span class="cta-sub">Work finished — add a note</span></div>
+        </button>
+      </div>`;
+    }
+  }
+
+  html += ctaHtml;
+  html += `<div class="secondary-row">
+    <button class="sec-btn backup" id="btn-backup" ${!hasJob?'disabled':''}>
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+      Request Backup
+    </button>
+    ${(ts==='returning'||ts==='completed')
+      ? `<button class="sec-btn report" onclick="switchJob()" style="${totalJobs>1?'':'display:none;'}">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 5H4m0 0l4 4m-4-4l4-4"/></svg>Next Job
+        </button>`
+      : `<button class="sec-btn report" id="btn-write-report-sec">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>Write Report
+        </button>`
+    }
   </div>`;
 
   // ── Team card ──
   let memberNames=[];
   if(Array.isArray(t.members)) memberNames=t.members.map(m=>m.full_name||m.name||'').filter(Boolean);
   else if(t.members) memberNames=t.members.split(',').map(s=>s.trim()).filter(Boolean);
-  html+=`
-  <div class="team-card">
+  html+=`<div class="team-card">
     <div class="tc-header">
       <div><div class="tc-lbl">Your Team</div><div class="tc-name">${escHtml(t.name)}</div></div>
       <span class="tc-status ${tsStatusClass(ts)}">${tsLabel(ts)}</span>
@@ -1419,109 +1356,69 @@ function renderDashboard() {
   bindButtons();
 }
 
-// ── Job selection queue (shown when multiple assignments exist) ──
 function renderJobQueue() {
-  const allJobs = [
-    ...S.allAlerts.map(a=>({
-      type:'alert', id:a.alert_id||String(a.id),
-      title:a.alert_type||'Drainage Alert',
-      site:a.site_name||a.client_name||'', loc:a.location||'',
-      sev:(a.severity||'minor').toLowerCase(), age:ageStr(a.created_at), ref:a
-    })),
-    ...S.allInspections.map(i=>({
-      type:'inspection', id:i.inspection_id||String(i.id),
-      title:'Drainage Inspection',
-      site:i.property_name||i.area_name||'', loc:[i.city,i.state].filter(Boolean).join(', '),
-      sev:'insp', age:ageStr(i.created_at), ref:i
-    }))
+  const allJobs=[
+    ...S.allAlerts.map(a=>({type:'alert',id:a.alert_id||String(a.id),name:a.alert_type||'Drainage Alert',site:a.site_name||a.client_name||'',loc:a.location||'',sev:(a.severity||'minor').toLowerCase(),age:ageStr(a.created_at)})),
+    ...S.allInspections.map(i=>({type:'inspection',id:i.inspection_id||String(i.id),name:'Drainage Inspection',site:i.property_name||i.area_name||'',loc:[i.city,i.state].filter(Boolean).join(', '),sev:'inspection',age:ageStr(i.created_at)}))
   ];
-
-  const sevPillClass = s => ({critical:'qsp-critical',high:'qsp-high',moderate:'qsp-moderate',minor:'qsp-minor',insp:'qsp-insp'})[s]||'qsp-minor';
-
-  let html=`
-  <div class="state-card" style="padding:24px 20px 16px;">
-    <div class="state-icon" style="width:48px;height:48px;">
-      <svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-    </div>
-    <div class="state-title" style="font-size:1.1rem;">Select Your Task</div>
-    <div class="state-sub">You have ${allJobs.length} active assignments. Tap one to start working on it.</div>
-  </div>
-  <div class="queue-header">
-    My Assignments <span class="queue-count-badge">${allJobs.length}</span>
-  </div>`;
-
-  html += allJobs.map(j=>`
-  <div class="queue-card" onclick="selectJob('${escHtml(j.type)}','${escHtml(j.id)}')">
-    <div class="queue-card-header">
-      <div style="flex:1;min-width:0;">
-        <div class="queue-card-type">${j.type==='alert'?'🚨 Alert':'🔍 Inspection'}</div>
-        <div class="queue-card-title">${escHtml(j.title)}</div>
-        ${j.site?`<div class="queue-card-sub">${escHtml(j.site)}${j.loc?' · '+escHtml(j.loc):''}</div>`:''}
+  const cards=allJobs.map(j=>`
+  <div class="qjob-card" onclick="selectJob('${escHtml(j.type)}','${escHtml(j.id)}')">
+    <div class="qjob-body">
+      <div class="qjob-sev ${j.sev}"></div>
+      <div class="qjob-info">
+        <div class="qjob-type">${j.type==='alert'?'Alert':'Inspection'}</div>
+        <div class="qjob-name">${escHtml(j.name)}</div>
+        <div class="qjob-meta">${escHtml([j.site,j.loc].filter(Boolean).join(' · '))||'—'}</div>
       </div>
-      <span class="queue-sev-pill ${sevPillClass(j.sev)}">${j.sev==='insp'?'Scheduled':j.sev}</span>
+      <div class="qjob-arrow"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9 5l7 7-7 7"/></svg></div>
     </div>
-    <div class="queue-card-footer">
-      <span>${j.age}</span>
-      <span class="queue-card-cta">
-        Work This Job
-        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-      </span>
-    </div>
+    <div class="qjob-footer"><span>${j.age}</span><span class="qjob-cta">Tap to start &rsaquo;</span></div>
   </div>`).join('');
-
-  $('content-area').innerHTML=html;
+  $('content-area').innerHTML=`
+  <div class="state-card" style="padding:28px 22px 20px;text-align:left;">
+    <div style="font-size:1.25rem;font-weight:900;color:var(--ink);letter-spacing:-.02em;margin-bottom:6px;">Select Your Task</div>
+    <div style="font-size:.84rem;color:var(--ink-3);line-height:1.5;">You have ${allJobs.length} active assignments. Choose which one to work on first.</div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:0 2px;">
+    <span style="font-family:var(--mono);font-size:.6rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-4);">Active Assignments</span>
+    <span class="queue-badge">${allJobs.length}</span>
+  </div>
+  <div class="queue-list">${cards}</div>`;
 }
 
-// Called when tech taps a job in the queue
-function selectJob(type, id) {
-  if(type==='alert') {
-    S.alert = S.allAlerts.find(a=>(a.alert_id||String(a.id))===id)||null;
-    S.inspection = null;
-  } else {
-    S.inspection = S.allInspections.find(i=>(i.inspection_id||String(i.id))===id)||null;
-    S.alert = null;
-  }
-  renderDashboard();
-  const ca=$('content-area'); if(ca) ca.scrollTop=0;
+function selectJob(type,id) {
+  if(type==='alert'){S.alert=S.allAlerts.find(a=>(a.alert_id||String(a.id))===id)||null;S.inspection=null;}
+  else{S.inspection=S.allInspections.find(i=>(i.inspection_id||String(i.id))===id)||null;S.alert=null;}
+  renderDashboard();const ca=$('content-area');if(ca)ca.scrollTop=0;
 }
 
-// Called by "Switch Job" button when multiple assignments exist
-function switchJob() {
-  S.alert = null; S.inspection = null;
-  renderJobQueue();
-  const ca=$('content-area'); if(ca) ca.scrollTop=0;
+function switchJob(){
+  S.alert=null;S.inspection=null;renderJobQueue();const ca=$('content-area');if(ca)ca.scrollTop=0;
 }
 
 function bindButtons() {
-  async function setStatus(status, label) {
-    if(!S.team) return;
-    try {
+  async function setStatus(status,label) {
+    if(!S.team)return;
+    try{
       const d=await api('PUT',`/teams/${S.team.team_id}/status`,{status});
-      if(!d.success) throw new Error(d.error||'Failed');
-      S.team.status=status;
-      toast(`Status updated: ${label}`,'ok');
-      renderDashboard();
-    } catch(e){toast(e.message||'Update failed','err');}
+      if(!d.success)throw new Error(d.error||'Failed');
+      S.team.status=status;toast(label,'ok');renderDashboard();
+    }catch(e){toast(e.message||'Update failed','err');}
   }
   const b=id=>$(id);
-  // Contextual primary button — only one at a time
-  if(b('btn-enroute'))   b('btn-enroute').onclick  =()=>setStatus('en_route','En Route');
-  if(b('btn-onsite'))    b('btn-onsite').onclick    =()=>setStatus('on_site','On Site');
-  if(b('btn-complete'))  b('btn-complete').onclick  =()=>{
-    $('complete-notes').value=''; $('complete-msg').className='sh-msg';
-    // Show job name in sheet title
-    const jobName = S.alert
-      ? (S.alert.alert_type||'Drainage Alert')+(S.alert.site_name?' — '+S.alert.site_name:'')
-      : S.inspection
-        ? 'Inspection — '+(S.inspection.property_name||S.inspection.area_name||'')
-        : 'Current Job';
-    const sub = $('complete-sub');
-    if(sub) sub.textContent = 'Mark "'+jobName+'" as complete. Add a brief note and submit your report.';
+  if(b('btn-enroute'))       b('btn-enroute').onclick       =()=>setStatus('en_route','En Route — heading to site');
+  if(b('btn-onsite'))        b('btn-onsite').onclick         =()=>setStatus('on_site','On Site — you have arrived');
+  if(b('btn-complete'))      b('btn-complete').onclick       =()=>{
+    const nm=S.alert?(S.alert.alert_type||'Alert')+(S.alert.site_name?' — '+S.alert.site_name:''):S.inspection?'Inspection — '+(S.inspection.property_name||''):'Job';
+    $('complete-notes').value='';$('complete-msg').className='sh-msg';
+    const sub=$('complete-sub');if(sub)sub.textContent='Completing: '+nm;
     $('sheet-complete').classList.add('show');
   };
-  if(b('btn-backup'))    b('btn-backup').onclick    =()=>{$('backup-notes').value='';$('backup-msg').className='sh-msg';$('sheet-backup').classList.add('show');};
-  if(b('btn-write-report')) b('btn-write-report').onclick = ()=>ReportWriter.open();
+  if(b('btn-write-report'))     b('btn-write-report').onclick     =()=>ReportWriter.open();
+  if(b('btn-write-report-sec')) b('btn-write-report-sec').onclick =()=>ReportWriter.open();
+  if(b('btn-backup'))           b('btn-backup').onclick           =()=>{$('backup-notes').value='';$('backup-msg').className='sh-msg';$('sheet-backup').classList.add('show');};
 }
+
 
 /* ── Sheets ── */
 on('complete-cancel','click',()=>$('sheet-complete').classList.remove('show'));
