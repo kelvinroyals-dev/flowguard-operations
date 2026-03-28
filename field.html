@@ -735,6 +735,154 @@
     @media (prefers-reduced-motion:reduce) {
       .hero::before,.hero::after,.ring-1,.ring-2,.ab,.live-dot.con,.newjob-dot,.oa-icon,.spn { animation:none!important; opacity:1; }
     }
+
+    /* ═══════════════════════════════
+       PHOTO CAPTURE STEP
+    ═══════════════════════════════ */
+    .photo-step { margin-bottom:16px; }
+    .photo-step-label {
+      display:block; font-family:var(--mono);
+      font-size:.58rem; font-weight:600; letter-spacing:.16em; text-transform:uppercase;
+      color:var(--ink-3); margin-bottom:8px;
+    }
+    .photo-zone {
+      width:100%; min-height:140px; border-radius:16px;
+      border:2px dashed rgba(22,168,211,.25);
+      background:rgba(22,168,211,.04);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:8px; cursor:pointer; position:relative; overflow:hidden;
+      transition:border-color .2s, background .2s;
+    }
+    .photo-zone:hover { border-color:rgba(22,168,211,.5); background:rgba(22,168,211,.08); }
+    .photo-zone.captured { border-style:solid; border-color:rgba(34,197,94,.5); background:rgba(34,197,94,.06); }
+    .photo-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; font-size:200px; }
+    .photo-zone-ico { font-size:32px; line-height:1; }
+    .photo-zone-txt {
+      font-size:.84rem; font-weight:700; color:var(--ink-3);
+      text-align:center; pointer-events:none;
+    }
+    .photo-zone-sub {
+      font-family:var(--mono); font-size:.58rem; color:var(--ink-4);
+      text-align:center; pointer-events:none;
+    }
+    .photo-zone.captured .photo-zone-txt { color:var(--ok); }
+    .photo-preview {
+      position:absolute; inset:0; object-fit:cover; width:100%; height:100%;
+      border-radius:14px; opacity:.6;
+    }
+    .photo-check {
+      position:absolute; top:10px; right:10px;
+      width:28px; height:28px; border-radius:50%;
+      background:var(--ok); display:flex; align-items:center; justify-content:center;
+    }
+
+    /* ═══════════════════════════════
+       ACTION CHECKLIST
+    ═══════════════════════════════ */
+    .checklist { display:flex; flex-direction:column; gap:9px; margin-bottom:16px; }
+    .cl-item {
+      display:flex; align-items:center; gap:13px;
+      padding:13px 15px; border-radius:13px;
+      border:1.5px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.03);
+      cursor:pointer; min-height:52px;
+      transition:border-color .15s, background .15s;
+      -webkit-user-select:none; user-select:none;
+    }
+    .cl-item:active { transform:scale(0.985); }
+    .cl-item.checked { border-color:rgba(34,197,94,.3); background:rgba(34,197,94,.06); }
+    .cl-check {
+      width:22px; height:22px; flex-shrink:0; border-radius:6px;
+      border:2px solid rgba(255,255,255,.2);
+      background:transparent; display:flex; align-items:center; justify-content:center;
+      transition:all .15s;
+    }
+    .cl-item.checked .cl-check { background:var(--ok); border-color:var(--ok); }
+    .cl-check-mark { display:none; }
+    .cl-item.checked .cl-check-mark { display:block; }
+    .cl-lbl { font-size:.92rem; font-weight:600; color:var(--ink-2); flex:1; }
+    .cl-item.checked .cl-lbl { color:var(--ok); }
+
+    /* ═══════════════════════════════
+       SENSOR PING (on-site only)
+    ═══════════════════════════════ */
+    .sensor-ping-card {
+      background:var(--navy); border-radius:18px;
+      border:1px solid rgba(22,168,211,.15);
+      padding:16px 18px;
+    }
+    .sp-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+    .sp-title { font-size:.88rem; font-weight:800; color:var(--ink); letter-spacing:-.01em; }
+    .sp-id { font-family:var(--mono); font-size:.6rem; color:var(--blue); letter-spacing:.1em; }
+    .sp-status {
+      display:flex; align-items:center; gap:6px;
+      padding:5px 11px; border-radius:20px;
+      font-family:var(--mono); font-size:.58rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+      transition:all .3s;
+    }
+    .sp-status.unknown { background:rgba(255,255,255,.06); color:var(--ink-4); border:1px solid rgba(255,255,255,.08); }
+    .sp-status.pinging { background:rgba(245,166,35,.12); color:var(--amber); border:1px solid rgba(245,166,35,.25); }
+    .sp-status.online  { background:rgba(34,197,94,.12); color:var(--ok); border:1px solid rgba(34,197,94,.25); }
+    .sp-status.offline { background:rgba(239,68,68,.12); color:var(--red); border:1px solid rgba(239,68,68,.25); }
+    .sp-dot { width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0; }
+    .sp-status.pinging .sp-dot { animation:blink .8s ease-in-out infinite; }
+    .sp-status.online  .sp-dot { box-shadow:0 0 5px rgba(34,197,94,.6); }
+    .sp-data-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:12px; }
+    .sp-datum { background:rgba(0,0,0,.20); border-radius:10px; padding:9px 11px; }
+    .sp-datum-lbl { font-family:var(--mono); font-size:.52rem; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-4); margin-bottom:4px; }
+    .sp-datum-val { font-family:var(--mono); font-size:.96rem; font-weight:700; color:var(--ink); }
+    .sp-datum-val.ok   { color:var(--ok); }
+    .sp-datum-val.warn { color:var(--warn); }
+    .sp-datum-val.bad  { color:var(--red); }
+    .ping-btn {
+      width:100%; min-height:52px; border-radius:13px;
+      border:1.5px solid rgba(22,168,211,.25);
+      background:rgba(22,168,211,.07);
+      font-family:var(--ff); font-size:.88rem; font-weight:800;
+      color:var(--blue-hi); letter-spacing:.02em;
+      display:flex; align-items:center; justify-content:center; gap:10px;
+      transition:background .15s, border-color .15s;
+    }
+    .ping-btn:hover:not(:disabled) { background:rgba(22,168,211,.14); border-color:rgba(22,168,211,.4); }
+    .ping-btn:disabled { opacity:.4; cursor:not-allowed; }
+
+    /* ═══════════════════════════════
+       OFFLINE BANNER
+    ═══════════════════════════════ */
+    .offline-strip {
+      display:none; align-items:center; gap:10px;
+      padding:11px 14px; border-radius:13px;
+      background:rgba(249,115,22,.10); border:1px solid rgba(249,115,22,.25);
+    }
+    .offline-strip.show { display:flex; animation:slideIn .3s cubic-bezier(.22,1,.36,1); }
+    .offline-ico { color:var(--orange); flex-shrink:0; }
+    .offline-txt { flex:1; font-size:.82rem; font-weight:700; color:var(--ink-2); }
+    .offline-sub { font-size:.72rem; color:var(--ink-4); margin-top:1px; }
+    .offline-count {
+      font-family:var(--mono); font-size:.62rem; font-weight:700;
+      padding:3px 8px; border-radius:20px;
+      background:rgba(249,115,22,.2); color:var(--orange); flex-shrink:0;
+    }
+
+    /* ═══════════════════════════════
+       GPS STAMP on report
+    ═══════════════════════════════ */
+    .gps-stamp {
+      display:flex; align-items:center; gap:9px;
+      padding:10px 13px; border-radius:11px;
+      background:rgba(34,197,94,.07); border:1px solid rgba(34,197,94,.18);
+      margin-bottom:14px;
+    }
+    .gps-stamp.acquiring { background:rgba(245,166,35,.07); border-color:rgba(245,166,35,.18); }
+    .gps-stamp.failed    { background:rgba(239,68,68,.07);  border-color:rgba(239,68,68,.18); }
+    .gps-ico { flex-shrink:0; }
+    .gps-ico.ok   { color:var(--ok); }
+    .gps-ico.wait { color:var(--warn); }
+    .gps-ico.fail { color:var(--red); }
+    .gps-coords { font-family:var(--mono); font-size:.72rem; color:var(--ok); font-weight:600; }
+    .gps-stamp.acquiring .gps-coords { color:var(--warn); }
+    .gps-stamp.failed    .gps-coords { color:var(--red); }
+    .gps-acc { font-family:var(--mono); font-size:.58rem; color:var(--ink-4); margin-top:1px; }
   </style>
 </head>
 <body>
@@ -901,6 +1049,18 @@
 
   <div class="scroll-body" id="dash-body">
 
+    <!-- Offline banner -->
+    <div class="offline-strip" id="offline-banner">
+      <div class="offline-ico">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636a9 9 0 010 12.728M15.536 8.464a5 5 0 010 7.072M4.93 4.93a9 9 0 0113.14.001M1 1l22 22"/></svg>
+      </div>
+      <div>
+        <div class="offline-txt">No connection</div>
+        <div class="offline-sub">Reports will sync when back online</div>
+      </div>
+      <div class="offline-count" id="offline-count" style="display:none"></div>
+    </div>
+
     <!-- Push banner -->
     <div class="push-strip" id="push-banner">
       <div class="push-ico-wrap">
@@ -969,17 +1129,28 @@
     <div class="sh-handle-row"><div class="sh-handle"></div></div>
     <div class="sh-accent"></div>
 
-    <!-- Step indicator -->
+    <!-- Step indicator — now 4 steps -->
     <div class="rstep-bar" id="r-steps">
       <div class="rstep active" id="rstep-1"></div>
       <div class="rstep" id="rstep-2"></div>
       <div class="rstep" id="rstep-3"></div>
+      <div class="rstep" id="rstep-4"></div>
     </div>
 
-    <!-- STEP 1: Type + Summary -->
+    <!-- STEP 1: Before photo + Checklist -->
     <div id="r-step1">
-      <div class="sh-title">Write Report</div>
-      <div class="sh-sub" id="r-job-context">Job report</div>
+      <div class="sh-title">Site Evidence</div>
+      <div class="sh-sub" id="r-job-context">Capture before-state photo and confirm actions taken.</div>
+
+      <div class="photo-step">
+        <span class="photo-step-label">Before Photo — mandatory</span>
+        <div class="photo-zone" id="pz-before">
+          <input type="file" accept="image/*" capture="environment" id="ph-before" onchange="ReportWriter.handlePhoto('before',this)">
+          <div class="photo-zone-ico">📷</div>
+          <div class="photo-zone-txt">Tap to capture BEFORE state</div>
+          <div class="photo-zone-sub">Camera will open · GPS tagged automatically</div>
+        </div>
+      </div>
 
       <div class="rtype-row" id="rtype-row">
         <button class="rtype-pill incident"   data-type="incident"   onclick="ReportWriter.selectType('incident')">Incident</button>
@@ -987,13 +1158,28 @@
         <button class="rtype-pill general"    data-type="general"    onclick="ReportWriter.selectType('general')">General</button>
       </div>
 
-      <div class="rfield">
-        <label class="rfield-label">Report Title</label>
-        <input id="r-title" class="rfield-input" type="text" placeholder="e.g. Drain blockage cleared — Lekki Phase 1">
-      </div>
-      <div class="rfield">
-        <label class="rfield-label">Summary — What happened?</label>
-        <textarea id="r-summary" class="rfield-ta" placeholder="Brief overview of the job, what the team was dispatched for and what was done…"></textarea>
+      <div style="font-family:var(--mono);font-size:.58rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:9px;">Actions Performed</div>
+      <div class="checklist" id="r-checklist">
+        <div class="cl-item" onclick="this.classList.toggle('checked')">
+          <div class="cl-check"><svg class="cl-check-mark" width="12" height="12" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
+          <span class="cl-lbl">Sensor Calibrated</span>
+        </div>
+        <div class="cl-item" onclick="this.classList.toggle('checked')">
+          <div class="cl-check"><svg class="cl-check-mark" width="12" height="12" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
+          <span class="cl-lbl">Debris Removed (Manual)</span>
+        </div>
+        <div class="cl-item" onclick="this.classList.toggle('checked')">
+          <div class="cl-check"><svg class="cl-check-mark" width="12" height="12" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
+          <span class="cl-lbl">Bio-Dose Applied</span>
+        </div>
+        <div class="cl-item" onclick="this.classList.toggle('checked')">
+          <div class="cl-check"><svg class="cl-check-mark" width="12" height="12" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
+          <span class="cl-lbl">Battery Replaced</span>
+        </div>
+        <div class="cl-item" onclick="this.classList.toggle('checked')">
+          <div class="cl-check"><svg class="cl-check-mark" width="12" height="12" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
+          <span class="cl-lbl">Pipe Flushed</span>
+        </div>
       </div>
 
       <div class="sh-actions">
@@ -1002,22 +1188,28 @@
       </div>
     </div>
 
-    <!-- STEP 2: Findings + Recommendations -->
+    <!-- STEP 2: After photo + narrative -->
     <div id="r-step2" style="display:none;">
-      <div class="sh-title">Findings &amp; Recommendations</div>
-      <div class="sh-sub">Detail what was found on site and what the next steps are.</div>
+      <div class="sh-title">After Evidence &amp; Summary</div>
+      <div class="sh-sub">Capture the post-work state and describe what was done.</div>
+
+      <div class="photo-step">
+        <span class="photo-step-label">After Photo — mandatory</span>
+        <div class="photo-zone" id="pz-after">
+          <input type="file" accept="image/*" capture="environment" id="ph-after" onchange="ReportWriter.handlePhoto('after',this)">
+          <div class="photo-zone-ico">📷</div>
+          <div class="photo-zone-txt">Tap to capture AFTER state</div>
+          <div class="photo-zone-sub">Shows completed work to Ops</div>
+        </div>
+      </div>
 
       <div class="rfield">
-        <label class="rfield-label">On-site Findings</label>
-        <textarea id="r-findings" class="rfield-ta" style="min-height:110px;" placeholder="What was the condition of the drain / area? Any damage, debris, blockage detail, sensor readings observed…"></textarea>
+        <label class="rfield-label">Report Title</label>
+        <input id="r-title" class="rfield-input" type="text" placeholder="e.g. Drain blockage cleared — Lekki Phase 1">
       </div>
       <div class="rfield">
-        <label class="rfield-label">Recommendations</label>
-        <textarea id="r-recommendations" class="rfield-ta" placeholder="What should happen next? Follow-up inspections, repairs, replacements…"></textarea>
-      </div>
-      <div class="rfield">
-        <label class="rfield-label">Materials / Equipment Used <span style="opacity:.4;font-weight:400;font-family:var(--ff);text-transform:none;letter-spacing:0;font-size:.75rem;">(optional)</span></label>
-        <input id="r-materials" class="rfield-input" type="text" placeholder="e.g. 2× HDPE pipe joints, bio-enzyme dose 5L">
+        <label class="rfield-label">Summary — What happened?</label>
+        <textarea id="r-summary" class="rfield-ta" placeholder="Brief overview: what the team was dispatched for and what was done…"></textarea>
       </div>
 
       <div class="sh-actions">
@@ -1026,12 +1218,50 @@
       </div>
     </div>
 
-    <!-- STEP 3: Review + Submit -->
+    <!-- STEP 3: Findings + Recommendations -->
     <div id="r-step3" style="display:none;">
-      <div class="sh-title">Review &amp; Submit</div>
-      <div class="sh-sub">Check everything looks right. You can save as draft or submit immediately.</div>
+      <div class="sh-title">Findings &amp; Recommendations</div>
+      <div class="sh-sub">Detail what was found on site and next steps.</div>
 
-      <div id="r-review-box" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;margin-bottom:16px;font-size:.84rem;line-height:1.6;color:var(--ink-2);"></div>
+      <div class="rfield">
+        <label class="rfield-label">On-site Findings</label>
+        <textarea id="r-findings" class="rfield-ta" style="min-height:110px;" placeholder="Condition of drain / area? Damage, debris, blockage detail, sensor readings observed…"></textarea>
+      </div>
+      <div class="rfield">
+        <label class="rfield-label">Recommendations</label>
+        <textarea id="r-recommendations" class="rfield-ta" placeholder="Follow-up inspections, repairs, replacements…"></textarea>
+      </div>
+      <div class="rfield">
+        <label class="rfield-label">Materials / Equipment Used <span style="opacity:.4;font-weight:400;font-family:var(--ff);text-transform:none;letter-spacing:0;font-size:.75rem;">(optional)</span></label>
+        <input id="r-materials" class="rfield-input" type="text" placeholder="e.g. 2× HDPE pipe joints, bio-enzyme dose 5L">
+      </div>
+
+      <div class="sh-actions">
+        <button class="sh-cancel" onclick="ReportWriter.goStep(2)">← Back</button>
+        <button class="sh-confirm green" onclick="ReportWriter.goStep(4)">Next →</button>
+      </div>
+    </div>
+
+    <!-- STEP 4: Review + GPS + Submit -->
+    <div id="r-step4" style="display:none;">
+      <div class="sh-title">Review &amp; Submit</div>
+      <div class="sh-sub">GPS coordinates will be captured at the moment you submit.</div>
+
+      <!-- GPS stamp -->
+      <div class="gps-stamp acquiring" id="r-gps-stamp">
+        <div class="gps-ico wait">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </div>
+        <div>
+          <div class="gps-coords" id="r-gps-coords">Acquiring GPS…</div>
+          <div class="gps-acc" id="r-gps-acc">This may take a few seconds</div>
+        </div>
+      </div>
+
+      <div id="r-review-box" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;margin-bottom:14px;font-size:.84rem;line-height:1.6;color:var(--ink-2);"></div>
+
+      <!-- Photo summary -->
+      <div id="r-photo-summary" style="display:flex;gap:8px;margin-bottom:14px;"></div>
 
       <div class="rfield">
         <label class="rfield-label">Work Duration <span style="opacity:.4;font-weight:400;font-family:var(--ff);text-transform:none;letter-spacing:0;font-size:.75rem;">(minutes, optional)</span></label>
@@ -1041,7 +1271,7 @@
       <div class="sh-msg" id="r-msg"></div>
 
       <div class="sh-actions" style="flex-wrap:wrap;gap:8px;">
-        <button class="sh-cancel" style="flex:none;padding:14px 18px;" onclick="ReportWriter.goStep(2)">← Back</button>
+        <button class="sh-cancel" style="flex:none;padding:14px 18px;" onclick="ReportWriter.goStep(3)">← Back</button>
         <button class="sh-cancel" style="flex:1;" id="r-btn-draft" onclick="ReportWriter.submit('draft')">Save Draft</button>
         <button class="sh-confirm green" style="flex:2;" id="r-btn-submit" onclick="ReportWriter.submit('submitted')">Submit Report</button>
       </div>
@@ -1167,6 +1397,9 @@ async function checkSession() {
 async function initDashboard() {
   showScreen('screen-dash');
   if(S.user) $('hdr-name').textContent=S.user.fullName||S.user.email;
+  GPS.start();
+  if (!navigator.onLine) { const b=$('offline-banner'); if(b) b.classList.add('show'); }
+  DraftQueue._updateBanner();
   initWS(); await loadData(); checkPush(); registerSW();
 }
 
@@ -1317,6 +1550,26 @@ function renderDashboard() {
           <div class="cta-icon"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
           <div class="cta-text"><span class="cta-action">Mark Job Complete</span><span class="cta-sub">Work finished — add a note</span></div>
         </button>
+      </div>
+      <div class="sensor-ping-card" id="sensor-ping-card">
+        <div class="sp-header">
+          <div>
+            <div class="sp-title">Sentinel Node</div>
+            <div class="sp-id" id="sp-sensor-id">${escHtml(a ? (a.sensor_id||a.alert_id||'—') : ins ? (ins.inspection_id||'—') : '—')}</div>
+          </div>
+          <div class="sp-status unknown" id="sp-status">
+            <div class="sp-dot"></div><span id="sp-status-lbl">Not checked</span>
+          </div>
+        </div>
+        <div class="sp-data-row" id="sp-data-row" style="display:none">
+          <div class="sp-datum"><div class="sp-datum-lbl">Siltation</div><div class="sp-datum-val" id="sp-siltation">—</div></div>
+          <div class="sp-datum"><div class="sp-datum-lbl">Flow</div><div class="sp-datum-val" id="sp-flow">—</div></div>
+          <div class="sp-datum"><div class="sp-datum-lbl">Battery</div><div class="sp-datum-val" id="sp-battery">—</div></div>
+        </div>
+        <button class="ping-btn" id="btn-ping-sensor">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.142 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+          Ping Sentinel — Check Heartbeat
+        </button>
       </div>`;
     }
   }
@@ -1417,6 +1670,7 @@ function bindButtons() {
   if(b('btn-write-report'))     b('btn-write-report').onclick     =()=>ReportWriter.open();
   if(b('btn-write-report-sec')) b('btn-write-report-sec').onclick =()=>ReportWriter.open();
   if(b('btn-backup'))           b('btn-backup').onclick           =()=>{$('backup-notes').value='';$('backup-msg').className='sh-msg';$('sheet-backup').classList.add('show');};
+  if(b('btn-ping-sensor'))      b('btn-ping-sensor').onclick      =()=>pingSensor();
 }
 
 
@@ -1501,7 +1755,28 @@ function checkPush(){if(!('Notification'in window)||!('serviceWorker'in navigato
 on('push-allow','click',async()=>{const perm=await Notification.requestPermission();$('push-banner').classList.remove('show');if(perm==='granted')await subscribePush();});
 on('push-dismiss','click',()=>$('push-banner').classList.remove('show'));
 async function subscribePush(){if(!S.swReg||!CONFIG.VAPID_KEY){console.warn('Push: SW not ready or VAPID_KEY empty');return;}try{const sub=await S.swReg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8Array(CONFIG.VAPID_KEY)});await api('POST','/push/subscribe',{subscription:sub.toJSON(),user_id:S.user?.id});console.log('✅ Push subscribed');}catch(e){console.warn('Push subscribe failed:',e);}}
-async function registerSW(){if(!('serviceWorker'in navigator))return;try{S.swReg=await navigator.serviceWorker.register('/field-sw.js');console.log('✅ SW registered');}catch(e){console.warn('SW registration failed:',e);}}
+async function registerSW(){
+  if(!('serviceWorker'in navigator))return;
+  try{
+    S.swReg=await navigator.serviceWorker.register('/field-sw.js');
+    console.log('✅ SW registered');
+
+    // Listen for messages from SW (e.g. flush drafts request)
+    navigator.serviceWorker.addEventListener('message', event => {
+      if(event.data?.type==='FG_FLUSH_DRAFTS') DraftQueue.flushAll();
+    });
+
+    // Handle SW update — skip waiting immediately
+    S.swReg.addEventListener('updatefound',()=>{
+      const nw=S.swReg.installing;
+      if(nw) nw.addEventListener('statechange',()=>{
+        if(nw.state==='installed'&&navigator.serviceWorker.controller){
+          nw.postMessage({type:'SKIP_WAITING'});
+        }
+      });
+    });
+  }catch(e){console.warn('SW registration failed:',e);}
+}
 
 /* ── Logout ── */
 on('btn-logout','click',()=>{
@@ -1516,15 +1791,226 @@ on('btn-logout','click',()=>{
 /* ── Boot ── */
 
 /* ─────────────────────────────────────────
+   GPS HELPER
+───────────────────────────────────────── */
+const GPS = {
+  _pos: null,
+  _watching: false,
+
+  start() {
+    if (!navigator.geolocation || this._watching) return;
+    this._watching = true;
+    navigator.geolocation.watchPosition(
+      pos => { this._pos = pos; },
+      err => { console.warn('GPS:', err.message); },
+      { enableHighAccuracy: true, maximumAge: 30000, timeout: 20000 }
+    );
+  },
+
+  async get() {
+    // Return cached if fresh enough
+    if (this._pos && (Date.now() - this._pos.timestamp) < 60000) return this._pos;
+    return new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject,
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+    });
+  },
+
+  fmt(pos) {
+    const { latitude: la, longitude: lo, accuracy: ac } = pos.coords;
+    return {
+      lat: parseFloat(la.toFixed(6)),
+      lng: parseFloat(lo.toFixed(6)),
+      accuracy_m: Math.round(ac),
+      captured_at: new Date(pos.timestamp).toISOString()
+    };
+  }
+};
+
+/* ─────────────────────────────────────────
+   OFFLINE DRAFT QUEUE
+───────────────────────────────────────── */
+const DraftQueue = {
+  KEY: 'fg_draft_queue',
+
+  _read() {
+    try { return JSON.parse(localStorage.getItem(this.KEY) || '[]'); } catch { return []; }
+  },
+
+  push(draft) {
+    const q = this._read();
+    draft._id = Date.now() + Math.random().toString(36).slice(2);
+    draft._queued_at = new Date().toISOString();
+    q.push(draft);
+    localStorage.setItem(this.KEY, JSON.stringify(q));
+    this._updateBanner();
+    return draft._id;
+  },
+
+  remove(id) {
+    const q = this._read().filter(d => d._id !== id);
+    localStorage.setItem(this.KEY, JSON.stringify(q));
+    this._updateBanner();
+  },
+
+  count() { return this._read().length; },
+
+  _updateBanner() {
+    const n = this.count();
+    const banner = $('offline-banner');
+    const cnt = $('offline-count');
+    if (!banner) return;
+    if (!navigator.onLine) { banner.classList.add('show'); }
+    if (cnt) { cnt.textContent = n > 0 ? `${n} queued` : ''; cnt.style.display = n > 0 ? '' : 'none'; }
+  },
+
+  async flushAll() {
+    const q = this._read();
+    if (!q.length) return;
+    for (const draft of q) {
+      try {
+        const res = await api('POST', '/field-reports', draft._payload);
+        if (res.success) {
+          this.remove(draft._id);
+          toast('Draft synced to Ops ✓', 'ok');
+        }
+      } catch { /* leave in queue, retry next online */ }
+    }
+    this._updateBanner();
+  }
+};
+
+// Online/offline monitoring
+window.addEventListener('offline', () => {
+  const b = $('offline-banner'); if (b) b.classList.add('show');
+});
+window.addEventListener('online', () => {
+  const b = $('offline-banner');
+  if (b && DraftQueue.count() === 0) b.classList.remove('show');
+  DraftQueue.flushAll();
+  toast('Back online — syncing…', 'ok');
+});
+
+/* ─────────────────────────────────────────
+   PHOTO UPLOADER (S3-compatible)
+───────────────────────────────────────── */
+const PhotoUploader = {
+  _uploads: { before: null, after: null },
+
+  reset() { this._uploads = { before: null, after: null }; },
+
+  // Returns data-URL preview immediately; queues actual upload
+  async handleFile(slot, file) {
+    if (!file) return null;
+    // Preview via data URL (instant, no network needed)
+    const dataUrl = await new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(fr.result);
+      fr.onerror = rej;
+      fr.readAsDataURL(file);
+    });
+    this._uploads[slot] = { file, dataUrl, uri: null, uploading: true };
+    // Kick off background upload — result stored when done
+    this._upload(slot, file);
+    return dataUrl;
+  },
+
+  async _upload(slot, file) {
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('slot', slot);
+      const r = await fetch(`${CONFIG.API}/uploads/photo`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${S.token}` },
+        body: fd
+      });
+      const d = await r.json();
+      if (d.success && d.uri) {
+        this._uploads[slot].uri = d.uri;
+        this._uploads[slot].uploading = false;
+      }
+    } catch {
+      // Upload failed — will use dataUrl as fallback in payload
+      this._uploads[slot].uploading = false;
+    }
+  },
+
+  getURIs() {
+    return {
+      photo_before_uri: this._uploads.before?.uri || this._uploads.before?.dataUrl || null,
+      photo_after_uri:  this._uploads.after?.uri  || this._uploads.after?.dataUrl  || null,
+    };
+  },
+
+  hasBefore() { return !!this._uploads.before; },
+  hasAfter()  { return !!this._uploads.after;  }
+};
+
+/* ─────────────────────────────────────────
+   SENSOR PING
+───────────────────────────────────────── */
+async function pingSensor() {
+  const btn = $('btn-ping-sensor');
+  const statusEl = $('sp-status');
+  const lblEl = $('sp-status-lbl');
+  const dataRow = $('sp-data-row');
+  if (!btn || !statusEl) return;
+
+  btn.disabled = true;
+  statusEl.className = 'sp-status pinging';
+  lblEl.textContent = 'Pinging…';
+
+  // Get the sensor/alert ID to query
+  const sensorId = S.alert?.sensor_id || S.alert?.alert_id || S.inspection?.inspection_id;
+
+  try {
+    const path = sensorId ? `/sensors/${sensorId}/heartbeat` : `/sensors/heartbeat`;
+    const d = await api('GET', path);
+
+    if (d.success && d.data) {
+      const node = d.data;
+      const online = node.status === 'online' || node.heartbeat === true;
+      statusEl.className = `sp-status ${online ? 'online' : 'offline'}`;
+      lblEl.textContent = online ? 'Online' : 'Offline';
+
+      // Populate data cells if we have readings
+      if (node.siltation_pct !== undefined || node.flow_rate !== undefined || node.battery_pct !== undefined) {
+        dataRow.style.display = '';
+        const silt = node.siltation_pct;
+        const flow = node.flow_rate;
+        const batt = node.battery_pct;
+        $('sp-siltation').textContent = silt != null ? silt + '%' : '—';
+        $('sp-siltation').className = 'sp-datum-val' + (silt >= 80 ? ' bad' : silt >= 60 ? ' warn' : ' ok');
+        $('sp-flow').textContent = flow != null ? flow + ' m/s' : '—';
+        $('sp-flow').className = 'sp-datum-val' + (flow < 0.3 ? ' bad' : flow < 0.8 ? ' warn' : ' ok');
+        $('sp-battery').textContent = batt != null ? batt + '%' : '—';
+        $('sp-battery').className = 'sp-datum-val' + (batt < 15 ? ' bad' : batt < 40 ? ' warn' : ' ok');
+      }
+
+      toast(online ? '✓ Sentinel is heartbeating' : '⚠ Sentinel offline — escalate if needed', online ? 'ok' : 'err', 4000);
+    } else {
+      throw new Error(d.error || 'No response');
+    }
+  } catch (e) {
+    statusEl.className = 'sp-status offline';
+    lblEl.textContent = 'No response';
+    toast('Ping failed: ' + (e.message || 'Check connection'), 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ─────────────────────────────────────────
    REPORT WRITER
-   3-step bottom sheet. Submits to POST /field-reports.
+   4-step bottom sheet. Submits to POST /field-reports.
+   Adds: photo capture, checklist, GPS, offline queue.
 ───────────────────────────────────────── */
 const ReportWriter = (function() {
   let _type = 'general';
   let _activeAlert = null, _activeInspection = null;
 
   function open(opts = {}) {
-    // Use snapshotted job from completion if provided, otherwise use live state
     const activeAlert      = opts.completedAlert      || S.alert;
     const activeInspection = opts.completedInspection || S.inspection;
 
@@ -1537,14 +2023,14 @@ const ReportWriter = (function() {
         : '';
 
     const jobContext = opts.autoTriggered
-      ? '✓ Job complete — write your report for: ' + (jobTitle || 'this job')
+      ? '✓ Job complete — capture site evidence for: ' + (jobTitle || 'this job')
       : activeAlert
         ? 'Incident report — ' + (activeAlert.alert_id || activeAlert.id)
         : activeInspection
           ? 'Inspection report — ' + (activeInspection.property_name || activeInspection.inspection_id)
           : 'General field report';
 
-    $('r-title').value = jobTitle;
+    $('r-title').value = '';
     $('r-summary').value = '';
     $('r-findings').value = '';
     $('r-recommendations').value = '';
@@ -1553,11 +2039,23 @@ const ReportWriter = (function() {
     $('r-msg').className = 'sh-msg';
     $('r-job-context').textContent = jobContext;
 
-    // Store snapshotted refs for submit
+    // Reset photo zones
+    PhotoUploader.reset();
+    _resetPhotoZone('before');
+    _resetPhotoZone('after');
+
+    // Reset checklist
+    document.querySelectorAll('#r-checklist .cl-item').forEach(el => el.classList.remove('checked'));
+
+    // Reset GPS stamp
+    _setGpsStamp('acquiring', 'Acquiring GPS…', 'Stand by…');
+
+    // Start GPS early so it's ready by step 4
+    GPS.start();
+
     _activeAlert      = activeAlert;
     _activeInspection = activeInspection;
 
-    // Show/hide type pills
     document.querySelectorAll('.rtype-pill').forEach(p => {
       p.style.display = (activeAlert || activeInspection) && p.dataset.type !== _type ? 'none' : '';
     });
@@ -1575,27 +2073,85 @@ const ReportWriter = (function() {
     );
   }
 
+  function _resetPhotoZone(slot) {
+    const zone = $(`pz-${slot}`);
+    if (!zone) return;
+    // Remove preview elements
+    zone.querySelectorAll('.photo-preview, .photo-check').forEach(el => el.remove());
+    zone.classList.remove('captured');
+    zone.querySelector('.photo-zone-ico').style.display = '';
+    zone.querySelector('.photo-zone-txt').style.display = '';
+    zone.querySelector('.photo-zone-sub').style.display = '';
+    // Reset file input
+    const inp = $(`ph-${slot}`);
+    if (inp) inp.value = '';
+  }
+
+  function _setGpsStamp(state, coords, acc) {
+    const stamp = $('r-gps-stamp');
+    const coordEl = $('r-gps-coords');
+    const accEl = $('r-gps-acc');
+    if (!stamp) return;
+    stamp.className = 'gps-stamp ' + state;
+    const ico = stamp.querySelector('.gps-ico');
+    if (ico) ico.className = 'gps-ico ' + (state === 'ok' ? 'ok' : state === 'failed' ? 'fail' : 'wait');
+    if (coordEl) coordEl.textContent = coords;
+    if (accEl) accEl.textContent = acc;
+  }
+
+  async function handlePhoto(slot, input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const dataUrl = await PhotoUploader.handleFile(slot, file);
+    if (!dataUrl) return;
+
+    const zone = $(`pz-${slot}`);
+    if (!zone) return;
+    zone.classList.add('captured');
+    zone.querySelector('.photo-zone-ico').style.display = 'none';
+    zone.querySelector('.photo-zone-txt').style.display = 'none';
+    zone.querySelector('.photo-zone-sub').style.display = 'none';
+
+    const img = document.createElement('img');
+    img.className = 'photo-preview';
+    img.src = dataUrl;
+    zone.appendChild(img);
+
+    const chk = document.createElement('div');
+    chk.className = 'photo-check';
+    chk.innerHTML = '<svg width="14" height="14" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>';
+    zone.appendChild(chk);
+  }
+
   function goStep(n) {
-    ['r-step1','r-step2','r-step3'].forEach((id, i) => {
-      $(id).style.display = (i + 1 === n) ? '' : 'none';
+    // steps 1-4
+    ['r-step1','r-step2','r-step3','r-step4'].forEach((id, i) => {
+      const el = $(id); if (el) el.style.display = (i + 1 === n) ? '' : 'none';
     });
-    ['rstep-1','rstep-2','rstep-3'].forEach((id, i) => {
-      const el = $(id); if(!el) return;
+    ['rstep-1','rstep-2','rstep-3','rstep-4'].forEach((id, i) => {
+      const el = $(id); if (!el) return;
       el.className = 'rstep ' + (i + 1 < n ? 'done' : i + 1 === n ? 'active' : '');
     });
-    if (n === 3) _buildReview();
+
+    if (n === 4) _buildReview();
+
     const panel = $('sheet-report-panel');
     if (panel) panel.scrollTop = 0;
   }
 
   function _esc(s) { return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+  function _getChecklist() {
+    return [...document.querySelectorAll('#r-checklist .cl-item.checked')]
+      .map(el => el.querySelector('.cl-lbl').textContent.trim());
+  }
+
   function _buildReview() {
     const title    = ($('r-title').value||'').trim();
     const summary  = ($('r-summary').value||'').trim();
     const findings = ($('r-findings').value||'').trim();
     const recs     = ($('r-recommendations').value||'').trim();
-    const mats     = ($('r-materials').value||'').trim();
+    const checked  = _getChecklist();
     const box = $('r-review-box');
     box.innerHTML = [
       `<div style="font-size:.58rem;font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-4);margin-bottom:8px;">${_type.toUpperCase()} REPORT</div>`,
@@ -1603,8 +2159,46 @@ const ReportWriter = (function() {
       summary  && `<div style="margin-bottom:10px;"><span style="font-size:.55rem;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);">SUMMARY</span><br><span style="color:var(--ink-2)">${_esc(summary)}</span></div>`,
       findings && `<div style="margin-bottom:10px;"><span style="font-size:.55rem;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);">FINDINGS</span><br><span style="color:var(--ink-2)">${_esc(findings)}</span></div>`,
       recs     && `<div style="margin-bottom:10px;"><span style="font-size:.55rem;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);">RECOMMENDATIONS</span><br><span style="color:var(--ink-2)">${_esc(recs)}</span></div>`,
-      mats     && `<div><span style="font-size:.55rem;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);">MATERIALS</span><br><span style="color:var(--ink-2)">${_esc(mats)}</span></div>`,
+      checked.length && `<div><span style="font-size:.55rem;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);">ACTIONS</span><br><span style="color:var(--ok)">${checked.map(c=>'✓ '+_esc(c)).join('<br>')}</span></div>`,
     ].filter(Boolean).join('');
+
+    // Photo summary
+    const ps = $('r-photo-summary');
+    if (ps) {
+      ps.innerHTML = '';
+      ['before','after'].forEach(slot => {
+        const up = PhotoUploader._uploads[slot];
+        if (up?.dataUrl) {
+          const div = document.createElement('div');
+          div.style.cssText = 'flex:1;border-radius:10px;overflow:hidden;max-height:80px;border:1.5px solid rgba(255,255,255,.1);';
+          const img = document.createElement('img');
+          img.src = up.dataUrl;
+          img.style.cssText = 'width:100%;height:80px;object-fit:cover;';
+          img.alt = slot;
+          div.appendChild(img);
+          ps.appendChild(div);
+        }
+      });
+    }
+
+    // Begin GPS acquisition for review step
+    _acquireGPS();
+  }
+
+  let _gpsResult = null;
+  async function _acquireGPS() {
+    _gpsResult = null;
+    _setGpsStamp('acquiring', 'Acquiring GPS…', 'Stand by…');
+    try {
+      const pos = await GPS.get();
+      _gpsResult = GPS.fmt(pos);
+      _setGpsStamp('ok',
+        `${_gpsResult.lat}, ${_gpsResult.lng}`,
+        `Accuracy ±${_gpsResult.accuracy_m}m · ${new Date(_gpsResult.captured_at).toLocaleTimeString()}`
+      );
+    } catch {
+      _setGpsStamp('failed', 'GPS unavailable', 'Coordinates not attached');
+    }
   }
 
   async function submit(status) {
@@ -1615,24 +2209,62 @@ const ReportWriter = (function() {
       $('r-msg').textContent = 'Please add at least a title or summary before saving.';
       return;
     }
+
     const db = $('r-btn-draft'), sb = $('r-btn-submit'), msg = $('r-msg');
     db.disabled = sb.disabled = true;
     sb.textContent = 'Saving…';
     msg.className = 'sh-msg';
+
+    // Final GPS grab if not yet acquired
+    if (!_gpsResult) {
+      try {
+        const pos = await GPS.get();
+        _gpsResult = GPS.fmt(pos);
+      } catch { /* no GPS available */ }
+    }
+
+    const photos = PhotoUploader.getURIs();
+    const checklist = _getChecklist();
+
+    const body = {
+      report_type:      _type,
+      alert_id:         _activeAlert      ? (_activeAlert.alert_id      || String(_activeAlert.id))           : undefined,
+      inspection_id:    _activeInspection ? (_activeInspection.inspection_id || String(_activeInspection.id)) : undefined,
+      property_id:      _activeInspection ? _activeInspection.property_id || null                             : undefined,
+      title,
+      summary,
+      findings:         ($('r-findings').value||'').trim(),
+      recommendations:  ($('r-recommendations').value||'').trim(),
+      materials_used:   ($('r-materials').value||'').trim() || undefined,
+      work_duration_min: parseInt($('r-duration').value) || undefined,
+      actions_performed: checklist.length ? checklist : undefined,
+      photo_before_uri:  photos.photo_before_uri || undefined,
+      photo_after_uri:   photos.photo_after_uri  || undefined,
+      gps_lat:           _gpsResult?.lat,
+      gps_lng:           _gpsResult?.lng,
+      gps_accuracy_m:    _gpsResult?.accuracy_m,
+      gps_captured_at:   _gpsResult?.captured_at,
+      status
+    };
+
+    // Remove undefined keys
+    Object.keys(body).forEach(k => body[k] === undefined && delete body[k]);
+
+    // Try to submit — queue if offline
+    if (!navigator.onLine) {
+      DraftQueue.push({ _payload: body });
+      msg.className = 'sh-msg success';
+      msg.textContent = '📶 Saved offline — will sync when connected.';
+      setTimeout(() => {
+        close();
+        db.disabled = sb.disabled = false;
+        sb.textContent = 'Submit Report';
+        toast('Draft queued — syncs when online', 'ok');
+      }, 1600);
+      return;
+    }
+
     try {
-      const body = {
-        report_type:   _type,
-        alert_id:      _activeAlert      ? (_activeAlert.alert_id      || String(_activeAlert.id))           : undefined,
-        inspection_id: _activeInspection ? (_activeInspection.inspection_id || String(_activeInspection.id)) : undefined,
-        property_id:   _activeInspection ? _activeInspection.property_id || null                             : undefined,
-        title,
-        summary,
-        findings:         ($('r-findings').value||'').trim(),
-        recommendations:  ($('r-recommendations').value||'').trim(),
-        materials_used:   ($('r-materials').value||'').trim() || undefined,
-        work_duration_min: parseInt($('r-duration').value)||undefined,
-        status
-      };
       const res = await api('POST', '/field-reports', body);
       if (!res.success) throw new Error(res.error || 'Server error');
       msg.className = 'sh-msg success';
@@ -1644,14 +2276,22 @@ const ReportWriter = (function() {
         toast(status === 'submitted' ? 'Report submitted' : 'Draft saved', 'ok');
       }, 1300);
     } catch(e) {
-      msg.className = 'sh-msg error';
-      msg.textContent = e.message || 'Save failed. Check your connection.';
-      db.disabled = sb.disabled = false;
-      sb.textContent = 'Submit Report';
+      // Network failed mid-submit — save to queue
+      if (!navigator.onLine || e.message?.includes('fetch')) {
+        DraftQueue.push({ _payload: body });
+        msg.className = 'sh-msg success';
+        msg.textContent = '📶 Saved offline — will sync automatically.';
+        setTimeout(() => { close(); db.disabled = sb.disabled = false; sb.textContent = 'Submit Report'; toast('Queued for sync', 'ok'); }, 1600);
+      } else {
+        msg.className = 'sh-msg error';
+        msg.textContent = e.message || 'Save failed. Check your connection.';
+        db.disabled = sb.disabled = false;
+        sb.textContent = 'Submit Report';
+      }
     }
   }
 
-  return { open, close, selectType, goStep, submit };
+  return { open, close, selectType, goStep, submit, handlePhoto };
 })();
 
 // Sheet backdrop close

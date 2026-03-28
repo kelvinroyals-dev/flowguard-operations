@@ -1,56 +1,50 @@
-/**
- * field-sw.js — FlowGuard Field PWA Service Worker
- *
- * Handles:
- *   • install  — caches app shell
- *   • activate — clears old caches
- *   • fetch    — cache-first for shell assets, network-first for API
- *   • push     — shows notification when dispatcher sends a job
- *   • notificationclick — opens field.html and focuses it
- */
+'use strict';
 
-const CACHE  = 'fg-field-v1';
-const SHELL  = [
+const CACHE_NAME  = 'fg-field-v3';
+const SYNC_TAG    = 'fg-report-sync';
+const DRAFT_KEY   = 'fg_draft_queue';
+
+// Assets to pre-cache on install (app shell)
+const SHELL = [
   '/field.html',
   '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  'https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap'
 ];
 
-/* ── Install: pre-cache app shell ── */
+// ── Install: cache shell ──────────────────────────────────────────
 self.addEventListener('install', event => {
-  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE).then(cache => {
-      // Cache what we can; ignore failures on optional assets
-      return Promise.allSettled(SHELL.map(url => cache.add(url)));
-    })
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(SHELL))
+      .then(() => self.skipWaiting())
   );
 });
 
-/* ── Activate: remove stale caches ── */
+// ── Activate: purge old caches ────────────────────────────────────
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(
-        keys.filter(k => k !== CACHE).map(k => caches.delete(k))
-      )
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
 });
 
-/* ── Fetch: cache-first for shell, network-first for API ── */
+// ── Fetch: cache-first for shell, network-first for API ──────────
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Always go network-first for API calls
-  if (url.hostname === 'api.flowguard.ng') {
+  // Always go network for API and socket.io
+  if (url.hostname.includes('api.flowguard') || url.pathname.startsWith('/socket.io')) {
     event.respondWith(networkFirst(event.request));
     return;
   }
 
-  // Cache-first for app shell
+  // Font requests — network first with cache fallback
+  if (url.hostname.includes('fonts.')) {
+    event.respondWith(networkFirst(event.request));
+    return;
+  }
+
+  // App shell — cache first
   event.respondWith(cacheFirst(event.request));
 });
 
@@ -60,105 +54,92 @@ async function cacheFirst(request) {
   try {
     const response = await fetch(request);
     if (response.ok) {
-      const cache = await caches.open(CACHE);
+      const cache = await caches.open(CACHE_NAME);
       cache.put(request, response.clone());
     }
     return response;
   } catch {
-    // Offline fallback — return cached field.html for navigation requests
+    // Offline fallback: return cached field.html for navigation
     if (request.mode === 'navigate') {
       const fallback = await caches.match('/field.html');
       if (fallback) return fallback;
     }
-    return new Response('Offline', { status: 503 });
+    return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
   }
 }
 
 async function networkFirst(request) {
   try {
-    return await fetch(request);
+    const response = await fetch(request);
+    if (response.ok && request.method === 'GET') {
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(request, response.clone());
+    }
+    return response;
   } catch {
     const cached = await caches.match(request);
-    return cached || new Response(
-      JSON.stringify({ success: false, error: 'Offline' }),
-      { status: 503, headers: { 'Content-Type': 'application/json' } }
-    );
+    return cached || new Response(JSON.stringify({ success: false, error: 'offline' }), {
+      status: 503, headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
 
-
-/* ── Push: show notification when a job is dispatched ── */
-self.addEventListener('push', event => {
-  let data = {
-    title: 'FlowGuard Field',
-    body:  'New job dispatched to your team.',
-    severity: 'high',
-    alertId: null
-  };
-
-  if (event.data) {
-    try {
-      const payload = event.data.json();
-      data = { ...data, ...payload };
-    } catch {
-      data.body = event.data.text() || data.body;
-    }
+// ── Background Sync: flush draft queue ───────────────────────────
+self.addEventListener('sync', event => {
+  if (event.tag === SYNC_TAG) {
+    event.waitUntil(flushDrafts());
   }
+});
 
-  // Severity → badge/icon tint (colour cannot be set in notification API,
-  // but the tag groups multiple notifications from the same alert)
-  const sevEmoji = {
-    critical: '🔴',
-    high:     '🟠',
-    moderate: '🟡',
-    minor:    '🟢'
-  }[data.severity] || '🔵';
+async function flushDrafts() {
+  // Read draft queue from all clients' localStorage via IDB mirror
+  const clients = await self.clients.matchAll({ type: 'window' });
 
-  const title = `${sevEmoji} ${data.title}`;
-  const body  = data.body;
+  for (const client of clients) {
+    // Ask the page to flush its own queue — it has the token
+    client.postMessage({ type: 'FG_FLUSH_DRAFTS' });
+  }
+}
 
+// ── Push notifications ────────────────────────────────────────────
+self.addEventListener('push', event => {
+  let data = {};
+  try { data = event.data.json(); } catch { data = { title: 'FlowGuard', body: event.data?.text() || 'New dispatch' }; }
+
+  const title   = data.title || 'FlowGuard Field';
   const options = {
-    body,
+    body:    data.body    || 'New job dispatched to your team.',
     icon:    '/icons/icon-192.png',
     badge:   '/icons/icon-192.png',
-    tag:     `fg-job-${data.alertId || 'dispatch'}`,
+    tag:     data.tag     || 'fg-dispatch',
     renotify: true,
-    requireInteraction: data.severity === 'critical' || data.severity === 'high',
-    data: {
-      url:     '/field.html',
-      alertId: data.alertId
-    },
+    data:    { url: data.url || '/field.html' },
     actions: [
-      { action: 'open',    title: 'View Job' },
-      { action: 'dismiss', title: 'Dismiss'  }
-    ]
+      { action: 'view', title: 'View Job' },
+      { action: 'dismiss', title: 'Dismiss' }
+    ],
+    vibrate: [200, 100, 200]
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-
-/* ── notificationclick: open/focus field.html ── */
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-
   if (event.action === 'dismiss') return;
 
-  const targetUrl = (event.notification.data && event.notification.data.url)
-    ? event.notification.data.url
-    : '/field.html';
-
+  const targetUrl = event.notification.data?.url || '/field.html';
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-      // If field.html is already open, focus it
-      for (const client of windowClients) {
-        if (client.url.includes('field.html') && 'focus' in client) {
-          client.postMessage({ type: 'NOTIFICATION_CLICK', alertId: event.notification.data?.alertId });
-          return client.focus();
-        }
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const client of list) {
+        if (client.url.includes('/field') && 'focus' in client) return client.focus();
       }
-      // Otherwise open a new window
-      if (clients.openWindow) return clients.openWindow(targetUrl);
+      return self.clients.openWindow(targetUrl);
     })
   );
+});
+
+// ── Message handler: reply to page requests ───────────────────────
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });

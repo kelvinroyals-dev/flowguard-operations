@@ -1,27 +1,38 @@
 {
-  "name": "FlowGuard Field",
+  "name": "FlowGuard Field Operations",
   "short_name": "FG Field",
-  "description": "FlowGuard field technician dispatch and job management",
+  "description": "FlowGuard Guardian field module for drainage monitoring and incident response.",
   "start_url": "/field.html",
-  "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "theme_color": "#16a8d3",
   "background_color": "#061824",
+  "theme_color": "#061824",
+  "categories": ["utilities", "productivity"],
+  "lang": "en-NG",
+  "scope": "/",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%230a2a3d'/%3E%3Ccircle cx='96' cy='96' r='72' fill='none' stroke='%2316a8d3' stroke-width='3' opacity='.4'/%3E%3Ccircle cx='96' cy='96' r='60' fill='%230a2a3d'/%3E%3Crect x='36' y='112' width='120' height='52' fill='%230d7fa0'/%3E%3Ccircle cx='96' cy='96' r='60' fill='none' stroke='%231cb8e8' stroke-width='2' opacity='.5'/%3E%3Cpath d='M96 50 C110 68 122 80 122 94 C122 110 110 122 96 122 C82 122 70 110 70 94 C70 80 82 68 96 50 Z' fill='%2316a8d3'/%3E%3Cpath d='M96 60 C107 75 115 85 115 94 C115 107 107 116 96 116 C85 116 77 107 77 94 C77 85 85 75 96 60 Z' fill='%230a2a3d'/%3E%3Cpath d='M96 68 C104 80 110 88 110 94 C110 104 104 112 96 112 C88 112 82 104 82 94 C82 88 88 80 96 68 Z' fill='%230d7fa0'/%3E%3Ccircle cx='96' cy='50' r='5' fill='%23f5a623'/%3E%3C/svg%3E",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%230a2a3d'/%3E%3Ccircle cx='256' cy='256' r='190' fill='none' stroke='%2316a8d3' stroke-width='6' opacity='.4'/%3E%3Ccircle cx='256' cy='256' r='160' fill='%230a2a3d'/%3E%3Crect x='96' y='296' width='320' height='140' fill='%230d7fa0'/%3E%3Ccircle cx='256' cy='256' r='160' fill='none' stroke='%231cb8e8' stroke-width='4' opacity='.5'/%3E%3Cpath d='M256 130 C292 178 324 206 324 242 C324 284 292 316 256 316 C220 316 188 284 188 242 C188 206 220 178 256 130 Z' fill='%2316a8d3'/%3E%3Cpath d='M256 154 C286 196 310 218 310 242 C310 276 286 300 256 300 C226 300 202 276 202 242 C202 218 226 196 256 154 Z' fill='%230a2a3d'/%3E%3Cpath d='M256 174 C278 208 296 228 296 242 C296 268 278 290 256 290 C234 290 216 268 216 242 C216 228 234 208 256 174 Z' fill='%230d7fa0'/%3E%3Ccircle cx='256' cy='130' r='13' fill='%23f5a623'/%3E%3C/svg%3E",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     }
   ],
-  "categories": ["productivity", "utilities"],
-  "lang": "en-NG"
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "My Assignment",
+      "short_name": "Assignment",
+      "description": "View your current field assignment",
+      "url": "/field.html",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "prefer_related_applications": false
 }
