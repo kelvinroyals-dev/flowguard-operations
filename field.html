@@ -470,7 +470,7 @@
 
     /* Complete — full-width prominent green */
     .s-complete {
-      width:100%; min-height:68px; padding:0 24px;
+      width:100%; min-height:62px; padding:0 24px;
       border-radius:16px;
       background:linear-gradient(135deg, #16a34a 0%, #15803d 100%);
       border:1.5px solid rgba(34,197,94,.25);
@@ -486,7 +486,7 @@
 
     /* Backup — full-width red outline */
     .s-backup {
-      width:100%; min-height:58px; padding:0 24px;
+      width:100%; min-height:62px; padding:0 24px;
       border-radius:16px;
       background:rgba(239,68,68,.08);
       border:1.5px solid rgba(239,68,68,.22);
@@ -612,17 +612,69 @@
        WRITE REPORT BUTTON
     ═══════════════════════════════ */
     .s-report {
-      width:100%; min-height:52px; padding:0 20px;
-      border-radius:14px;
+      width:100%; min-height:62px; padding:0 20px;
+      border-radius:16px;
       background:rgba(61,191,232,.08);
       border:1.5px solid rgba(61,191,232,.18);
       color:var(--blue-hi);
       display:flex; align-items:center; justify-content:center; gap:10px;
-      font-size:.84rem; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
+      font-size:.88rem; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
       transition:transform .12s, background .2s;
     }
     .s-report:hover { background:rgba(61,191,232,.14); }
     .s-report:active { transform:scale(0.97); }
+
+
+    /* ═══════════════════════════════
+       ASSIGNMENTS QUEUE
+    ═══════════════════════════════ */
+    .queue-section {
+      display:flex; flex-direction:column; gap:8px;
+    }
+    .queue-label {
+      font-family:var(--mono); font-size:.6rem; font-weight:600;
+      letter-spacing:.18em; text-transform:uppercase;
+      color:var(--ink-4); padding:0 2px;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .queue-count {
+      background:var(--amber); color:#000;
+      font-size:.52rem; font-weight:800; letter-spacing:.06em;
+      padding:2px 7px; border-radius:20px;
+    }
+    .queue-item {
+      display:flex; align-items:center; gap:12px;
+      padding:12px 14px; border-radius:14px;
+      background:var(--navy); border:1.5px solid rgba(255,255,255,.07);
+      cursor:pointer; transition:border-color .15s, background .15s;
+    }
+    .queue-item.active-job {
+      border-color:var(--blue); background:rgba(22,168,211,.10);
+    }
+    .queue-item:active { transform:scale(0.98); }
+    .qi-sev {
+      width:8px; height:8px; border-radius:50%; flex-shrink:0;
+    }
+    .qi-sev.critical { background:var(--red); box-shadow:0 0 6px var(--red); }
+    .qi-sev.high     { background:var(--orange); box-shadow:0 0 6px var(--orange); }
+    .qi-sev.moderate { background:var(--warn); box-shadow:0 0 6px var(--warn); }
+    .qi-sev.minor    { background:var(--blue); }
+    .qi-sev.inspection { background:var(--teal); }
+    .qi-body { flex:1; min-width:0; }
+    .qi-title { font-size:.82rem; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .qi-sub { font-size:.7rem; color:var(--ink-3); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .qi-tag {
+      font-family:var(--mono); font-size:.52rem; font-weight:700;
+      letter-spacing:.08em; text-transform:uppercase;
+      padding:3px 8px; border-radius:6px; flex-shrink:0;
+    }
+    .qi-tag.alert      { background:rgba(239,68,68,.15); color:#fca5a5; }
+    .qi-tag.inspection { background:rgba(22,168,211,.15); color:var(--blue-hi); }
+    .qi-active-dot {
+      width:7px; height:7px; border-radius:50%;
+      background:var(--blue); flex-shrink:0;
+      box-shadow:0 0 6px var(--blue);
+    }
 
     /* ═══════════════════════════════
        REPORT SHEET — multi-step
@@ -1145,11 +1197,31 @@ async function loadData() {
     const [aRes,iRes]=await Promise.all([api('GET','/alerts'),api('GET','/inspections')]);
     const ACTIVE_ALERT=new Set(['dispatched','active','acknowledged']), ACTIVE_INSP=new Set(['scheduled','in_progress']);
     const teamMatch=val=>{if(!val) return false;const v=String(val).trim().toLowerCase();return v===teamName||v===(teamId||'').toLowerCase();};
-    S.alert=null; S.inspection=null;
-    if(aRes.success) S.alert=aRes.data.find(a=>teamMatch(a.assigned_team)&&ACTIVE_ALERT.has(a.status))||null;
-    if(iRes.success) S.inspection=iRes.data.find(i=>teamMatch(i.assigned_team)&&ACTIVE_INSP.has(i.status))||null;
+    S.alert=null; S.inspection=null; S.allAlerts=[]; S.allInspections=[];
+    if(aRes.success) {
+      S.allAlerts = aRes.data.filter(a=>teamMatch(a.assigned_team)&&ACTIVE_ALERT.has(a.status));
+      S.alert = S.allAlerts[0]||null;
+    }
+    if(iRes.success) {
+      S.allInspections = iRes.data.filter(i=>teamMatch(i.assigned_team)&&ACTIVE_INSP.has(i.status));
+      S.inspection = S.allInspections[0]||null;
+    }
     renderDashboard();
   } catch(err){console.error('loadData:',err);renderError(err.message);}
+}
+
+function setActiveJob(type, id) {
+  if(type === 'alert') {
+    const found = (S.allAlerts||[]).find(a=>(a.alert_id||String(a.id))===id);
+    if(found) { S.alert = found; S.inspection = null; }
+  } else {
+    const found = (S.allInspections||[]).find(i=>(i.inspection_id||String(i.id))===id);
+    if(found) { S.inspection = found; S.alert = null; }
+  }
+  renderDashboard();
+  // Scroll to top so the newly active job card is visible
+  const ca = document.getElementById('content-area');
+  if(ca) ca.scrollTop = 0;
 }
 
 function renderLoading() {
@@ -1234,6 +1306,32 @@ function renderDashboard() {
   /* ── No job ── */
   if(!hasJob) {
     html+=`<div class="state-card"><div class="state-icon"><svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="state-title">No active job</div><div class="state-sub">No dispatched alert or scheduled inspection right now.<br>A new job will appear here when assigned.</div></div>`;
+  }
+
+  /* ── Assignments queue — shown when there are multiple jobs ── */
+  const totalJobs = (S.allAlerts||[]).length + (S.allInspections||[]).length;
+  if(totalJobs > 1) {
+    const allJobs = [
+      ...(S.allAlerts||[]).map(a=>({type:'alert', id:a.alert_id||String(a.id), title:a.alert_type||'Drainage Alert', sub:(a.site_name||a.client_name||'')+(a.location?' · '+a.location:''), sev:(a.severity||'minor').toLowerCase(), ref:a})),
+      ...(S.allInspections||[]).map(i=>({type:'inspection', id:i.inspection_id||String(i.id), title:'Inspection — '+(i.property_name||i.area_name||'—'), sub:i.scheduled_date?new Date(i.scheduled_date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'', sev:'inspection', ref:i})),
+    ];
+    const activeId = (a?a.alert_id||String(a.id):null)||(ins?ins.inspection_id||String(ins.id):null);
+    html += `<div class="queue-section">
+      <div class="queue-label">
+        My Assignments
+        <span class="queue-count">${totalJobs}</span>
+      </div>
+      ${allJobs.map(j=>`
+      <div class="queue-item${j.id===activeId?' active-job':''}" onclick="setActiveJob('${escHtml(j.type)}','${escHtml(j.id)}')">
+        <div class="qi-sev ${j.sev}"></div>
+        <div class="qi-body">
+          <div class="qi-title">${escHtml(j.title)}</div>
+          ${j.sub?`<div class="qi-sub">${escHtml(j.sub)}</div>`:''}
+        </div>
+        <span class="qi-tag ${j.type}">${j.type==='alert'?'ALERT':'INSP'}</span>
+        ${j.id===activeId?'<div class="qi-active-dot"></div>':''}
+      </div>`).join('')}
+    </div>`;
   }
 
   /* ── Status section ── */
