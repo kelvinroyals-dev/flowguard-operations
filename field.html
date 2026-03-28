@@ -408,96 +408,189 @@
     }
 
     /* ═══════════════════════════════
-       STATUS BUTTONS — redesigned
-       Large thumb-friendly tiles
+       JOB SELECTION QUEUE
     ═══════════════════════════════ */
-    .status-section { display:flex; flex-direction:column; gap:10px; }
-    .status-label {
+    .queue-header {
       font-family:var(--mono); font-size:.6rem; font-weight:600;
       letter-spacing:.18em; text-transform:uppercase;
       color:var(--ink-4); padding:0 2px;
+      display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:8px;
+    }
+    .queue-count-badge {
+      background:var(--amber); color:#000;
+      font-size:.52rem; font-weight:800; letter-spacing:.06em;
+      padding:2px 8px; border-radius:20px;
+    }
+    .queue-card {
+      background:var(--navy);
+      border:1.5px solid rgba(255,255,255,.08);
+      border-radius:18px; overflow:hidden;
+      cursor:pointer;
+      transition:border-color .15s, transform .1s;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .queue-card:active { transform:scale(0.985); }
+    .queue-card-header {
+      padding:14px 16px 10px;
+      display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+    }
+    .queue-card-type {
+      font-family:var(--mono); font-size:.55rem; font-weight:700;
+      letter-spacing:.14em; text-transform:uppercase; color:var(--ink-4);
+      margin-bottom:4px;
+    }
+    .queue-card-title {
+      font-size:1rem; font-weight:800; color:var(--ink); letter-spacing:-.01em; line-height:1.2;
+    }
+    .queue-card-sub { font-size:.78rem; color:var(--ink-3); margin-top:3px; }
+    .queue-sev-pill {
+      padding:4px 10px; border-radius:20px; flex-shrink:0;
+      font-family:var(--mono); font-size:.55rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    }
+    .qsp-critical { background:rgba(239,68,68,.18); color:#fca5a5; border:1px solid rgba(239,68,68,.28); }
+    .qsp-high     { background:rgba(249,115,22,.18); color:#fdba74; border:1px solid rgba(249,115,22,.28); }
+    .qsp-moderate { background:rgba(234,179,8,.18);  color:#fde68a; border:1px solid rgba(234,179,8,.28); }
+    .qsp-minor    { background:rgba(34,197,94,.18);  color:#86efac; border:1px solid rgba(34,197,94,.28); }
+    .qsp-insp     { background:rgba(22,168,211,.18); color:var(--blue-hi); border:1px solid rgba(22,168,211,.28); }
+    .queue-card-footer {
+      padding:9px 16px;
+      border-top:1px solid rgba(255,255,255,.05);
+      background:rgba(0,0,0,.15);
+      display:flex; align-items:center; justify-content:space-between;
+      font-family:var(--mono); font-size:.58rem; color:var(--ink-4); letter-spacing:.06em;
+    }
+    .queue-card-cta {
+      font-size:.72rem; font-weight:800; color:var(--blue-hi);
+      display:flex; align-items:center; gap:5px;
     }
 
-    /* Top row: 3 equal status tiles */
-    .status-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
-
-    .s-tile {
-      display:flex; flex-direction:column; align-items:center; justify-content:center;
-      gap:6px; padding:18px 8px;
-      border-radius:16px; min-height:90px;
-      position:relative; overflow:hidden;
-      border:1.5px solid transparent;
-      transition:transform .12s, box-shadow .2s, opacity .15s;
-    }
-    .s-tile:active:not(:disabled) { transform:scale(0.94); }
-    .s-tile:disabled { opacity:.25; cursor:not-allowed; }
-    .s-tile-ico { font-size:0; line-height:0; }
-    .s-tile-lbl {
-      font-size:.68rem; font-weight:800;
-      text-align:center; line-height:1.2;
-      letter-spacing:.02em; text-transform:uppercase;
-    }
-    /* active state crown */
-    .s-tile.active-state::before {
-      content:'●'; position:absolute; top:8px; right:9px;
-      font-size:.45rem; line-height:1;
-    }
-
-    /* En Route */
-    .s-enroute {
-      background:rgba(245,166,35,.10);
-      border-color:rgba(245,166,35,.20);
-      color:var(--amber);
-    }
-    .s-enroute.active-state { background:rgba(245,166,35,.18); border-color:rgba(245,166,35,.40); box-shadow:0 4px 16px rgba(245,166,35,.18); }
-    .s-enroute:hover:not(:disabled):not(.active-state) { background:rgba(245,166,35,.15); }
-    /* On Site */
-    .s-onsite {
+    /* ═══════════════════════════════
+       ACTIVE JOB CONTEXT BANNER
+       "Now working on: X"
+    ═══════════════════════════════ */
+    .job-context-banner {
+      display:flex; align-items:center; gap:10px;
+      padding:11px 14px; border-radius:14px;
       background:rgba(22,168,211,.10);
-      border-color:rgba(22,168,211,.20);
-      color:var(--blue-hi);
+      border:1.5px solid rgba(22,168,211,.22);
     }
-    .s-onsite.active-state { background:rgba(22,168,211,.18); border-color:rgba(22,168,211,.40); box-shadow:0 4px 16px rgba(22,168,211,.18); }
-    .s-onsite:hover:not(:disabled):not(.active-state) { background:rgba(22,168,211,.15); }
-    /* Returning */
-    .s-returning {
-      background:rgba(34,197,94,.08);
-      border-color:rgba(34,197,94,.16);
-      color:var(--ok);
+    .jcb-dot {
+      width:8px; height:8px; border-radius:50%; flex-shrink:0;
+      background:var(--blue); box-shadow:0 0 8px var(--blue);
+      animation:blink .9s ease-in-out infinite;
     }
-    .s-returning.active-state { background:rgba(34,197,94,.15); border-color:rgba(34,197,94,.35); box-shadow:0 4px 16px rgba(34,197,94,.16); }
-    .s-returning:hover:not(:disabled):not(.active-state) { background:rgba(34,197,94,.12); }
+    .jcb-label {
+      font-family:var(--mono); font-size:.54rem; font-weight:600;
+      letter-spacing:.14em; text-transform:uppercase; color:var(--blue-hi); opacity:.7;
+    }
+    .jcb-title {
+      font-size:.88rem; font-weight:700; color:var(--ink); line-height:1.2;
+    }
+    .jcb-back {
+      margin-left:auto; flex-shrink:0;
+      font-family:var(--mono); font-size:.58rem; font-weight:700;
+      letter-spacing:.08em; text-transform:uppercase;
+      color:var(--ink-4); padding:6px 10px;
+      border-radius:8px; border:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.05);
+    }
 
-    /* Complete — full-width prominent green */
-    .s-complete {
-      width:100%; min-height:62px; padding:0 24px;
+    /* ═══════════════════════════════
+       PROGRESS STEPS
+       En Route → On Site → Complete
+    ═══════════════════════════════ */
+    .progress-track {
+      display:flex; align-items:center; gap:0;
+      background:var(--navy); border-radius:16px;
+      border:1px solid rgba(255,255,255,.07);
+      padding:14px 16px; position:relative;
+    }
+    .prog-step {
+      flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;
+      position:relative; z-index:1;
+    }
+    .prog-step::after {
+      content:''; position:absolute;
+      top:14px; left:calc(50% + 14px); right:calc(-50% + 14px);
+      height:2px; background:rgba(255,255,255,.08);
+    }
+    .prog-step:last-child::after { display:none; }
+    .prog-step.done::after { background:var(--blue); opacity:.5; }
+    .prog-dot {
+      width:28px; height:28px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:.65rem; font-weight:800;
+      background:rgba(255,255,255,.07); border:2px solid rgba(255,255,255,.12);
+      color:var(--ink-4);
+      transition:all .2s;
+    }
+    .prog-step.done .prog-dot {
+      background:var(--blue); border-color:var(--blue);
+      color:#fff; box-shadow:0 0 12px rgba(22,168,211,.4);
+    }
+    .prog-step.active .prog-dot {
+      background:var(--amber); border-color:var(--amber);
+      color:#000; box-shadow:0 0 12px rgba(245,166,35,.4);
+      animation:blink .9s ease-in-out infinite;
+    }
+    .prog-lbl {
+      font-family:var(--mono); font-size:.54rem; font-weight:600;
+      letter-spacing:.1em; text-transform:uppercase;
+      color:var(--ink-4); text-align:center;
+    }
+    .prog-step.done .prog-lbl  { color:var(--blue-hi); }
+    .prog-step.active .prog-lbl { color:var(--amber); }
+
+    /* ═══════════════════════════════
+       ACTION BUTTONS — consistent
+    ═══════════════════════════════ */
+    .status-section { display:flex; flex-direction:column; gap:10px; }
+
+    .s-primary {
+      width:100%; min-height:64px; padding:0 24px;
       border-radius:16px;
-      background:linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-      border:1.5px solid rgba(34,197,94,.25);
-      color:#fff;
       display:flex; align-items:center; justify-content:center; gap:12px;
-      font-size:.95rem; font-weight:900; letter-spacing:.03em; text-transform:uppercase;
+      font-size:.92rem; font-weight:900; letter-spacing:.03em; text-transform:uppercase;
       transition:transform .12s, box-shadow .2s, opacity .15s;
-      box-shadow:0 4px 20px rgba(22,163,74,.30);
+      border:none;
     }
-    .s-complete:hover:not(:disabled) { box-shadow:0 8px 28px rgba(22,163,74,.40); }
-    .s-complete:active:not(:disabled) { transform:scale(0.97); }
-    .s-complete:disabled { opacity:.25; cursor:not-allowed; }
+    .s-primary.enroute {
+      background:linear-gradient(135deg, #d97706 0%, #b45309 100%);
+      color:#fff; box-shadow:0 4px 20px rgba(217,119,6,.30);
+    }
+    .s-primary.onsite {
+      background:linear-gradient(135deg, #0d7fa0 0%, #0e6a87 100%);
+      color:#fff; box-shadow:0 4px 20px rgba(22,168,211,.30);
+    }
+    .s-primary.complete {
+      background:linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+      color:#fff; box-shadow:0 4px 20px rgba(22,163,74,.30);
+    }
+    .s-primary:hover:not(:disabled) { filter:brightness(1.1); }
+    .s-primary:active:not(:disabled) { transform:scale(0.97); }
+    .s-primary:disabled { opacity:.28; cursor:not-allowed; }
 
-    /* Backup — full-width red outline */
-    .s-backup {
-      width:100%; min-height:62px; padding:0 24px;
-      border-radius:16px;
-      background:rgba(239,68,68,.08);
-      border:1.5px solid rgba(239,68,68,.22);
-      color:#fca5a5;
-      display:flex; align-items:center; justify-content:center; gap:12px;
-      font-size:.88rem; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
-      transition:transform .12s, box-shadow .2s, opacity .15s, background .2s;
+    .s-secondary-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+    .s-secondary {
+      min-height:56px; padding:0 16px;
+      border-radius:14px;
+      display:flex; align-items:center; justify-content:center; gap:9px;
+      font-size:.78rem; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
+      transition:transform .12s, background .2s;
+      border:1.5px solid;
     }
-    .s-backup:hover:not(:disabled) { background:rgba(239,68,68,.14); box-shadow:0 4px 16px rgba(239,68,68,.18); }
-    .s-backup:active:not(:disabled) { transform:scale(0.97); }
-    .s-backup:disabled { opacity:.25; cursor:not-allowed; }
+    .s-secondary.backup {
+      background:rgba(239,68,68,.08); border-color:rgba(239,68,68,.22); color:#fca5a5;
+    }
+    .s-secondary.backup:hover:not(:disabled) { background:rgba(239,68,68,.14); }
+    .s-secondary.report {
+      background:rgba(61,191,232,.08); border-color:rgba(61,191,232,.18); color:var(--blue-hi);
+    }
+    .s-secondary.report:hover:not(:disabled) { background:rgba(61,191,232,.14); }
+    .s-secondary:active:not(:disabled) { transform:scale(0.97); }
+    .s-secondary:disabled { opacity:.25; cursor:not-allowed; }
 
     /* ═══════════════════════════════
        TEAM CARD — horizontal avatars
@@ -607,74 +700,6 @@
     @keyframes toastPop { from{opacity:0;transform:translateX(-50%) translateY(12px);} to{opacity:1;transform:translateX(-50%) translateY(0);} }
     .toast.ok  { background:var(--raised); color:var(--ink); border:1px solid rgba(255,255,255,.10); backdrop-filter:blur(12px); box-shadow:0 8px 24px rgba(0,0,0,.45); }
     .toast.err { background:var(--red); color:#fff; box-shadow:0 8px 24px rgba(239,68,68,.45); }
-
-    /* ═══════════════════════════════
-       WRITE REPORT BUTTON
-    ═══════════════════════════════ */
-    .s-report {
-      width:100%; min-height:62px; padding:0 20px;
-      border-radius:16px;
-      background:rgba(61,191,232,.08);
-      border:1.5px solid rgba(61,191,232,.18);
-      color:var(--blue-hi);
-      display:flex; align-items:center; justify-content:center; gap:10px;
-      font-size:.88rem; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
-      transition:transform .12s, background .2s;
-    }
-    .s-report:hover { background:rgba(61,191,232,.14); }
-    .s-report:active { transform:scale(0.97); }
-
-
-    /* ═══════════════════════════════
-       ASSIGNMENTS QUEUE
-    ═══════════════════════════════ */
-    .queue-section {
-      display:flex; flex-direction:column; gap:8px;
-    }
-    .queue-label {
-      font-family:var(--mono); font-size:.6rem; font-weight:600;
-      letter-spacing:.18em; text-transform:uppercase;
-      color:var(--ink-4); padding:0 2px;
-      display:flex; align-items:center; justify-content:space-between;
-    }
-    .queue-count {
-      background:var(--amber); color:#000;
-      font-size:.52rem; font-weight:800; letter-spacing:.06em;
-      padding:2px 7px; border-radius:20px;
-    }
-    .queue-item {
-      display:flex; align-items:center; gap:12px;
-      padding:12px 14px; border-radius:14px;
-      background:var(--navy); border:1.5px solid rgba(255,255,255,.07);
-      cursor:pointer; transition:border-color .15s, background .15s;
-    }
-    .queue-item.active-job {
-      border-color:var(--blue); background:rgba(22,168,211,.10);
-    }
-    .queue-item:active { transform:scale(0.98); }
-    .qi-sev {
-      width:8px; height:8px; border-radius:50%; flex-shrink:0;
-    }
-    .qi-sev.critical { background:var(--red); box-shadow:0 0 6px var(--red); }
-    .qi-sev.high     { background:var(--orange); box-shadow:0 0 6px var(--orange); }
-    .qi-sev.moderate { background:var(--warn); box-shadow:0 0 6px var(--warn); }
-    .qi-sev.minor    { background:var(--blue); }
-    .qi-sev.inspection { background:var(--teal); }
-    .qi-body { flex:1; min-width:0; }
-    .qi-title { font-size:.82rem; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .qi-sub { font-size:.7rem; color:var(--ink-3); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .qi-tag {
-      font-family:var(--mono); font-size:.52rem; font-weight:700;
-      letter-spacing:.08em; text-transform:uppercase;
-      padding:3px 8px; border-radius:6px; flex-shrink:0;
-    }
-    .qi-tag.alert      { background:rgba(239,68,68,.15); color:#fca5a5; }
-    .qi-tag.inspection { background:rgba(22,168,211,.15); color:var(--blue-hi); }
-    .qi-active-dot {
-      width:7px; height:7px; border-radius:50%;
-      background:var(--blue); flex-shrink:0;
-      box-shadow:0 0 6px var(--blue);
-    }
 
     /* ═══════════════════════════════
        REPORT SHEET — multi-step
@@ -952,7 +977,7 @@
     <div class="sh-handle-row"><div class="sh-handle"></div></div>
     <div class="sh-accent"></div>
     <div class="sh-title">Mark Job Complete</div>
-    <div class="sh-sub">Add a brief completion note. The alert will be resolved and your team set to Returning to HQ.</div>
+    <div class="sh-sub" id="complete-sub">Add a brief completion note. The alert will be resolved and your team set to Returning to HQ.</div>
     <textarea class="sh-textarea" id="complete-notes" placeholder="e.g. Drain cleared, flow restored. No structural damage noted."></textarea>
     <div class="sh-msg" id="complete-msg"></div>
     <div class="sh-actions">
@@ -1078,7 +1103,13 @@ const CONFIG = {
   TOKEN_KEY: 'fg_token'
 };
 
-let S = { token:null, user:null, team:null, alert:null, inspection:null, socket:null, swReg:null };
+let S = {
+  token:null, user:null, team:null,
+  alert:null, inspection:null,         // currently ACTIVE job
+  allAlerts:[], allInspections:[],     // full list
+  completedJob:null,                   // snapshot for report after complete
+  socket:null, swReg:null
+};
 
 const $  = id => document.getElementById(id);
 const on = (id, ev, fn) => $(id).addEventListener(ev, fn);
@@ -1204,24 +1235,10 @@ async function loadData() {
     }
     if(iRes.success) {
       S.allInspections = iRes.data.filter(i=>teamMatch(i.assigned_team)&&ACTIVE_INSP.has(i.status));
-      S.inspection = S.allInspections[0]||null;
+      if(!S.alert) S.inspection = S.allInspections[0]||null;
     }
     renderDashboard();
   } catch(err){console.error('loadData:',err);renderError(err.message);}
-}
-
-function setActiveJob(type, id) {
-  if(type === 'alert') {
-    const found = (S.allAlerts||[]).find(a=>(a.alert_id||String(a.id))===id);
-    if(found) { S.alert = found; S.inspection = null; }
-  } else {
-    const found = (S.allInspections||[]).find(i=>(i.inspection_id||String(i.id))===id);
-    if(found) { S.inspection = found; S.alert = null; }
-  }
-  renderDashboard();
-  // Scroll to top so the newly active job card is visible
-  const ca = document.getElementById('content-area');
-  if(ca) ca.scrollTop = 0;
 }
 
 function renderLoading() {
@@ -1235,10 +1252,56 @@ function renderError(msg) {
 }
 
 function renderDashboard() {
-  const t=S.team, a=S.alert, ins=S.inspection, ts=t.status||'idle', hasJob=!!(a||ins);
+  const t=S.team, a=S.alert, ins=S.inspection, ts=t.status||'idle';
+  const totalJobs = S.allAlerts.length + S.allInspections.length;
+  const hasActive = !!(a||ins);
+
+  // If multiple jobs and none selected yet → show selection queue
+  if(totalJobs > 1 && !hasActive) {
+    renderJobQueue();
+    return;
+  }
+
   let html='';
 
-  /* ── Alert job card ── */
+  // ── Context banner — always show which job is active ──
+  if(hasActive) {
+    const jobName = a
+      ? (a.alert_type||'Drainage Alert') + (a.site_name||a.client_name ? ' — '+(a.site_name||a.client_name) : '')
+      : 'Inspection — '+(ins.property_name||ins.area_name||'—');
+    const hasMore = totalJobs > 1;
+    html+=`
+    <div class="job-context-banner">
+      <div class="jcb-dot"></div>
+      <div style="flex:1;min-width:0;">
+        <div class="jcb-label">Now Working On</div>
+        <div class="jcb-title">${escHtml(jobName)}</div>
+      </div>
+      ${hasMore?`<button class="jcb-back" onclick="switchJob()">Switch Job</button>`:''}
+    </div>`;
+  }
+
+  // ── Progress track ──
+  if(hasActive) {
+    const step = ts==='en_route'?1 : ts==='on_site'?2 : ts==='returning'||ts==='idle'?0 : 0;
+    html+=`
+    <div class="progress-track">
+      <div class="prog-step ${step>0?'done':step===0?'active':''}">
+        <div class="prog-dot">${step>0?'✓':'1'}</div>
+        <div class="prog-lbl">En Route</div>
+      </div>
+      <div class="prog-step ${step>1?'done':step===1?'active':''}">
+        <div class="prog-dot">${step>1?'✓':'2'}</div>
+        <div class="prog-lbl">On Site</div>
+      </div>
+      <div class="prog-step ${step===2?'active':''}">
+        <div class="prog-dot">3</div>
+        <div class="prog-lbl">Complete</div>
+      </div>
+    </div>`;
+  }
+
+  // ── Alert job card ──
   if(a) {
     const sev=(a.severity||'minor').toLowerCase();
     const type=a.alert_type||'Drainage Alert', site=a.site_name||a.client_name||'—';
@@ -1256,29 +1319,20 @@ function renderDashboard() {
       ${ovf!=null?`
       <div class="overflow-alarm" style="margin-top:14px;">
         <div class="oa-icon"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg></div>
-        <div>
-          <div class="oa-lbl">Time to overflow</div>
-          <div><span class="oa-num">${escHtml(String(ovf))}</span> <span class="oa-unit">min</span></div>
-        </div>
+        <div><div class="oa-lbl">Time to overflow</div>
+        <div><span class="oa-num">${escHtml(String(ovf))}</span> <span class="oa-unit">min</span></div></div>
       </div>`:''}
       <div class="job-details">
-        <div class="jd-row">
-          <div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
-          <div><div class="jd-label">Location</div><div class="jd-value">${escHtml(loc)}</div></div>
-        </div>
-        <div class="jd-row">
-          <div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
-          <div><div class="jd-label">Ops Notes</div><div class="jd-value">${escHtml(desc)}</div></div>
-        </div>
+        <div class="jd-row"><div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
+          <div><div class="jd-label">Location</div><div class="jd-value">${escHtml(loc)}</div></div></div>
+        <div class="jd-row"><div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+          <div><div class="jd-label">Ops Notes</div><div class="jd-value">${escHtml(desc)}</div></div></div>
       </div>
-      <div class="job-footer">
-        <span>ALERT</span>
-        <span>${escHtml(a.alert_id||String(a.id))}</span>
-      </div>
+      <div class="job-footer"><span>ALERT</span><span>${escHtml(a.alert_id||String(a.id))}</span></div>
     </div>`;
   }
 
-  /* ── Inspection card ── */
+  // ── Inspection card ──
   if(ins) {
     const propName=ins.property_name||ins.area_name||'—';
     const schedDate=ins.scheduled_date?new Date(ins.scheduled_date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'—';
@@ -1296,81 +1350,59 @@ function renderDashboard() {
       <div class="job-details">
         <div class="jd-row"><div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div><div class="jd-label">Scheduled</div><div class="jd-value">${escHtml(schedDate)}${schedTime?' · '+escHtml(schedTime):''}</div></div></div>
         ${ins.city||ins.state?`<div class="jd-row"><div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div><div class="jd-label">Location</div><div class="jd-value">${escHtml([ins.city,ins.state].filter(Boolean).join(', '))}</div></div></div>`:''}
-        ${ins.property_type?`<div class="jd-row"><div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><div><div class="jd-label">Property Type</div><div class="jd-value">${escHtml(ins.property_type)}</div></div></div>`:''}
         ${ins.notes?`<div class="jd-row"><div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><div><div class="jd-label">Notes</div><div class="jd-value">${escHtml(ins.notes)}</div></div></div>`:''}
       </div>
       <div class="job-footer"><span>INSPECTION</span><span>${escHtml(ins.inspection_id||String(ins.id))}</span></div>
     </div>`;
   }
 
-  /* ── No job ── */
-  if(!hasJob) {
+  // ── No job ──
+  if(!hasActive) {
     html+=`<div class="state-card"><div class="state-icon"><svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="state-title">No active job</div><div class="state-sub">No dispatched alert or scheduled inspection right now.<br>A new job will appear here when assigned.</div></div>`;
   }
 
-  /* ── Assignments queue — shown when there are multiple jobs ── */
-  const totalJobs = (S.allAlerts||[]).length + (S.allInspections||[]).length;
-  if(totalJobs > 1) {
-    const allJobs = [
-      ...(S.allAlerts||[]).map(a=>({type:'alert', id:a.alert_id||String(a.id), title:a.alert_type||'Drainage Alert', sub:(a.site_name||a.client_name||'')+(a.location?' · '+a.location:''), sev:(a.severity||'minor').toLowerCase(), ref:a})),
-      ...(S.allInspections||[]).map(i=>({type:'inspection', id:i.inspection_id||String(i.id), title:'Inspection — '+(i.property_name||i.area_name||'—'), sub:i.scheduled_date?new Date(i.scheduled_date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'', sev:'inspection', ref:i})),
-    ];
-    const activeId = (a?a.alert_id||String(a.id):null)||(ins?ins.inspection_id||String(ins.id):null);
-    html += `<div class="queue-section">
-      <div class="queue-label">
-        My Assignments
-        <span class="queue-count">${totalJobs}</span>
-      </div>
-      ${allJobs.map(j=>`
-      <div class="queue-item${j.id===activeId?' active-job':''}" onclick="setActiveJob('${escHtml(j.type)}','${escHtml(j.id)}')">
-        <div class="qi-sev ${j.sev}"></div>
-        <div class="qi-body">
-          <div class="qi-title">${escHtml(j.title)}</div>
-          ${j.sub?`<div class="qi-sub">${escHtml(j.sub)}</div>`:''}
-        </div>
-        <span class="qi-tag ${j.type}">${j.type==='alert'?'ALERT':'INSP'}</span>
-        ${j.id===activeId?'<div class="qi-active-dot"></div>':''}
-      </div>`).join('')}
-    </div>`;
-  }
+  // ── Action buttons ──
+  // Primary: one contextual button that moves the story forward
+  const primaryBtn = !hasActive ? '' :
+    ts==='idle' || ts===undefined ?
+      `<button class="s-primary enroute" id="btn-enroute">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+        I'm En Route
+      </button>` :
+    ts==='en_route' ?
+      `<button class="s-primary onsite" id="btn-onsite">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        I've Arrived — On Site
+      </button>` :
+    ts==='on_site' ?
+      `<button class="s-primary complete" id="btn-complete">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Mark Job Complete
+      </button>` :
+    ts==='returning' ?
+      `<div style="padding:14px 16px;background:rgba(34,197,94,.08);border:1.5px solid rgba(34,197,94,.2);border-radius:14px;display:flex;align-items:center;gap:10px;">
+        <svg width="18" height="18" fill="none" stroke="var(--ok)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span style="font-size:.82rem;font-weight:700;color:var(--ok);">Job complete — Returning to HQ</span>
+      </div>` : '';
 
-  /* ── Status section ── */
-  html+=`
-  <div class="status-section">
-    <div class="status-label">Update Status</div>
-    <div class="status-row">
-      <button class="s-tile s-enroute${ts==='en_route'?' active-state':''}" id="btn-enroute" ${ts==='en_route'?'disabled':''}>
-        <span class="s-tile-ico"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg></span>
-        <span class="s-tile-lbl">En Route</span>
+  html+=`<div class="status-section">
+    ${primaryBtn}
+    <div class="s-secondary-row">
+      <button class="s-secondary backup" id="btn-backup" ${!hasActive?'disabled':''}>
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        Request Backup
       </button>
-      <button class="s-tile s-onsite${ts==='on_site'?' active-state':''}" id="btn-onsite" ${ts==='on_site'?'disabled':''}>
-        <span class="s-tile-ico"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span>
-        <span class="s-tile-lbl">On Site</span>
-      </button>
-      <button class="s-tile s-returning${ts==='returning'?' active-state':''}" id="btn-returning" ${ts==='returning'?'disabled':''}>
-        <span class="s-tile-ico"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline stroke-linecap="round" stroke-linejoin="round" points="9 22 9 12 15 12 15 22"/></svg></span>
-        <span class="s-tile-lbl">Return HQ</span>
+      <button class="s-secondary report" id="btn-write-report">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+        Write Report
       </button>
     </div>
-    <button class="s-complete" id="btn-complete" ${!hasJob?'disabled':''}>
-      <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-      Job Complete
-    </button>
-    <button class="s-backup" id="btn-backup" ${!hasJob?'disabled':''}>
-      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-      Request Backup
-    </button>
-    <button class="s-report" id="btn-write-report">
-      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-      Write Report
-    </button>
   </div>`;
 
-  /* ── Team card ── */
+  // ── Team card ──
   let memberNames=[];
   if(Array.isArray(t.members)) memberNames=t.members.map(m=>m.full_name||m.name||'').filter(Boolean);
   else if(t.members) memberNames=t.members.split(',').map(s=>s.trim()).filter(Boolean);
-
   html+=`
   <div class="team-card">
     <div class="tc-header">
@@ -1387,40 +1419,150 @@ function renderDashboard() {
   bindButtons();
 }
 
+// ── Job selection queue (shown when multiple assignments exist) ──
+function renderJobQueue() {
+  const allJobs = [
+    ...S.allAlerts.map(a=>({
+      type:'alert', id:a.alert_id||String(a.id),
+      title:a.alert_type||'Drainage Alert',
+      site:a.site_name||a.client_name||'', loc:a.location||'',
+      sev:(a.severity||'minor').toLowerCase(), age:ageStr(a.created_at), ref:a
+    })),
+    ...S.allInspections.map(i=>({
+      type:'inspection', id:i.inspection_id||String(i.id),
+      title:'Drainage Inspection',
+      site:i.property_name||i.area_name||'', loc:[i.city,i.state].filter(Boolean).join(', '),
+      sev:'insp', age:ageStr(i.created_at), ref:i
+    }))
+  ];
+
+  const sevPillClass = s => ({critical:'qsp-critical',high:'qsp-high',moderate:'qsp-moderate',minor:'qsp-minor',insp:'qsp-insp'})[s]||'qsp-minor';
+
+  let html=`
+  <div class="state-card" style="padding:24px 20px 16px;">
+    <div class="state-icon" style="width:48px;height:48px;">
+      <svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+    </div>
+    <div class="state-title" style="font-size:1.1rem;">Select Your Task</div>
+    <div class="state-sub">You have ${allJobs.length} active assignments. Tap one to start working on it.</div>
+  </div>
+  <div class="queue-header">
+    My Assignments <span class="queue-count-badge">${allJobs.length}</span>
+  </div>`;
+
+  html += allJobs.map(j=>`
+  <div class="queue-card" onclick="selectJob('${escHtml(j.type)}','${escHtml(j.id)}')">
+    <div class="queue-card-header">
+      <div style="flex:1;min-width:0;">
+        <div class="queue-card-type">${j.type==='alert'?'🚨 Alert':'🔍 Inspection'}</div>
+        <div class="queue-card-title">${escHtml(j.title)}</div>
+        ${j.site?`<div class="queue-card-sub">${escHtml(j.site)}${j.loc?' · '+escHtml(j.loc):''}</div>`:''}
+      </div>
+      <span class="queue-sev-pill ${sevPillClass(j.sev)}">${j.sev==='insp'?'Scheduled':j.sev}</span>
+    </div>
+    <div class="queue-card-footer">
+      <span>${j.age}</span>
+      <span class="queue-card-cta">
+        Work This Job
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+      </span>
+    </div>
+  </div>`).join('');
+
+  $('content-area').innerHTML=html;
+}
+
+// Called when tech taps a job in the queue
+function selectJob(type, id) {
+  if(type==='alert') {
+    S.alert = S.allAlerts.find(a=>(a.alert_id||String(a.id))===id)||null;
+    S.inspection = null;
+  } else {
+    S.inspection = S.allInspections.find(i=>(i.inspection_id||String(i.id))===id)||null;
+    S.alert = null;
+  }
+  renderDashboard();
+  const ca=$('content-area'); if(ca) ca.scrollTop=0;
+}
+
+// Called by "Switch Job" button when multiple assignments exist
+function switchJob() {
+  S.alert = null; S.inspection = null;
+  renderJobQueue();
+  const ca=$('content-area'); if(ca) ca.scrollTop=0;
+}
+
 function bindButtons() {
   async function setStatus(status, label) {
     if(!S.team) return;
-    try { const d=await api('PUT',`/teams/${S.team.team_id}/status`,{status}); if(!d.success) throw new Error(d.error||'Failed'); S.team.status=status; toast(`Status: ${label}`,'ok'); await loadData(); }
-    catch(e){toast(e.message||'Update failed','err');}
+    try {
+      const d=await api('PUT',`/teams/${S.team.team_id}/status`,{status});
+      if(!d.success) throw new Error(d.error||'Failed');
+      S.team.status=status;
+      toast(`Status updated: ${label}`,'ok');
+      renderDashboard();
+    } catch(e){toast(e.message||'Update failed','err');}
   }
   const b=id=>$(id);
+  // Contextual primary button — only one at a time
   if(b('btn-enroute'))   b('btn-enroute').onclick  =()=>setStatus('en_route','En Route');
   if(b('btn-onsite'))    b('btn-onsite').onclick    =()=>setStatus('on_site','On Site');
-  if(b('btn-returning')) b('btn-returning').onclick =()=>setStatus('returning','Returning to HQ');
-  if(b('btn-complete'))  b('btn-complete').onclick  =()=>{$('complete-notes').value='';$('complete-msg').className='sh-msg';$('sheet-complete').classList.add('show');};
+  if(b('btn-complete'))  b('btn-complete').onclick  =()=>{
+    $('complete-notes').value=''; $('complete-msg').className='sh-msg';
+    // Show job name in sheet title
+    const jobName = S.alert
+      ? (S.alert.alert_type||'Drainage Alert')+(S.alert.site_name?' — '+S.alert.site_name:'')
+      : S.inspection
+        ? 'Inspection — '+(S.inspection.property_name||S.inspection.area_name||'')
+        : 'Current Job';
+    const sub = $('complete-sub');
+    if(sub) sub.textContent = 'Mark "'+jobName+'" as complete. Add a brief note and submit your report.';
+    $('sheet-complete').classList.add('show');
+  };
   if(b('btn-backup'))    b('btn-backup').onclick    =()=>{$('backup-notes').value='';$('backup-msg').className='sh-msg';$('sheet-backup').classList.add('show');};
-  if(b('btn-write-report')) b('btn-write-report').onclick = ()=> ReportWriter.open();
+  if(b('btn-write-report')) b('btn-write-report').onclick = ()=>ReportWriter.open();
 }
 
 /* ── Sheets ── */
 on('complete-cancel','click',()=>$('sheet-complete').classList.remove('show'));
 on('sheet-complete','click',e=>{if(e.target===$('sheet-complete'))$('sheet-complete').classList.remove('show');});
 on('complete-confirm','click',async()=>{
-  const notes=$('complete-notes').value.trim(), btn=$('complete-confirm'), msg=$('complete-msg'), a=S.alert, ins=S.inspection, t=S.team;
-  if(!a&&!ins) return;
+  const notes=$('complete-notes').value.trim(), btn=$('complete-confirm'), msg=$('complete-msg');
+
+  // ── SNAPSHOT the job BEFORE we clear anything ──
+  const completedAlert      = S.alert;
+  const completedInspection = S.inspection;
+  if(!completedAlert && !completedInspection) return;
+
   btn.disabled=true; btn.textContent='Submitting…'; msg.className='sh-msg';
   try {
-    if(a){const r1=await api('PUT',`/alerts/${a.alert_id||a.id}`,{status:'resolved',...(notes?{notes}:{})});if(!r1.success)throw new Error(r1.error||'Failed to resolve alert');}
-    if(ins){const r1=await api('PUT',`/inspections/${ins.inspection_id||ins.id}`,{status:'completed',...(notes?{findings:notes}:{})});if(!r1.success)throw new Error(r1.error||'Failed to complete inspection');}
-    const r2=await api('PUT',`/teams/${t.team_id}/status`,{status:'returning'}); if(!r2.success) throw new Error(r2.error||'Failed to update team status');
-    msg.className='sh-msg success'; msg.textContent='Job complete. Team set to Returning to HQ.'; btn.textContent='✓ Done';
+    if(completedAlert){
+      const r1=await api('PUT',`/alerts/${completedAlert.alert_id||completedAlert.id}`,{status:'resolved',...(notes?{notes}:{})});
+      if(!r1.success)throw new Error(r1.error||'Failed to resolve alert');
+    }
+    if(completedInspection){
+      const r1=await api('PUT',`/inspections/${completedInspection.inspection_id||completedInspection.id}`,{status:'completed',...(notes?{findings:notes}:{})});
+      if(!r1.success)throw new Error(r1.error||'Failed to complete inspection');
+    }
+    await api('PUT',`/teams/${S.team.team_id}/status`,{status:'returning'});
+
+    msg.className='sh-msg success';
+    msg.textContent='✓ Job complete! Now write your report.';
+    btn.textContent='✓ Done';
+
+    // Remove the completed job from the live lists
+    if(completedAlert)      S.allAlerts      = S.allAlerts.filter(a=>(a.alert_id||String(a.id))!==(completedAlert.alert_id||String(completedAlert.id)));
+    if(completedInspection) S.allInspections = S.allInspections.filter(i=>(i.inspection_id||String(i.id))!==(completedInspection.inspection_id||String(completedInspection.id)));
+    S.alert=null; S.inspection=null; S.team.status='returning';
+
+    // ── Open report writer for the job that was JUST completed ──
     setTimeout(()=>{
       $('sheet-complete').classList.remove('show');
       btn.disabled=false; btn.textContent='Confirm Complete';
-      S.alert=null; S.team.status='returning'; loadData();
-      // Auto-prompt report writer
-      setTimeout(()=> ReportWriter.open({ autoTriggered: true }), 600);
-    },1200);
+      // Pass the snapshotted job — not S.alert which is now null
+      ReportWriter.open({ completedAlert, completedInspection, autoTriggered:true });
+    }, 900);
+
   } catch(e){msg.className='sh-msg error';msg.textContent=e.message||'Something went wrong.';btn.disabled=false;btn.textContent='Confirm Complete';}
 });
 
@@ -1482,22 +1624,27 @@ on('btn-logout','click',()=>{
 ───────────────────────────────────────── */
 const ReportWriter = (function() {
   let _type = 'general';
+  let _activeAlert = null, _activeInspection = null;
 
   function open(opts = {}) {
-    _type = S.alert ? 'incident' : S.inspection ? 'inspection' : 'general';
+    // Use snapshotted job from completion if provided, otherwise use live state
+    const activeAlert      = opts.completedAlert      || S.alert;
+    const activeInspection = opts.completedInspection || S.inspection;
 
-    const jobTitle = S.alert
-      ? (S.alert.alert_type || 'Drainage Incident') + (S.alert.site_name ? ' — ' + S.alert.site_name : '')
-      : S.inspection
-        ? 'Drainage Inspection — ' + (S.inspection.area_name || S.inspection.property_name || '')
+    _type = activeAlert ? 'incident' : activeInspection ? 'inspection' : 'general';
+
+    const jobTitle = activeAlert
+      ? (activeAlert.alert_type || 'Drainage Incident') + (activeAlert.site_name ? ' — ' + activeAlert.site_name : '')
+      : activeInspection
+        ? 'Drainage Inspection — ' + (activeInspection.property_name || activeInspection.area_name || '')
         : '';
 
     const jobContext = opts.autoTriggered
-      ? '✓ Job marked complete — write your report now'
-      : S.alert
-        ? 'Incident report for alert ' + (S.alert.alert_id || S.alert.id)
-        : S.inspection
-          ? 'Inspection: ' + (S.inspection.area_name || S.inspection.inspection_id)
+      ? '✓ Job complete — write your report for: ' + (jobTitle || 'this job')
+      : activeAlert
+        ? 'Incident report — ' + (activeAlert.alert_id || activeAlert.id)
+        : activeInspection
+          ? 'Inspection report — ' + (activeInspection.property_name || activeInspection.inspection_id)
           : 'General field report';
 
     $('r-title').value = jobTitle;
@@ -1509,9 +1656,13 @@ const ReportWriter = (function() {
     $('r-msg').className = 'sh-msg';
     $('r-job-context').textContent = jobContext;
 
+    // Store snapshotted refs for submit
+    _activeAlert      = activeAlert;
+    _activeInspection = activeInspection;
+
     // Show/hide type pills
     document.querySelectorAll('.rtype-pill').forEach(p => {
-      p.style.display = (S.alert || S.inspection) && p.dataset.type !== _type ? 'none' : '';
+      p.style.display = (activeAlert || activeInspection) && p.dataset.type !== _type ? 'none' : '';
     });
     selectType(_type);
     goStep(1);
@@ -1574,9 +1725,9 @@ const ReportWriter = (function() {
     try {
       const body = {
         report_type:   _type,
-        alert_id:      S.alert      ? (S.alert.alert_id      || String(S.alert.id))           : undefined,
-        inspection_id: S.inspection ? (S.inspection.inspection_id || String(S.inspection.id)) : undefined,
-        property_id:   S.inspection ? S.inspection.property_id || null                         : undefined,
+        alert_id:      _activeAlert      ? (_activeAlert.alert_id      || String(_activeAlert.id))           : undefined,
+        inspection_id: _activeInspection ? (_activeInspection.inspection_id || String(_activeInspection.id)) : undefined,
+        property_id:   _activeInspection ? _activeInspection.property_id || null                             : undefined,
         title,
         summary,
         findings:         ($('r-findings').value||'').trim(),
