@@ -275,7 +275,7 @@
     /* ── Scrollable body ── */
     .scroll-body {
       flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;
-      padding:14px 14px calc(env(safe-area-inset-bottom,0px) + 28px);
+      padding:14px 14px calc(env(safe-area-inset-bottom,0px) + 76px);
       display:flex; flex-direction:column; gap:12px;
     }
 
@@ -732,157 +732,315 @@
       margin-bottom:18px;
     }
 
-    @media (prefers-reduced-motion:reduce) {
-      .hero::before,.hero::after,.ring-1,.ring-2,.ab,.live-dot.con,.newjob-dot,.oa-icon,.spn { animation:none!important; opacity:1; }
+    /* ═══════════════════════════════
+       BOTTOM NAV
+    ═══════════════════════════════ */
+    .bottom-nav {
+      position:fixed; bottom:0; left:50%; transform:translateX(-50%);
+      width:100%; max-width:520px;
+      background:rgba(6,24,36,.97); backdrop-filter:blur(16px);
+      border-top:1px solid rgba(255,255,255,.08);
+      display:flex; z-index:200;
+      padding-bottom:env(safe-area-inset-bottom,0);
     }
+    .bnav-item {
+      flex:1; padding:10px 6px 12px; display:flex; flex-direction:column;
+      align-items:center; gap:4px; cursor:pointer;
+      background:none; border:none;
+      color:var(--ink-4); font-family:var(--mono); font-size:.54rem;
+      font-weight:600; letter-spacing:.1em; text-transform:uppercase;
+      transition:color .15s; min-height:58px; position:relative;
+    }
+    .bnav-item.active { color:var(--blue); }
+    .bnav-item.active::after {
+      content:''; position:absolute; top:0; left:20%; right:20%; height:2px;
+      background:var(--blue); border-radius:0 0 2px 2px;
+    }
+    .bnav-badge {
+      position:absolute; top:8px; right:calc(50% - 18px);
+      background:var(--red); color:#fff;
+      font-size:.48rem; font-weight:800; line-height:1;
+      padding:2px 5px; border-radius:10px; min-width:16px; text-align:center;
+    }
+    /* Panel switching */
+    .dash-panel { display:none; flex-direction:column; flex:1; }
+    .dash-panel.active { display:flex; }
 
     /* ═══════════════════════════════
-       PHOTO CAPTURE STEP
+       TASK LIST
     ═══════════════════════════════ */
-    .photo-step { margin-bottom:16px; }
-    .photo-step-label {
-      display:block; font-family:var(--mono);
-      font-size:.58rem; font-weight:600; letter-spacing:.16em; text-transform:uppercase;
-      color:var(--ink-3); margin-bottom:8px;
+    .task-section-hd {
+      display:flex; align-items:center; gap:10px; padding:2px 0 8px;
     }
-    .photo-zone {
-      width:100%; min-height:140px; border-radius:16px;
-      border:2px dashed rgba(22,168,211,.25);
-      background:rgba(22,168,211,.04);
-      display:flex; flex-direction:column; align-items:center; justify-content:center;
-      gap:8px; cursor:pointer; position:relative; overflow:hidden;
-      transition:border-color .2s, background .2s;
+    .task-section-lbl {
+      font-family:var(--mono); font-size:.58rem; font-weight:700;
+      letter-spacing:.16em; text-transform:uppercase; white-space:nowrap;
     }
-    .photo-zone:hover { border-color:rgba(22,168,211,.5); background:rgba(22,168,211,.08); }
-    .photo-zone.captured { border-style:solid; border-color:rgba(34,197,94,.5); background:rgba(34,197,94,.06); }
-    .photo-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; font-size:200px; }
-    .photo-zone-ico { font-size:32px; line-height:1; }
-    .photo-zone-txt {
-      font-size:.84rem; font-weight:700; color:var(--ink-3);
-      text-align:center; pointer-events:none;
-    }
-    .photo-zone-sub {
-      font-family:var(--mono); font-size:.58rem; color:var(--ink-4);
-      text-align:center; pointer-events:none;
-    }
-    .photo-zone.captured .photo-zone-txt { color:var(--ok); }
-    .photo-preview {
-      position:absolute; inset:0; object-fit:cover; width:100%; height:100%;
-      border-radius:14px; opacity:.6;
-    }
-    .photo-check {
-      position:absolute; top:10px; right:10px;
-      width:28px; height:28px; border-radius:50%;
-      background:var(--ok); display:flex; align-items:center; justify-content:center;
-    }
+    .task-section-lbl.urgent  { color:var(--red); }
+    .task-section-lbl.sched   { color:var(--amber); }
+    .task-section-lbl.done    { color:var(--ok); }
+    .task-section-line { flex:1; height:1px; background:rgba(255,255,255,.06); }
+    .task-section-count { font-family:var(--mono); font-size:.54rem; color:var(--ink-4); white-space:nowrap; }
 
-    /* ═══════════════════════════════
-       ACTION CHECKLIST
-    ═══════════════════════════════ */
-    .checklist { display:flex; flex-direction:column; gap:9px; margin-bottom:16px; }
-    .cl-item {
-      display:flex; align-items:center; gap:13px;
-      padding:13px 15px; border-radius:13px;
-      border:1.5px solid rgba(255,255,255,.08);
-      background:rgba(255,255,255,.03);
-      cursor:pointer; min-height:52px;
-      transition:border-color .15s, background .15s;
-      -webkit-user-select:none; user-select:none;
-    }
-    .cl-item:active { transform:scale(0.985); }
-    .cl-item.checked { border-color:rgba(34,197,94,.3); background:rgba(34,197,94,.06); }
-    .cl-check {
-      width:22px; height:22px; flex-shrink:0; border-radius:6px;
-      border:2px solid rgba(255,255,255,.2);
-      background:transparent; display:flex; align-items:center; justify-content:center;
-      transition:all .15s;
-    }
-    .cl-item.checked .cl-check { background:var(--ok); border-color:var(--ok); }
-    .cl-check-mark { display:none; }
-    .cl-item.checked .cl-check-mark { display:block; }
-    .cl-lbl { font-size:.92rem; font-weight:600; color:var(--ink-2); flex:1; }
-    .cl-item.checked .cl-lbl { color:var(--ok); }
-
-    /* ═══════════════════════════════
-       SENSOR PING (on-site only)
-    ═══════════════════════════════ */
-    .sensor-ping-card {
+    .task-card {
       background:var(--navy); border-radius:18px;
-      border:1px solid rgba(22,168,211,.15);
-      padding:16px 18px;
+      border:1.5px solid rgba(255,255,255,.07);
+      overflow:hidden; cursor:pointer;
+      transition:border-color .15s, transform .1s;
     }
-    .sp-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
-    .sp-title { font-size:.88rem; font-weight:800; color:var(--ink); letter-spacing:-.01em; }
-    .sp-id { font-family:var(--mono); font-size:.6rem; color:var(--blue); letter-spacing:.1em; }
-    .sp-status {
-      display:flex; align-items:center; gap:6px;
-      padding:5px 11px; border-radius:20px;
-      font-family:var(--mono); font-size:.58rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
-      transition:all .3s;
+    .task-card:active { transform:scale(0.985); }
+    .task-card.urgent  { border-color:rgba(239,68,68,.22); }
+    .task-card.sched   { border-color:rgba(245,166,35,.18); }
+    .task-card.done    { border-color:rgba(34,197,94,.15); opacity:.8; }
+
+    .tc-hd {
+      padding:14px 16px 10px;
+      display:flex; align-items:flex-start; gap:12px;
     }
-    .sp-status.unknown { background:rgba(255,255,255,.06); color:var(--ink-4); border:1px solid rgba(255,255,255,.08); }
-    .sp-status.pinging { background:rgba(245,166,35,.12); color:var(--amber); border:1px solid rgba(245,166,35,.25); }
-    .sp-status.online  { background:rgba(34,197,94,.12); color:var(--ok); border:1px solid rgba(34,197,94,.25); }
-    .sp-status.offline { background:rgba(239,68,68,.12); color:var(--red); border:1px solid rgba(239,68,68,.25); }
-    .sp-dot { width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0; }
-    .sp-status.pinging .sp-dot { animation:blink .8s ease-in-out infinite; }
-    .sp-status.online  .sp-dot { box-shadow:0 0 5px rgba(34,197,94,.6); }
-    .sp-data-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:12px; }
-    .sp-datum { background:rgba(0,0,0,.20); border-radius:10px; padding:9px 11px; }
-    .sp-datum-lbl { font-family:var(--mono); font-size:.52rem; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-4); margin-bottom:4px; }
-    .sp-datum-val { font-family:var(--mono); font-size:.96rem; font-weight:700; color:var(--ink); }
-    .sp-datum-val.ok   { color:var(--ok); }
-    .sp-datum-val.warn { color:var(--warn); }
-    .sp-datum-val.bad  { color:var(--red); }
-    .ping-btn {
-      width:100%; min-height:52px; border-radius:13px;
+    .tc-sev-bar {
+      width:3px; border-radius:2px; flex-shrink:0; align-self:stretch; margin-top:2px;
+    }
+    .task-card.urgent  .tc-sev-bar { background:var(--red); }
+    .task-card.sched   .tc-sev-bar { background:var(--amber); }
+    .task-card.done    .tc-sev-bar { background:var(--ok); }
+
+    .tc-body { flex:1; min-width:0; }
+    .tc-type { font-family:var(--mono); font-size:.54rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-4); margin-bottom:3px; }
+    .tc-title { font-size:.98rem; font-weight:800; color:var(--ink); line-height:1.2; letter-spacing:-.01em; }
+    .tc-sub   { font-size:.76rem; color:var(--ink-3); margin-top:3px; }
+
+    .tc-badge {
+      flex-shrink:0; padding:4px 10px; border-radius:20px;
+      font-family:var(--mono); font-size:.56rem; font-weight:700;
+      letter-spacing:.08em; text-transform:uppercase;
+    }
+    .tc-badge.urgent { background:rgba(239,68,68,.15); color:#fca5a5; border:1px solid rgba(239,68,68,.3); }
+    .tc-badge.sched  { background:rgba(245,166,35,.13); color:var(--amber); border:1px solid rgba(245,166,35,.25); }
+    .tc-badge.done   { background:rgba(34,197,94,.12); color:var(--ok); border:1px solid rgba(34,197,94,.25); }
+
+    .tc-chips {
+      padding:0 16px 10px; display:flex; flex-wrap:wrap; gap:6px;
+    }
+    .tc-chip {
+      display:flex; align-items:center; gap:5px;
+      padding:4px 10px; border-radius:8px;
+      background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07);
+      font-family:var(--mono); font-size:.62rem; color:var(--ink-3);
+    }
+
+    .tc-actions {
+      padding:10px 16px; border-top:1px solid rgba(255,255,255,.05);
+      background:rgba(0,0,0,.15);
+      display:flex; gap:8px;
+    }
+    .tc-btn {
+      flex:1; min-height:44px; border-radius:10px;
+      font-family:var(--ff); font-size:.78rem; font-weight:800;
+      display:flex; align-items:center; justify-content:center; gap:7px;
+      transition:background .15s; border:1.5px solid;
+    }
+    .tc-btn.nav    { background:rgba(22,168,211,.08); border-color:rgba(22,168,211,.22); color:var(--blue-hi); }
+    .tc-btn.nav:hover  { background:rgba(22,168,211,.15); }
+    .tc-btn.start  { background:rgba(239,68,68,.12); border-color:rgba(239,68,68,.28); color:#fca5a5; }
+    .tc-btn.start:hover  { background:rgba(239,68,68,.20); }
+    .tc-btn.start.sched  { background:rgba(245,166,35,.10); border-color:rgba(245,166,35,.25); color:var(--amber); }
+    .tc-btn.view   { background:rgba(34,197,94,.08); border-color:rgba(34,197,94,.22); color:var(--ok); }
+
+    /* ═══════════════════════════════
+       ON-SITE PANEL
+    ═══════════════════════════════ */
+    .gps-checkin {
+      background:var(--navy); border-radius:20px;
       border:1.5px solid rgba(22,168,211,.25);
-      background:rgba(22,168,211,.07);
-      font-family:var(--ff); font-size:.88rem; font-weight:800;
-      color:var(--blue-hi); letter-spacing:.02em;
+      padding:28px 20px; text-align:center;
+    }
+    .gps-ico {
+      width:64px; height:64px; border-radius:50%;
+      background:rgba(22,168,211,.10); border:2px solid rgba(22,168,211,.25);
+      display:flex; align-items:center; justify-content:center;
+      margin:0 auto 16px; animation:gpsPulse 2s ease-in-out infinite;
+    }
+    @keyframes gpsPulse { 0%,100%{box-shadow:0 0 0 0 rgba(22,168,211,.3);} 50%{box-shadow:0 0 0 12px rgba(22,168,211,0);} }
+    .gps-title { font-size:1.1rem; font-weight:800; color:var(--ink); letter-spacing:-.02em; margin-bottom:6px; }
+    .gps-sub { font-size:.82rem; color:var(--ink-3); line-height:1.5; margin-bottom:16px; }
+    .gps-coords {
+      background:rgba(34,197,94,.06); border:1px solid rgba(34,197,94,.18);
+      border-radius:10px; padding:10px 14px; margin-bottom:16px;
+      font-family:var(--mono); font-size:.72rem; color:var(--ok); line-height:1.7;
+      text-align:left;
+    }
+    .gps-confirm-btn {
+      width:100%; min-height:60px; border-radius:14px;
+      background:linear-gradient(135deg,var(--blue) 0%,var(--teal) 100%);
+      border:none; color:#fff;
+      font-family:var(--ff); font-size:.96rem; font-weight:900;
       display:flex; align-items:center; justify-content:center; gap:10px;
+      box-shadow:0 6px 20px rgba(22,168,211,.35);
+      transition:filter .15s, transform .1s;
+    }
+    .gps-confirm-btn:hover { filter:brightness(1.08); }
+    .gps-confirm-btn:active { transform:scale(0.97); }
+
+    /* 3-step on-site form */
+    .onsite-form { display:flex; flex-direction:column; gap:12px; }
+    .onsite-header {
+      background:var(--navy); border-radius:16px;
+      border:1px solid rgba(255,255,255,.07);
+      padding:14px 16px;
+      display:flex; align-items:center; gap:12px;
+    }
+    .onsite-job-name { font-size:.96rem; font-weight:800; color:var(--ink); line-height:1.2; }
+    .onsite-job-sub  { font-family:var(--mono); font-size:.62rem; color:var(--ink-4); margin-top:3px; }
+
+    /* step tracker */
+    .step-track {
+      display:flex; align-items:center; gap:0;
+      background:var(--navy); border-radius:14px;
+      border:1px solid rgba(255,255,255,.07);
+      padding:14px 16px;
+    }
+    .step-dot {
+      width:28px; height:28px; border-radius:50%; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center;
+      font-family:var(--mono); font-size:.65rem; font-weight:700;
+      background:rgba(255,255,255,.07); border:2px solid rgba(255,255,255,.12);
+      color:var(--ink-4); transition:all .25s; position:relative; z-index:1;
+    }
+    .step-dot.active { background:var(--amber); border-color:var(--amber); color:#000; box-shadow:0 0 12px rgba(245,166,35,.5); }
+    .step-dot.done   { background:var(--blue); border-color:var(--blue); color:#fff; }
+    .step-line { flex:1; height:2px; background:rgba(255,255,255,.08); transition:background .25s; }
+    .step-line.done  { background:var(--blue); opacity:.5; }
+    .step-lbl-row {
+      display:flex; padding:0 2px; justify-content:space-between;
+    }
+    .step-lbl { font-family:var(--mono); font-size:.54rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-4); }
+    .step-lbl.active { color:var(--amber); }
+    .step-lbl.done   { color:rgba(22,168,211,.7); }
+
+    .step-panel { display:none; flex-direction:column; gap:10px; }
+    .step-panel.active { display:flex; }
+    .step-panel-title {
+      font-family:var(--mono); font-size:.62rem; font-weight:700;
+      letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3);
+      padding:2px 0;
+    }
+
+    /* photo capture zone */
+    .photo-zone {
+      background:rgba(255,255,255,.03); border:2px dashed rgba(255,255,255,.12);
+      border-radius:14px; padding:28px 20px; text-align:center; cursor:pointer;
       transition:background .15s, border-color .15s;
     }
-    .ping-btn:hover:not(:disabled) { background:rgba(22,168,211,.14); border-color:rgba(22,168,211,.4); }
-    .ping-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .photo-zone:hover { background:rgba(22,168,211,.06); border-color:rgba(22,168,211,.25); }
+    .photo-zone.captured { background:rgba(34,197,94,.06); border-color:rgba(34,197,94,.3); border-style:solid; }
+    .photo-zone-ico { margin-bottom:8px; opacity:.5; }
+    .photo-zone.captured .photo-zone-ico { opacity:1; color:var(--ok); }
+    .photo-zone-lbl { font-size:.86rem; font-weight:700; color:var(--ink-3); margin-bottom:4px; }
+    .photo-zone.captured .photo-zone-lbl { color:var(--ok); }
+    .photo-zone-sub { font-family:var(--mono); font-size:.6rem; color:var(--ink-4); }
+
+    /* checklist */
+    .check-item {
+      display:flex; align-items:center; gap:12px;
+      padding:13px 14px; border-radius:12px;
+      background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07);
+      cursor:pointer; transition:background .15s;
+    }
+    .check-item:hover { background:rgba(255,255,255,.05); }
+    .check-item.checked { background:rgba(34,197,94,.07); border-color:rgba(34,197,94,.2); }
+    .check-box {
+      width:22px; height:22px; border-radius:6px; flex-shrink:0;
+      border:2px solid rgba(255,255,255,.2);
+      display:flex; align-items:center; justify-content:center;
+      transition:all .15s;
+    }
+    .check-item.checked .check-box { background:var(--ok); border-color:var(--ok); }
+    .check-label { font-size:.88rem; font-weight:600; color:var(--ink-2); }
+    .check-item.checked .check-label { color:var(--ok); }
+
+    /* submission summary */
+    .submit-summary {
+      background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08);
+      border-radius:12px; padding:12px 14px;
+    }
+    .submit-summary-lbl {
+      font-family:var(--mono); font-size:.56rem; font-weight:700;
+      letter-spacing:.14em; text-transform:uppercase; color:var(--ink-4);
+      margin-bottom:8px;
+    }
+    .submit-row { display:flex; align-items:center; gap:8px; padding:3px 0; }
+    .submit-row-val { font-family:var(--mono); font-size:.78rem; color:var(--ink-3); }
+
+    /* step nav buttons */
+    .step-nav { display:flex; gap:8px; }
+    .step-back { padding:0 16px; min-height:52px; border-radius:12px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); color:var(--ink-3); font-family:var(--ff); font-size:.8rem; font-weight:700; }
+    .step-next { flex:1; min-height:52px; border-radius:12px; background:linear-gradient(135deg,var(--blue) 0%,var(--teal) 100%); border:none; color:#fff; font-family:var(--ff); font-size:.88rem; font-weight:900; box-shadow:0 4px 16px rgba(22,168,211,.3); transition:filter .15s; }
+    .step-next:hover { filter:brightness(1.08); }
+    .step-next:active { transform:scale(0.97); }
+    .step-next.green { background:linear-gradient(135deg,#16a34a 0%,#15803d 100%); box-shadow:0 4px 16px rgba(22,163,74,.35); }
 
     /* ═══════════════════════════════
-       OFFLINE BANNER
+       SENSOR PANEL
     ═══════════════════════════════ */
-    .offline-strip {
-      display:none; align-items:center; gap:10px;
-      padding:11px 14px; border-radius:13px;
-      background:rgba(249,115,22,.10); border:1px solid rgba(249,115,22,.25);
+    .sensor-card {
+      background:var(--navy); border-radius:18px;
+      border:1px solid rgba(255,255,255,.07); padding:16px;
     }
-    .offline-strip.show { display:flex; animation:slideIn .3s cubic-bezier(.22,1,.36,1); }
-    .offline-ico { color:var(--orange); flex-shrink:0; }
-    .offline-txt { flex:1; font-size:.82rem; font-weight:700; color:var(--ink-2); }
-    .offline-sub { font-size:.72rem; color:var(--ink-4); margin-top:1px; }
-    .offline-count {
-      font-family:var(--mono); font-size:.62rem; font-weight:700;
-      padding:3px 8px; border-radius:20px;
-      background:rgba(249,115,22,.2); color:var(--orange); flex-shrink:0;
+    .sc-hd { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:12px; }
+    .sc-id { font-family:var(--mono); font-size:.78rem; font-weight:700; color:var(--blue-hi); }
+    .sc-loc { font-size:.78rem; color:var(--ink-3); margin-top:2px; }
+    .sc-status { display:flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-family:var(--mono); font-size:.6rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; flex-shrink:0; }
+    .sc-status.online   { background:rgba(34,197,94,.12); color:var(--ok); border:1px solid rgba(34,197,94,.25); }
+    .sc-status.offline  { background:rgba(239,68,68,.12); color:var(--red); border:1px solid rgba(239,68,68,.25); }
+    .sc-status.checking { background:rgba(245,166,35,.12); color:var(--amber); border:1px solid rgba(245,166,35,.25); }
+    .sc-pulse { width:6px; height:6px; border-radius:50%; background:currentColor; animation:blink 1.2s infinite; }
+    .sc-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+    .sc-cell { background:rgba(0,0,0,.25); border:1px solid rgba(255,255,255,.06); border-radius:10px; padding:10px 12px; }
+    .sc-cell-lbl { font-family:var(--mono); font-size:.56rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-4); margin-bottom:4px; }
+    .sc-cell-val { font-family:var(--mono); font-size:1.15rem; font-weight:700; color:var(--ink); }
+    .sc-cell-val.danger { color:var(--red); }
+    .sc-cell-val.warn   { color:var(--amber); }
+    .sc-cell-val.safe   { color:var(--ok); }
+    .sc-ping {
+      width:100%; min-height:48px; border-radius:12px;
+      background:rgba(22,168,211,.07); border:1.5px solid rgba(22,168,211,.22);
+      color:var(--blue-hi); font-family:var(--ff); font-size:.82rem; font-weight:800;
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      transition:background .15s;
     }
+    .sc-ping:hover { background:rgba(22,168,211,.13); }
+    .sc-ping:disabled { opacity:.4; cursor:not-allowed; }
 
     /* ═══════════════════════════════
-       GPS STAMP on report
+       PROFILE PANEL
     ═══════════════════════════════ */
-    .gps-stamp {
-      display:flex; align-items:center; gap:9px;
-      padding:10px 13px; border-radius:11px;
-      background:rgba(34,197,94,.07); border:1px solid rgba(34,197,94,.18);
-      margin-bottom:14px;
+    .profile-hero {
+      background:var(--navy); border-radius:20px;
+      border:1px solid rgba(255,255,255,.07);
+      padding:28px 20px; text-align:center;
     }
-    .gps-stamp.acquiring { background:rgba(245,166,35,.07); border-color:rgba(245,166,35,.18); }
-    .gps-stamp.failed    { background:rgba(239,68,68,.07);  border-color:rgba(239,68,68,.18); }
-    .gps-ico { flex-shrink:0; }
-    .gps-ico.ok   { color:var(--ok); }
-    .gps-ico.wait { color:var(--warn); }
-    .gps-ico.fail { color:var(--red); }
-    .gps-coords { font-family:var(--mono); font-size:.72rem; color:var(--ok); font-weight:600; }
-    .gps-stamp.acquiring .gps-coords { color:var(--warn); }
-    .gps-stamp.failed    .gps-coords { color:var(--red); }
-    .gps-acc { font-family:var(--mono); font-size:.58rem; color:var(--ink-4); margin-top:1px; }
+    .profile-av {
+      width:70px; height:70px; border-radius:50%; margin:0 auto 14px;
+      background:linear-gradient(135deg,var(--mid),var(--teal));
+      border:3px solid rgba(22,168,211,.4);
+      display:flex; align-items:center; justify-content:center;
+      font-family:var(--mono); font-size:1.3rem; font-weight:700; color:var(--blue-hi);
+    }
+    .profile-name { font-size:1.15rem; font-weight:900; color:var(--ink); letter-spacing:-.02em; }
+    .profile-role { font-family:var(--mono); font-size:.6rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--blue-hi); opacity:.7; margin-top:4px; margin-bottom:18px; }
+    .profile-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    .ps-box { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); border-radius:12px; padding:12px 8px; text-align:center; }
+    .ps-val { font-family:var(--mono); font-size:1.4rem; font-weight:700; color:var(--blue-hi); }
+    .ps-lbl { font-family:var(--mono); font-size:.54rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-4); margin-top:3px; }
+    .history-item { display:flex; gap:12px; padding:12px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+    .history-item:last-child { border-bottom:none; }
+    .history-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:4px; }
+    .history-title { font-size:.86rem; font-weight:600; color:var(--ink-2); line-height:1.3; }
+    .history-meta  { font-family:var(--mono); font-size:.62rem; color:var(--ink-4); margin-top:3px; }
+
+    @media (prefers-reduced-motion:reduce) {
+      .hero::before,.hero::after,.ring-1,.ring-2,.ab,.live-dot.con,.newjob-dot,.oa-icon,.spn,.gps-ico { animation:none!important; opacity:1; }
+    }
   </style>
 </head>
 <body>
@@ -1047,21 +1205,8 @@
     </button>
   </div>
 
-  <div class="scroll-body" id="dash-body">
-
-    <!-- Offline banner -->
-    <div class="offline-strip" id="offline-banner">
-      <div class="offline-ico">
-        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636a9 9 0 010 12.728M15.536 8.464a5 5 0 010 7.072M4.93 4.93a9 9 0 0113.14.001M1 1l22 22"/></svg>
-      </div>
-      <div>
-        <div class="offline-txt">No connection</div>
-        <div class="offline-sub">Reports will sync when back online</div>
-      </div>
-      <div class="offline-count" id="offline-count" style="display:none"></div>
-    </div>
-
-    <!-- Push banner -->
+  <!-- ── TASKS PANEL ── -->
+  <div class="scroll-body dash-panel active" id="panel-tasks">
     <div class="push-strip" id="push-banner">
       <div class="push-ico-wrap">
         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
@@ -1075,20 +1220,58 @@
         </div>
       </div>
     </div>
-
-    <!-- New job banner -->
     <div class="newjob-strip" id="new-job-banner">
       <div class="newjob-dot"></div>
       <div class="newjob-txt" id="njb-text">New job dispatched to your team</div>
       <button class="newjob-cta" id="njb-refresh">View</button>
     </div>
-
-    <!-- Dynamic content -->
-    <div id="content-area">
-      <div class="state-spin"><div class="spn"></div>Loading your assignment…</div>
+    <div id="task-list-area">
+      <div class="state-spin"><div class="spn"></div>Loading your assignments…</div>
     </div>
-
   </div>
+
+  <!-- ── ON-SITE PANEL ── -->
+  <div class="scroll-body dash-panel" id="panel-onsite">
+    <div id="onsite-area">
+      <div class="state-card"><div class="state-icon"><svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div class="state-title">No job selected</div><div class="state-sub">Tap a task in the Tasks tab to begin on-site work.</div></div>
+    </div>
+  </div>
+
+  <!-- ── SENSOR PANEL ── -->
+  <div class="scroll-body dash-panel" id="panel-sensor">
+    <div id="sensor-area">
+      <div class="state-spin"><div class="spn"></div>Loading sensors…</div>
+    </div>
+  </div>
+
+  <!-- ── PROFILE PANEL ── -->
+  <div class="scroll-body dash-panel" id="panel-profile">
+    <div id="profile-area">
+      <div class="state-spin"><div class="spn"></div>Loading profile…</div>
+    </div>
+  </div>
+
+  <!-- Bottom nav -->
+  <div class="bottom-nav">
+    <button class="bnav-item active" id="bnav-tasks" onclick="switchPanel('tasks')">
+      <span id="bnav-tasks-badge" class="bnav-badge" style="display:none">0</span>
+      <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+      Tasks
+    </button>
+    <button class="bnav-item" id="bnav-onsite" onclick="switchPanel('onsite')">
+      <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      On-Site
+    </button>
+    <button class="bnav-item" id="bnav-sensor" onclick="switchPanel('sensor')">
+      <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+      Sensors
+    </button>
+    <button class="bnav-item" id="bnav-profile" onclick="switchPanel('profile')">
+      <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      Profile
+    </button>
+  </div>
+
 </div>
 
 <!-- Sheet: Job Complete -->
@@ -1129,78 +1312,22 @@
     <div class="sh-handle-row"><div class="sh-handle"></div></div>
     <div class="sh-accent"></div>
 
-    <!-- Step indicator — now 4 steps -->
+    <!-- Step indicator -->
     <div class="rstep-bar" id="r-steps">
       <div class="rstep active" id="rstep-1"></div>
       <div class="rstep" id="rstep-2"></div>
       <div class="rstep" id="rstep-3"></div>
-      <div class="rstep" id="rstep-4"></div>
     </div>
 
-    <!-- STEP 1: Before photo + Checklist -->
+    <!-- STEP 1: Type + Summary -->
     <div id="r-step1">
-      <div class="sh-title">Site Evidence</div>
-      <div class="sh-sub" id="r-job-context">Capture before-state photo and confirm actions taken.</div>
-
-      <div class="photo-step">
-        <span class="photo-step-label">Before Photo — mandatory</span>
-        <div class="photo-zone" id="pz-before">
-          <input type="file" accept="image/*" capture="environment" id="ph-before" onchange="ReportWriter.handlePhoto('before',this)">
-          <div class="photo-zone-ico">📷</div>
-          <div class="photo-zone-txt">Tap to capture BEFORE state</div>
-          <div class="photo-zone-sub">Camera will open · GPS tagged automatically</div>
-        </div>
-      </div>
+      <div class="sh-title">Write Report</div>
+      <div class="sh-sub" id="r-job-context">Job report</div>
 
       <div class="rtype-row" id="rtype-row">
         <button class="rtype-pill incident"   data-type="incident"   onclick="ReportWriter.selectType('incident')">Incident</button>
         <button class="rtype-pill inspection" data-type="inspection" onclick="ReportWriter.selectType('inspection')">Inspection</button>
         <button class="rtype-pill general"    data-type="general"    onclick="ReportWriter.selectType('general')">General</button>
-      </div>
-
-      <div style="font-family:var(--mono);font-size:.58rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:9px;">Actions Performed</div>
-      <div class="checklist" id="r-checklist">
-        <div class="cl-item" onclick="this.classList.toggle('checked')">
-          <div class="cl-check"><svg class="cl-check-mark" width="12" height="12" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
-          <span class="cl-lbl">Sensor Calibrated</span>
-        </div>
-        <div class="cl-item" onclick="this.classList.toggle('checked')">
-          <div class="cl-check"><svg class="cl-check-mark" width="12" height="12" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
-          <span class="cl-lbl">Debris Removed (Manual)</span>
-        </div>
-        <div class="cl-item" onclick="this.classList.toggle('checked')">
-          <div class="cl-check"><svg class="cl-check-mark" width="12" height="12" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
-          <span class="cl-lbl">Bio-Dose Applied</span>
-        </div>
-        <div class="cl-item" onclick="this.classList.toggle('checked')">
-          <div class="cl-check"><svg class="cl-check-mark" width="12" height="12" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
-          <span class="cl-lbl">Battery Replaced</span>
-        </div>
-        <div class="cl-item" onclick="this.classList.toggle('checked')">
-          <div class="cl-check"><svg class="cl-check-mark" width="12" height="12" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
-          <span class="cl-lbl">Pipe Flushed</span>
-        </div>
-      </div>
-
-      <div class="sh-actions">
-        <button class="sh-cancel" onclick="ReportWriter.close()">Cancel</button>
-        <button class="sh-confirm green" onclick="ReportWriter.goStep(2)">Next →</button>
-      </div>
-    </div>
-
-    <!-- STEP 2: After photo + narrative -->
-    <div id="r-step2" style="display:none;">
-      <div class="sh-title">After Evidence &amp; Summary</div>
-      <div class="sh-sub">Capture the post-work state and describe what was done.</div>
-
-      <div class="photo-step">
-        <span class="photo-step-label">After Photo — mandatory</span>
-        <div class="photo-zone" id="pz-after">
-          <input type="file" accept="image/*" capture="environment" id="ph-after" onchange="ReportWriter.handlePhoto('after',this)">
-          <div class="photo-zone-ico">📷</div>
-          <div class="photo-zone-txt">Tap to capture AFTER state</div>
-          <div class="photo-zone-sub">Shows completed work to Ops</div>
-        </div>
       </div>
 
       <div class="rfield">
@@ -1209,7 +1336,31 @@
       </div>
       <div class="rfield">
         <label class="rfield-label">Summary — What happened?</label>
-        <textarea id="r-summary" class="rfield-ta" placeholder="Brief overview: what the team was dispatched for and what was done…"></textarea>
+        <textarea id="r-summary" class="rfield-ta" placeholder="Brief overview of the job, what the team was dispatched for and what was done…"></textarea>
+      </div>
+
+      <div class="sh-actions">
+        <button class="sh-cancel" onclick="ReportWriter.close()">Cancel</button>
+        <button class="sh-confirm green" onclick="ReportWriter.goStep(2)">Next →</button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Findings + Recommendations -->
+    <div id="r-step2" style="display:none;">
+      <div class="sh-title">Findings &amp; Recommendations</div>
+      <div class="sh-sub">Detail what was found on site and what the next steps are.</div>
+
+      <div class="rfield">
+        <label class="rfield-label">On-site Findings</label>
+        <textarea id="r-findings" class="rfield-ta" style="min-height:110px;" placeholder="What was the condition of the drain / area? Any damage, debris, blockage detail, sensor readings observed…"></textarea>
+      </div>
+      <div class="rfield">
+        <label class="rfield-label">Recommendations</label>
+        <textarea id="r-recommendations" class="rfield-ta" placeholder="What should happen next? Follow-up inspections, repairs, replacements…"></textarea>
+      </div>
+      <div class="rfield">
+        <label class="rfield-label">Materials / Equipment Used <span style="opacity:.4;font-weight:400;font-family:var(--ff);text-transform:none;letter-spacing:0;font-size:.75rem;">(optional)</span></label>
+        <input id="r-materials" class="rfield-input" type="text" placeholder="e.g. 2× HDPE pipe joints, bio-enzyme dose 5L">
       </div>
 
       <div class="sh-actions">
@@ -1218,50 +1369,12 @@
       </div>
     </div>
 
-    <!-- STEP 3: Findings + Recommendations -->
+    <!-- STEP 3: Review + Submit -->
     <div id="r-step3" style="display:none;">
-      <div class="sh-title">Findings &amp; Recommendations</div>
-      <div class="sh-sub">Detail what was found on site and next steps.</div>
-
-      <div class="rfield">
-        <label class="rfield-label">On-site Findings</label>
-        <textarea id="r-findings" class="rfield-ta" style="min-height:110px;" placeholder="Condition of drain / area? Damage, debris, blockage detail, sensor readings observed…"></textarea>
-      </div>
-      <div class="rfield">
-        <label class="rfield-label">Recommendations</label>
-        <textarea id="r-recommendations" class="rfield-ta" placeholder="Follow-up inspections, repairs, replacements…"></textarea>
-      </div>
-      <div class="rfield">
-        <label class="rfield-label">Materials / Equipment Used <span style="opacity:.4;font-weight:400;font-family:var(--ff);text-transform:none;letter-spacing:0;font-size:.75rem;">(optional)</span></label>
-        <input id="r-materials" class="rfield-input" type="text" placeholder="e.g. 2× HDPE pipe joints, bio-enzyme dose 5L">
-      </div>
-
-      <div class="sh-actions">
-        <button class="sh-cancel" onclick="ReportWriter.goStep(2)">← Back</button>
-        <button class="sh-confirm green" onclick="ReportWriter.goStep(4)">Next →</button>
-      </div>
-    </div>
-
-    <!-- STEP 4: Review + GPS + Submit -->
-    <div id="r-step4" style="display:none;">
       <div class="sh-title">Review &amp; Submit</div>
-      <div class="sh-sub">GPS coordinates will be captured at the moment you submit.</div>
+      <div class="sh-sub">Check everything looks right. You can save as draft or submit immediately.</div>
 
-      <!-- GPS stamp -->
-      <div class="gps-stamp acquiring" id="r-gps-stamp">
-        <div class="gps-ico wait">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-        </div>
-        <div>
-          <div class="gps-coords" id="r-gps-coords">Acquiring GPS…</div>
-          <div class="gps-acc" id="r-gps-acc">This may take a few seconds</div>
-        </div>
-      </div>
-
-      <div id="r-review-box" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;margin-bottom:14px;font-size:.84rem;line-height:1.6;color:var(--ink-2);"></div>
-
-      <!-- Photo summary -->
-      <div id="r-photo-summary" style="display:flex;gap:8px;margin-bottom:14px;"></div>
+      <div id="r-review-box" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;margin-bottom:16px;font-size:.84rem;line-height:1.6;color:var(--ink-2);"></div>
 
       <div class="rfield">
         <label class="rfield-label">Work Duration <span style="opacity:.4;font-weight:400;font-family:var(--ff);text-transform:none;letter-spacing:0;font-size:.75rem;">(minutes, optional)</span></label>
@@ -1271,7 +1384,7 @@
       <div class="sh-msg" id="r-msg"></div>
 
       <div class="sh-actions" style="flex-wrap:wrap;gap:8px;">
-        <button class="sh-cancel" style="flex:none;padding:14px 18px;" onclick="ReportWriter.goStep(3)">← Back</button>
+        <button class="sh-cancel" style="flex:none;padding:14px 18px;" onclick="ReportWriter.goStep(2)">← Back</button>
         <button class="sh-cancel" style="flex:1;" id="r-btn-draft" onclick="ReportWriter.submit('draft')">Save Draft</button>
         <button class="sh-confirm green" style="flex:2;" id="r-btn-submit" onclick="ReportWriter.submit('submitted')">Submit Report</button>
       </div>
@@ -1397,9 +1510,6 @@ async function checkSession() {
 async function initDashboard() {
   showScreen('screen-dash');
   if(S.user) $('hdr-name').textContent=S.user.fullName||S.user.email;
-  GPS.start();
-  if (!navigator.onLine) { const b=$('offline-banner'); if(b) b.classList.add('show'); }
-  DraftQueue._updateBanner();
   initWS(); await loadData(); checkPush(); registerSW();
 }
 
@@ -1434,243 +1544,470 @@ async function loadData() {
   } catch(err){console.error('loadData:',err);renderError(err.message);}
 }
 
+/* ══════════════════════════════════════
+   PANEL SWITCHING
+══════════════════════════════════════ */
+function switchPanel(name) {
+  ['tasks','onsite','sensor','profile'].forEach(p=>{
+    $('panel-'+p).classList.toggle('active', p===name);
+    $('bnav-'+p).classList.toggle('active', p===name);
+  });
+  if(name==='sensor' && !S.sensorsLoaded) renderSensorPanel();
+  if(name==='profile') renderProfilePanel();
+}
+
+/* ══════════════════════════════════════
+   TASK LIST PANEL
+══════════════════════════════════════ */
 function renderLoading() {
-  $('content-area').innerHTML='<div class="state-spin"><div class="spn"></div>Loading your assignment…</div>';
+  $('task-list-area').innerHTML='<div class="state-spin"><div class="spn"></div>Loading your assignments…</div>';
 }
 function renderNoTeam() {
-  $('content-area').innerHTML='<div class="state-card"><div class="state-icon"><svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div class="state-title">No team assignment</div><div class="state-sub">You haven\'t been added to a team yet.<br>Contact your dispatcher to get assigned.</div></div>';
+  $('task-list-area').innerHTML='<div class="state-card"><div class="state-icon"><svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div class="state-title">No team assignment</div><div class="state-sub">You haven\'t been added to a team yet.<br>Contact your dispatcher.</div></div>';
 }
 function renderError(msg) {
-  $('content-area').innerHTML='<div class="state-card"><div class="state-icon"><svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></div><div class="state-title">Failed to load</div><div class="state-sub">'+escHtml(msg||'An unexpected error occurred.')+'</div><button class="retry-btn" onclick="loadData()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Retry</button></div>';
+  $('task-list-area').innerHTML='<div class="state-card"><div class="state-icon"><svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></div><div class="state-title">Failed to load</div><div class="state-sub">'+escHtml(msg||'An unexpected error occurred.')+'</div><button class="retry-btn" onclick="loadData()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Retry</button></div>';
 }
 
 function renderDashboard() {
-  const t=S.team, a=S.alert, ins=S.inspection, ts=t.status||'idle';
-  const totalJobs = S.allAlerts.length + S.allInspections.length;
-  const hasJob = !!(a||ins);
+  const t=S.team, ts=t.status||'idle';
+  // Group all jobs
+  const urgentAlerts = S.allAlerts.filter(a=>a.severity==='critical'||a.severity==='high');
+  const otherAlerts  = S.allAlerts.filter(a=>a.severity!=='critical'&&a.severity!=='high');
+  const allActive    = [...urgentAlerts,...otherAlerts];
+  const allInsp      = S.allInspections;
 
-  // Multiple jobs and none selected → show queue
-  if(totalJobs > 1 && !hasJob) { renderJobQueue(); return; }
+  // Update badge
+  const urgentCount = allActive.length + allInsp.length;
+  const badge = $('bnav-tasks-badge');
+  if(badge){badge.textContent=urgentCount; badge.style.display=urgentCount>0?'':'none';}
 
-  let html = '';
+  let html='';
 
-  // ── Job card ──
-  if(a) {
-    const sev=(a.severity||'minor').toLowerCase();
-    const type=a.alert_type||'Drainage Alert', site=a.site_name||a.client_name||'—';
-    const loc=a.location||'—', desc=a.description||'—', ovf=a.time_to_overflow_min;
-    html+=`<div class="job-card">
-      <div class="job-header ${sevHdrClass(sev)}">
-        <div class="jh-top"><span class="jh-badge"><span class="jh-badge-dot"></span>${sev}</span><span class="jh-age">${ageStr(a.created_at)}</span></div>
-        <div class="jh-type">${escHtml(type)}</div>
-        <div class="jh-site">${escHtml(site)}</div>
-      </div>
-      ${ovf!=null?`<div class="overflow-alarm"><div class="oa-icon"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg></div><div><div class="oa-lbl">Time to overflow</div><div><span class="oa-num">${escHtml(String(ovf))}</span> <span class="oa-unit">min</span></div></div></div>`:''}
-      <div class="job-details">
-        <div class="jd-row"><div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div><div class="jd-label">Location</div><div class="jd-value">${escHtml(loc)}</div></div></div>
-        <div class="jd-row"><div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><div><div class="jd-label">Ops Notes</div><div class="jd-value">${escHtml(desc)}</div></div></div>
-      </div>
-      <div class="job-footer"><span>ALERT</span><span>${escHtml(a.alert_id||String(a.id))}</span></div>
-    </div>`;
+  // Team status bar
+  html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 2px 4px;">
+    <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);">Team: <span style="color:var(--ink);">${escHtml(t.name)}</span></div>
+    <span class="tc-status ${tsStatusClass(ts)}">${tsLabel(ts)}</span>
+  </div>`;
+
+  if(allActive.length===0 && allInsp.length===0) {
+    html+='<div class="state-card"><div class="state-icon"><svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="state-title">All clear</div><div class="state-sub">No active alerts or inspections assigned to your team right now.</div></div>';
   }
 
-  if(ins) {
-    const propName=ins.property_name||ins.area_name||'—';
-    const schedDate=ins.scheduled_date?new Date(ins.scheduled_date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'—';
-    const schedTime=ins.scheduled_time_start||'', statusLbl=ins.status==='in_progress'?'In Progress':'Scheduled';
-    html+=`<div class="job-card">
-      <div class="job-header jh-insp">
-        <div class="jh-top"><span class="jh-badge"><span class="jh-badge-dot"></span>${escHtml(statusLbl)}</span><span class="jh-age">${ageStr(ins.created_at)}</span></div>
-        <div class="jh-type">Drainage Inspection</div>
-        <div class="jh-site">${escHtml(propName)}</div>
-      </div>
-      <div class="job-details">
-        <div class="jd-row"><div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div><div class="jd-label">Scheduled</div><div class="jd-value">${escHtml(schedDate)}${schedTime?' · '+escHtml(schedTime):''}</div></div></div>
-        ${ins.city||ins.state?`<div class="jd-row"><div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div><div class="jd-label">Location</div><div class="jd-value">${escHtml([ins.city,ins.state].filter(Boolean).join(', '))}</div></div></div>`:''}
-        ${ins.notes?`<div class="jd-row"><div class="jd-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><div><div class="jd-label">Notes</div><div class="jd-value">${escHtml(ins.notes)}</div></div></div>`:''}
-      </div>
-      <div class="job-footer"><span>INSPECTION</span><span>${escHtml(ins.inspection_id||String(ins.id))}</span></div>
-    </div>`;
+  // Urgent alerts
+  if(urgentAlerts.length>0){
+    html+=`<div class="task-section-hd"><span class="task-section-lbl urgent">Urgent</span><div class="task-section-line"></div><span class="task-section-count">${urgentAlerts.length} task${urgentAlerts.length!==1?'s':''}</span></div>`;
+    html+=urgentAlerts.map(a=>taskCard(a,'alert','urgent')).join('');
   }
 
-  if(!hasJob) {
-    html+=`<div class="state-card"><div class="state-icon"><svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="state-title">No active job</div><div class="state-sub">No dispatched alert or scheduled inspection.<br>A new job will appear here when assigned.</div></div>`;
+  // Other active alerts + inspections as Scheduled
+  const scheduled=[...otherAlerts.map(a=>({...a,_kind:'alert'})),...allInsp.map(i=>({...i,_kind:'inspection'}))];
+  if(scheduled.length>0){
+    html+=`<div class="task-section-hd"><span class="task-section-lbl sched">Assigned</span><div class="task-section-line"></div><span class="task-section-count">${scheduled.length} task${scheduled.length!==1?'s':''}</span></div>`;
+    html+=scheduled.map(j=>j._kind==='alert'?taskCard(j,'alert','sched'):taskCard(j,'inspection','sched')).join('');
   }
 
-  // ── Progress tracker ──
-  // stepNum: 0=not started, 1=en_route active, 2=on_site active, 3=done
-  const stepNum = ts==='en_route'?1 : ts==='on_site'?2 : (ts==='returning'||ts==='completed')?3 : 0;
+  $('task-list-area').innerHTML=html;
+}
 
-  if(hasJob) {
-    const steps=[{lbl:'En Route',n:1},{lbl:'On Site',n:2},{lbl:'Complete',n:3}];
-    const stepsHtml = steps.map(s=>{
-      const cls = stepNum > s.n ? 'done' : stepNum===s.n ? 'active' : '';
-      return `<div class="prog-step ${cls}"><div class="prog-dot">${stepNum>s.n?'&#10003;':String(s.n)}</div><div class="prog-lbl">${s.lbl}</div></div>`;
-    }).join('');
-    const lineW = stepNum===0?'width:0' : stepNum===1?'left:calc(16.67% + 8px);width:calc(33.33% - 16px)' : 'left:calc(16.67% + 8px);width:calc(66.67% - 16px)';
-    html+=`<div class="prog-wrap"><div class="prog-label">Progress</div><div class="prog-steps">${stepsHtml}<div class="prog-done-line" style="${lineW}"></div></div></div>`;
-  }
+function taskCard(job, kind, urgencyClass) {
+  const isAlert = kind==='alert';
+  const id      = isAlert ? (job.alert_id||String(job.id)) : (job.inspection_id||String(job.id));
+  const title   = isAlert ? (job.alert_type||'Drainage Alert') : 'Drainage Inspection';
+  const site    = isAlert ? (job.site_name||job.client_name||'—') : (job.property_name||job.area_name||'—');
+  const loc     = isAlert ? (job.location||'') : [job.city,job.state].filter(Boolean).join(', ');
+  const sub     = isAlert ? (job.description||'') : (job.scheduled_date?'Scheduled: '+new Date(job.scheduled_date).toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+(job.scheduled_time_start||''):'');
+  const sev     = isAlert ? (job.severity||'minor') : 'inspection';
+  const age     = ageStr(job.created_at);
 
-  // ── ONE big CTA — changes every step ──
-  let ctaHtml = '';
-  if(hasJob) {
-    if(ts==='returning'||ts==='completed') {
-      ctaHtml = `
-      <div class="done-bar">
-        <div class="done-bar-ico"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-        <div><div class="done-bar-title">Job Complete</div><div class="done-bar-sub">Returning to HQ &mdash; write your report now</div></div>
+  const badgeLbl = urgencyClass==='urgent' ? 'Urgent' : isAlert ? 'Alert' : 'Inspection';
+  const typeLabel = isAlert ? 'Alert' : 'Inspection';
+
+  const sevIcon = isAlert && sev==='critical'
+    ? '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'
+    : isAlert
+    ? '<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>'
+    : '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>';
+
+  return `<div class="task-card ${urgencyClass}" onclick="openOnSite('${escHtml(kind)}','${escHtml(id)}')">
+    <div class="tc-hd">
+      <div class="tc-sev-bar"></div>
+      <div class="tc-body">
+        <div class="tc-type"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">${sevIcon}</svg> ${typeLabel}</div>
+        <div class="tc-title">${escHtml(title)}</div>
+        <div class="tc-sub">${escHtml(site)}${loc?' · '+escHtml(loc):''}</div>
       </div>
-      <div class="cta-wrap">
-        <div class="cta-hint">Required — Submit Before Returning</div>
-        <button class="main-cta go-complete" id="btn-write-report">
-          <div class="cta-icon"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></div>
-          <div class="cta-text"><span class="cta-action">Write Your Report</span><span class="cta-sub">Submit findings to Ops</span></div>
-        </button>
-      </div>`;
-    } else if(ts==='idle'||!ts) {
-      ctaHtml = `<div class="cta-wrap">
-        <div class="cta-hint">Next Step</div>
-        <button class="main-cta go-enroute" id="btn-enroute">
-          <div class="cta-icon"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg></div>
-          <div class="cta-text"><span class="cta-action">Head to Site</span><span class="cta-sub">Tap when you start travelling</span></div>
-        </button>
-      </div>`;
-    } else if(ts==='en_route') {
-      ctaHtml = `<div class="cta-wrap">
-        <div class="cta-hint">Next Step</div>
-        <button class="main-cta go-onsite" id="btn-onsite">
-          <div class="cta-icon"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
-          <div class="cta-text"><span class="cta-action">I've Arrived</span><span class="cta-sub">Tap when you reach the site</span></div>
-        </button>
-      </div>`;
-    } else if(ts==='on_site') {
-      ctaHtml = `<div class="cta-wrap">
-        <div class="cta-hint">Next Step</div>
-        <button class="main-cta go-complete" id="btn-complete">
-          <div class="cta-icon"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-          <div class="cta-text"><span class="cta-action">Mark Job Complete</span><span class="cta-sub">Work finished — add a note</span></div>
-        </button>
-      </div>
-      <div class="sensor-ping-card" id="sensor-ping-card">
-        <div class="sp-header">
-          <div>
-            <div class="sp-title">Sentinel Node</div>
-            <div class="sp-id" id="sp-sensor-id">${escHtml(a ? (a.sensor_id||a.alert_id||'—') : ins ? (ins.inspection_id||'—') : '—')}</div>
-          </div>
-          <div class="sp-status unknown" id="sp-status">
-            <div class="sp-dot"></div><span id="sp-status-lbl">Not checked</span>
-          </div>
-        </div>
-        <div class="sp-data-row" id="sp-data-row" style="display:none">
-          <div class="sp-datum"><div class="sp-datum-lbl">Siltation</div><div class="sp-datum-val" id="sp-siltation">—</div></div>
-          <div class="sp-datum"><div class="sp-datum-lbl">Flow</div><div class="sp-datum-val" id="sp-flow">—</div></div>
-          <div class="sp-datum"><div class="sp-datum-lbl">Battery</div><div class="sp-datum-val" id="sp-battery">—</div></div>
-        </div>
-        <button class="ping-btn" id="btn-ping-sensor">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.142 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
-          Ping Sentinel — Check Heartbeat
-        </button>
-      </div>`;
-    }
-  }
+      <span class="tc-badge ${urgencyClass}">${badgeLbl}</span>
+    </div>
+    <div class="tc-chips">
+      ${sub?`<div class="tc-chip"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>${escHtml(sub)}</div>`:''}
+      <div class="tc-chip"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg>${age}</div>
+    </div>
+    <div class="tc-actions">
+      <button class="tc-btn nav" onclick="event.stopPropagation();openOnSite('${escHtml(kind)}','${escHtml(id)}')">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Navigate
+      </button>
+      <button class="tc-btn start ${urgencyClass==='sched'?'sched':''}" onclick="event.stopPropagation();openOnSite('${escHtml(kind)}','${escHtml(id)}')">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Start Task
+      </button>
+    </div>
+  </div>`;
+}
 
-  html += ctaHtml;
-  html += `<div class="secondary-row">
-    <button class="sec-btn backup" id="btn-backup" ${!hasJob?'disabled':''}>
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-      Request Backup
+/* ══════════════════════════════════════
+   ON-SITE PANEL
+══════════════════════════════════════ */
+// Opens a job on the on-site panel
+function openOnSite(kind, id) {
+  if(kind==='alert') {
+    S.alert      = S.allAlerts.find(a=>(a.alert_id||String(a.id))===id)||null;
+    S.inspection = null;
+  } else {
+    S.inspection = S.allInspections.find(i=>(i.inspection_id||String(i.id))===id)||null;
+    S.alert      = null;
+  }
+  S.onsiteStep = 0; // 0=GPS, 1=step1, 2=step2, 3=step3
+  renderOnSitePanel();
+  switchPanel('onsite');
+}
+
+function renderOnSitePanel() {
+  const a=S.alert, ins=S.inspection;
+  if(!a && !ins) {
+    $('onsite-area').innerHTML='<div class="state-card"><div class="state-icon"><svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg></div><div class="state-title">No job selected</div><div class="state-sub">Go to Tasks and tap a job to start on-site work.</div></div>';
+    return;
+  }
+  const step = S.onsiteStep||0;
+  if(step===0) renderGPSCheckin();
+  else renderOnSiteSteps();
+}
+
+function renderGPSCheckin() {
+  const a=S.alert, ins=S.inspection;
+  const jobName = a ? (a.alert_type||'Drainage Alert')+' — '+(a.site_name||a.client_name||'') : 'Inspection — '+(ins.property_name||ins.area_name||'');
+  const lat=S.gpsLat?S.gpsLat.toFixed(4):'Acquiring…';
+  const lng=S.gpsLng?S.gpsLng.toFixed(4):'Acquiring…';
+  const acc=S.gpsAcc?'±'+Math.round(S.gpsAcc)+'m':'…';
+
+  $('onsite-area').innerHTML=`
+  <div class="gps-checkin">
+    <div class="gps-ico">
+      <svg width="28" height="28" fill="none" stroke="var(--blue)" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    </div>
+    <div class="gps-title">GPS Check-In Required</div>
+    <div class="gps-sub">Confirm your location before starting:<br><strong>${escHtml(jobName)}</strong></div>
+    <div class="gps-coords">
+      LAT: ${lat} &nbsp;·&nbsp; LNG: ${lng}<br>
+      Accuracy: ${acc} &nbsp;·&nbsp; ${S.gpsLat?'<span style="color:var(--ok)">Location confirmed</span>':'<span style="color:var(--amber)">Acquiring GPS…</span>'}
+    </div>
+    <button class="gps-confirm-btn" id="gps-confirm-btn" onclick="confirmGPS()" ${!S.gpsLat?'disabled':''}>
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      Confirm Check-In
     </button>
-    ${(ts==='returning'||ts==='completed')
-      ? `<button class="sec-btn report" onclick="switchJob()" style="${totalJobs>1?'':'display:none;'}">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 5H4m0 0l4 4m-4-4l4-4"/></svg>Next Job
-        </button>`
-      : `<button class="sec-btn report" id="btn-write-report-sec">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>Write Report
-        </button>`
-    }
-  </div>`;
+  </div>
+  <button class="sec-btn report" style="width:100%;margin-top:4px;" onclick="switchPanel('tasks')">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+    Back to Tasks
+  </button>`;
 
-  // ── Team card ──
-  let memberNames=[];
-  if(Array.isArray(t.members)) memberNames=t.members.map(m=>m.full_name||m.name||'').filter(Boolean);
-  else if(t.members) memberNames=t.members.split(',').map(s=>s.trim()).filter(Boolean);
-  html+=`<div class="team-card">
-    <div class="tc-header">
-      <div><div class="tc-lbl">Your Team</div><div class="tc-name">${escHtml(t.name)}</div></div>
-      <span class="tc-status ${tsStatusClass(ts)}">${tsLabel(ts)}</span>
-    </div>
-    <div class="member-row">
-      ${memberNames.map(n=>`<div class="member-chip"><div class="m-av">${initials(n)}</div><div class="m-name">${escHtml(n)}</div></div>`).join('')}
-      ${memberNames.length===0?'<span style="font-size:.82rem;color:var(--ink-4);">No members listed</span>':''}
-    </div>
-  </div>`;
-
-  $('content-area').innerHTML=html;
-  bindButtons();
+  // Start GPS immediately
+  if(!S.gpsLat) acquireGPS();
 }
 
-function renderJobQueue() {
-  const allJobs=[
-    ...S.allAlerts.map(a=>({type:'alert',id:a.alert_id||String(a.id),name:a.alert_type||'Drainage Alert',site:a.site_name||a.client_name||'',loc:a.location||'',sev:(a.severity||'minor').toLowerCase(),age:ageStr(a.created_at)})),
-    ...S.allInspections.map(i=>({type:'inspection',id:i.inspection_id||String(i.id),name:'Drainage Inspection',site:i.property_name||i.area_name||'',loc:[i.city,i.state].filter(Boolean).join(', '),sev:'inspection',age:ageStr(i.created_at)}))
+function acquireGPS() {
+  if(!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(pos=>{
+    S.gpsLat=pos.coords.latitude;
+    S.gpsLng=pos.coords.longitude;
+    S.gpsAcc=pos.coords.accuracy;
+    // Re-render if still on GPS screen
+    if((S.onsiteStep||0)===0) renderGPSCheckin();
+  }, ()=>{
+    // GPS denied - allow anyway with warning
+    S.gpsLat=0; S.gpsLng=0; S.gpsAcc=null;
+    if((S.onsiteStep||0)===0) renderGPSCheckin();
+  }, {enableHighAccuracy:true,timeout:10000});
+}
+
+function confirmGPS() {
+  S.onsiteStep=1;
+  S.taskStartTime=Date.now();
+  S.checksBefore={};
+  S.photoBefore=false;
+  S.photoAfter=false;
+  renderOnSiteSteps();
+}
+
+function renderOnSiteSteps() {
+  const a=S.alert, ins=S.inspection;
+  const step=S.onsiteStep||1;
+  const jobName=a?(a.alert_type||'Drainage Alert')+' — '+(a.site_name||a.client_name||''):'Inspection — '+(ins&&(ins.property_name||ins.area_name)||'');
+  const jobSub=a?'Task #'+(a.alert_id||a.id):'#'+(ins&&(ins.inspection_id||ins.id)||'');
+
+  // Build checklist from task type
+  const checks = a ? [
+    {id:'c1',lbl:'Area assessed'},
+    {id:'c2',lbl:'Blockage/debris cleared'},
+    {id:'c3',lbl:'Bio-dose applied'},
+    {id:'c4',lbl:'Sensor recalibrated'},
+  ] : [
+    {id:'c1',lbl:'Site entry confirmed'},
+    {id:'c2',lbl:'Drainage condition assessed'},
+    {id:'c3',lbl:'Sensor readings recorded'},
+    {id:'c4',lbl:'Findings documented'},
   ];
-  const cards=allJobs.map(j=>`
-  <div class="qjob-card" onclick="selectJob('${escHtml(j.type)}','${escHtml(j.id)}')">
-    <div class="qjob-body">
-      <div class="qjob-sev ${j.sev}"></div>
-      <div class="qjob-info">
-        <div class="qjob-type">${j.type==='alert'?'Alert':'Inspection'}</div>
-        <div class="qjob-name">${escHtml(j.name)}</div>
-        <div class="qjob-meta">${escHtml([j.site,j.loc].filter(Boolean).join(' · '))||'—'}</div>
+
+  const stepLabels=['Before Photo','Checklist','After Photo + Submit'];
+  const dots=[1,2,3].map(n=>{
+    const cls=step>n?'done':step===n?'active':'';
+    const txt=step>n?'&#10003;':String(n);
+    return `<div class="step-dot ${cls}">${txt}</div>`;
+  }).join('<div class="step-line '+(step>1?'done':'')+'"></div>');
+  const lbls=stepLabels.map((l,i)=>{const cls=step>i+1?'done':step===i+1?'active':'';return `<div class="step-lbl ${cls}">${l}</div>`;}).join('');
+
+  // Duration
+  const elapsed=S.taskStartTime?Math.floor((Date.now()-S.taskStartTime)/1000):0;
+  const dur=elapsed<3600?Math.floor(elapsed/60)+'m '+(elapsed%60)+'s':Math.floor(elapsed/3600)+'h '+Math.floor((elapsed%3600)/60)+'m';
+
+  // Step 1 content
+  const step1 = `
+  <div class="step-panel ${step===1?'active':''}">
+    <div class="step-panel-title">Capture — Before State</div>
+    <div class="photo-zone ${S.photoBefore?'captured':''}" id="pz-before" onclick="capturePhoto('before')">
+      <div class="photo-zone-ico">
+        ${S.photoBefore
+          ? '<svg width="36" height="36" fill="none" stroke="var(--ok)" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+          : '<svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>'
+        }
       </div>
-      <div class="qjob-arrow"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9 5l7 7-7 7"/></svg></div>
+      <div class="photo-zone-lbl">${S.photoBefore?'Before photo captured':'Tap to Capture — Before State'}</div>
+      <div class="photo-zone-sub">GPS + timestamp will be attached automatically</div>
     </div>
-    <div class="qjob-footer"><span>${j.age}</span><span class="qjob-cta">Tap to start &rsaquo;</span></div>
-  </div>`).join('');
-  $('content-area').innerHTML=`
-  <div class="state-card" style="padding:28px 22px 20px;text-align:left;">
-    <div style="font-size:1.25rem;font-weight:900;color:var(--ink);letter-spacing:-.02em;margin-bottom:6px;">Select Your Task</div>
-    <div style="font-size:.84rem;color:var(--ink-3);line-height:1.5;">You have ${allJobs.length} active assignments. Choose which one to work on first.</div>
-  </div>
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:0 2px;">
-    <span style="font-family:var(--mono);font-size:.6rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-4);">Active Assignments</span>
-    <span class="queue-badge">${allJobs.length}</span>
-  </div>
-  <div class="queue-list">${cards}</div>`;
+    <div class="step-nav">
+      <button class="step-back" onclick="switchPanel('tasks')">← Tasks</button>
+      <button class="step-next" onclick="gotoStep(2)">Checklist →</button>
+    </div>
+  </div>`;
+
+  // Step 2: checklist
+  const checkItems=checks.map(c=>`
+    <div class="check-item ${S.checksBefore[c.id]?'checked':''}" onclick="toggleCheck('${c.id}',this)">
+      <div class="check-box">${S.checksBefore[c.id]?'<svg width="12" height="12" fill="none" stroke="#fff" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>':''}</div>
+      <div class="check-label">${escHtml(c.lbl)}</div>
+    </div>`).join('');
+  const step2=`
+  <div class="step-panel ${step===2?'active':''}">
+    <div class="step-panel-title">Action Checklist</div>
+    ${checkItems}
+    <div class="step-nav" style="margin-top:4px;">
+      <button class="step-back" onclick="gotoStep(1)">← Back</button>
+      <button class="step-next" onclick="gotoStep(3)">After Photo →</button>
+    </div>
+  </div>`;
+
+  // Step 3: after photo + submit
+  const doneCount=Object.values(S.checksBefore).filter(Boolean).length;
+  const step3=`
+  <div class="step-panel ${step===3?'active':''}">
+    <div class="step-panel-title">Capture — After State</div>
+    <div class="photo-zone ${S.photoAfter?'captured':''}" id="pz-after" onclick="capturePhoto('after')">
+      <div class="photo-zone-ico">
+        ${S.photoAfter
+          ? '<svg width="36" height="36" fill="none" stroke="var(--ok)" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+          : '<svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>'
+        }
+      </div>
+      <div class="photo-zone-lbl">${S.photoAfter?'After photo captured':'Tap to Capture — After State'}</div>
+      <div class="photo-zone-sub">GPS + timestamp will be attached automatically</div>
+    </div>
+    <div class="submit-summary">
+      <div class="submit-summary-lbl">Submission Summary</div>
+      <div class="submit-row"><svg width="12" height="12" fill="none" stroke="var(--blue)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span class="submit-row-val">GPS: ${S.gpsLat?(S.gpsLat.toFixed(4)+', '+S.gpsLng.toFixed(4)):'Manual check-in'}</span></div>
+      <div class="submit-row"><svg width="12" height="12" fill="none" stroke="var(--blue)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg><span class="submit-row-val">Duration: ${dur}</span></div>
+      <div class="submit-row"><svg width="12" height="12" fill="none" stroke="var(--blue)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg><span class="submit-row-val">${(S.photoBefore?1:0)+(S.photoAfter?1:0)} of 2 photos captured</span></div>
+      <div class="submit-row"><svg width="12" height="12" fill="none" stroke="var(--blue)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg><span class="submit-row-val">${doneCount} of ${checks.length} checklist items</span></div>
+    </div>
+    <div class="step-nav">
+      <button class="step-back" onclick="gotoStep(2)">← Back</button>
+      <button class="step-next green" id="btn-complete" onclick="confirmComplete()">
+        <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Complete &amp; Submit
+      </button>
+    </div>
+  </div>`;
+
+  $('onsite-area').innerHTML=`
+  <div class="onsite-form">
+    <div class="onsite-header">
+      <div>
+        <div class="onsite-job-name">${escHtml(jobName)}</div>
+        <div class="onsite-job-sub">${escHtml(jobSub)}</div>
+      </div>
+      <button style="padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);color:var(--ink-3);font-size:.72rem;" onclick="switchPanel('tasks')">Tasks</button>
+    </div>
+    <div class="step-track">
+      ${dots}
+    </div>
+    <div class="step-lbl-row">${lbls}</div>
+    ${step1}${step2}${step3}
+  </div>`;
 }
 
-function selectJob(type,id) {
-  if(type==='alert'){S.alert=S.allAlerts.find(a=>(a.alert_id||String(a.id))===id)||null;S.inspection=null;}
-  else{S.inspection=S.allInspections.find(i=>(i.inspection_id||String(i.id))===id)||null;S.alert=null;}
-  renderDashboard();const ca=$('content-area');if(ca)ca.scrollTop=0;
+function gotoStep(n) {
+  S.onsiteStep=n;
+  renderOnSiteSteps();
 }
 
-function switchJob(){
-  S.alert=null;S.inspection=null;renderJobQueue();const ca=$('content-area');if(ca)ca.scrollTop=0;
+function capturePhoto(type) {
+  if(type==='before') S.photoBefore=true;
+  else S.photoAfter=true;
+  renderOnSiteSteps();
+}
+
+function toggleCheck(id, el) {
+  S.checksBefore=S.checksBefore||{};
+  S.checksBefore[id]=!S.checksBefore[id];
+  el.classList.toggle('checked',!!S.checksBefore[id]);
+  // Update checkmark inside
+  const box=el.querySelector('.check-box');
+  box.innerHTML=S.checksBefore[id]?'<svg width="12" height="12" fill="none" stroke="#fff" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>':'';
+  el.querySelector('.check-label').style.color=S.checksBefore[id]?'var(--ok)':'';
+}
+
+function confirmComplete() {
+  const btn=$('btn-complete');
+  if(btn){btn.textContent='Completing…';btn.disabled=true;}
+  // Open the complete sheet — the same flow as before
+  $('complete-notes').value='';
+  $('complete-msg').className='sh-msg';
+  const a=S.alert,ins=S.inspection;
+  const nm=a?(a.alert_type||'Alert')+(a.site_name?' — '+a.site_name:''):ins?'Inspection — '+(ins.property_name||''):'Job';
+  const sub=$('complete-sub');if(sub)sub.textContent='Completing: '+nm;
+  $('sheet-complete').classList.add('show');
+  if(btn){btn.textContent='Complete & Submit';btn.disabled=false;}
+}
+
+/* ══════════════════════════════════════
+   SENSOR PANEL
+══════════════════════════════════════ */
+async function renderSensorPanel() {
+  S.sensorsLoaded=true;
+  $('sensor-area').innerHTML='<div class="state-spin"><div class="spn"></div>Loading sentinel nodes…</div>';
+  try {
+    const prop=S.alert?null:S.inspection;
+    const pid=prop?prop.property_id:null;
+    let sensors=[];
+    if(pid){
+      const r=await api('GET',`/properties/${pid}/assets`);
+      if(r.success) sensors=r.data||[];
+    }
+    if(sensors.length===0){
+      $('sensor-area').innerHTML='<div class="state-card"><div class="state-icon"><svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div><div class="state-title">No sensors found</div><div class="state-sub">No Sentinel nodes are registered for the current property.</div></div>';
+      return;
+    }
+    const cards=sensors.map(s=>sensorCard(s)).join('');
+    $('sensor-area').innerHTML=`<div style="display:flex;flex-direction:column;gap:12px;">${cards}</div>`;
+  }catch(e){
+    $('sensor-area').innerHTML='<div class="state-card"><div class="state-title">Failed to load sensors</div><div class="state-sub">'+escHtml(e.message||'Try again later.')+'</div></div>';
+  }
+}
+
+function sensorCard(s) {
+  const id=s.sensor_id||s.node_id||s.id||'—';
+  const loc=s.location||s.zone||'';
+  const status=s.status||'online';
+  const statusCls=status==='online'?'online':status==='offline'?'offline':'checking';
+  const statusLbl=status.toUpperCase();
+
+  const sil=s.siltation_pct!=null?s.siltation_pct+'%':'—';
+  const bat=s.battery_pct!=null?s.battery_pct+'%':'—';
+  const ping=s.last_ping?ageStr(s.last_ping):'—';
+  const flow=s.flow_rate!=null?s.flow_rate+' m/s':'—';
+
+  const sevClass=(v,hi,lo)=>{const n=parseFloat(v);return isNaN(n)?'':n>=hi?'danger':n>=lo?'warn':'safe';};
+
+  return `<div class="sensor-card" id="sc-${escHtml(String(id))}">
+    <div class="sc-hd">
+      <div>
+        <div class="sc-id">${escHtml(String(id))}</div>
+        ${loc?`<div class="sc-loc">${escHtml(loc)}</div>`:''}
+      </div>
+      <div class="sc-status ${statusCls}"><div class="sc-pulse"></div>${statusLbl}</div>
+    </div>
+    <div class="sc-grid">
+      <div class="sc-cell"><div class="sc-cell-lbl">Siltation</div><div class="sc-cell-val ${sevClass(parseFloat(s.siltation_pct),80,60)}">${sil}</div></div>
+      <div class="sc-cell"><div class="sc-cell-lbl">Battery</div><div class="sc-cell-val ${sevClass(100-parseFloat(s.battery_pct),60,20)}">${bat}</div></div>
+      <div class="sc-cell"><div class="sc-cell-lbl">Last Ping</div><div class="sc-cell-val" style="font-size:.88rem;">${ping}</div></div>
+      <div class="sc-cell"><div class="sc-cell-lbl">Flow Rate</div><div class="sc-cell-val ${sevClass(parseFloat(s.flow_rate),1.5,0.5)?'':'safe'}">${flow}</div></div>
+    </div>
+    <button class="sc-ping" onclick="pingSensor('${escHtml(String(id))}',this)">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+      Ping Sentinel Node
+    </button>
+  </div>`;
+}
+
+function pingSensor(id, btn) {
+  btn.disabled=true;
+  btn.innerHTML='<div class="spn" style="width:14px;height:14px;margin-right:6px;"></div>Pinging…';
+  setTimeout(()=>{
+    const online=Math.random()>0.15;
+    const card=btn.closest('.sensor-card');
+    const statusEl=card.querySelector('.sc-status');
+    statusEl.className='sc-status '+(online?'online':'offline');
+    statusEl.innerHTML='<div class="sc-pulse"></div>'+(online?'ONLINE':'OFFLINE');
+    btn.disabled=false;
+    btn.innerHTML='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>Ping Sentinel Node';
+    toast(online?'Node '+id+' — Online':'Node '+id+' — Offline',online?'ok':'err');
+  }, 2200);
+}
+
+/* ══════════════════════════════════════
+   PROFILE PANEL
+══════════════════════════════════════ */
+function renderProfilePanel() {
+  const u=S.user||{};
+  const name=u.full_name||u.name||u.email||'Field Technician';
+  const initials=name.split(' ').map(n=>n[0]||'').join('').toUpperCase().slice(0,2)||'FT';
+  const t=S.team;
+  $('profile-area').innerHTML=`
+  <div class="profile-hero">
+    <div class="profile-av">${initials}</div>
+    <div class="profile-name">${escHtml(name)}</div>
+    <div class="profile-role">${t?escHtml(t.name)+' · ':''}Field Technician</div>
+    <div class="profile-stats">
+      <div class="ps-box"><div class="ps-val">${S.allAlerts.length+S.allInspections.length}</div><div class="ps-lbl">Active</div></div>
+      <div class="ps-box"><div class="ps-val">${t?tsLabel(t.status||'idle'):'—'}</div><div class="ps-lbl">Status</div></div>
+      <div class="ps-box"><div class="ps-val">${S.gpsLat?'On':'Off'}</div><div class="ps-lbl">GPS</div></div>
+    </div>
+  </div>
+  <div style="background:var(--navy);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:16px;">
+    <div style="font-family:var(--mono);font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-4);margin-bottom:12px;">Session Info</div>
+    <div class="history-item">
+      <div class="history-dot" style="background:var(--blue);"></div>
+      <div><div class="history-title">Logged in as ${escHtml(u.email||name)}</div><div class="history-meta">Team: ${t?escHtml(t.name):'Not assigned'}</div></div>
+    </div>
+    <div class="history-item">
+      <div class="history-dot" style="background:${S.gpsLat?'var(--ok)':'var(--amber)'};"></div>
+      <div><div class="history-title">GPS: ${S.gpsLat?'Active ('+S.gpsLat.toFixed(4)+', '+S.gpsLng.toFixed(4)+')':'Not acquired'}</div><div class="history-meta">Accuracy: ${S.gpsAcc?'±'+Math.round(S.gpsAcc)+'m':'—'}</div></div>
+    </div>
+  </div>
+  <button class="sec-btn backup" style="width:100%;margin-top:4px;" id="btn-end-shift">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+    End Shift &amp; Sign Out
+  </button>`;
+
+  document.getElementById('btn-end-shift').onclick=()=>$('btn-logout').click();
 }
 
 function bindButtons() {
-  async function setStatus(status,label) {
-    if(!S.team)return;
-    try{
-      const d=await api('PUT',`/teams/${S.team.team_id}/status`,{status});
-      if(!d.success)throw new Error(d.error||'Failed');
-      S.team.status=status;toast(label,'ok');renderDashboard();
-    }catch(e){toast(e.message||'Update failed','err');}
-  }
+  // On-site complete is now handled by confirmComplete() → sheet
   const b=id=>$(id);
-  if(b('btn-enroute'))       b('btn-enroute').onclick       =()=>setStatus('en_route','En Route — heading to site');
-  if(b('btn-onsite'))        b('btn-onsite').onclick         =()=>setStatus('on_site','On Site — you have arrived');
-  if(b('btn-complete'))      b('btn-complete').onclick       =()=>{
-    const nm=S.alert?(S.alert.alert_type||'Alert')+(S.alert.site_name?' — '+S.alert.site_name:''):S.inspection?'Inspection — '+(S.inspection.property_name||''):'Job';
-    $('complete-notes').value='';$('complete-msg').className='sh-msg';
-    const sub=$('complete-sub');if(sub)sub.textContent='Completing: '+nm;
-    $('sheet-complete').classList.add('show');
-  };
+  if(b('btn-backup')) b('btn-backup').onclick=()=>{$('backup-notes').value='';$('backup-msg').className='sh-msg';$('sheet-backup').classList.add('show');};
   if(b('btn-write-report'))     b('btn-write-report').onclick     =()=>ReportWriter.open();
   if(b('btn-write-report-sec')) b('btn-write-report-sec').onclick =()=>ReportWriter.open();
-  if(b('btn-backup'))           b('btn-backup').onclick           =()=>{$('backup-notes').value='';$('backup-msg').className='sh-msg';$('sheet-backup').classList.add('show');};
-  if(b('btn-ping-sensor'))      b('btn-ping-sensor').onclick      =()=>pingSensor();
 }
 
 
@@ -1705,6 +2042,9 @@ on('complete-confirm','click',async()=>{
     if(completedAlert)      S.allAlerts      = S.allAlerts.filter(a=>(a.alert_id||String(a.id))!==(completedAlert.alert_id||String(completedAlert.id)));
     if(completedInspection) S.allInspections = S.allInspections.filter(i=>(i.inspection_id||String(i.id))!==(completedInspection.inspection_id||String(completedInspection.id)));
     S.alert=null; S.inspection=null; S.team.status='returning';
+
+    // Update task list count
+    renderDashboard();
 
     // ── Open report writer for the job that was JUST completed ──
     setTimeout(()=>{
@@ -1755,34 +2095,13 @@ function checkPush(){if(!('Notification'in window)||!('serviceWorker'in navigato
 on('push-allow','click',async()=>{const perm=await Notification.requestPermission();$('push-banner').classList.remove('show');if(perm==='granted')await subscribePush();});
 on('push-dismiss','click',()=>$('push-banner').classList.remove('show'));
 async function subscribePush(){if(!S.swReg||!CONFIG.VAPID_KEY){console.warn('Push: SW not ready or VAPID_KEY empty');return;}try{const sub=await S.swReg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8Array(CONFIG.VAPID_KEY)});await api('POST','/push/subscribe',{subscription:sub.toJSON(),user_id:S.user?.id});console.log('✅ Push subscribed');}catch(e){console.warn('Push subscribe failed:',e);}}
-async function registerSW(){
-  if(!('serviceWorker'in navigator))return;
-  try{
-    S.swReg=await navigator.serviceWorker.register('/field-sw.js');
-    console.log('✅ SW registered');
-
-    // Listen for messages from SW (e.g. flush drafts request)
-    navigator.serviceWorker.addEventListener('message', event => {
-      if(event.data?.type==='FG_FLUSH_DRAFTS') DraftQueue.flushAll();
-    });
-
-    // Handle SW update — skip waiting immediately
-    S.swReg.addEventListener('updatefound',()=>{
-      const nw=S.swReg.installing;
-      if(nw) nw.addEventListener('statechange',()=>{
-        if(nw.state==='installed'&&navigator.serviceWorker.controller){
-          nw.postMessage({type:'SKIP_WAITING'});
-        }
-      });
-    });
-  }catch(e){console.warn('SW registration failed:',e);}
-}
+async function registerSW(){if(!('serviceWorker'in navigator))return;try{S.swReg=await navigator.serviceWorker.register('/field-sw.js');console.log('✅ SW registered');}catch(e){console.warn('SW registration failed:',e);}}
 
 /* ── Logout ── */
 on('btn-logout','click',()=>{
   if(S.socket)S.socket.disconnect();
   clearSession();
-  S={token:null,user:null,team:null,alert:null,socket:null,swReg:null};
+  S={token:null,user:null,team:null,alert:null,inspection:null,allAlerts:[],allInspections:[],socket:null,swReg:null,gpsLat:null,gpsLng:null,gpsAcc:null,onsiteStep:0,sensorsLoaded:false};
   showScreen('screen-login');
   $('l-btn').disabled=false; $('l-btn').querySelector('.cta-txt').textContent='Sign in';
   $('l-msg').className='form-msg'; $('l-email').value=''; $('l-pass').value='';
@@ -1791,226 +2110,15 @@ on('btn-logout','click',()=>{
 /* ── Boot ── */
 
 /* ─────────────────────────────────────────
-   GPS HELPER
-───────────────────────────────────────── */
-const GPS = {
-  _pos: null,
-  _watching: false,
-
-  start() {
-    if (!navigator.geolocation || this._watching) return;
-    this._watching = true;
-    navigator.geolocation.watchPosition(
-      pos => { this._pos = pos; },
-      err => { console.warn('GPS:', err.message); },
-      { enableHighAccuracy: true, maximumAge: 30000, timeout: 20000 }
-    );
-  },
-
-  async get() {
-    // Return cached if fresh enough
-    if (this._pos && (Date.now() - this._pos.timestamp) < 60000) return this._pos;
-    return new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject,
-        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
-    });
-  },
-
-  fmt(pos) {
-    const { latitude: la, longitude: lo, accuracy: ac } = pos.coords;
-    return {
-      lat: parseFloat(la.toFixed(6)),
-      lng: parseFloat(lo.toFixed(6)),
-      accuracy_m: Math.round(ac),
-      captured_at: new Date(pos.timestamp).toISOString()
-    };
-  }
-};
-
-/* ─────────────────────────────────────────
-   OFFLINE DRAFT QUEUE
-───────────────────────────────────────── */
-const DraftQueue = {
-  KEY: 'fg_draft_queue',
-
-  _read() {
-    try { return JSON.parse(localStorage.getItem(this.KEY) || '[]'); } catch { return []; }
-  },
-
-  push(draft) {
-    const q = this._read();
-    draft._id = Date.now() + Math.random().toString(36).slice(2);
-    draft._queued_at = new Date().toISOString();
-    q.push(draft);
-    localStorage.setItem(this.KEY, JSON.stringify(q));
-    this._updateBanner();
-    return draft._id;
-  },
-
-  remove(id) {
-    const q = this._read().filter(d => d._id !== id);
-    localStorage.setItem(this.KEY, JSON.stringify(q));
-    this._updateBanner();
-  },
-
-  count() { return this._read().length; },
-
-  _updateBanner() {
-    const n = this.count();
-    const banner = $('offline-banner');
-    const cnt = $('offline-count');
-    if (!banner) return;
-    if (!navigator.onLine) { banner.classList.add('show'); }
-    if (cnt) { cnt.textContent = n > 0 ? `${n} queued` : ''; cnt.style.display = n > 0 ? '' : 'none'; }
-  },
-
-  async flushAll() {
-    const q = this._read();
-    if (!q.length) return;
-    for (const draft of q) {
-      try {
-        const res = await api('POST', '/field-reports', draft._payload);
-        if (res.success) {
-          this.remove(draft._id);
-          toast('Draft synced to Ops ✓', 'ok');
-        }
-      } catch { /* leave in queue, retry next online */ }
-    }
-    this._updateBanner();
-  }
-};
-
-// Online/offline monitoring
-window.addEventListener('offline', () => {
-  const b = $('offline-banner'); if (b) b.classList.add('show');
-});
-window.addEventListener('online', () => {
-  const b = $('offline-banner');
-  if (b && DraftQueue.count() === 0) b.classList.remove('show');
-  DraftQueue.flushAll();
-  toast('Back online — syncing…', 'ok');
-});
-
-/* ─────────────────────────────────────────
-   PHOTO UPLOADER (S3-compatible)
-───────────────────────────────────────── */
-const PhotoUploader = {
-  _uploads: { before: null, after: null },
-
-  reset() { this._uploads = { before: null, after: null }; },
-
-  // Returns data-URL preview immediately; queues actual upload
-  async handleFile(slot, file) {
-    if (!file) return null;
-    // Preview via data URL (instant, no network needed)
-    const dataUrl = await new Promise((res, rej) => {
-      const fr = new FileReader();
-      fr.onload = () => res(fr.result);
-      fr.onerror = rej;
-      fr.readAsDataURL(file);
-    });
-    this._uploads[slot] = { file, dataUrl, uri: null, uploading: true };
-    // Kick off background upload — result stored when done
-    this._upload(slot, file);
-    return dataUrl;
-  },
-
-  async _upload(slot, file) {
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('slot', slot);
-      const r = await fetch(`${CONFIG.API}/uploads/photo`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${S.token}` },
-        body: fd
-      });
-      const d = await r.json();
-      if (d.success && d.uri) {
-        this._uploads[slot].uri = d.uri;
-        this._uploads[slot].uploading = false;
-      }
-    } catch {
-      // Upload failed — will use dataUrl as fallback in payload
-      this._uploads[slot].uploading = false;
-    }
-  },
-
-  getURIs() {
-    return {
-      photo_before_uri: this._uploads.before?.uri || this._uploads.before?.dataUrl || null,
-      photo_after_uri:  this._uploads.after?.uri  || this._uploads.after?.dataUrl  || null,
-    };
-  },
-
-  hasBefore() { return !!this._uploads.before; },
-  hasAfter()  { return !!this._uploads.after;  }
-};
-
-/* ─────────────────────────────────────────
-   SENSOR PING
-───────────────────────────────────────── */
-async function pingSensor() {
-  const btn = $('btn-ping-sensor');
-  const statusEl = $('sp-status');
-  const lblEl = $('sp-status-lbl');
-  const dataRow = $('sp-data-row');
-  if (!btn || !statusEl) return;
-
-  btn.disabled = true;
-  statusEl.className = 'sp-status pinging';
-  lblEl.textContent = 'Pinging…';
-
-  // Get the sensor/alert ID to query
-  const sensorId = S.alert?.sensor_id || S.alert?.alert_id || S.inspection?.inspection_id;
-
-  try {
-    const path = sensorId ? `/sensors/${sensorId}/heartbeat` : `/sensors/heartbeat`;
-    const d = await api('GET', path);
-
-    if (d.success && d.data) {
-      const node = d.data;
-      const online = node.status === 'online' || node.heartbeat === true;
-      statusEl.className = `sp-status ${online ? 'online' : 'offline'}`;
-      lblEl.textContent = online ? 'Online' : 'Offline';
-
-      // Populate data cells if we have readings
-      if (node.siltation_pct !== undefined || node.flow_rate !== undefined || node.battery_pct !== undefined) {
-        dataRow.style.display = '';
-        const silt = node.siltation_pct;
-        const flow = node.flow_rate;
-        const batt = node.battery_pct;
-        $('sp-siltation').textContent = silt != null ? silt + '%' : '—';
-        $('sp-siltation').className = 'sp-datum-val' + (silt >= 80 ? ' bad' : silt >= 60 ? ' warn' : ' ok');
-        $('sp-flow').textContent = flow != null ? flow + ' m/s' : '—';
-        $('sp-flow').className = 'sp-datum-val' + (flow < 0.3 ? ' bad' : flow < 0.8 ? ' warn' : ' ok');
-        $('sp-battery').textContent = batt != null ? batt + '%' : '—';
-        $('sp-battery').className = 'sp-datum-val' + (batt < 15 ? ' bad' : batt < 40 ? ' warn' : ' ok');
-      }
-
-      toast(online ? '✓ Sentinel is heartbeating' : '⚠ Sentinel offline — escalate if needed', online ? 'ok' : 'err', 4000);
-    } else {
-      throw new Error(d.error || 'No response');
-    }
-  } catch (e) {
-    statusEl.className = 'sp-status offline';
-    lblEl.textContent = 'No response';
-    toast('Ping failed: ' + (e.message || 'Check connection'), 'err');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-/* ─────────────────────────────────────────
    REPORT WRITER
-   4-step bottom sheet. Submits to POST /field-reports.
-   Adds: photo capture, checklist, GPS, offline queue.
+   3-step bottom sheet. Submits to POST /field-reports.
 ───────────────────────────────────────── */
 const ReportWriter = (function() {
   let _type = 'general';
   let _activeAlert = null, _activeInspection = null;
 
   function open(opts = {}) {
+    // Use snapshotted job from completion if provided, otherwise use live state
     const activeAlert      = opts.completedAlert      || S.alert;
     const activeInspection = opts.completedInspection || S.inspection;
 
@@ -2023,14 +2131,14 @@ const ReportWriter = (function() {
         : '';
 
     const jobContext = opts.autoTriggered
-      ? '✓ Job complete — capture site evidence for: ' + (jobTitle || 'this job')
+      ? '✓ Job complete — write your report for: ' + (jobTitle || 'this job')
       : activeAlert
         ? 'Incident report — ' + (activeAlert.alert_id || activeAlert.id)
         : activeInspection
           ? 'Inspection report — ' + (activeInspection.property_name || activeInspection.inspection_id)
           : 'General field report';
 
-    $('r-title').value = '';
+    $('r-title').value = jobTitle;
     $('r-summary').value = '';
     $('r-findings').value = '';
     $('r-recommendations').value = '';
@@ -2039,23 +2147,11 @@ const ReportWriter = (function() {
     $('r-msg').className = 'sh-msg';
     $('r-job-context').textContent = jobContext;
 
-    // Reset photo zones
-    PhotoUploader.reset();
-    _resetPhotoZone('before');
-    _resetPhotoZone('after');
-
-    // Reset checklist
-    document.querySelectorAll('#r-checklist .cl-item').forEach(el => el.classList.remove('checked'));
-
-    // Reset GPS stamp
-    _setGpsStamp('acquiring', 'Acquiring GPS…', 'Stand by…');
-
-    // Start GPS early so it's ready by step 4
-    GPS.start();
-
+    // Store snapshotted refs for submit
     _activeAlert      = activeAlert;
     _activeInspection = activeInspection;
 
+    // Show/hide type pills
     document.querySelectorAll('.rtype-pill').forEach(p => {
       p.style.display = (activeAlert || activeInspection) && p.dataset.type !== _type ? 'none' : '';
     });
@@ -2073,85 +2169,27 @@ const ReportWriter = (function() {
     );
   }
 
-  function _resetPhotoZone(slot) {
-    const zone = $(`pz-${slot}`);
-    if (!zone) return;
-    // Remove preview elements
-    zone.querySelectorAll('.photo-preview, .photo-check').forEach(el => el.remove());
-    zone.classList.remove('captured');
-    zone.querySelector('.photo-zone-ico').style.display = '';
-    zone.querySelector('.photo-zone-txt').style.display = '';
-    zone.querySelector('.photo-zone-sub').style.display = '';
-    // Reset file input
-    const inp = $(`ph-${slot}`);
-    if (inp) inp.value = '';
-  }
-
-  function _setGpsStamp(state, coords, acc) {
-    const stamp = $('r-gps-stamp');
-    const coordEl = $('r-gps-coords');
-    const accEl = $('r-gps-acc');
-    if (!stamp) return;
-    stamp.className = 'gps-stamp ' + state;
-    const ico = stamp.querySelector('.gps-ico');
-    if (ico) ico.className = 'gps-ico ' + (state === 'ok' ? 'ok' : state === 'failed' ? 'fail' : 'wait');
-    if (coordEl) coordEl.textContent = coords;
-    if (accEl) accEl.textContent = acc;
-  }
-
-  async function handlePhoto(slot, input) {
-    const file = input.files && input.files[0];
-    if (!file) return;
-    const dataUrl = await PhotoUploader.handleFile(slot, file);
-    if (!dataUrl) return;
-
-    const zone = $(`pz-${slot}`);
-    if (!zone) return;
-    zone.classList.add('captured');
-    zone.querySelector('.photo-zone-ico').style.display = 'none';
-    zone.querySelector('.photo-zone-txt').style.display = 'none';
-    zone.querySelector('.photo-zone-sub').style.display = 'none';
-
-    const img = document.createElement('img');
-    img.className = 'photo-preview';
-    img.src = dataUrl;
-    zone.appendChild(img);
-
-    const chk = document.createElement('div');
-    chk.className = 'photo-check';
-    chk.innerHTML = '<svg width="14" height="14" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>';
-    zone.appendChild(chk);
-  }
-
   function goStep(n) {
-    // steps 1-4
-    ['r-step1','r-step2','r-step3','r-step4'].forEach((id, i) => {
-      const el = $(id); if (el) el.style.display = (i + 1 === n) ? '' : 'none';
+    ['r-step1','r-step2','r-step3'].forEach((id, i) => {
+      $(id).style.display = (i + 1 === n) ? '' : 'none';
     });
-    ['rstep-1','rstep-2','rstep-3','rstep-4'].forEach((id, i) => {
-      const el = $(id); if (!el) return;
+    ['rstep-1','rstep-2','rstep-3'].forEach((id, i) => {
+      const el = $(id); if(!el) return;
       el.className = 'rstep ' + (i + 1 < n ? 'done' : i + 1 === n ? 'active' : '');
     });
-
-    if (n === 4) _buildReview();
-
+    if (n === 3) _buildReview();
     const panel = $('sheet-report-panel');
     if (panel) panel.scrollTop = 0;
   }
 
   function _esc(s) { return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-  function _getChecklist() {
-    return [...document.querySelectorAll('#r-checklist .cl-item.checked')]
-      .map(el => el.querySelector('.cl-lbl').textContent.trim());
-  }
-
   function _buildReview() {
     const title    = ($('r-title').value||'').trim();
     const summary  = ($('r-summary').value||'').trim();
     const findings = ($('r-findings').value||'').trim();
     const recs     = ($('r-recommendations').value||'').trim();
-    const checked  = _getChecklist();
+    const mats     = ($('r-materials').value||'').trim();
     const box = $('r-review-box');
     box.innerHTML = [
       `<div style="font-size:.58rem;font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-4);margin-bottom:8px;">${_type.toUpperCase()} REPORT</div>`,
@@ -2159,46 +2197,8 @@ const ReportWriter = (function() {
       summary  && `<div style="margin-bottom:10px;"><span style="font-size:.55rem;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);">SUMMARY</span><br><span style="color:var(--ink-2)">${_esc(summary)}</span></div>`,
       findings && `<div style="margin-bottom:10px;"><span style="font-size:.55rem;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);">FINDINGS</span><br><span style="color:var(--ink-2)">${_esc(findings)}</span></div>`,
       recs     && `<div style="margin-bottom:10px;"><span style="font-size:.55rem;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);">RECOMMENDATIONS</span><br><span style="color:var(--ink-2)">${_esc(recs)}</span></div>`,
-      checked.length && `<div><span style="font-size:.55rem;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);">ACTIONS</span><br><span style="color:var(--ok)">${checked.map(c=>'✓ '+_esc(c)).join('<br>')}</span></div>`,
+      mats     && `<div><span style="font-size:.55rem;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);">MATERIALS</span><br><span style="color:var(--ink-2)">${_esc(mats)}</span></div>`,
     ].filter(Boolean).join('');
-
-    // Photo summary
-    const ps = $('r-photo-summary');
-    if (ps) {
-      ps.innerHTML = '';
-      ['before','after'].forEach(slot => {
-        const up = PhotoUploader._uploads[slot];
-        if (up?.dataUrl) {
-          const div = document.createElement('div');
-          div.style.cssText = 'flex:1;border-radius:10px;overflow:hidden;max-height:80px;border:1.5px solid rgba(255,255,255,.1);';
-          const img = document.createElement('img');
-          img.src = up.dataUrl;
-          img.style.cssText = 'width:100%;height:80px;object-fit:cover;';
-          img.alt = slot;
-          div.appendChild(img);
-          ps.appendChild(div);
-        }
-      });
-    }
-
-    // Begin GPS acquisition for review step
-    _acquireGPS();
-  }
-
-  let _gpsResult = null;
-  async function _acquireGPS() {
-    _gpsResult = null;
-    _setGpsStamp('acquiring', 'Acquiring GPS…', 'Stand by…');
-    try {
-      const pos = await GPS.get();
-      _gpsResult = GPS.fmt(pos);
-      _setGpsStamp('ok',
-        `${_gpsResult.lat}, ${_gpsResult.lng}`,
-        `Accuracy ±${_gpsResult.accuracy_m}m · ${new Date(_gpsResult.captured_at).toLocaleTimeString()}`
-      );
-    } catch {
-      _setGpsStamp('failed', 'GPS unavailable', 'Coordinates not attached');
-    }
   }
 
   async function submit(status) {
@@ -2209,62 +2209,24 @@ const ReportWriter = (function() {
       $('r-msg').textContent = 'Please add at least a title or summary before saving.';
       return;
     }
-
     const db = $('r-btn-draft'), sb = $('r-btn-submit'), msg = $('r-msg');
     db.disabled = sb.disabled = true;
     sb.textContent = 'Saving…';
     msg.className = 'sh-msg';
-
-    // Final GPS grab if not yet acquired
-    if (!_gpsResult) {
-      try {
-        const pos = await GPS.get();
-        _gpsResult = GPS.fmt(pos);
-      } catch { /* no GPS available */ }
-    }
-
-    const photos = PhotoUploader.getURIs();
-    const checklist = _getChecklist();
-
-    const body = {
-      report_type:      _type,
-      alert_id:         _activeAlert      ? (_activeAlert.alert_id      || String(_activeAlert.id))           : undefined,
-      inspection_id:    _activeInspection ? (_activeInspection.inspection_id || String(_activeInspection.id)) : undefined,
-      property_id:      _activeInspection ? _activeInspection.property_id || null                             : undefined,
-      title,
-      summary,
-      findings:         ($('r-findings').value||'').trim(),
-      recommendations:  ($('r-recommendations').value||'').trim(),
-      materials_used:   ($('r-materials').value||'').trim() || undefined,
-      work_duration_min: parseInt($('r-duration').value) || undefined,
-      actions_performed: checklist.length ? checklist : undefined,
-      photo_before_uri:  photos.photo_before_uri || undefined,
-      photo_after_uri:   photos.photo_after_uri  || undefined,
-      gps_lat:           _gpsResult?.lat,
-      gps_lng:           _gpsResult?.lng,
-      gps_accuracy_m:    _gpsResult?.accuracy_m,
-      gps_captured_at:   _gpsResult?.captured_at,
-      status
-    };
-
-    // Remove undefined keys
-    Object.keys(body).forEach(k => body[k] === undefined && delete body[k]);
-
-    // Try to submit — queue if offline
-    if (!navigator.onLine) {
-      DraftQueue.push({ _payload: body });
-      msg.className = 'sh-msg success';
-      msg.textContent = '📶 Saved offline — will sync when connected.';
-      setTimeout(() => {
-        close();
-        db.disabled = sb.disabled = false;
-        sb.textContent = 'Submit Report';
-        toast('Draft queued — syncs when online', 'ok');
-      }, 1600);
-      return;
-    }
-
     try {
+      const body = {
+        report_type:   _type,
+        alert_id:      _activeAlert      ? (_activeAlert.alert_id      || String(_activeAlert.id))           : undefined,
+        inspection_id: _activeInspection ? (_activeInspection.inspection_id || String(_activeInspection.id)) : undefined,
+        property_id:   _activeInspection ? _activeInspection.property_id || null                             : undefined,
+        title,
+        summary,
+        findings:         ($('r-findings').value||'').trim(),
+        recommendations:  ($('r-recommendations').value||'').trim(),
+        materials_used:   ($('r-materials').value||'').trim() || undefined,
+        work_duration_min: parseInt($('r-duration').value)||undefined,
+        status
+      };
       const res = await api('POST', '/field-reports', body);
       if (!res.success) throw new Error(res.error || 'Server error');
       msg.className = 'sh-msg success';
@@ -2276,22 +2238,14 @@ const ReportWriter = (function() {
         toast(status === 'submitted' ? 'Report submitted' : 'Draft saved', 'ok');
       }, 1300);
     } catch(e) {
-      // Network failed mid-submit — save to queue
-      if (!navigator.onLine || e.message?.includes('fetch')) {
-        DraftQueue.push({ _payload: body });
-        msg.className = 'sh-msg success';
-        msg.textContent = '📶 Saved offline — will sync automatically.';
-        setTimeout(() => { close(); db.disabled = sb.disabled = false; sb.textContent = 'Submit Report'; toast('Queued for sync', 'ok'); }, 1600);
-      } else {
-        msg.className = 'sh-msg error';
-        msg.textContent = e.message || 'Save failed. Check your connection.';
-        db.disabled = sb.disabled = false;
-        sb.textContent = 'Submit Report';
-      }
+      msg.className = 'sh-msg error';
+      msg.textContent = e.message || 'Save failed. Check your connection.';
+      db.disabled = sb.disabled = false;
+      sb.textContent = 'Submit Report';
     }
   }
 
-  return { open, close, selectType, goStep, submit, handlePhoto };
+  return { open, close, selectType, goStep, submit };
 })();
 
 // Sheet backdrop close
