@@ -451,6 +451,10 @@ const OpsProperties = (function () {
           }),
         ])}
         ${OpsModal.field('Notes', 'notes', 'textarea', a.notes || '', { required: false, rows: 3 })}
+        ${OpsModal.row([
+          OpsModal.field('Monthly Fee (₦)', 'monthly_fee', 'number', a.monthly_fee || '', { required: false, placeholder: 'e.g. 185000' }),
+          OpsModal.field('Network Uptime (%)', 'network_uptime', 'number', a.network_uptime || '', { required: false, placeholder: 'e.g. 98.5' }),
+        ])}
       `, [
         { label: 'Cancel',       onclick: 'OpsModal.close()', class: 'btn-ghost' },
         { label: 'Save Changes', onclick: `OpsProperties.saveArea('${propertyId}')`, class: 'btn-primary', id: 'modal-save-btn' },
@@ -463,6 +467,20 @@ const OpsProperties = (function () {
     OpsModal.setLoading('modal-save-btn', true);
     try {
       await OpsModal.apiPut('/properties/' + propertyId, data);
+
+      // Auto-generate monthly invoice if monthly_fee was set
+      if (data.monthly_fee && parseFloat(data.monthly_fee) > 0) {
+        try {
+          await OpsModal.apiPost('/properties/' + propertyId + '/generate-invoice', {
+            amount: parseFloat(data.monthly_fee),
+            description: 'FlowGuard DaaS — Monthly Service Fee'
+          });
+        } catch(e) {
+          // Non-fatal — invoice generation failure doesn't block the save
+          console.warn('Invoice generation failed:', e.message);
+        }
+      }
+
       OpsModal.close();
       OpsModal.toast('Area updated successfully', 'nominal');
       reloadTab('properties');
