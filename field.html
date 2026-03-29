@@ -1534,11 +1534,9 @@ async function loadData() {
     S.alert=null; S.inspection=null; S.allAlerts=[]; S.allInspections=[];
     if(aRes.success) {
       S.allAlerts = aRes.data.filter(a=>teamMatch(a.assigned_team)&&ACTIVE_ALERT.has(a.status));
-      S.alert = S.allAlerts[0]||null;
     }
     if(iRes.success) {
       S.allInspections = iRes.data.filter(i=>teamMatch(i.assigned_team)&&ACTIVE_INSP.has(i.status));
-      if(!S.alert) S.inspection = S.allInspections[0]||null;
     }
     renderDashboard();
   } catch(err){console.error('loadData:',err);renderError(err.message);}
