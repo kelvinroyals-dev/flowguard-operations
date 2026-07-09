@@ -7,35 +7,35 @@
   <title>FlowGuard — Operations Center</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;0,900;1,700;1,800&family=Figtree:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      /* ── Brand ── */
+      /* ── Brand (aligned to client portal) ── */
       --navy:       #0a2a3d;
-      --navy-deep:  #050f18;
+      --navy-deep:  #071722;
       --navy-mid:   #0d3a54;
-      --blue:       #16a8d3;
-      --blue-hi:    #1cb8e8;
-      --blue-dim:   #0d7fa0;
-      --amber:      #f5a623;
-      --teal:       #0d7fa0;
+      --blue:       #0891b2;
+      --blue-hi:    #06b6d4;
+      --blue-dim:   #0e5b6e;
+      --amber:      #f59e0b;
+      --teal:       #0e5b6e;
 
-      /* ── Canvas & surfaces ── */
-      --canvas:     #edf2f7;
+      /* ── Canvas & surfaces (client portal) ── */
+      --canvas:     #eef2f4;
       --surface:    #ffffff;
-      --surface-2:  #f7fafc;
+      --surface-2:  #f7fafb;
       --surface-3:  #eef4f8;
-      --surface-h:  #e8f2f8;
-      --border:     #dae6ef;
-      --border-2:   #b8d0de;
+      --surface-h:  #e0f5fa;
+      --border:     #e2e9ed;
+      --border-2:   #d3dde2;
 
-      /* ── Text ── */
-      --ink:        #0a1f2e;
-      --ink-2:      #2d5068;
-      --ink-3:      #6b8fa3;
-      --ink-4:      #9eb8c8;
+      /* ── Text (client portal) ── */
+      --ink:        #12222b;
+      --ink-2:      #4a626d;
+      --ink-3:      #8399a4;
+      --ink-4:      #a9bcc7;
 
       /* ── Status ── */
       --ok:         #0a8a6a;    --ok-bg:  #e2f5ee;
@@ -57,16 +57,16 @@
       --th:  56px;
 
       /* ── Radii ── */
-      --r:   10px; --rs: 6px; --rl: 16px;
+      --r:   14px; --rs: 9px; --rl: 20px;
 
       /* ── Fonts ── */
-      --ff-d: 'Playfair Display', Georgia, serif;
-      --ff-b: 'Figtree', system-ui, sans-serif;
+      --ff-d: 'Space Grotesk', system-ui, sans-serif;
+      --ff-b: 'Inter', system-ui, sans-serif;
       --ff-m: 'JetBrains Mono', monospace;
 
       /* ── Legacy aliases for JS modules ── */
       --neon: var(--blue); --neon-dim: var(--teal);
-      --neon-glow: rgba(22,168,211,.12); --neon-trace: rgba(22,168,211,.04);
+      --neon-glow: rgba(8,145,178,.14); --neon-trace: rgba(8,145,178,.05);
       --bg: var(--canvas); --panel: var(--surface-2); --panel-edge: var(--border);
       --panel-hover: var(--surface-h);
       --text-bright: var(--ink); --text-mid: var(--ink-2); --text-dim: var(--ink-3);
@@ -102,8 +102,8 @@
       content: '';
       position: absolute; inset: 0;
       background:
-        radial-gradient(ellipse 100% 40% at 50% 100%, rgba(22,168,211,.12) 0%, transparent 60%),
-        radial-gradient(ellipse 80% 30% at 50% 0%,   rgba(22,168,211,.04) 0%, transparent 50%);
+        radial-gradient(ellipse 100% 40% at 50% 100%, rgba(8,145,178,.14) 0%, transparent 60%),
+        radial-gradient(ellipse 80% 30% at 50% 0%,   rgba(8,145,178,.05) 0%, transparent 50%);
       pointer-events: none; z-index: 0;
     }
 
@@ -934,25 +934,7 @@
   <aside class="sidebar">
     <div class="sb-brand">
       <div class="sb-mark-wrap">
-        <svg class="sb-mark" viewBox="200 80 280 210" xmlns="http://www.w3.org/2000/svg">
-          <defs><clipPath id="sc"><circle cx="340" cy="182" r="108"/></clipPath></defs>
-          <circle cx="340" cy="182" r="132" fill="none" stroke="#16a8d3" stroke-width="1" opacity="0.2"/>
-          <circle cx="340" cy="182" r="118" fill="none" stroke="#1cb8e8" stroke-width="1.2" opacity="0.28"/>
-          <circle cx="340" cy="182" r="108" fill="#050f18"/>
-          <g clip-path="url(#sc)">
-            <rect x="232" y="214" width="216" height="90" fill="#0d7fa0"/>
-            <path d="M232 214 Q276 200 320 214 Q364 228 408 214 Q430 200 448 210 L448 218 Q430 204 408 218 Q364 232 320 218 Q276 204 232 218 Z" fill="#16a8d3"/>
-            <ellipse cx="290" cy="252" rx="10" ry="2.5" fill="#cceeff" opacity="0.3"/>
-          </g>
-          <circle cx="340" cy="182" r="108" fill="none" stroke="#1cb8e8" stroke-width="2" opacity="0.35"/>
-          <path d="M340 112 C356 133 370 148 370 165 C370 184 357 199 340 199 C323 199 310 184 310 165 C310 148 324 133 340 112 Z" fill="#16a8d3"/>
-          <path d="M340 122 C353 140 364 153 364 165 C364 181 353 193 340 193 C327 193 316 181 316 165 C316 153 327 140 340 122 Z" fill="#050f18"/>
-          <path d="M340 131 C350 146 358 157 358 165 C358 179 350 189 340 189 C330 189 322 179 322 165 C322 157 330 146 340 131 Z" fill="#0d7fa0"/>
-          <ellipse cx="332" cy="148" rx="4.5" ry="7" fill="#cceeff" opacity="0.5" transform="rotate(-18 332 148)"/>
-          <circle cx="340" cy="112" r="5.5" fill="#f5a623"/>
-          <circle cx="340" cy="112" r="9" fill="none" stroke="#f5a623" stroke-width="1.3" opacity="0.45"/>
-          <path d="M321 107 Q340 96 359 107" fill="none" stroke="#1cb8e8" stroke-width="1.8" stroke-linecap="round" opacity="0.7"/>
-        </svg>
+        <img class="sb-mark" src="fg-logo-dark.png" alt="FlowGuard" style="width:100%;height:100%;object-fit:contain">
       </div>
       <div class="sb-brand-text">
         <div class="sb-name">FlowGuard</div>
