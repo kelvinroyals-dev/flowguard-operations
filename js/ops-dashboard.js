@@ -39,7 +39,7 @@ const OpsDashboard = (function () {
     container.innerHTML = `
       <style>
         /* ══ COMMAND dashboard composition ══ */
-        .cmd-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(168px,1fr)); gap:12px; margin-bottom:14px; }
+        .cmd-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(146px,1fr)); gap:12px; margin-bottom:14px; }
         .ck { background:var(--surface); border:1px solid var(--border); border-radius:var(--rs); padding:12px 14px; position:relative; overflow:hidden; box-shadow:var(--sh-xs); transition:border-color .15s, box-shadow .15s; }
         .ck:hover { border-color:var(--border-2); box-shadow:var(--sh-sm); }
         .ck-label { font-size:.57rem; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:var(--ink-3); display:flex; align-items:center; gap:6px; }
@@ -48,7 +48,7 @@ const OpsDashboard = (function () {
         .ck-sub { font-size:.65rem; color:var(--ink-3); margin-top:3px; }
         .ck-sub.ok { color:var(--ok); } .ck-sub.err { color:var(--err); } .ck-sub.warn { color:var(--warn); }
 
-        .cmd-main { display:grid; grid-template-columns:minmax(0,1fr) 312px; gap:12px; margin-bottom:14px; }
+        .cmd-main { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:12px; margin-bottom:14px; }
         .map-panel { position:relative; border-radius:var(--r); overflow:hidden; border:1px solid var(--border); min-height:430px; height:52vh; box-shadow:var(--sh-xs); }
         #fg-map { position:absolute; inset:0; z-index:1; }
         .map-legend { position:absolute; left:12px; top:12px; right:56px; z-index:500; display:flex; gap:6px; flex-wrap:wrap; }
@@ -111,7 +111,7 @@ const OpsDashboard = (function () {
         .tl-note { margin:0 14px 12px; padding:9px 12px; border-radius:9px; background:var(--surface-3); font-size:.72rem; color:var(--ink-2); line-height:1.5; }
 
         @media (max-width: 1500px) { .cmd-bottom { grid-template-columns:1fr 1fr; } }
-        @media (max-width: 1280px) { .cmd-main { grid-template-columns:1fr; } }
+        @media (max-width: 1100px) { .cmd-main { grid-template-columns:1fr; } }
         @media (max-width: 1100px) { .cmd-mid, .cmd-bottom { grid-template-columns:1fr; }  .map-panel{height:400px;} }
 
         /* popup styles (unchanged) */
@@ -183,6 +183,11 @@ const OpsDashboard = (function () {
     initRadar();
     loadTimeline();
     loadAllData();
+    // keep the map honest about its container for the panel's lifetime
+    const mp = container.querySelector('.map-panel');
+    if (mp && window.ResizeObserver) {
+      new ResizeObserver(() => { try { map && map.invalidateSize(); radarMap && radarMap.invalidateSize(); } catch (_) {} }).observe(mp);
+    }
   }
 
   function initMap() {
@@ -268,6 +273,8 @@ const OpsDashboard = (function () {
       plotAlerts(md.alerts || []);
       plotFloodRisk(md.flood_risk || []);
       renderMapStats(md, kpis);
+      // container can settle after init — recalc so tiles fill the panel
+      if (map) { setTimeout(() => { try { map.invalidateSize(); } catch (_) {} }, 60); }
       renderKpiStrip(kpis, md, teams);
       renderQueue(md.alerts || []);
       renderTeamsPanel(teams);
