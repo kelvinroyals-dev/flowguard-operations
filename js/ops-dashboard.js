@@ -5,6 +5,19 @@
 const OpsDashboard = (function () {
   let map = null;
   let layers = {};
+  let baseTiles = null;
+  let radarMap = null;
+  let radarBase = null;
+
+  function tileUrl() {
+    const t = (window.OpsTheme && OpsTheme.get() === 'light') ? 'light_all' : 'dark_all';
+    return `https://{s}.basemaps.cartocdn.com/${t}/{z}/{x}/{y}{r}.png`;
+  }
+  // instant tile swap on theme change — no re-render needed
+  window.addEventListener('ops-theme-change', () => {
+    if (baseTiles) baseTiles.setUrl(tileUrl());
+    if (radarBase) radarBase.setUrl(tileUrl());
+  });
 
   function loadLeaflet() {
     return new Promise((resolve) => {
@@ -22,378 +35,149 @@ const OpsDashboard = (function () {
 
   async function render(container) {
     if (map) { try { map.remove(); } catch (_) {} map = null; layers = {}; }
+    if (radarMap) { try { radarMap.remove(); } catch (_) {} radarMap = null; }
     container.innerHTML = `
       <style>
-        .dash-wrap {
-          display: grid;
-          grid-template-columns: 1fr 288px;
-          gap: 18px;
-          height: calc(100vh - var(--th) - 56px);
-          min-height: 500px;
-        }
+        /* ══ COMMAND dashboard composition ══ */
+        .cmd-kpis { display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:14px; }
+        .ck { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:13px 15px; position:relative; overflow:hidden; transition:border-color .15s; }
+        .ck:hover { border-color:var(--border-2); }
+        .ck-label { font-size:.6rem; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:var(--ink-3); display:flex; align-items:center; gap:6px; }
+        .ck-label svg { width:13px; height:13px; color:var(--blue-hi); flex-shrink:0; }
+        .ck-val { font-family:var(--ff-m); font-size:1.5rem; font-weight:600; color:var(--ink); margin-top:6px; line-height:1.1; }
+        .ck-sub { font-size:.68rem; color:var(--ink-3); margin-top:3px; }
+        .ck-sub.ok { color:var(--ok); } .ck-sub.err { color:var(--err); } .ck-sub.warn { color:var(--warn); }
 
-        /* ── Map ── */
-        .map-panel {
-          position: relative;
-          border-radius: var(--rl, 16px);
-          overflow: hidden;
-          border: 1px solid var(--border, #dae6ef);
-          box-shadow: var(--sh-sm, 0 2px 8px rgba(10,31,46,.07));
-          background: #f8fafc;
-        }
+        .cmd-main { display:grid; grid-template-columns:minmax(0,1fr) 348px; gap:14px; margin-bottom:14px; }
+        .map-panel { position:relative; border-radius:var(--r); overflow:hidden; border:1px solid var(--border); min-height:480px; height:56vh; }
+        #fg-map { position:absolute; inset:0; z-index:1; }
+        .map-legend { position:absolute; left:12px; bottom:12px; z-index:500; display:flex; gap:8px; flex-wrap:wrap; }
+        .map-stats-row { position:absolute; top:12px; left:12px; z-index:500; display:flex; gap:8px; flex-wrap:wrap; }
 
-        #fg-map {
-          width: 100%; height: 100%;
-        }
+        .cmd-side { display:flex; flex-direction:column; gap:14px; min-width:0; }
+        .cmd-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; }
+        .cmd-panel-h { padding:11px 14px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+        .cmd-panel-h b { font-size:.68rem; font-weight:700; letter-spacing:1.3px; text-transform:uppercase; color:var(--ink-2); }
+        .cmd-panel-h a { font-size:.7rem; color:var(--blue-hi); cursor:pointer; text-decoration:none; font-weight:600; }
 
-        /* Override Leaflet controls for light theme */
-        .map-panel .leaflet-control-zoom {
-          border: none !important;
-          box-shadow: var(--sh-md, 0 4px 20px rgba(10,31,46,.09)) !important;
-        }
+        /* priority queue */
+        .pq-item { display:flex; gap:10px; padding:11px 14px; border-bottom:1px solid var(--border); align-items:flex-start; }
+        .pq-item:last-child { border-bottom:none; }
+        .pq-rank { width:20px; height:20px; border-radius:6px; flex-shrink:0; display:grid; place-items:center; font-family:var(--ff-m); font-size:.68rem; font-weight:700; color:#fff; margin-top:1px; }
+        .pq-body { flex:1; min-width:0; }
+        .pq-title { font-size:.8rem; font-weight:600; color:var(--ink); line-height:1.3; }
+        .pq-sub { font-size:.68rem; color:var(--ink-3); margin-top:2px; }
+        .pq-right { text-align:right; flex-shrink:0; }
+        .pq-age { font-family:var(--ff-m); font-size:.66rem; color:var(--ink-3); white-space:nowrap; }
+        .pq-chip { display:inline-block; padding:2px 7px; border-radius:5px; font-size:.58rem; font-weight:800; letter-spacing:.8px; text-transform:uppercase; }
+        .pq-btn { margin-top:6px; padding:4px 10px; border-radius:7px; border:1px solid var(--blue-dim); background:transparent; color:var(--blue-hi); font-size:.66rem; font-weight:700; cursor:pointer; font-family:var(--ff-b); }
+        .pq-btn:hover { background:var(--neon-glow); }
+        .pq-empty { padding:22px 14px; font-size:.76rem; color:var(--ink-3); text-align:center; }
 
-        .map-panel .leaflet-control-zoom a {
-          width: 32px !important; height: 32px !important;
-          line-height: 32px !important;
-          background: var(--surface) !important;
-          color: var(--ink, #0a1f2e) !important;
-          border: 1px solid var(--border, #dae6ef) !important;
-          font-size: 16px !important;
-          font-weight: 300 !important;
-          transition: all .18s !important;
-        }
+        /* field teams */
+        .ft-row { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--border); }
+        .ft-row:last-child { border-bottom:none; }
+        .ft-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+        .ft-name { font-size:.78rem; font-weight:600; color:var(--ink); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .ft-meta { font-size:.66rem; color:var(--ink-3); font-family:var(--ff-m); white-space:nowrap; }
 
-        .map-panel .leaflet-control-zoom a:first-child {
-          border-radius: 8px 8px 0 0 !important;
-        }
+        .cmd-mid { display:grid; grid-template-columns:1.15fr 1fr; gap:14px; margin-bottom:14px; }
+        /* infrastructure health minis */
+        .ih-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; padding:12px 14px; }
+        .ih-cell { border:1px solid var(--border); border-radius:10px; padding:10px 12px; }
+        .ih-k { font-size:.62rem; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--ink-3); }
+        .ih-v { font-family:var(--ff-m); font-size:1.15rem; font-weight:600; color:var(--ink); margin:4px 0 6px; }
+        .ih-bar { height:5px; border-radius:3px; background:var(--surface-3); overflow:hidden; }
+        .ih-bar i { display:block; height:100%; border-radius:3px; }
 
-        .map-panel .leaflet-control-zoom a:last-child {
-          border-radius: 0 0 8px 8px !important;
-        }
+        .cmd-bottom { display:grid; grid-template-columns:1.1fr 1.2fr .9fr; gap:14px; }
+        .radar-body { position:relative; height:230px; }
+        #radar-map { position:absolute; inset:0; }
+        .radar-cap { position:absolute; left:10px; bottom:10px; z-index:500; font-family:var(--ff-m); font-size:.62rem; color:var(--ink-2); background:var(--overlay); border:1px solid var(--border); border-radius:6px; padding:3px 8px; }
 
-        .map-panel .leaflet-control-zoom a:hover {
-          background: var(--navy, #0a2a3d) !important;
-          color: white !important;
-          border-color: var(--navy, #0a2a3d) !important;
-        }
+        .wo-row { display:flex; align-items:center; gap:10px; padding:9px 14px; border-bottom:1px solid var(--border); }
+        .wo-row:last-child { border-bottom:none; }
+        .wo-id { font-family:var(--ff-m); font-size:.66rem; color:var(--ink-3); flex-shrink:0; }
+        .wo-title { flex:1; min-width:0; font-size:.76rem; font-weight:500; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .wo-right { display:flex; gap:6px; align-items:center; flex-shrink:0; }
 
-        .map-panel .leaflet-control-attribution {
-          background: var(--overlay) !important;
-          color: var(--ink-3, #6b8fa3) !important;
-          font-size: 9px !important;
-          border-radius: 6px 0 0 0 !important;
-          backdrop-filter: blur(4px) !important;
-        }
+        .up-body { display:flex; gap:16px; align-items:center; padding:14px; }
+        .up-rows { flex:1; min-width:0; }
+        .up-row { display:flex; justify-content:space-between; font-size:.72rem; color:var(--ink-2); padding:5px 0; border-bottom:1px solid var(--border); }
+        .up-row:last-child { border-bottom:none; }
+        .up-row b { color:var(--ink); font-family:var(--ff-m); font-weight:600; }
 
-        .map-panel .leaflet-control-attribution a {
-          color: var(--ink-3, #6b8fa3) !important;
-        }
+        .tl-body { padding:12px 14px 8px; }
+        .tl-note { margin:0 14px 12px; padding:9px 12px; border-radius:9px; background:var(--surface-3); font-size:.72rem; color:var(--ink-2); line-height:1.5; }
 
-        .map-panel .leaflet-popup-content-wrapper {
-          background: var(--surface) !important;
-          color: var(--ink, #0a1f2e) !important;
-          border: 1px solid var(--border, #dae6ef) !important;
-          border-radius: 12px !important;
-          box-shadow: var(--sh-lg, 0 20px 60px rgba(10,31,46,.12)) !important;
-          padding: 0 !important;
-        }
+        @media (max-width: 1250px) { .cmd-kpis { grid-template-columns:repeat(3,1fr); } .cmd-bottom { grid-template-columns:1fr 1fr; } }
+        @media (max-width: 1050px) { .cmd-main { grid-template-columns:1fr; } .cmd-mid, .cmd-bottom { grid-template-columns:1fr; } .map-panel{height:420px;} }
 
-        .map-panel .leaflet-popup-content {
-          margin: 14px 16px !important;
-          font-family: var(--ff-b, 'Figtree', sans-serif) !important;
-          font-size: 12px !important;
-          line-height: 1.5 !important;
-          color: var(--ink-2, #2d5068) !important;
-        }
+        /* popup styles (unchanged) */
+        .fg-popup-title { font-family:var(--ff-d); font-size:.88rem; font-weight:700; color:var(--ink); margin-bottom:4px; }
+        .fg-popup-badge { display:inline-block; padding:2px 8px; border-radius:12px; font-size:.65rem; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin-bottom:8px; }
+        .fg-popup-row { font-size:.75rem; color:var(--ink-2); line-height:1.7; margin-bottom:1px; }
+        .fg-popup-row span { color:var(--ink-3); }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip { background:var(--surface); color:var(--ink); }
 
-        .map-panel .leaflet-popup-tip {
-          background: var(--surface) !important;
-        }
-
-        .map-panel .leaflet-popup-close-button {
-          color: var(--ink-3, #6b8fa3) !important;
-          font-size: 18px !important;
-          top: 8px !important; right: 10px !important;
-        }
-
-        /* ── Map overlay elements ── */
-        .map-legend {
-          position: absolute;
-          bottom: 20px; left: 14px;
-          z-index: 1000;
-          background: var(--overlay);
-          backdrop-filter: blur(8px);
-          border: 1px solid var(--border, #dae6ef);
-          border-radius: 12px;
-          padding: 12px 14px;
-          box-shadow: var(--sh-md, 0 4px 20px rgba(10,31,46,.09));
-          min-width: 170px;
-        }
-
-        .legend-title {
-          font-size: .6rem; font-weight: 700;
-          letter-spacing: 2px; text-transform: uppercase;
-          color: var(--ink-3, #6b8fa3); margin-bottom: 9px;
-        }
-
-        .legend-item {
-          display: flex; align-items: center; gap: 8px;
-          padding: 3px 0; cursor: pointer;
-          transition: opacity .18s;
-        }
-
-        .legend-item.off { opacity: .3; }
-
-        .legend-dot {
-          width: 9px; height: 9px; border-radius: 50%;
-          flex-shrink: 0;
-          border: 1.5px solid rgba(0,0,0,.08);
-        }
-
-        .legend-label {
-          font-size: .75rem; color: var(--ink-2, #2d5068);
-          font-family: var(--ff-b, 'Figtree', sans-serif);
-        }
-
-        .map-stats-row {
-          position: absolute;
-          top: 14px; right: 14px;
-          z-index: 1000;
-          display: flex; gap: 6px;
-        }
-
-        .map-stat-chip {
-          background: var(--overlay);
-          backdrop-filter: blur(8px);
-          border: 1px solid var(--border, #dae6ef);
-          border-radius: 8px;
-          padding: 7px 12px;
-          text-align: center;
-          box-shadow: var(--sh-sm, 0 2px 8px rgba(10,31,46,.07));
-        }
-
-        .map-stat-chip .val {
-          font-family: var(--ff-d, 'Playfair Display', serif);
-          font-size: 1.1rem; font-weight: 800;
-          color: var(--ink, #0a1f2e); line-height: 1;
-          display: block;
-        }
-
-        .map-stat-chip .val.red   { color: var(--err, #dc2626); }
-        .map-stat-chip .val.blue  { color: var(--blue, #16a8d3); }
-        .map-stat-chip .val.purple{ color: #7c3aed; }
-
-        .map-stat-chip .lbl {
-          font-size: .57rem; font-weight: 700;
-          letter-spacing: 1.2px; text-transform: uppercase;
-          color: var(--ink-3, #6b8fa3); margin-top: 2px;
-          display: block;
-        }
-
-        /* ── Side panel ── */
-        .side-panel {
-          display: flex; flex-direction: column;
-          gap: 12px; overflow-y: auto;
-        }
-
-        .side-panel::-webkit-scrollbar { width: 3px; }
-        .side-panel::-webkit-scrollbar-thumb { background: var(--border, #dae6ef); border-radius: 2px; }
-
-        /* KPI cards */
-        .kpi-card {
-          background: var(--surface, #fff);
-          border: 1px solid var(--border, #dae6ef);
-          border-radius: var(--r, 10px);
-          padding: 16px 18px;
-          position: relative; overflow: hidden;
-          box-shadow: var(--sh-xs, 0 1px 2px rgba(10,31,46,.06));
-          transition: all .2s;
-        }
-
-        .kpi-card:hover {
-          transform: translateY(-2px);
-          box-shadow: var(--sh-md, 0 4px 20px rgba(10,31,46,.09));
-        }
-
-        /* Accent bottom bar */
-        .kpi-card::after {
-          content: '';
-          position: absolute; bottom: 0; left: 0; right: 0;
-          height: 2.5px;
-        }
-
-        .kpi-card.kpi-blue::after   { background: linear-gradient(90deg, var(--navy, #0a2a3d), var(--blue, #16a8d3)); }
-        .kpi-card.kpi-red::after    { background: var(--err, #dc2626); }
-        .kpi-card.kpi-green::after  { background: var(--ok, #0a8a6a); }
-        .kpi-card.kpi-amber::after  { background: var(--amber, #f5a623); }
-        .kpi-card.kpi-purple::after { background: #7c3aed; }
-
-        .kpi-top {
-          display: flex; align-items: flex-start;
-          justify-content: space-between; margin-bottom: 8px;
-        }
-
-        .kpi-label {
-          font-size: .62rem; font-weight: 700;
-          letter-spacing: 1.5px; text-transform: uppercase;
-          color: var(--ink-3, #6b8fa3); margin-bottom: 5px;
-        }
-
-        .kpi-val {
-          font-family: var(--ff-d, 'Playfair Display', serif);
-          font-size: 1.8rem; font-weight: 900;
-          color: var(--ink, #0a1f2e);
-          letter-spacing: -.03em; line-height: 1;
-        }
-
-        .kpi-val.red    { color: var(--err, #dc2626); }
-        .kpi-val.green  { color: var(--ok, #0a8a6a); }
-        .kpi-val.blue   { color: var(--blue, #16a8d3); }
-        .kpi-val.amber  { color: var(--amber, #f5a623); }
-        .kpi-val.purple { color: #7c3aed; }
-
-        .kpi-sub {
-          font-size: .72rem; color: var(--ink-3, #6b8fa3);
-          margin-top: 3px;
-        }
-
-        .kpi-sub.red    { color: var(--err, #dc2626); font-weight: 600; }
-        .kpi-sub.green  { color: var(--ok, #0a8a6a); }
-
-        .kpi-icon {
-          width: 34px; height: 34px;
-          border-radius: 9px;
-          display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0;
-        }
-
-        /* Pipeline card */
-        .pipeline-card {
-          background: var(--surface, #fff);
-          border: 1px solid var(--border, #dae6ef);
-          border-radius: var(--r, 10px);
-          overflow: hidden;
-          box-shadow: var(--sh-xs, 0 1px 2px rgba(10,31,46,.06));
-        }
-
-        .pipeline-head {
-          padding: 12px 16px;
-          border-bottom: 1px solid var(--border, #dae6ef);
-          font-size: .62rem; font-weight: 700;
-          letter-spacing: 1.5px; text-transform: uppercase;
-          color: var(--ink-3, #6b8fa3);
-        }
-
-        .pipeline-row {
-          display: flex; align-items: center; gap: 10px;
-          padding: 9px 16px;
-          border-bottom: 1px solid var(--border, #dae6ef);
-          transition: background .12s;
-        }
-
-        .pipeline-row:last-child { border-bottom: none; }
-        .pipeline-row:hover { background: var(--surface-3, #eef4f8); }
-
-        .pipeline-dot {
-          width: 8px; height: 8px;
-          border-radius: 50%; flex-shrink: 0;
-        }
-
-        .pipeline-name {
-          flex: 1; font-size: .8rem;
-          color: var(--ink-2, #2d5068);
-        }
-
-        .pipeline-count {
-          font-family: var(--ff-d, 'Playfair Display', serif);
-          font-size: .95rem; font-weight: 800;
-          color: var(--ink, #0a1f2e);
-          min-width: 20px; text-align: right;
-        }
-
-        /* Quick actions */
-        .quick-actions {
-          background: var(--surface, #fff);
-          border: 1px solid var(--border, #dae6ef);
-          border-radius: var(--r, 10px);
-          overflow: hidden;
-          box-shadow: var(--sh-xs, 0 1px 2px rgba(10,31,46,.06));
-        }
-
-        .qa-head {
-          padding: 12px 16px;
-          border-bottom: 1px solid var(--border, #dae6ef);
-          font-size: .62rem; font-weight: 700;
-          letter-spacing: 1.5px; text-transform: uppercase;
-          color: var(--ink-3, #6b8fa3);
-        }
-
-        .qa-btn {
-          width: 100%; padding: 10px 16px;
-          background: transparent; border: none;
-          border-bottom: 1px solid var(--border, #dae6ef);
-          display: flex; align-items: center; gap: 10px;
-          cursor: pointer; text-align: left;
-          color: var(--ink-2, #2d5068);
-          font-family: var(--ff-b, 'Figtree', sans-serif);
-          font-size: .81rem; font-weight: 500;
-          transition: all .15s;
-        }
-
-        .qa-btn:last-child { border-bottom: none; }
-
-        .qa-btn:hover {
-          background: var(--surface-3, #eef4f8);
-          color: var(--ink, #0a1f2e);
-          padding-left: 20px;
-        }
-
-        .qa-btn svg { flex-shrink: 0; color: var(--ink-3, #6b8fa3); }
-        .qa-btn:hover svg { color: var(--blue, #16a8d3); }
-
-        /* Popup styles */
-        .fg-popup-title {
-          font-family: var(--ff-d, 'Playfair Display', serif);
-          font-size: .88rem; font-weight: 700;
-          color: var(--ink, #0a1f2e); margin-bottom: 4px;
-        }
-
-        .fg-popup-badge {
-          display: inline-block;
-          padding: 2px 8px; border-radius: 12px;
-          font-size: .65rem; font-weight: 700;
-          letter-spacing: .5px; text-transform: uppercase;
-          margin-bottom: 8px;
-        }
-
-        .fg-popup-row {
-          font-size: .75rem; color: var(--ink-2, #2d5068);
-          line-height: 1.7; margin-bottom: 1px;
-        }
-
-        .fg-popup-row span { color: var(--ink-3, #6b8fa3); }
-
-        @media (max-width: 1100px) {
-          .dash-wrap { grid-template-columns: 1fr; grid-template-rows: 420px auto; }
-          .side-panel { flex-direction: row; flex-wrap: wrap; overflow-y: visible; }
-          .kpi-card { flex: 1; min-width: 140px; }
-          .pipeline-card, .quick-actions { width: 100%; }
-        }
+        /* legend + stat chips over the map */
+        .lgd-chip, .mst-chip { background:var(--overlay); border:1px solid var(--border); border-radius:8px; padding:4px 10px; font-size:.66rem; color:var(--ink-2); display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none; }
+        .lgd-chip .dot { width:8px; height:8px; border-radius:50%; }
+        .lgd-chip.off { opacity:.45; }
+        .mst-chip b { font-family:var(--ff-m); color:var(--ink); }
       </style>
 
-      <div class="dash-wrap">
+      <div class="cmd-kpis" id="dash-kpis"></div>
+
+      <div class="cmd-main">
         <div class="map-panel">
           <div id="fg-map"></div>
           <div class="map-legend" id="map-legend"></div>
           <div class="map-stats-row" id="map-stats"></div>
         </div>
-        <div class="side-panel" id="dash-side"></div>
+        <div class="cmd-side">
+          <div class="cmd-panel">
+            <div class="cmd-panel-h"><b>Priority queue</b><a onclick="switchTab('alerts')">All incidents →</a></div>
+            <div id="dash-queue"><div class="pq-empty">Loading…</div></div>
+          </div>
+          <div class="cmd-panel">
+            <div class="cmd-panel-h"><b>Field teams</b><a onclick="switchTab('teams')">All teams →</a></div>
+            <div id="dash-teams"><div class="pq-empty">Loading…</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cmd-mid">
+        <div class="cmd-panel">
+          <div class="cmd-panel-h"><b>Infrastructure health</b><a onclick="switchTab('properties')">All assets →</a></div>
+          <div class="ih-grid" id="dash-health"></div>
+        </div>
+        <div class="cmd-panel">
+          <div class="cmd-panel-h"><b>Rainfall outlook — next 24h</b><span style="font-size:.62rem;color:var(--ink-3);font-family:var(--ff-m)">Open-Meteo · Lagos</span></div>
+          <div class="tl-body" id="dash-timeline"></div>
+        </div>
+      </div>
+
+      <div class="cmd-bottom">
+        <div class="cmd-panel">
+          <div class="cmd-panel-h"><b>Rainfall radar</b><span style="font-size:.62rem;color:var(--ink-3);font-family:var(--ff-m)" id="radar-ts"></span></div>
+          <div class="radar-body"><div id="radar-map"></div><div class="radar-cap">RainViewer · live composite</div></div>
+        </div>
+        <div class="cmd-panel">
+          <div class="cmd-panel-h"><b>Work order queue</b><a onclick="switchTab('alerts')">All →</a></div>
+          <div id="dash-workorders"><div class="pq-empty">Loading…</div></div>
+        </div>
+        <div class="cmd-panel">
+          <div class="cmd-panel-h"><b>System uptime</b></div>
+          <div class="up-body" id="dash-uptime"></div>
+        </div>
       </div>
     `;
 
-    renderSidePanel({});
     await loadLeaflet();
     initMap();
+    initRadar();
+    loadTimeline();
     loadAllData();
   }
 
@@ -405,8 +189,7 @@ const OpsDashboard = (function () {
       attributionControl: true,
     });
 
-    // ── Light tile layer (Positron) — matches the light shell ──
-    L.tileLayer(`https://{s}.basemaps.cartocdn.com/${(window.OpsTheme && OpsTheme.get() === 'light') ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`, {
+    baseTiles = L.tileLayer(tileUrl(), {
       attribution: '&copy; <a href="https://www.openstreetmap.org">OSM</a> &copy; <a href="https://carto.com">CARTO</a>',
       subdomains: 'abcd',
       maxZoom: 19,
@@ -468,13 +251,17 @@ const OpsDashboard = (function () {
     if (!Auth.isAuthenticated()) return;
 
     try {
-      const [mapRes, kpiRes] = await Promise.all([
+      const [mapRes, kpiRes, teamRes, tickRes] = await Promise.all([
         OpsModal.apiGet('/analytics/map-data'),
         OpsModal.apiGet('/analytics/kpis'),
+        OpsModal.apiGet('/teams').catch(() => ({ data: [] })),
+        OpsModal.apiGet('/tickets?limit=8').catch(() => ({ data: [] })),
       ]);
 
-      const md   = mapRes.data || {};
-      const kpis = kpiRes.data || {};
+      const md    = mapRes.data || {};
+      const kpis  = kpiRes.data || {};
+      const teams = teamRes.data || [];
+      const ticks = tickRes.data || [];
 
       plotAreas(md.areas || []);
       plotSites(md.sites || []);
@@ -482,7 +269,12 @@ const OpsDashboard = (function () {
       plotAlerts(md.alerts || []);
       plotFloodRisk(md.flood_risk || []);
       renderMapStats(md, kpis);
-      renderSidePanel(kpis, md);
+      renderKpiStrip(kpis, md, teams);
+      renderQueue(md.alerts || []);
+      renderTeamsPanel(teams);
+      renderHealth(md.sensors || [], kpis);
+      renderWorkOrders(ticks);
+      renderUptime(kpis);
       fitBounds(md);
 
       // Update global alert count in shell
@@ -755,135 +547,205 @@ const OpsDashboard = (function () {
   }
 
   // ── Side panel ──
-  function renderSidePanel(kpis, md) {
-    const areas = md?.areas || [];
-    const pipeline = {
-      submitted:   areas.filter(a => a.status === 'submitted').length,
-      inspection:  areas.filter(a => ['inspection_scheduled','inspection_ongoing'].includes(a.status)).length,
-      report:      areas.filter(a => a.status === 'report_ready').length,
-      billing:     areas.filter(a => ['quote_sent','payment_pending','payment_completed','deployment_scheduled'].includes(a.status)).length,
-      active:      areas.filter(a => a.status === 'active').length,
-    };
+  // ── relative age ──
+  function rel(ts) {
+    try {
+      const m = Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
+      if (m < 1) return 'now';
+      if (m < 60) return m + 'm';
+      if (m < 1440) return Math.floor(m / 60) + 'h';
+      return Math.floor(m / 1440) + 'd';
+    } catch (_) { return ''; }
+  }
 
-    const critAlerts    = parseInt(kpis.criticalAlerts) || 0;
-    const activeAlerts  = kpis.activeAlerts || 0;
-    const sensorsOnline = kpis.sensorsOnline?.online || 0;
-    const sensorsTotal  = kpis.sensorsOnline?.total  || 0;
-    const uptime        = kpis.networkUptime || 0;
-    const mrr           = kpis.mrr || 0;
-    const pendingInsp   = parseInt(kpis.pendingInspections) || 0;
+  // ── KPI strip (6) ──
+  function renderKpiStrip(kpis, md, teams) {
+    const el = document.getElementById('dash-kpis');
+    if (!el) return;
+    const areas = md.areas || [];
+    const active = areas.filter(a => a.status === 'active').length;
+    const so = kpis.sensorsOnline || {};
+    const pct = so.total ? Math.round((so.online / so.total) * 100) : null;
+    const crit = parseInt(kpis.criticalAlerts) || 0;
+    const deployed = teams.filter(t => ['on_site', 'en_route'].includes((t.status || '').toLowerCase())).length;
+    const ic = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+    const card = (icon, label, val, sub, subCls) => `
+      <div class="ck">
+        <div class="ck-label">${icon}${label}</div>
+        <div class="ck-val">${val}</div>
+        <div class="ck-sub ${subCls || ''}">${sub}</div>
+      </div>`;
+    el.innerHTML =
+      card(ic('<path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/>'), 'Assets monitored', areas.length, `${active} live`, active ? 'ok' : '') +
+      card(ic('<circle cx="12" cy="12" r="3"/><path d="M12 5V3M12 21v-2M5 12H3M21 12h-2M6.4 6.4L5 5M19 19l-1.4-1.4M6.4 17.6L5 19M19 5l-1.4 1.4"/>'), 'Sensors online', so.total ? `${so.online}/${so.total}` : '—', pct != null ? `${pct}% reporting` : 'No nodes yet', pct != null ? (pct >= 90 ? 'ok' : pct >= 75 ? 'warn' : 'err') : '') +
+      card(ic('<path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/>'), 'Open incidents', kpis.activeAlerts || 0, crit ? `${crit} critical` : 'None critical', crit ? 'err' : 'ok') +
+      card(ic('<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>'), 'Teams deployed', deployed, `${teams.length} total`, deployed ? 'ok' : '') +
+      card(ic('<path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>'), 'Monthly revenue', formatMoney(kpis.mrr || 0), 'Recurring', '') +
+      card(ic('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>'), 'Pending inspections', parseInt(kpis.pendingInspections) || 0, 'Awaiting scheduling', parseInt(kpis.pendingInspections) ? 'warn' : 'ok');
+  }
 
-    document.getElementById('dash-side').innerHTML = `
+  // ── Priority queue: incidents ranked by severity, then age ──
+  function renderQueue(alerts) {
+    const el = document.getElementById('dash-queue');
+    if (!el) return;
+    const rank = { critical: 0, high: 1, warning: 2, medium: 2, low: 3 };
+    const open = alerts
+      .filter(a => (a.status || 'active') !== 'resolved')
+      .sort((x, y) => (rank[x.severity] ?? 4) - (rank[y.severity] ?? 4) || new Date(y.created_at) - new Date(x.created_at))
+      .slice(0, 5);
+    if (!open.length) { el.innerHTML = '<div class="pq-empty">No open incidents — network is clear.</div>'; return; }
+    const sevColor = sv => sv === 'critical' ? 'var(--err)' : sv === 'high' ? 'var(--caut)' : 'var(--warn)';
+    el.innerHTML = open.map((a, i) => `
+      <div class="pq-item">
+        <div class="pq-rank" style="background:${sevColor(a.severity)}">${i + 1}</div>
+        <div class="pq-body">
+          <div class="pq-title">${a.alert_type || 'Alert'}${a.site_name ? ' — ' + a.site_name : ''}</div>
+          <div class="pq-sub">${a.description || a.sensor_name || ''}</div>
+          ${a.time_to_overflow_min ? `<div class="pq-sub" style="color:var(--err);font-weight:700">Overflow in ~${a.time_to_overflow_min} min</div>` : ''}
+          <button class="pq-btn" onclick="switchTab('alerts')">Dispatch →</button>
+        </div>
+        <div class="pq-right">
+          <span class="pq-chip" style="background:${sevColor(a.severity)}20;color:${sevColor(a.severity)}">${a.severity}</span>
+          <div class="pq-age" style="margin-top:5px">${rel(a.created_at)}</div>
+        </div>
+      </div>`).join('');
+  }
 
-      <!-- Active Alerts -->
-      <div class="kpi-card ${critAlerts > 0 ? 'kpi-red' : 'kpi-blue'}">
-        <div class="kpi-top">
-          <div>
-            <div class="kpi-label">Active Alerts</div>
-            <div class="kpi-val ${critAlerts > 0 ? 'red' : ''}">${activeAlerts}</div>
-            ${critAlerts > 0
-              ? `<div class="kpi-sub red">${critAlerts} critical</div>`
-              : `<div class="kpi-sub green">All clear</div>`}
-          </div>
-          <div class="kpi-icon" style="background:${critAlerts > 0 ? 'var(--eb)' : 'rgba(22,168,211,.08)'};">
-            <svg width="17" height="17" fill="none" stroke="${critAlerts > 0 ? 'var(--err)' : 'var(--blue)'}" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
-          </div>
-        </div>
-      </div>
+  // ── Field teams ──
+  function renderTeamsPanel(teams) {
+    const el = document.getElementById('dash-teams');
+    if (!el) return;
+    if (!teams.length) { el.innerHTML = '<div class="pq-empty">No field teams registered yet.</div>'; return; }
+    const stMap = { on_site: ['var(--ok)', 'On site'], en_route: ['var(--warn)', 'En route'], idle: ['var(--off)', 'Standby'] };
+    el.innerHTML = teams.slice(0, 5).map(t => {
+      const [c, lbl] = stMap[(t.status || '').toLowerCase()] || ['var(--off)', 'Standby'];
+      const members = t.member_count ?? (Array.isArray(t.members) ? t.members.length : null);
+      return `
+      <div class="ft-row">
+        <span class="ft-dot" style="background:${c};box-shadow:0 0 6px ${c}"></span>
+        <span class="ft-name">${t.team_name || t.name || 'Team'}</span>
+        <span class="ft-meta">${t.current_zone || t.zone || ''}${members != null ? ` · ${members} crew` : ''}</span>
+        <span class="pq-chip" style="background:${c}20;color:${c}">${lbl}</span>
+      </div>`;
+    }).join('');
+  }
 
-      <!-- Network Health -->
-      <div class="kpi-card kpi-green">
-        <div class="kpi-top">
-          <div>
-            <div class="kpi-label">Network Health</div>
-            <div class="kpi-val">${uptime || '—'}${uptime ? '%' : ''}</div>
-            <div class="kpi-sub">${sensorsOnline}/${sensorsTotal} sensors online</div>
-          </div>
-          <div class="kpi-icon" style="background:var(--ok-bg);">
-            <svg width="17" height="17" fill="none" stroke="var(--ok)" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-          </div>
-        </div>
-      </div>
+  // ── Infrastructure health: sensor network by state + battery/signal where present ──
+  function renderHealth(sensors, kpis) {
+    const el = document.getElementById('dash-health');
+    if (!el) return;
+    const total = sensors.length;
+    const by = st => sensors.filter(x => x.status === st).length;
+    const online = by('active'), maint = by('maintenance');
+    const offline = total - online - maint;
+    const lowBatt = sensors.filter(x => x.battery_percent != null && x.battery_percent < 20).length;
+    const battKnown = sensors.some(x => x.battery_percent != null);
+    const uptime = kpis.networkUptime || null;
+    const cell = (k, v, ratio, color) => `
+      <div class="ih-cell">
+        <div class="ih-k">${k}</div>
+        <div class="ih-v">${v}</div>
+        <div class="ih-bar"><i style="width:${Math.max(0, Math.min(100, ratio))}%;background:${color}"></i></div>
+      </div>`;
+    el.innerHTML =
+      cell('Nodes online', total ? `${online}/${total}` : '—', total ? online / total * 100 : 0, 'var(--ok)') +
+      cell('In maintenance', maint, total ? maint / total * 100 : 0, 'var(--warn)') +
+      cell('Offline', offline, total ? offline / total * 100 : 0, offline ? 'var(--err)' : 'var(--ok)') +
+      cell('Low battery', battKnown ? lowBatt : '—', battKnown && total ? lowBatt / total * 100 : 0, lowBatt ? 'var(--caut)' : 'var(--ok)') +
+      cell('Network uptime', uptime ? uptime + '%' : '—', uptime || 0, 'var(--blue-hi)') +
+      cell('Critical alerts', parseInt(kpis.criticalAlerts) || 0, Math.min(100, (parseInt(kpis.criticalAlerts) || 0) * 20), (parseInt(kpis.criticalAlerts) || 0) ? 'var(--err)' : 'var(--ok)');
+  }
 
-      <!-- Monthly Revenue -->
-      <div class="kpi-card kpi-blue">
-        <div class="kpi-top">
-          <div>
-            <div class="kpi-label">Monthly Revenue</div>
-            <div class="kpi-val blue">₦${formatMoney(mrr)}</div>
-            <div class="kpi-sub">${kpis.activeSites || 0} active sites</div>
-          </div>
-          <div class="kpi-icon" style="background:rgba(22,168,211,.08);">
-            <svg width="17" height="17" fill="none" stroke="var(--blue)" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1"/></svg>
-          </div>
-        </div>
-      </div>
+  // ── Rainfall outlook (24h, Open-Meteo) — bars + insight, no fabricated predictions ──
+  async function loadTimeline() {
+    const el = document.getElementById('dash-timeline');
+    if (!el) return;
+    try {
+      const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=6.45&longitude=3.47&hourly=precipitation,precipitation_probability&timezone=Africa%2FLagos&forecast_hours=24');
+      const j = await r.json();
+      const hrs = j.hourly.time.map((t, i) => ({ t: new Date(t), mm: j.hourly.precipitation[i] || 0, prob: j.hourly.precipitation_probability[i] || 0 }));
+      const w = 560, h = 170, padL = 32, padR = 8, padT = 12, padB = 24;
+      const maxMm = Math.max(2, Math.ceil(Math.max(...hrs.map(x => x.mm))));
+      const bw = (w - padL - padR) / hrs.length - 3;
+      const x = i => padL + i * ((w - padL - padR) / hrs.length);
+      const y = v => padT + (1 - v / maxMm) * (h - padT - padB);
+      const bars = hrs.map((p, i) => {
+        const c = p.mm >= 5 ? 'var(--err)' : p.mm >= 2 ? 'var(--warn)' : 'var(--blue-hi)';
+        return `<rect x="${x(i).toFixed(1)}" y="${y(p.mm).toFixed(1)}" width="${bw.toFixed(1)}" height="${(y(0) - y(p.mm)).toFixed(1)}" rx="2" fill="${c}" opacity=".9"><title>${p.t.getHours()}:00 — ${p.mm}mm (${p.prob}%)</title></rect>`;
+      }).join('');
+      const grid = [0, .5, 1].map(f => { const g = Math.round(maxMm * f * 10) / 10; return `<line x1="${padL}" y1="${y(g)}" x2="${w - padR}" y2="${y(g)}" stroke="var(--border)" stroke-width="1"/><text x="${padL - 5}" y="${y(g) + 3}" fill="var(--ink-3)" font-size="9.5" text-anchor="end">${g}</text>`; }).join('');
+      const xl = hrs.map((p, i) => p.t.getHours() % 6 === 0 ? `<text x="${x(i) + bw / 2}" y="${h - 8}" fill="var(--ink-3)" font-size="9.5" text-anchor="middle">${p.t.getHours()}:00</text>` : '').join('');
+      const tot = Math.round(hrs.reduce((sm, p) => sm + p.mm, 0) * 10) / 10;
+      const peak = hrs.reduce((a2, b2) => b2.mm > a2.mm ? b2 : a2, hrs[0]);
+      el.innerHTML = `
+        <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto">${grid}${bars}${xl}</svg>
+        <div class="tl-note" style="margin:10px 0 6px">${tot >= 15
+          ? `<b style="color:var(--err)">${tot}mm expected in 24h</b> — heaviest around ${peak.t.getHours()}:00 (${peak.mm}mm/h). High-silt assets should be cleared before then.`
+          : tot >= 4
+          ? `<b>${tot}mm expected in 24h</b> — peak around ${peak.t.getHours()}:00. Network capacity is adequate.`
+          : `Light rainfall (${tot}mm) over the next 24h — no intervention window needed.`}</div>`;
+    } catch (_) { el.innerHTML = '<div class="pq-empty">Weather service unreachable.</div>'; }
+  }
 
-      <!-- Inspection Pipeline -->
-      <div class="pipeline-card">
-        <div class="pipeline-head">Inspection Pipeline</div>
-        <div class="pipeline-row">
-          <div class="pipeline-dot" style="background:#f5a623;"></div>
-          <div class="pipeline-name">Awaiting Review</div>
-          <div class="pipeline-count">${pipeline.submitted}</div>
-        </div>
-        <div class="pipeline-row">
-          <div class="pipeline-dot" style="background:#f97316;"></div>
-          <div class="pipeline-name">In Inspection</div>
-          <div class="pipeline-count">${pipeline.inspection}</div>
-        </div>
-        <div class="pipeline-row">
-          <div class="pipeline-dot" style="background:#e0a800;"></div>
-          <div class="pipeline-name">Report Ready</div>
-          <div class="pipeline-count">${pipeline.report}</div>
-        </div>
-        <div class="pipeline-row">
-          <div class="pipeline-dot" style="background:#3b82f6;"></div>
-          <div class="pipeline-name">Quote / Payment</div>
-          <div class="pipeline-count">${pipeline.billing}</div>
-        </div>
-        <div class="pipeline-row">
-          <div class="pipeline-dot" style="background:#16a8d3;"></div>
-          <div class="pipeline-name">Active / Deployed</div>
-          <div class="pipeline-count">${pipeline.active}</div>
-        </div>
-      </div>
+  // ── Rainfall radar (RainViewer — real composite) ──
+  async function initRadar() {
+    const elMap = document.getElementById('radar-map');
+    if (!elMap || !window.L) return;
+    radarMap = L.map('radar-map', { center: [6.52, 3.38], zoom: 8, zoomControl: false, attributionControl: false, dragging: true, scrollWheelZoom: false });
+    radarBase = L.tileLayer(tileUrl(), { subdomains: 'abcd', maxZoom: 12 }).addTo(radarMap);
+    try {
+      const r = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+      const j = await r.json();
+      const frames = (j.radar && (j.radar.nowcast || []).concat(j.radar.past || [])) || [];
+      const frame = (j.radar && j.radar.past && j.radar.past[j.radar.past.length - 1]) || frames[0];
+      if (frame) {
+        L.tileLayer(`${j.host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, { opacity: .7, maxZoom: 12 }).addTo(radarMap);
+        const ts = document.getElementById('radar-ts');
+        if (ts) ts.textContent = new Date(frame.time * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' WAT';
+      }
+    } catch (_) { /* radar optional */ }
+  }
 
-      <!-- HFP Summary -->
-      <div class="kpi-card kpi-purple">
-        <div class="kpi-top">
-          <div>
-            <div class="kpi-label">Flood Probability Zones</div>
-            <div class="kpi-val purple">${HFP_ZONES.length}</div>
-            <div class="kpi-sub">${HFP_ZONES.filter(z=>z.risk==='critical').length} critical · ${HFP_ZONES.filter(z=>z.risk==='high').length} high · ${HFP_ZONES.filter(z=>z.risk==='moderate').length} moderate</div>
-          </div>
-          <div class="kpi-icon" style="background:#7c3aed14;">
-            <svg width="17" height="17" fill="none" stroke="#7c3aed" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/></svg>
-          </div>
-        </div>
-      </div>
+  // ── Work order queue (tickets) ──
+  function renderWorkOrders(ticks) {
+    const el = document.getElementById('dash-workorders');
+    if (!el) return;
+    const open = (ticks || []).filter(t => !['resolved', 'closed'].includes((t.status || '').toLowerCase())).slice(0, 6);
+    if (!open.length) { el.innerHTML = '<div class="pq-empty">No open work orders.</div>'; return; }
+    const pc = p => p === 'urgent' ? 'var(--err)' : p === 'high' ? 'var(--caut)' : p === 'normal' ? 'var(--warn)' : 'var(--off)';
+    el.innerHTML = open.map(t => `
+      <div class="wo-row">
+        <span class="wo-id">${t.ticket_id || ''}</span>
+        <span class="wo-title">${t.subject || t.title || 'Work order'}</span>
+        <span class="wo-right">
+          <span class="pq-chip" style="background:${pc(t.priority)}20;color:${pc(t.priority)}">${t.priority || '—'}</span>
+          <span class="pq-age">${rel(t.created_at)}</span>
+        </span>
+      </div>`).join('');
+  }
 
-      <!-- Quick Actions -->
-      <div class="quick-actions">
-        <div class="qa-head">Quick Actions</div>
-        <button class="qa-btn" onclick="switchTab('alerts')">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
-          View Live Alerts
-        </button>
-        <button class="qa-btn" onclick="switchTab('properties')">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4"/></svg>
-          Manage Areas
-        </button>
-        <button class="qa-btn" onclick="switchTab('teams')">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0112 0v2"/></svg>
-          Dispatch Team
-        </button>
-        <button class="qa-btn" onclick="switchTab('clients')">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-          View Clients
-        </button>
-      </div>
-    `;
+  // ── Uptime card ──
+  function renderUptime(kpis) {
+    const el = document.getElementById('dash-uptime');
+    if (!el) return;
+    const up = parseFloat(kpis.networkUptime) || 0;
+    const so = kpis.sensorsOnline || {};
+    const r = 42, c = 2 * Math.PI * r, off = c * (1 - up / 100);
+    const col = up >= 98 ? 'var(--ok)' : up >= 92 ? 'var(--warn)' : 'var(--err)';
+    el.innerHTML = `
+      <svg width="110" height="110" viewBox="0 0 110 110" style="flex-shrink:0">
+        <circle cx="55" cy="55" r="${r}" fill="none" stroke="var(--surface-3)" stroke-width="9"/>
+        <circle cx="55" cy="55" r="${r}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round"
+          stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 55 55)"/>
+        <text x="55" y="52" text-anchor="middle" fill="var(--ink)" font-size="19" font-weight="700" font-family="var(--ff-m)">${up || '—'}${up ? '%' : ''}</text>
+        <text x="55" y="68" text-anchor="middle" fill="var(--ink-3)" font-size="9">uptime</text>
+      </svg>
+      <div class="up-rows">
+        <div class="up-row"><span>Sensors online</span><b>${so.online ?? '—'}/${so.total ?? '—'}</b></div>
+        <div class="up-row"><span>API</span><b style="color:var(--ok)">Operational</b></div>
+        <div class="up-row"><span>Critical alerts</span><b style="color:${(parseInt(kpis.criticalAlerts) || 0) ? 'var(--err)' : 'var(--ok)'}">${parseInt(kpis.criticalAlerts) || 0}</b></div>
+        <div class="up-row"><span>Pending inspections</span><b>${parseInt(kpis.pendingInspections) || 0}</b></div>
+      </div>`;
   }
 
   function formatMoney(n) {

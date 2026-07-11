@@ -148,6 +148,19 @@
 
 
 
+
+    .tb-search { position:relative; display:flex; align-items:center; gap:7px; background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:6px 11px; width:250px; color:var(--ink-3); margin-left:18px; }
+    .tb-search input { flex:1; min-width:0; background:transparent; border:none; outline:none; color:var(--ink); font-family:var(--ff-b); font-size:.78rem; }
+    .tb-search input::placeholder { color:var(--ink-4); }
+    .tb-search:focus-within { border-color:var(--blue-dim); box-shadow:0 0 0 3px var(--neon-trace); }
+    .tb-search-drop { position:absolute; top:calc(100% + 6px); left:0; right:0; background:var(--surface); border:1px solid var(--border-2); border-radius:10px; box-shadow:var(--sh-md); z-index:900; display:none; overflow:hidden; max-height:320px; overflow-y:auto; }
+    .tbs-item { display:flex; align-items:center; gap:9px; padding:9px 12px; cursor:pointer; font-size:.78rem; color:var(--ink); border-bottom:1px solid var(--border); }
+    .tbs-item:last-child { border-bottom:none; }
+    .tbs-item:hover { background:var(--surface-h); }
+    .tbs-kind { font-size:.56rem; font-weight:800; letter-spacing:.8px; text-transform:uppercase; padding:2px 6px; border-radius:5px; background:var(--neon-trace); color:var(--blue-hi); flex-shrink:0; }
+    .tbs-sub { margin-left:auto; font-size:.66rem; color:var(--ink-3); }
+    .tb-storm { display:flex; align-items:center; gap:8px; margin-left:14px; padding:6px 12px; border-radius:9px; background:var(--eb); border:1px solid var(--err); color:var(--err); font-size:.72rem; font-weight:700; cursor:pointer; white-space:nowrap; }
+    .tb-storm b { font-weight:800; }
     .tb-weather { font-size: .72rem; color: var(--ink-3); font-family: var(--ff-m); white-space: nowrap; }
     .tb-weather b { color: var(--ink-2); font-weight: 600; }
     #theme-toggle { color: var(--ink-3); }
@@ -1107,7 +1120,14 @@
         <span class="tb-sep">/</span>
         <span class="tb-title" id="topbar-title">Operations Overview</span>
       </div>
+      <div class="tb-search" id="tb-search-wrap">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input id="tb-search" type="text" placeholder="Search clients, properties…" autocomplete="off">
+        <div class="tb-search-drop" id="tb-search-drop"></div>
+      </div>
+      <div class="tb-storm" id="tb-storm" style="display:none" onclick="switchTab('alerts')"></div>
       <div class="tb-right">
+        <span class="tb-weather" id="tb-rain1h" title="Rainfall, last hour"></span>
         <div class="ops-status-pill" id="ops-status-pill">
           <div class="ops-status-dot"></div>
           <span class="ops-status-label">Operational</span>
@@ -1664,13 +1684,66 @@
       function set(t) {
         localStorage.setItem('ops_theme', t);
         apply(t);
-        // re-render the active view so canvases/maps pick up the theme
-        const active = document.querySelector('.nav-item.active');
-        if (active && active.id) { const name = active.id.replace('nav-', ''); try { switchTab(name); } catch (_) {} }
+        window.dispatchEvent(new CustomEvent('ops-theme-change', { detail: t }));
       }
       function toggle() { set(get() === 'dark' ? 'light' : 'dark'); }
       apply(get());
       return { get, set, toggle };
+    })();
+
+
+    // ══ Storm warning banner (next 48h heavy rainfall) ══
+    (async function stormWatch() {
+      try {
+        const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=6.45&longitude=3.47&daily=precipitation_sum&timezone=Africa%2FLagos&forecast_days=2');
+        const j = await r.json();
+        const days = j.daily.time.map((t, i) => ({ t, mm: j.daily.precipitation_sum[i] || 0 }));
+        const worst = days.reduce((a, b) => b.mm > a.mm ? b : a, days[0]);
+        if (worst.mm >= 20) {
+          const el = document.getElementById('tb-storm');
+          const day = new Date(worst.t).toDateString() === new Date().toDateString() ? 'today' : 'tomorrow';
+          el.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg><span><b>Heavy rainfall ${day}</b> · ~${Math.round(worst.mm)}mm across Lagos</span>`;
+          el.style.display = 'flex';
+        }
+      } catch (_) {}
+    })();
+
+    // ══ Command search (clients + properties) ══
+    (function cmdSearch() {
+      const input = document.getElementById('tb-search');
+      const drop = document.getElementById('tb-search-drop');
+      if (!input || !drop) return;
+      let idx = null, t = null;
+      async function buildIndex() {
+        if (idx) return idx;
+        const [c, p] = await Promise.all([
+          OpsModal.apiGet('/clients').catch(() => ({ data: [] })),
+          OpsModal.apiGet('/properties').catch(() => ({ data: [] })),
+        ]);
+        idx = [
+          ...(c.data || []).map(x => ({ kind: 'Client', tab: 'clients', name: x.company_name || x.name || x.estate_manager_name || '', sub: x.estate_manager_email || '' })),
+          ...(p.data || []).map(x => ({ kind: 'Property', tab: 'properties', name: x.property_name || x.property_id || '', sub: [x.city, x.state].filter(Boolean).join(', ') })),
+        ].filter(x => x.name);
+        return idx;
+      }
+      input.addEventListener('input', () => {
+        clearTimeout(t);
+        const q = input.value.trim().toLowerCase();
+        if (q.length < 2) { drop.style.display = 'none'; return; }
+        t = setTimeout(async () => {
+          const list = await buildIndex();
+          const hits = list.filter(x => x.name.toLowerCase().includes(q) || (x.sub || '').toLowerCase().includes(q)).slice(0, 8);
+          drop.innerHTML = hits.length
+            ? hits.map(h => `<div class="tbs-item" onclick="switchTab('${h.tab}');document.getElementById('tb-search-drop').style.display='none';document.getElementById('tb-search').value='';"><span class="tbs-kind">${h.kind}</span>${h.name}<span class="tbs-sub">${h.sub}</span></div>`).join('')
+            : '<div class="tbs-item" style="cursor:default;color:var(--ink-3)">No matches</div>';
+          drop.style.display = 'block';
+        }, 220);
+      });
+      document.addEventListener('click', e => { if (!e.target.closest('#tb-search-wrap')) drop.style.display = 'none'; });
+      document.addEventListener('keydown', e => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); input.focus(); }
+        if (e.key === 'Escape') drop.style.display = 'none';
+      });
     })();
 
     // ══ Live weather chip (Open-Meteo, Lagos) ══
@@ -1684,7 +1757,9 @@
           const c = j.current || {};
           const code = c.weather_code || 0;
           const desc = code >= 95 ? 'Storm' : code >= 80 ? 'Showers' : code >= 61 ? 'Rain' : code >= 51 ? 'Drizzle' : code >= 45 ? 'Fog' : code >= 2 ? 'Cloudy' : 'Clear';
-          el.innerHTML = `<b>${Math.round(c.temperature_2m)}°C</b> ${desc}${c.precipitation ? ` · ${c.precipitation}mm/h` : ''}`;
+          el.innerHTML = `<b>${Math.round(c.temperature_2m)}°C</b> ${desc}`;
+          const rain = document.getElementById('tb-rain1h');
+          if (rain) rain.innerHTML = `Rain (1h) <b>${(c.precipitation ?? 0).toFixed(1)}mm</b>`;
         } catch (_) { el.textContent = ''; }
       }
       load();
