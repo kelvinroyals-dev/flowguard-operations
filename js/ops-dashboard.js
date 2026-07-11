@@ -39,24 +39,24 @@ const OpsDashboard = (function () {
     container.innerHTML = `
       <style>
         /* ══ COMMAND dashboard composition ══ */
-        .cmd-kpis { display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:14px; }
-        .ck { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:13px 15px; position:relative; overflow:hidden; transition:border-color .15s; }
-        .ck:hover { border-color:var(--border-2); }
+        .cmd-kpis { display:grid; grid-template-columns:repeat(6,1fr); gap:14px; margin-bottom:16px; }
+        .ck { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:15px 17px; position:relative; overflow:hidden; box-shadow:var(--sh-xs); transition:border-color .15s, box-shadow .15s; }
+        .ck:hover { border-color:var(--border-2); box-shadow:var(--sh-sm); }
         .ck-label { font-size:.6rem; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:var(--ink-3); display:flex; align-items:center; gap:6px; }
         .ck-label svg { width:13px; height:13px; color:var(--blue-hi); flex-shrink:0; }
-        .ck-val { font-family:var(--ff-m); font-size:1.5rem; font-weight:600; color:var(--ink); margin-top:6px; line-height:1.1; }
-        .ck-sub { font-size:.68rem; color:var(--ink-3); margin-top:3px; }
+        .ck-val { font-family:var(--ff-m); font-size:1.7rem; font-weight:600; color:var(--ink); margin-top:9px; line-height:1.1; }
+        .ck-sub { font-size:.7rem; color:var(--ink-3); margin-top:5px; }
         .ck-sub.ok { color:var(--ok); } .ck-sub.err { color:var(--err); } .ck-sub.warn { color:var(--warn); }
 
-        .cmd-main { display:grid; grid-template-columns:minmax(0,1fr) 348px; gap:14px; margin-bottom:14px; }
-        .map-panel { position:relative; border-radius:var(--r); overflow:hidden; border:1px solid var(--border); min-height:480px; height:56vh; }
+        .cmd-main { display:grid; grid-template-columns:minmax(0,1fr) 352px; gap:16px; margin-bottom:16px; }
+        .map-panel { position:relative; border-radius:var(--r); overflow:hidden; border:1px solid var(--border); min-height:500px; height:58vh; box-shadow:var(--sh-xs); }
         #fg-map { position:absolute; inset:0; z-index:1; }
-        .map-legend { position:absolute; left:12px; bottom:12px; z-index:500; display:flex; gap:8px; flex-wrap:wrap; }
-        .map-stats-row { position:absolute; top:12px; left:12px; z-index:500; display:flex; gap:8px; flex-wrap:wrap; }
+        .map-legend { position:absolute; left:12px; top:12px; right:56px; z-index:500; display:flex; gap:6px; flex-wrap:wrap; }
+        .map-stats-row { position:absolute; bottom:12px; left:12px; z-index:500; display:flex; gap:8px; flex-wrap:wrap; }
 
         .cmd-side { display:flex; flex-direction:column; gap:14px; min-width:0; }
-        .cmd-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; }
-        .cmd-panel-h { padding:11px 14px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+        .cmd-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; box-shadow:var(--sh-xs); }
+        .cmd-panel-h { padding:13px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
         .cmd-panel-h b { font-size:.68rem; font-weight:700; letter-spacing:1.3px; text-transform:uppercase; color:var(--ink-2); }
         .cmd-panel-h a { font-size:.7rem; color:var(--blue-hi); cursor:pointer; text-decoration:none; font-weight:600; }
 
@@ -81,16 +81,16 @@ const OpsDashboard = (function () {
         .ft-name { font-size:.78rem; font-weight:600; color:var(--ink); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .ft-meta { font-size:.66rem; color:var(--ink-3); font-family:var(--ff-m); white-space:nowrap; }
 
-        .cmd-mid { display:grid; grid-template-columns:1.15fr 1fr; gap:14px; margin-bottom:14px; }
+        .cmd-mid { display:grid; grid-template-columns:1.15fr 1fr; gap:16px; margin-bottom:16px; }
         /* infrastructure health minis */
-        .ih-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; padding:12px 14px; }
-        .ih-cell { border:1px solid var(--border); border-radius:10px; padding:10px 12px; }
+        .ih-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; padding:16px; }
+        .ih-cell { border:1px solid var(--border); border-radius:11px; padding:13px 14px; }
         .ih-k { font-size:.62rem; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--ink-3); }
         .ih-v { font-family:var(--ff-m); font-size:1.15rem; font-weight:600; color:var(--ink); margin:4px 0 6px; }
         .ih-bar { height:5px; border-radius:3px; background:var(--surface-3); overflow:hidden; }
         .ih-bar i { display:block; height:100%; border-radius:3px; }
 
-        .cmd-bottom { display:grid; grid-template-columns:1.1fr 1.2fr .9fr; gap:14px; }
+        .cmd-bottom { display:grid; grid-template-columns:1.1fr 1.2fr .9fr; gap:16px; }
         .radar-body { position:relative; height:230px; }
         #radar-map { position:absolute; inset:0; }
         .radar-cap { position:absolute; left:10px; bottom:10px; z-index:500; font-family:var(--ff-m); font-size:.62rem; color:var(--ink-2); background:var(--overlay); border:1px solid var(--border); border-radius:6px; padding:3px 8px; }
@@ -121,8 +121,11 @@ const OpsDashboard = (function () {
         .leaflet-popup-content-wrapper, .leaflet-popup-tip { background:var(--surface); color:var(--ink); }
 
         /* legend + stat chips over the map */
-        .lgd-chip, .mst-chip { background:var(--overlay); border:1px solid var(--border); border-radius:8px; padding:4px 10px; font-size:.66rem; color:var(--ink-2); display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none; }
-        .lgd-chip .dot { width:8px; height:8px; border-radius:50%; }
+        .lgd-chip, .mst-chip { background:var(--overlay); backdrop-filter:blur(6px); border:1px solid var(--border-2); border-radius:100px; padding:5px 12px; font-size:.68rem; font-weight:600; color:var(--ink-2); display:inline-flex; align-items:center; gap:7px; cursor:pointer; user-select:none; box-shadow:var(--sh-xs); white-space:nowrap; transition:all .12s; }
+        .lgd-chip:hover { border-color:var(--blue-dim); color:var(--ink); }
+        .lgd-title { background:transparent; border:none; box-shadow:none; cursor:default; color:var(--ink-3); font-size:.6rem; letter-spacing:1.2px; text-transform:uppercase; font-weight:800; padding:5px 2px; }
+        .mst-chip { cursor:default; gap:5px; }
+        .lgd-chip .dot { width:8px; height:8px; border-radius:50%; box-shadow:0 0 5px currentColor; flex-shrink:0; }
         .lgd-chip.off { opacity:.45; }
         .mst-chip b { font-family:var(--ff-m); color:var(--ink); }
       </style>
@@ -213,27 +216,21 @@ const OpsDashboard = (function () {
 
   function renderLegend() {
     const items = [
-      { key: 'areas_submitted',  color: '#f5a623', label: 'Pending Areas' },
-      { key: 'areas_inspection', color: '#f97316', label: 'In Inspection' },
-      { key: 'areas_active',     color: '#16a8d3', label: 'Active / Deployed' },
-      { key: 'sites',            color: '#0a2a3d', label: 'Monitored Sites' },
-      { key: 'sensors',          color: '#6b8fa3', label: 'Sensors' },
-      { key: 'alerts',           color: '#dc2626', label: 'Active Alerts' },
-      { key: 'flood_risk',       color: '#e74c3c', label: 'Inspection Flood Risk' },
-      { key: 'hfp_zones',        color: '#7c3aed', label: 'High Flood Probability' },
-      { key: 'coverage',         color: 'rgba(22,168,211,.2)', label: 'Coverage Area' },
+      { key: 'areas_submitted',  color: 'var(--warn)',    label: 'Pending' },
+      { key: 'areas_inspection', color: 'var(--caut)',    label: 'Inspection' },
+      { key: 'areas_active',     color: 'var(--blue-hi)', label: 'Active' },
+      { key: 'sites',            color: 'var(--ink-2)',   label: 'Sites' },
+      { key: 'sensors',          color: 'var(--off)',     label: 'Sensors' },
+      { key: 'alerts',           color: 'var(--err)',     label: 'Alerts' },
+      { key: 'flood_risk',       color: '#e74c3c',        label: 'Flood risk' },
+      { key: 'hfp_zones',        color: '#8b5cf6',        label: 'HFP zones' },
+      { key: 'coverage',         color: 'var(--blue-dim)',label: 'Coverage' },
     ];
-
-    document.getElementById('map-legend').innerHTML = `
-      <div class="legend-title">Map Layers</div>
-      ${items.map(i => `
-        <div class="legend-item ${map.hasLayer(layers[i.key]) ? '' : 'off'}"
-          onclick="OpsDashboard.toggleLayer('${i.key}', this)">
-          <div class="legend-dot" style="background:${i.color};"></div>
-          <div class="legend-label">${i.label}</div>
-        </div>
-      `).join('')}
-    `;
+    document.getElementById('map-legend').innerHTML = '<span class="lgd-chip lgd-title">Layers</span>' + items.map(i => `
+      <span class="lgd-chip ${map.hasLayer(layers[i.key]) ? '' : 'off'}"
+        onclick="OpsDashboard.toggleLayer('${i.key}', this)">
+        <span class="dot" style="background:${i.color}"></span>${i.label}
+      </span>`).join('');
   }
 
   function toggleLayer(key, el) {
@@ -526,14 +523,13 @@ const OpsDashboard = (function () {
     const activeSites = (md.sites || []).length;
     const alertCount  = (md.alerts || []).length;
     const sensorCount = (md.sensors || []).length;
-
-    document.getElementById('map-stats').innerHTML = `
-      <div class="map-stat-chip"><span class="val blue">${activeSites}</span><span class="lbl">Sites</span></div>
-      <div class="map-stat-chip"><span class="val ${alertCount > 0 ? 'red' : ''}">${alertCount}</span><span class="lbl">Alerts</span></div>
-      <div class="map-stat-chip"><span class="val">${sensorCount}</span><span class="lbl">Sensors</span></div>
-      <div class="map-stat-chip"><span class="val">${submitted}</span><span class="lbl">Pending</span></div>
-      <div class="map-stat-chip"><span class="val purple">${HFP_ZONES.length}</span><span class="lbl">HFP Zones</span></div>
-    `;
+    const chip = (v, l, c) => `<span class="mst-chip"><b style="${c ? `color:${c}` : ''}">${v}</b><span>${l}</span></span>`;
+    document.getElementById('map-stats').innerHTML =
+      chip(activeSites, 'sites', 'var(--blue-hi)') +
+      chip(alertCount, 'alerts', alertCount ? 'var(--err)' : null) +
+      chip(sensorCount, 'sensors') +
+      chip(submitted, 'pending') +
+      chip(HFP_ZONES.length, 'HFP zones', '#8b5cf6');
   }
 
   function fitBounds(md) {
@@ -691,15 +687,16 @@ const OpsDashboard = (function () {
   async function initRadar() {
     const elMap = document.getElementById('radar-map');
     if (!elMap || !window.L) return;
-    radarMap = L.map('radar-map', { center: [6.52, 3.38], zoom: 8, zoomControl: false, attributionControl: false, dragging: true, scrollWheelZoom: false });
-    radarBase = L.tileLayer(tileUrl(), { subdomains: 'abcd', maxZoom: 12 }).addTo(radarMap);
+    radarMap = L.map('radar-map', { center: [6.52, 3.55], zoom: 9, minZoom: 6, maxZoom: 11, zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false });
+    setTimeout(() => { try { radarMap.invalidateSize(); radarMap.setView([6.52, 3.55], 9); } catch (_) {} }, 250);
+    radarBase = L.tileLayer(tileUrl(), { subdomains: 'abcd', maxZoom: 11 }).addTo(radarMap);
     try {
       const r = await fetch('https://api.rainviewer.com/public/weather-maps.json');
       const j = await r.json();
       const frames = (j.radar && (j.radar.nowcast || []).concat(j.radar.past || [])) || [];
       const frame = (j.radar && j.radar.past && j.radar.past[j.radar.past.length - 1]) || frames[0];
       if (frame) {
-        L.tileLayer(`${j.host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, { opacity: .7, maxZoom: 12 }).addTo(radarMap);
+        L.tileLayer(`${j.host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, { opacity: .75, maxZoom: 11, maxNativeZoom: 10 }).addTo(radarMap);
         const ts = document.getElementById('radar-ts');
         if (ts) ts.textContent = new Date(frame.time * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' WAT';
       }

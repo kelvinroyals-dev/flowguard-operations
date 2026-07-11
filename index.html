@@ -93,9 +93,9 @@
       --teal:       #0e5b6e;
 
       /* ── Canvas & surfaces (client portal) ── */
-      --canvas:     #eef2f4;
+      --canvas:     #ffffff;
       --surface:    #ffffff;
-      --surface-2:  #f7fafb;
+      --surface-2:  #f8fbfc;
       --surface-3:  #eef4f8;
       --surface-h:  #e0f5fa;
       --border:     #e2e9ed;
@@ -161,6 +161,13 @@
     .tbs-sub { margin-left:auto; font-size:.66rem; color:var(--ink-3); }
     .tb-storm { display:flex; align-items:center; gap:8px; margin-left:14px; padding:6px 12px; border-radius:9px; background:var(--eb); border:1px solid var(--err); color:var(--err); font-size:.72rem; font-weight:700; cursor:pointer; white-space:nowrap; }
     .tb-storm b { font-weight:800; }
+
+    .topbar { gap: 14px; }
+    .tb-search { margin-left: 0; }
+    .tb-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+    #tb-rain1h { padding: 5px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); }
+    #current-time { white-space: nowrap; }
+    #topbar-sync { padding: 3px 8px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--border); }
     .tb-weather { font-size: .72rem; color: var(--ink-3); font-family: var(--ff-m); white-space: nowrap; }
     .tb-weather b { color: var(--ink-2); font-weight: 600; }
     #theme-toggle { color: var(--ink-3); }
@@ -1180,21 +1187,21 @@
 </div>
 
 <!-- Scripts -->
-<script src="js/config.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/ops-modal.js"></script>
-<script src="js/fg-paginator.js"></script>
-<script src="js/ops-dashboard.js"></script>
-<script src="js/ops-user-management.js"></script>
-<script src="js/ops-clients.js"></script>
-<script src="js/ops-properties.js"></script>
-<script src="js/ops-teams.js"></script>
-<script src="js/ops-alerts-reports.js"></script>
-<script src="js/ops-field-reports.js"></script>
-<script src="js/ops-billing.js"></script>
-<script src="js/ops-sla.js"></script>
-<script src="js/ops-audit.js"></script>
-<script src="js/ops-settings.js"></script>
+<script src="js/config.js?v=cmd2"></script>
+<script src="js/auth.js?v=cmd2"></script>
+<script src="js/ops-modal.js?v=cmd2"></script>
+<script src="js/fg-paginator.js?v=cmd2"></script>
+<script src="js/ops-dashboard.js?v=cmd2"></script>
+<script src="js/ops-user-management.js?v=cmd2"></script>
+<script src="js/ops-clients.js?v=cmd2"></script>
+<script src="js/ops-properties.js?v=cmd2"></script>
+<script src="js/ops-teams.js?v=cmd2"></script>
+<script src="js/ops-alerts-reports.js?v=cmd2"></script>
+<script src="js/ops-field-reports.js?v=cmd2"></script>
+<script src="js/ops-billing.js?v=cmd2"></script>
+<script src="js/ops-sla.js?v=cmd2"></script>
+<script src="js/ops-audit.js?v=cmd2"></script>
+<script src="js/ops-settings.js?v=cmd2"></script>
 
 <script>
   if (typeof Auth === 'undefined' || !Auth.isAuthenticated()) window.location.href = 'login.html';
