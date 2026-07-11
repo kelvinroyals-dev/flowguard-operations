@@ -58,7 +58,7 @@
       --sh-card: 0 0 0 1px rgba(34,211,238,.05), 0 2px 10px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3);
 
       /* ── Layout ── */
-      --sw:  260px;
+      --sw:  236px;
       --th:  56px;
 
       /* ── Radii ── */
@@ -124,7 +124,7 @@
       --sh-card: 0 0 0 1px rgba(10,31,46,.05), 0 2px 8px rgba(10,31,46,.06), 0 8px 24px rgba(10,31,46,.06);
 
       /* ── Layout ── */
-      --sw:  260px;
+      --sw:  236px;
       --th:  56px;
 
       /* ── Radii ── */
@@ -149,7 +149,7 @@
 
 
 
-    .tb-search { position:relative; display:flex; align-items:center; gap:7px; background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:6px 11px; width:250px; color:var(--ink-3); margin-left:18px; }
+    .tb-search { position:relative; display:flex; align-items:center; gap:7px; background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:6px 11px; width:216px; color:var(--ink-3); margin-left:18px; }
     .tb-search input { flex:1; min-width:0; background:transparent; border:none; outline:none; color:var(--ink); font-family:var(--ff-b); font-size:.78rem; }
     .tb-search input::placeholder { color:var(--ink-4); }
     .tb-search:focus-within { border-color:var(--blue-dim); box-shadow:0 0 0 3px var(--neon-trace); }
@@ -1064,6 +1064,10 @@
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         <span class="nav-label">Properties</span>
       </button>
+      <button class="nav-item" id="nav-sensors" onclick="switchTab('sensors')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="2.5"/><path d="M16.2 7.8a6 6 0 010 8.4M7.8 16.2a6 6 0 010-8.4M19 5a10 10 0 010 14M5 19A10 10 0 015 5"/></svg>
+        <span class="nav-label">Sentinel Nodes</span>
+      </button>
       <div class="nav-sect">Field</div>
       <button class="nav-item" id="nav-teams" onclick="switchTab('teams')">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0112 0v2"/></svg>
@@ -1158,6 +1162,7 @@
       <div id="content-dashboard"    class="tab-content active"></div>
       <div id="content-clients"      class="tab-content"></div>
       <div id="content-properties"   class="tab-content"></div>
+      <div id="content-sensors"      class="tab-content"></div>
       <div id="content-alerts"       class="tab-content"></div>
       <div id="content-teams"        class="tab-content"></div>
       <div id="content-team-members" class="tab-content"></div>
@@ -1187,21 +1192,22 @@
 </div>
 
 <!-- Scripts -->
-<script src="js/config.js?v=cmd2"></script>
-<script src="js/auth.js?v=cmd2"></script>
-<script src="js/ops-modal.js?v=cmd2"></script>
-<script src="js/fg-paginator.js?v=cmd2"></script>
-<script src="js/ops-dashboard.js?v=cmd2"></script>
-<script src="js/ops-user-management.js?v=cmd2"></script>
-<script src="js/ops-clients.js?v=cmd2"></script>
-<script src="js/ops-properties.js?v=cmd2"></script>
-<script src="js/ops-teams.js?v=cmd2"></script>
-<script src="js/ops-alerts-reports.js?v=cmd2"></script>
-<script src="js/ops-field-reports.js?v=cmd2"></script>
-<script src="js/ops-billing.js?v=cmd2"></script>
-<script src="js/ops-sla.js?v=cmd2"></script>
-<script src="js/ops-audit.js?v=cmd2"></script>
-<script src="js/ops-settings.js?v=cmd2"></script>
+<script src="js/config.js?v=cmd3"></script>
+<script src="js/auth.js?v=cmd3"></script>
+<script src="js/ops-modal.js?v=cmd3"></script>
+<script src="js/fg-paginator.js?v=cmd3"></script>
+<script src="js/ops-dashboard.js?v=cmd3"></script>
+<script src="js/ops-user-management.js?v=cmd3"></script>
+<script src="js/ops-clients.js?v=cmd3"></script>
+<script src="js/ops-properties.js?v=cmd3"></script>
+  <script src="js/ops-sensors.js?v=cmd3"></script>
+<script src="js/ops-teams.js?v=cmd3"></script>
+<script src="js/ops-alerts-reports.js?v=cmd3"></script>
+<script src="js/ops-field-reports.js?v=cmd3"></script>
+<script src="js/ops-billing.js?v=cmd3"></script>
+<script src="js/ops-sla.js?v=cmd3"></script>
+<script src="js/ops-audit.js?v=cmd3"></script>
+<script src="js/ops-settings.js?v=cmd3"></script>
 
 <script>
   if (typeof Auth === 'undefined' || !Auth.isAuthenticated()) window.location.href = 'login.html';
@@ -1211,6 +1217,7 @@
     dashboard:        { module:'Dashboard',    title:'Operations Overview'         },
     clients:          { module:'Clients',      title:'Client Accounts'             },
     properties:       { module:'Properties',   title:'Asset Registry'              },
+    sensors:          { module:'Operations',   title:'Sentinel Nodes'              },
     alerts:           { module:'Alerts',       title:'Incident Management'         },
     teams:            { module:'Field',        title:'Team Dispatch'               },
     'team-members':   { module:'Field',        title:'Team Members'                },
@@ -1554,6 +1561,7 @@
       dashboard:        () => typeof OpsDashboard      !== 'undefined' ? OpsDashboard      : null,
       clients:          () => typeof OpsClients        !== 'undefined' ? OpsClients        : null,
       properties:       () => typeof OpsProperties     !== 'undefined' ? OpsProperties     : null,
+      sensors:          () => typeof OpsSensors        !== 'undefined' ? OpsSensors        : null,
       alerts:           () => typeof OpsAlerts         !== 'undefined' ? OpsAlerts         : null,
       teams:            () => typeof OpsTeams          !== 'undefined' ? OpsTeams          : null,
       'team-members':   () => typeof OpsUserManagement !== 'undefined' ? OpsUserManagement : null,
