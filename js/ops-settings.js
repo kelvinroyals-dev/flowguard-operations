@@ -164,7 +164,7 @@ const OpsSettings = (function () {
           position: absolute;
           width: 18px; height: 18px;
           top: 3px; left: 3px;
-          background: white;
+          background: var(--surface);
           border-radius: 50%;
           box-shadow: 0 1px 4px rgba(0,0,0,.15);
           transition: transform .25s cubic-bezier(.22,1,.36,1);

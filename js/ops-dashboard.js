@@ -21,6 +21,7 @@ const OpsDashboard = (function () {
   }
 
   async function render(container) {
+    if (map) { try { map.remove(); } catch (_) {} map = null; layers = {}; }
     container.innerHTML = `
       <style>
         .dash-wrap {
@@ -54,7 +55,7 @@ const OpsDashboard = (function () {
         .map-panel .leaflet-control-zoom a {
           width: 32px !important; height: 32px !important;
           line-height: 32px !important;
-          background: #fff !important;
+          background: var(--surface) !important;
           color: var(--ink, #0a1f2e) !important;
           border: 1px solid var(--border, #dae6ef) !important;
           font-size: 16px !important;
@@ -77,7 +78,7 @@ const OpsDashboard = (function () {
         }
 
         .map-panel .leaflet-control-attribution {
-          background: rgba(255,255,255,.85) !important;
+          background: var(--overlay) !important;
           color: var(--ink-3, #6b8fa3) !important;
           font-size: 9px !important;
           border-radius: 6px 0 0 0 !important;
@@ -89,7 +90,7 @@ const OpsDashboard = (function () {
         }
 
         .map-panel .leaflet-popup-content-wrapper {
-          background: #fff !important;
+          background: var(--surface) !important;
           color: var(--ink, #0a1f2e) !important;
           border: 1px solid var(--border, #dae6ef) !important;
           border-radius: 12px !important;
@@ -106,7 +107,7 @@ const OpsDashboard = (function () {
         }
 
         .map-panel .leaflet-popup-tip {
-          background: #fff !important;
+          background: var(--surface) !important;
         }
 
         .map-panel .leaflet-popup-close-button {
@@ -120,7 +121,7 @@ const OpsDashboard = (function () {
           position: absolute;
           bottom: 20px; left: 14px;
           z-index: 1000;
-          background: rgba(255,255,255,.95);
+          background: var(--overlay);
           backdrop-filter: blur(8px);
           border: 1px solid var(--border, #dae6ef);
           border-radius: 12px;
@@ -162,7 +163,7 @@ const OpsDashboard = (function () {
         }
 
         .map-stat-chip {
-          background: rgba(255,255,255,.95);
+          background: var(--overlay);
           backdrop-filter: blur(8px);
           border: 1px solid var(--border, #dae6ef);
           border-radius: 8px;
@@ -405,7 +406,7 @@ const OpsDashboard = (function () {
     });
 
     // ── Light tile layer (Positron) — matches the light shell ──
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    L.tileLayer(`https://{s}.basemaps.cartocdn.com/${(window.OpsTheme && OpsTheme.get() === 'light') ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`, {
       attribution: '&copy; <a href="https://www.openstreetmap.org">OSM</a> &copy; <a href="https://carto.com">CARTO</a>',
       subdomains: 'abcd',
       maxZoom: 19,

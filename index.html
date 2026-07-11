@@ -15,6 +15,73 @@
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
+      /* ══ COMMAND — dark-first theme ══ */
+      /* ── Brand ── */
+      --navy:       #0a1622;
+      --navy-deep:  #070d14;
+      --navy-mid:   #0e1c2a;
+      --blue:       #06b6d4;
+      --blue-hi:    #22d3ee;
+      --blue-dim:   #0e7490;
+      --amber:      #fbbf24;
+      --teal:       #0e7490;
+
+      /* ── Canvas & surfaces ── */
+      --canvas:     #0a0f16;
+      --surface:    #101a26;
+      --surface-2:  #0c141d;
+      --surface-3:  #15202d;
+      --surface-h:  #16283a;
+      --border:     #1c2c3d;
+      --border-2:   #27394d;
+
+      /* ── Text ── */
+      --ink:        #e8f1f8;
+      --ink-2:      #9db1c2;
+      --ink-3:      #6a8095;
+      --ink-4:      #47596b;
+
+      /* ── Status ── */
+      --ok:         #34d399;    --ok-bg:  rgba(52,211,153,.12);
+      --warn:       #fbbf24;    --wb:     rgba(251,191,36,.12);
+      --caut:       #fb923c;    --cb:     rgba(251,146,60,.12);
+      --err:        #f87171;    --eb:     rgba(248,113,113,.12);
+      --off:        #7d8fa3;    --ob:     rgba(125,143,163,.14);
+      --amber-bg:   rgba(251,191,36,.08);
+      --overlay:    rgba(12,20,29,.92);
+
+      /* ── Shadows / glow ── */
+      --sh-xs: 0 1px 2px rgba(0,0,0,.4);
+      --sh-sm: 0 2px 10px rgba(0,0,0,.35);
+      --sh-md: 0 4px 24px rgba(0,0,0,.45);
+      --sh-lg: 0 24px 70px rgba(0,0,0,.55);
+      --sh-card: 0 0 0 1px rgba(34,211,238,.05), 0 2px 10px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3);
+
+      /* ── Layout ── */
+      --sw:  260px;
+      --th:  56px;
+
+      /* ── Radii ── */
+      --r:   14px; --rs: 9px; --rl: 20px;
+
+      /* ── Fonts ── */
+      --ff-d: 'Space Grotesk', system-ui, sans-serif;
+      --ff-b: 'Inter', system-ui, sans-serif;
+      --ff-m: 'JetBrains Mono', monospace;
+
+      /* ── Legacy aliases for JS modules ── */
+      --neon: var(--blue-hi); --neon-dim: var(--blue-dim);
+      --neon-glow: rgba(34,211,238,.16); --neon-trace: rgba(34,211,238,.05);
+      --bg: var(--canvas); --panel: var(--surface); --panel-edge: var(--border);
+      --panel-hover: var(--surface-h);
+      --text-bright: var(--ink); --text-mid: var(--ink-2); --text-dim: var(--ink-3);
+      --s-nominal: var(--ok); --s-watch: var(--warn);
+      --s-warning: var(--caut); --s-critical: var(--err); --s-offline: var(--off);
+      --font-display: var(--ff-d); --font-mono: var(--ff-m);
+    }
+
+    /* ══ Light theme — the original operations palette ══ */
+    html[data-theme="light"] {
       /* ── Brand (aligned to client portal) ── */
       --navy:       #0a2a3d;
       --navy-deep:  #071722;
@@ -47,6 +114,7 @@
       --err:        #dc2626;    --eb:     #fef2f2;
       --off:        #64748b;    --ob:     #f1f5f9;
       --amber-bg:   rgba(245,166,35,.09);
+      --overlay:    rgba(255,255,255,.92);
 
       /* ── Shadows ── */
       --sh-xs: 0 1px 2px rgba(10,31,46,.06);
@@ -78,6 +146,12 @@
       --font-display: var(--ff-d); --font-mono: var(--ff-m);
     }
 
+
+
+    .tb-weather { font-size: .72rem; color: var(--ink-3); font-family: var(--ff-m); white-space: nowrap; }
+    .tb-weather b { color: var(--ink-2); font-weight: 600; }
+    #theme-toggle { color: var(--ink-3); }
+    #theme-toggle:hover { color: var(--blue-hi); }
     html { height: 100%; }
     body {
       height: 100%; background: var(--canvas);
@@ -1039,7 +1113,12 @@
           <span class="ops-status-label">Operational</span>
         </div>
         <span id="topbar-sync" style="display:none;font-size:.68rem;color:var(--ink-4);font-family:var(--ff-m);"></span>
+        <span class="tb-weather" id="tb-weather" title="Live weather — Lagos"></span>
         <span id="current-time"></span>
+        <button class="tb-btn" id="theme-toggle" onclick="OpsTheme.toggle()" aria-label="Toggle light/dark theme">
+          <svg id="theme-icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          <svg id="theme-icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        </button>
         <button class="tb-btn" onclick="toggleAlertPanel()" aria-label="Alert tray">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
           <span class="badge" id="topbar-alert-badge" style="display:none;">0</span>
@@ -1572,6 +1651,46 @@
     const d = now.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
     const t = now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
     document.getElementById('current-time').textContent = `${d} · ${t}`;
+
+    // ══ Theme (dark-first COMMAND) ══
+    window.OpsTheme = (function () {
+      function get() { return localStorage.getItem('ops_theme') || 'dark'; }
+      function apply(t) {
+        document.documentElement.dataset.theme = t;
+        const sun = document.getElementById('theme-icon-sun');
+        const moon = document.getElementById('theme-icon-moon');
+        if (sun && moon) { sun.style.display = t === 'dark' ? '' : 'none'; moon.style.display = t === 'dark' ? 'none' : ''; }
+      }
+      function set(t) {
+        localStorage.setItem('ops_theme', t);
+        apply(t);
+        // re-render the active view so canvases/maps pick up the theme
+        const active = document.querySelector('.nav-item.active');
+        if (active && active.id) { const name = active.id.replace('nav-', ''); try { switchTab(name); } catch (_) {} }
+      }
+      function toggle() { set(get() === 'dark' ? 'light' : 'dark'); }
+      apply(get());
+      return { get, set, toggle };
+    })();
+
+    // ══ Live weather chip (Open-Meteo, Lagos) ══
+    (async function weatherChip() {
+      const el = document.getElementById('tb-weather');
+      if (!el) return;
+      async function load() {
+        try {
+          const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=6.45&longitude=3.47&current=temperature_2m,precipitation,weather_code&timezone=Africa%2FLagos');
+          const j = await r.json();
+          const c = j.current || {};
+          const code = c.weather_code || 0;
+          const desc = code >= 95 ? 'Storm' : code >= 80 ? 'Showers' : code >= 61 ? 'Rain' : code >= 51 ? 'Drizzle' : code >= 45 ? 'Fog' : code >= 2 ? 'Cloudy' : 'Clear';
+          el.innerHTML = `<b>${Math.round(c.temperature_2m)}°C</b> ${desc}${c.precipitation ? ` · ${c.precipitation}mm/h` : ''}`;
+        } catch (_) { el.textContent = ''; }
+      }
+      load();
+      setInterval(load, 30 * 60 * 1000);
+    })();
+
     const sb = document.getElementById('sb-time');
     if (sb) sb.textContent = now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
   }
