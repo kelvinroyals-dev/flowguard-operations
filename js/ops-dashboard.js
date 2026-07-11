@@ -39,7 +39,7 @@ const OpsDashboard = (function () {
     container.innerHTML = `
       <style>
         /* ══ COMMAND dashboard composition ══ */
-        .cmd-kpis { display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:14px; }
+        .cmd-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(168px,1fr)); gap:12px; margin-bottom:14px; }
         .ck { background:var(--surface); border:1px solid var(--border); border-radius:var(--rs); padding:12px 14px; position:relative; overflow:hidden; box-shadow:var(--sh-xs); transition:border-color .15s, box-shadow .15s; }
         .ck:hover { border-color:var(--border-2); box-shadow:var(--sh-sm); }
         .ck-label { font-size:.57rem; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:var(--ink-3); display:flex; align-items:center; gap:6px; }
@@ -110,10 +110,9 @@ const OpsDashboard = (function () {
         .tl-body { padding:10px 12px 6px; }
         .tl-note { margin:0 14px 12px; padding:9px 12px; border-radius:9px; background:var(--surface-3); font-size:.72rem; color:var(--ink-2); line-height:1.5; }
 
-        @media (max-width: 1600px) { .cmd-kpis { grid-template-columns:repeat(3,1fr); } }
         @media (max-width: 1500px) { .cmd-bottom { grid-template-columns:1fr 1fr; } }
         @media (max-width: 1280px) { .cmd-main { grid-template-columns:1fr; } }
-        @media (max-width: 1100px) { .cmd-mid, .cmd-bottom { grid-template-columns:1fr; } .cmd-kpis{grid-template-columns:repeat(2,1fr);} .map-panel{height:400px;} }
+        @media (max-width: 1100px) { .cmd-mid, .cmd-bottom { grid-template-columns:1fr; }  .map-panel{height:400px;} }
 
         /* popup styles (unchanged) */
         .fg-popup-title { font-family:var(--ff-d); font-size:.88rem; font-weight:700; color:var(--ink); margin-bottom:4px; }
@@ -190,10 +189,11 @@ const OpsDashboard = (function () {
     map = L.map('fg-map', {
       center: [6.5244, 3.3792],
       zoom: 11,
-      zoomControl: true,
+      zoomControl: false,
       attributionControl: true,
     });
 
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
     baseTiles = L.tileLayer(tileUrl(), {
       attribution: '&copy; <a href="https://www.openstreetmap.org">OSM</a> &copy; <a href="https://carto.com">CARTO</a>',
       subdomains: 'abcd',
