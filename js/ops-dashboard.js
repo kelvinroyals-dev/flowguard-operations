@@ -632,13 +632,15 @@ const OpsDashboard = (function () {
   function renderQueue(alerts) {
     const el = document.getElementById('dash-queue');
     if (!el) return;
-    const rank = { critical: 0, high: 1, warning: 2, medium: 2, low: 3 };
+    // alerts.severity CHECK: critical | high | moderate | minor
+    const rank = { critical: 0, high: 1, moderate: 2, minor: 3 };
     const open = alerts
-      .filter(a => (a.status || 'active') !== 'resolved')
+      .filter(a => !['resolved', 'closed'].includes(a.status || 'active'))
       .sort((x, y) => (rank[x.severity] ?? 4) - (rank[y.severity] ?? 4) || new Date(y.created_at) - new Date(x.created_at))
       .slice(0, 5);
     if (!open.length) { el.innerHTML = '<div class="pq-empty">No open incidents — network is clear.</div>'; return; }
-    const sevColor = sv => sv === 'critical' ? 'var(--err)' : sv === 'high' ? 'var(--caut)' : 'var(--warn)';
+    const sevColor = sv => sv === 'critical' ? 'var(--err)' : sv === 'high' ? 'var(--caut)'
+      : sv === 'moderate' ? 'var(--warn)' : 'var(--off)';
     el.innerHTML = open.map((a, i) => `
       <div class="pq-item">
         <div class="pq-rank" style="background:${sevColor(a.severity)}">${i + 1}</div>
