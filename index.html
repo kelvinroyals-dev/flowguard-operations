@@ -59,7 +59,7 @@
 
       /* ── Layout ── */
       --sw:  204px;
-      --th:  50px;
+      --th:  58px;
 
       /* ── Radii ── */
       --r:   14px; --rs: 9px; --rl: 20px;
@@ -125,7 +125,7 @@
 
       /* ── Layout ── */
       --sw:  204px;
-      --th:  50px;
+      --th:  58px;
 
       /* ── Radii ── */
       --r:   14px; --rs: 9px; --rl: 20px;
@@ -163,31 +163,58 @@
     .tb-storm b { font-weight:800; }
 
 
-    .topbar { gap: 10px; overflow: hidden; }
-    .tb-search { margin-left: 0; width: 190px; flex-shrink: 1; min-width: 110px; }
-    .tb-storm { margin-left: 0; flex-shrink: 1; min-width: 0; overflow: hidden; padding: 5px 10px; font-size: .68rem; }
-    .tb-storm span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .tb-right { margin-left: auto; display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
-    #tb-rain1h { padding: 4px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-2); }
-    #current-time { white-space: nowrap; font-size: .68rem; }
-    .tb-weather { font-size: .68rem; color: var(--ink-3); font-family: var(--ff-m); white-space: nowrap; }
-    .tb-weather b { color: var(--ink-2); font-weight: 600; }
-    #theme-toggle { color: var(--ink-3); }
-    #theme-toggle:hover { color: var(--blue-hi); }
-    /* user chip in topbar */
+    .topbar { gap: 16px; overflow: hidden; padding: 0 18px; }
+    .topbar .tb-btn { flex-shrink: 0; }
+
+    /* search — the only bordered element, like the sample */
+    .tb-search { position: relative; display: flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 7px 11px; width: 260px; flex-shrink: 1; min-width: 130px; color: var(--ink-3); }
+    .tb-search svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .tb-search input { flex: 1; min-width: 0; background: transparent; border: none; outline: none; color: var(--ink); font-family: var(--ff-b); font-size: .78rem; }
+    .tb-search input::placeholder { color: var(--ink-4); }
+    .tb-search kbd { flex-shrink: 0; font-family: var(--ff-m); font-size: .6rem; color: var(--ink-4); background: var(--surface-3); border: 1px solid var(--border); border-radius: 5px; padding: 2px 5px; }
+    .tb-search:focus-within { border-color: var(--blue-dim); }
+    .tb-search-drop { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--border-2); border-radius: 10px; box-shadow: var(--sh-md); z-index: 900; display: none; overflow: hidden; max-height: 300px; overflow-y: auto; }
+    .tbs-item { display: flex; align-items: center; gap: 9px; padding: 9px 12px; cursor: pointer; font-size: .76rem; color: var(--ink); border-bottom: 1px solid var(--border); }
+    .tbs-item:hover { background: var(--surface-h); }
+    .tbs-kind { font-size: .55rem; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; padding: 2px 6px; border-radius: 5px; background: var(--neon-trace); color: var(--blue-hi); }
+    .tbs-sub { margin-left: auto; font-size: .64rem; color: var(--ink-3); }
+
+    /* storm banner — two-line, with action, like the sample */
+    .tb-storm { display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 12px; border-radius: 9px; background: var(--eb); border: 1px solid rgba(248,113,113,.4); color: var(--err); flex-shrink: 1; min-width: 0; }
+    .tb-storm > svg { width: 17px; height: 17px; flex-shrink: 0; }
+    .tb-storm-txt { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+    .tb-storm-txt b { font-size: .74rem; font-weight: 700; white-space: nowrap; }
+    .tb-storm-txt i { font-size: .66rem; font-style: normal; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tb-storm-btn { flex-shrink: 0; padding: 5px 10px; border-radius: 7px; border: none; background: rgba(248,113,113,.18); color: var(--err); font-size: .68rem; font-weight: 700; font-family: var(--ff-b); cursor: pointer; white-space: nowrap; }
+    .tb-storm-btn:hover { background: rgba(248,113,113,.3); }
+
+    /* right cluster — borderless metrics, icon + stacked label/value */
+    .tb-right { margin-left: auto; display: flex; align-items: center; gap: 18px; flex-shrink: 0; }
+    .tb-metric { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+    .tb-mi { width: 22px; height: 22px; color: var(--ink-3); flex-shrink: 0; }
+    .tb-mv { display: flex; flex-direction: column; line-height: 1.3; }
+    .tb-mv b { font-size: .84rem; font-weight: 600; color: var(--ink); }
+    .tb-mv i { font-size: .66rem; font-style: normal; color: var(--ink-3); }
+    .tb-mv em { font-style: normal; font-size: .62rem; color: var(--ink-3); font-weight: 500; }
+    #current-time { font-family: var(--ff-m); font-size: .84rem; }
+
+    /* user chip */
     .tb-user { position: relative; flex-shrink: 0; }
-    .tb-user-btn { display: flex; align-items: center; gap: 8px; padding: 4px 9px 4px 4px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface-2); color: var(--ink-3); cursor: pointer; }
+    .tb-user-btn { display: flex; align-items: center; gap: 9px; padding: 5px 10px 5px 5px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--ink-3); cursor: pointer; }
     .tb-user-btn:hover { border-color: var(--border-2); }
-    .tb-av { width: 27px; height: 27px; border-radius: 7px; background: var(--blue); color: #04222b; display: grid; place-items: center; font-size: .68rem; font-weight: 800; flex-shrink: 0; }
-    .tb-user-txt { display: flex; flex-direction: column; line-height: 1.2; text-align: left; }
-    .tb-user-txt b { font-size: .72rem; color: var(--ink); font-weight: 600; white-space: nowrap; }
-    .tb-user-txt i { font-size: .6rem; color: var(--ink-3); font-style: normal; white-space: nowrap; }
-    .tb-user-menu { display: none; position: absolute; top: calc(100% + 7px); right: 0; min-width: 172px; background: var(--surface); border: 1px solid var(--border-2); border-radius: 11px; box-shadow: var(--sh-md); overflow: hidden; z-index: 900; }
+    .tb-av { width: 30px; height: 30px; border-radius: 8px; background: var(--blue); color: #04222b; display: grid; place-items: center; font-size: .7rem; font-weight: 800; flex-shrink: 0; }
+    .tb-user-txt { display: flex; flex-direction: column; line-height: 1.25; text-align: left; }
+    .tb-user-txt b { font-size: .76rem; color: var(--ink); font-weight: 600; white-space: nowrap; }
+    .tb-user-txt i { font-size: .63rem; color: var(--ink-3); font-style: normal; white-space: nowrap; }
+    .tb-user-menu { display: none; position: absolute; top: calc(100% + 7px); right: 0; min-width: 160px; background: var(--surface); border: 1px solid var(--border-2); border-radius: 11px; box-shadow: var(--sh-md); overflow: hidden; z-index: 900; }
     .tb-user-menu.open { display: block; }
-    .tb-user-menu button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 10px 13px; background: none; border: none; color: var(--ink-2); font-size: .76rem; font-family: var(--ff-b); cursor: pointer; text-align: left; }
+    .tb-user-menu button { display: block; width: 100%; padding: 10px 14px; background: none; border: none; color: var(--ink-2); font-size: .76rem; font-family: var(--ff-b); cursor: pointer; text-align: left; }
     .tb-user-menu button:hover { background: var(--surface-h); color: var(--ink); }
     .tb-user-menu button.danger:hover { color: var(--err); }
-    @media (max-width: 1150px) { .tb-user-txt, #current-time { display: none; } .tb-search { width: 150px; } }
+
+    @media (max-width: 1250px) { .tb-metric:nth-of-type(1) .tb-mv { display: none; } }
+    @media (max-width: 1080px) { .tb-user-txt { display: none; } .tb-search { width: 170px; } }
+
     html { height: 100%; }
     body {
       height: 100%; background: var(--canvas);
@@ -335,16 +362,16 @@
 
     .nav-item {
       display: flex; align-items: center; gap: 11px;
-      padding: 9px 18px 9px 20px;
-      margin: 1px 8px;
+      padding: 8px 14px 8px 16px;
+      margin: 1px 7px;
       border-radius: var(--rs);
       cursor: pointer; border: none;
       background: transparent;
       width: calc(100% - 16px);
       text-align: left;
-      color: rgba(255,255,255,.42);
+      color: var(--ink-3);
       font-family: var(--ff-b);
-      font-size: .83rem; font-weight: 500;
+      font-size: .79rem; font-weight: 500;
       transition: all .18s;
       position: relative; overflow: hidden;
     }
@@ -1130,58 +1157,60 @@
 
     <!-- Topbar -->
     <div class="topbar">
-      <div class="tb-left">
-        <span class="tb-eyebrow" id="topbar-module">Dashboard</span>
-        <span class="tb-sep">/</span>
-        <span class="tb-title" id="topbar-title">Operations Overview</span>
-      </div>
+      <!-- search -->
       <div class="tb-search" id="tb-search-wrap">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-        <input id="tb-search" type="text" placeholder="Search clients, properties…" autocomplete="off">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input id="tb-search" type="text" placeholder="Search assets, locations, incidents..." autocomplete="off">
+        <kbd>⌘K</kbd>
         <div class="tb-search-drop" id="tb-search-drop"></div>
       </div>
-      <div class="tb-storm" id="tb-storm" style="display:none" onclick="switchTab('alerts')"></div>
+
+      <!-- storm warning (hidden until a real storm) -->
+      <div class="tb-storm" id="tb-storm" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+        <span class="tb-storm-txt"><b id="tb-storm-t">Active Storm Warning</b><i id="tb-storm-s"></i></span>
+        <button class="tb-storm-btn" onclick="switchTab('alerts')">View Details</button>
+      </div>
+
+      <!-- right cluster: weather · rainfall · live time · user -->
       <div class="tb-right">
-        <span class="tb-weather" id="tb-rain1h" title="Rainfall, last hour"></span>
-        <div class="ops-status-pill" id="ops-status-pill">
-          <div class="ops-status-dot"></div>
-          <span class="ops-status-label">Operational</span>
+        <div class="tb-metric" id="tb-weather-wrap">
+          <svg class="tb-mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 16.2A4.5 4.5 0 0017.5 8h-1.8A7 7 0 104 14.9"/><path d="M8 19v2M12 20v2M16 19v2"/></svg>
+          <span class="tb-mv"><b id="tb-temp">—</b><i id="tb-cond">—</i></span>
         </div>
-        <span id="topbar-sync" style="display:none;font-size:.68rem;color:var(--ink-4);font-family:var(--ff-m);"></span>
-        <span class="tb-weather" id="tb-weather" title="Live weather — Lagos"></span>
-        <span id="current-time"></span>
-        <button class="tb-btn" id="theme-toggle" onclick="OpsTheme.toggle()" aria-label="Toggle light/dark theme">
+
+        <div class="tb-metric">
+          <svg class="tb-mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a6 6 0 006-6c0-4-6-10-6-10S6 12 6 16a6 6 0 006 6z"/></svg>
+          <span class="tb-mv"><i>Rainfall (1h)</i><b id="tb-rain">0.0 mm</b></span>
+        </div>
+
+        <div class="tb-metric">
+          <span class="tb-mv"><i>Live Time</i><b><span id="current-time">--:--:--</span> <em>WAT</em></b></span>
+        </div>
+
+        <button class="tb-btn" id="theme-toggle" onclick="OpsTheme.toggle()" aria-label="Toggle theme">
           <svg id="theme-icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
           <svg id="theme-icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
         </button>
-        <button class="tb-btn" onclick="toggleAlertPanel()" aria-label="Alert tray">
+        <button class="tb-btn" onclick="toggleAlertPanel()" aria-label="Alerts">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
-          <span class="badge" id="topbar-alert-badge" style="display:none;">0</span>
+          <span class="tb-badge" id="alert-badge" style="display:none">0</span>
         </button>
-              <div class="tb-user" id="tb-user">
-          <button class="tb-user-btn" onclick="toggleUserMenu(event)" aria-haspopup="true">
+
+        <div class="tb-user" id="tb-user">
+          <button class="tb-user-btn" onclick="toggleUserMenu(event)">
             <span class="tb-av" id="user-avatar">--</span>
-            <span class="tb-user-txt">
-              <b id="user-name">Loading…</b>
-              <i id="user-role">—</i>
-            </span>
+            <span class="tb-user-txt"><b id="user-name">Loading…</b><i id="user-role">—</i></span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
           </button>
           <div class="tb-user-menu" id="tb-user-menu">
-            <button onclick="switchTab('settings');closeUserMenu()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9v0a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-              Settings
-            </button>
-            <button class="danger" onclick="handleLogout()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-              Sign out
-            </button>
+            <button onclick="switchTab('settings');closeUserMenu()">Settings</button>
+            <button class="danger" onclick="handleLogout()">Sign out</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Content -->
     <div class="content">
       <div id="content-dashboard"    class="tab-content active"></div>
       <div id="content-clients"      class="tab-content"></div>
@@ -1709,7 +1738,7 @@
     const now = new Date();
     const d = now.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
     const t = now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-    document.getElementById('current-time').textContent = `${d} · ${t}`;
+    document.getElementById('current-time').textContent = t;
 
     // ══ Theme (dark-first COMMAND) ══
     window.OpsTheme = (function () {
@@ -1741,7 +1770,7 @@
         if (worst.mm >= 20) {
           const el = document.getElementById('tb-storm');
           const day = new Date(worst.t).toDateString() === new Date().toDateString() ? 'today' : 'tomorrow';
-          el.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg><span><b>Heavy rainfall ${day}</b> · ~${Math.round(worst.mm)}mm across Lagos</span>`;
+          document.getElementById('tb-storm-s').textContent = `Heavy rainfall ${day} · ~${Math.round(worst.mm)}mm across Lagos`;
           el.style.display = 'flex';
         }
       } catch (_) {}
@@ -1787,8 +1816,7 @@
 
     // ══ Live weather chip (Open-Meteo, Lagos) ══
     (async function weatherChip() {
-      const el = document.getElementById('tb-weather');
-      if (!el) return;
+
       async function load() {
         try {
           const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=6.45&longitude=3.47&current=temperature_2m,precipitation,weather_code&timezone=Africa%2FLagos');
@@ -1796,10 +1824,11 @@
           const c = j.current || {};
           const code = c.weather_code || 0;
           const desc = code >= 95 ? 'Storm' : code >= 80 ? 'Showers' : code >= 61 ? 'Rain' : code >= 51 ? 'Drizzle' : code >= 45 ? 'Fog' : code >= 2 ? 'Cloudy' : 'Clear';
-          el.innerHTML = `<b>${Math.round(c.temperature_2m)}°C</b> ${desc}`;
-          const rain = document.getElementById('tb-rain1h');
-          if (rain) rain.innerHTML = `Rain (1h) <b>${(c.precipitation ?? 0).toFixed(1)}mm</b>`;
-        } catch (_) { el.textContent = ''; }
+          const tEl = document.getElementById('tb-temp'), cEl = document.getElementById('tb-cond'), rEl = document.getElementById('tb-rain');
+          if (tEl) tEl.textContent = `${Math.round(c.temperature_2m)}°C`;
+          if (cEl) cEl.textContent = desc;
+          if (rEl) rEl.textContent = `${(c.precipitation ?? 0).toFixed(1)} mm`;
+        } catch (_) {}
       }
       load();
       setInterval(load, 30 * 60 * 1000);
