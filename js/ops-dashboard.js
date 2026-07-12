@@ -110,6 +110,8 @@ const OpsDashboard = (function () {
         .tl-note { margin:0 14px 12px; padding:9px 12px; border-radius:9px; background:var(--surface-3); font-size:.72rem; color:var(--ink-2); line-height:1.5; }
 
         @media (max-width: 1500px) { .cmd-bottom { grid-template-columns:1fr 1fr; } }
+        @media (max-width: 860px)  { .cmd-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+        @media (max-width: 480px)  { .cmd-kpis { grid-template-columns:1fr; } }
         @media (max-width: 1100px) { .cmd-main { grid-template-columns:1fr; } }
         @media (max-width: 1100px) { .cmd-mid, .cmd-bottom { grid-template-columns:1fr; }  .map-panel{height:400px;} }
 
