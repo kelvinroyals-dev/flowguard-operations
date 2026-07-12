@@ -41,9 +41,9 @@ const OpsSensors = (function () {
 
   async function load() {
     try {
-      // sensors ride on the same analytics payload the map uses — one source of truth
-      const r = await OpsModal.apiGet('/analytics/map-data');
-      _all = (r.data && r.data.sensors) || [];
+      // real node fleet with latest readings (map-data's "sensors" are client sites)
+      const r = await OpsModal.apiGet('/monitoring/sensors/all');
+      _all = r.data || [];
       draw();
     } catch (err) {
       document.getElementById('sn-body').innerHTML =
@@ -127,18 +127,18 @@ const OpsSensors = (function () {
     el.innerHTML = `<table class="sn-table">
       <thead><tr>
         <th>Node</th><th>Deployment</th><th>Status</th><th>Water level</th>
-        <th>Battery</th><th>Signal</th><th>Silt</th><th>Last ping</th>
+        <th>Flow</th><th>Battery</th><th>Signal</th><th>Last ping</th>
       </tr></thead>
       <tbody>${rows.map(x => `
         <tr>
           <td><div class="sn-node">${esc(x.name || x.sensor_id || 'Node')}</div><div class="sn-id">${esc(x.sensor_id || '')}</div></td>
-          <td>${esc(x.property_name || x.site_name || x.client_name || '—')}</td>
+          <td>${esc(x.client_name || x.zone || '—')}</td>
           <td>${stChip(x.status)}</td>
           <td>${x.level != null ? bar(Math.round(x.level), 50, 70) : '<span class="sn-mono">—</span>'}</td>
+          <td class="sn-mono">${x.flow_rate != null ? x.flow_rate.toFixed(1) + ' L/s' : '—'}</td>
           <td>${bar(x.battery_percent != null ? Math.round(x.battery_percent) : null, 40, 20, true)}</td>
           <td>${x.signal_strength != null ? bar(Math.round(x.signal_strength), 60, 35, true) : '<span class="sn-mono">—</span>'}</td>
-          <td>${x.silt_level != null ? bar(Math.round(x.silt_level), 40, 70) : '<span class="sn-mono">—</span>'}</td>
-          <td class="sn-mono">${rel(x.last_ping || x.last_reading_at || x.updated_at)}</td>
+          <td class="sn-mono">${rel(x.reading_time || x.last_ping)}</td>
         </tr>`).join('')}
       </tbody></table>`;
   }

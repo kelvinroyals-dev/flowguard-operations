@@ -80,17 +80,17 @@ const OpsDashboard = (function () {
         .ft-name { font-size:.73rem; font-weight:600; color:var(--ink); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .ft-meta { font-size:.66rem; color:var(--ink-3); font-family:var(--ff-m); white-space:nowrap; }
 
-        .feed { width:100%; border-collapse:collapse; font-size:.74rem; }
-        .feed th { text-align:left; font-weight:500; font-size:.68rem; color:var(--ink-3); padding:8px 12px; border-bottom:1px solid var(--border); white-space:nowrap; }
-        .feed th:not(:first-child), .feed td:not(:first-child) { text-align:right; }
-        .feed td { padding:9px 12px; border-bottom:1px solid var(--border); color:var(--ink); white-space:nowrap; }
-        .feed tbody tr:last-child td { border-bottom:none; }
-        .feed tbody tr:hover { background:var(--surface-h); }
-        .feed .loc { font-weight:600; }
-        .feed .flow { color:var(--blue-hi); font-family:var(--ff-m); }
-        .feed .lvl { font-family:var(--ff-m); color:var(--ink-2); }
-        .feed .st { display:inline-flex; align-items:center; gap:6px; font-weight:600; }
-        .feed .st i { width:7px; height:7px; border-radius:50%; background:currentColor; flex-shrink:0; }
+        .feed-row { display:grid; grid-template-columns:1fr auto; gap:3px 8px; padding:10px 12px; border-bottom:1px solid var(--border); }
+        .feed-row:last-child { border-bottom:none; }
+        .feed-row:hover { background:var(--surface-h); }
+        .fr-name { font-size:.76rem; font-weight:600; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .fr-st { display:inline-flex; align-items:center; gap:5px; font-size:.62rem; font-weight:700; letter-spacing:.4px; text-transform:uppercase; white-space:nowrap; }
+        .fr-st i { width:6px; height:6px; border-radius:50%; background:currentColor; box-shadow:0 0 5px currentColor; flex-shrink:0; }
+        .fr-meta { grid-column:1 / -1; display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-family:var(--ff-m); font-size:.66rem; color:var(--ink-3); }
+        .fr-meta b { color:var(--ink-2); font-weight:600; }
+        .fr-bar { flex:1; min-width:44px; height:4px; border-radius:2px; background:var(--surface-3); overflow:hidden; }
+        .fr-bar i { display:block; height:100%; border-radius:2px; }
+        .fr-dot { width:3px; height:3px; border-radius:50%; background:var(--ink-4); flex-shrink:0; }
 
         .cmd-mid { display:grid; grid-template-columns:1.15fr 1fr; gap:12px; margin-bottom:14px; }
         /* infrastructure health minis */
@@ -267,17 +267,19 @@ const OpsDashboard = (function () {
     if (!Auth.isAuthenticated()) return;
 
     try {
-      const [mapRes, kpiRes, teamRes, tickRes] = await Promise.all([
+      const [mapRes, kpiRes, teamRes, tickRes, fleetRes] = await Promise.all([
         OpsModal.apiGet('/analytics/map-data'),
         OpsModal.apiGet('/analytics/kpis'),
         OpsModal.apiGet('/teams').catch(() => ({ data: [] })),
         OpsModal.apiGet('/tickets?limit=8').catch(() => ({ data: [] })),
+        OpsModal.apiGet('/monitoring/sensors/all').catch(() => ({ data: [] })),
       ]);
 
       const md    = mapRes.data || {};
       const kpis  = kpiRes.data || {};
       const teams = teamRes.data || [];
       const ticks = tickRes.data || [];
+      const fleet = fleetRes.data || [];
 
       plotAreas(md.areas || []);
       plotSites(md.sites || []);
@@ -290,8 +292,8 @@ const OpsDashboard = (function () {
       renderKpiStrip(kpis, md, teams);
       renderQueue(md.alerts || []);
       renderTeamsPanel(teams);
-      renderFeed(md.sensors || []);
-      renderHealth(md.sensors || [], kpis);
+      renderFeed(fleet);
+      renderHealth(fleet.length ? fleet : (md.sensors || []), kpis);
       renderWorkOrders(ticks);
       renderUptime(kpis);
       fitBounds(md);
@@ -672,34 +674,52 @@ const OpsDashboard = (function () {
     }).join('');
   }
 
-  // ── Live Sentinel Feed: latest reading per node ──
-  function renderFeed(sensors) {
+  // ── Live Sentinel Feed: latest reading per node (real fleet endpoint) ──
+  function renderFeed(nodes) {
     const el = document.getElementById('dash-feed');
     if (!el) return;
-    const rows = (sensors || []).slice(0, 6);
-    if (!rows.length) { el.innerHTML = '<div class="pq-empty">No nodes reporting yet.</div>'; return; }
-    // status from the node's own signals: water level + silt + link state
-    const stat = s => {
-      if (s.status !== 'active') return ['var(--off)', 'Offline'];
-      const lvl = s.level, silt = s.silt_level;
-      if ((lvl != null && lvl >= 70) || (silt != null && silt >= 80)) return ['var(--err)', 'Critical'];
-      if ((lvl != null && lvl >= 50) || (silt != null && silt >= 60)) return ['var(--warn)', 'Warning'];
+    if (!nodes || !nodes.length) { el.innerHTML = '<div class="pq-empty">No Sentinel nodes reporting yet.</div>'; return; }
+
+    const stat = n => {
+      if (n.status !== 'active') return ['var(--off)', 'Offline'];
+      if (n.level != null && n.level >= 70) return ['var(--err)', 'Critical'];
+      if (n.debris_detected) return ['var(--caut)', 'Debris'];
+      if (n.level != null && n.level >= 50) return ['var(--warn)', 'Warning'];
+      if (n.battery_percent != null && n.battery_percent < 20) return ['var(--warn)', 'Low batt'];
       return ['var(--ok)', 'Normal'];
     };
-    el.innerHTML = `<table class="feed">
-      <thead><tr><th>Location</th><th>Water Level</th><th>Flow Rate</th><th>Status</th></tr></thead>
-      <tbody>${rows.map(s => {
-        const [c, lbl] = stat(s);
-        return `<tr>
-          <td class="loc">${(s.name || s.sensor_id || '—')}</td>
-          <td class="lvl">${s.level != null ? Math.round(s.level) + '%' : '—'}</td>
-          <td class="flow">${s.flow_rate != null ? s.flow_rate + ' L/s' : '—'}</td>
-          <td><span class="st" style="color:${c}"><i></i>${lbl}</span></td>
-        </tr>`;
-      }).join('')}</tbody></table>`;
+    const rel = ts => {
+      if (!ts) return '—';
+      const m = Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
+      if (m < 1) return 'now';
+      if (m < 60) return m + 'm';
+      if (m < 1440) return Math.floor(m / 60) + 'h';
+      return Math.floor(m / 1440) + 'd';
+    };
+
+    el.innerHTML = nodes.slice(0, 6).map(n => {
+      const [c, lbl] = stat(n);
+      const lvl = n.level != null ? Math.round(n.level) : null;
+      const lvlColor = lvl == null ? 'var(--ink-4)' : lvl >= 70 ? 'var(--err)' : lvl >= 50 ? 'var(--warn)' : 'var(--ok)';
+      const batt = n.battery_percent;
+      return `
+      <div class="feed-row">
+        <span class="fr-name" title="${(n.name || n.sensor_id || '')}${n.client_name ? ' · ' + n.client_name : ''}">${(n.name || n.sensor_id || '—')}</span>
+        <span class="fr-st" style="color:${c}"><i></i>${lbl}</span>
+        <span class="fr-meta">
+          <b style="color:${lvlColor}">${lvl != null ? lvl + '%' : '—'}</b>
+          <span class="fr-bar"><i style="width:${lvl != null ? Math.max(3, lvl) : 0}%;background:${lvlColor}"></i></span>
+          <span class="fr-dot"></span>
+          <b>${n.flow_rate != null ? n.flow_rate.toFixed(1) + ' L/s' : '— L/s'}</b>
+          ${batt != null ? `<span class="fr-dot"></span><b style="color:${batt < 20 ? 'var(--err)' : batt < 40 ? 'var(--warn)' : 'var(--ink-2)'}" title="Battery">${batt}% batt</b>` : ''}
+          <span class="fr-dot"></span>
+          <span>${rel(n.reading_time || n.last_ping)}</span>
+        </span>
+      </div>`;
+    }).join('');
   }
 
-  // ── Infrastructure health: sensor network by state + battery/signal where present ──
+  // ── Infrastructure health  // ── Infrastructure health: sensor network by state + battery/signal where present ──
   function renderHealth(sensors, kpis) {
     const el = document.getElementById('dash-health');
     if (!el) return;
