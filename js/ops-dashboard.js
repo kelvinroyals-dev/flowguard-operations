@@ -39,14 +39,17 @@ const OpsDashboard = (function () {
     container.innerHTML = `
       <style>
         /* ══ COMMAND dashboard composition ══ */
-        .cmd-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(146px,1fr)); gap:12px; margin-bottom:14px; }
-        .ck { background:var(--surface); border:1px solid var(--border); border-radius:var(--rs); padding:12px 14px; position:relative; overflow:hidden; box-shadow:var(--sh-xs); transition:border-color .15s, box-shadow .15s; }
-        .ck:hover { border-color:var(--border-2); box-shadow:var(--sh-sm); }
-        .ck-label { font-size:.57rem; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:var(--ink-3); display:flex; align-items:center; gap:6px; }
-        .ck-label svg { width:13px; height:13px; color:var(--blue-hi); flex-shrink:0; }
-        .ck-val { font-family:var(--ff-m); font-size:1.28rem; font-weight:600; color:var(--ink); margin-top:6px; line-height:1.1; }
-        .ck-sub { font-size:.65rem; color:var(--ink-3); margin-top:3px; }
+        .cmd-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin-bottom:16px; }
+        .ck { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 20px; display:flex; gap:14px; align-items:flex-start; box-shadow:var(--sh-xs); transition:border-color .15s; }
+        .ck:hover { border-color:var(--border-2); }
+        .ck-ic { width:38px; height:38px; border-radius:11px; display:grid; place-items:center; flex-shrink:0; }
+        .ck-ic svg { width:18px; height:18px; }
+        .ck-body { min-width:0; flex:1; }
+        .ck-label { font-size:.78rem; font-weight:500; color:var(--ink-2); line-height:1.3; letter-spacing:0; text-transform:none; }
+        .ck-val { font-family:var(--ff-b); font-size:1.85rem; font-weight:700; color:var(--ink); margin-top:7px; line-height:1.15; letter-spacing:-.5px; }
+        .ck-sub { font-size:.75rem; color:var(--ink-3); margin-top:6px; display:flex; align-items:center; gap:5px; }
         .ck-sub.ok { color:var(--ok); } .ck-sub.err { color:var(--err); } .ck-sub.warn { color:var(--warn); }
+        .ck-sub .d { width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0; }
 
         .cmd-main { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:12px; margin-bottom:14px; }
         .map-panel { position:relative; border-radius:var(--r); overflow:hidden; border:1px solid var(--border); min-height:430px; height:52vh; box-shadow:var(--sh-xs); }
@@ -572,21 +575,49 @@ const OpsDashboard = (function () {
     const so = kpis.sensorsOnline || {};
     const pct = so.total ? Math.round((so.online / so.total) * 100) : null;
     const crit = parseInt(kpis.criticalAlerts) || 0;
+    const high = parseInt(kpis.highAlerts) || 0;
+    const openInc = parseInt(kpis.activeAlerts) || 0;
     const deployed = teams.filter(t => ['on_site', 'en_route'].includes((t.status || '').toLowerCase())).length;
-    const ic = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
-    const card = (icon, label, val, sub, subCls) => `
+    const pending = parseInt(kpis.pendingInspections) || 0;
+    const ic = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+
+    // icon tile tinted to its metric's semantic colour — like the reference
+    const card = (icon, tint, label, val, sub, subCls, dot) => `
       <div class="ck">
-        <div class="ck-label">${icon}${label}</div>
-        <div class="ck-val">${val}</div>
-        <div class="ck-sub ${subCls || ''}">${sub}</div>
+        <div class="ck-ic" style="background:${tint}1c;color:${tint}">${icon}</div>
+        <div class="ck-body">
+          <div class="ck-label">${label}</div>
+          <div class="ck-val">${val}</div>
+          <div class="ck-sub ${subCls || ''}">${dot ? '<span class="d"></span>' : ''}${sub}</div>
+        </div>
       </div>`;
+
     el.innerHTML =
-      card(ic('<path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/>'), 'Assets monitored', areas.length, `${active} live`, active ? 'ok' : '') +
-      card(ic('<circle cx="12" cy="12" r="3"/><path d="M12 5V3M12 21v-2M5 12H3M21 12h-2M6.4 6.4L5 5M19 19l-1.4-1.4M6.4 17.6L5 19M19 5l-1.4 1.4"/>'), 'Sensors online', so.total ? `${so.online}/${so.total}` : '—', pct != null ? `${pct}% reporting` : 'No nodes yet', pct != null ? (pct >= 90 ? 'ok' : pct >= 75 ? 'warn' : 'err') : '') +
-      card(ic('<path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/>'), 'Open incidents', kpis.activeAlerts || 0, crit ? `${crit} critical` : 'None critical', crit ? 'err' : 'ok') +
-      card(ic('<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>'), 'Teams deployed', deployed, `${teams.length} total`, deployed ? 'ok' : '') +
-      card(ic('<path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>'), 'Monthly revenue', formatMoney(kpis.mrr || 0), 'Recurring', '') +
-      card(ic('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>'), 'Pending inspections', parseInt(kpis.pendingInspections) || 0, 'Awaiting scheduling', parseInt(kpis.pendingInspections) ? 'warn' : 'ok');
+      card(ic('<path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/>'), 'var(--blue-hi)',
+        'Assets Under Monitoring', areas.length.toLocaleString(),
+        `${active} live`, active ? 'ok' : '', !!active) +
+
+      card(ic('<circle cx="12" cy="12" r="3"/><path d="M12 5V3M12 21v-2M5 12H3M21 12h-2M6.4 6.4L5 5M19 19l-1.4-1.4M6.4 17.6L5 19M19 5l-1.4 1.4"/>'), 'var(--ok)',
+        'Active Sensors', so.total ? `${so.online}/${so.total}` : '—',
+        pct != null ? `Online ${pct}%` : 'No nodes yet',
+        pct != null ? (pct >= 90 ? 'ok' : pct >= 75 ? 'warn' : 'err') : '', pct != null) +
+
+      card(ic('<path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/>'), crit ? 'var(--err)' : 'var(--ok)',
+        'Open Incidents', openInc,
+        crit || high ? `Critical ${crit} · High ${high}` : 'None critical',
+        crit ? 'err' : 'ok', false) +
+
+      card(ic('<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>'), 'var(--blue-hi)',
+        'Teams Deployed', deployed,
+        `${teams.length} in the field`, deployed ? 'ok' : '', !!deployed) +
+
+      card(ic('<path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>'), 'var(--ok)',
+        'Monthly Revenue', formatMoney(kpis.mrr || 0),
+        'Recurring', '', false) +
+
+      card(ic('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>'), pending ? 'var(--warn)' : 'var(--ok)',
+        'Pending Inspections', pending,
+        pending ? 'Awaiting scheduling' : 'All scheduled', pending ? 'warn' : 'ok', false);
   }
 
   // ── Priority queue: incidents ranked by severity, then age ──
