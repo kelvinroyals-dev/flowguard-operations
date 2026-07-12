@@ -6,8 +6,6 @@ const OpsDashboard = (function () {
   let map = null;
   let layers = {};
   let baseTiles = null;
-  let radarMap = null;
-  let radarBase = null;
 
   function tileUrl() {
     const t = (window.OpsTheme && OpsTheme.get() === 'light') ? 'light_all' : 'dark_all';
@@ -16,7 +14,6 @@ const OpsDashboard = (function () {
   // instant tile swap on theme change — no re-render needed
   window.addEventListener('ops-theme-change', () => {
     if (baseTiles) baseTiles.setUrl(tileUrl());
-    if (radarBase) radarBase.setUrl(tileUrl());
   });
 
   function loadLeaflet() {
@@ -35,19 +32,18 @@ const OpsDashboard = (function () {
 
   async function render(container) {
     if (map) { try { map.remove(); } catch (_) {} map = null; layers = {}; }
-    if (radarMap) { try { radarMap.remove(); } catch (_) {} radarMap = null; }
     container.innerHTML = `
       <style>
         /* ══ COMMAND dashboard composition ══ */
-        .cmd-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin-bottom:16px; }
-        .ck { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 20px; display:flex; gap:14px; align-items:flex-start; box-shadow:var(--sh-xs); transition:border-color .15s; }
+        .cmd-kpis { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin-bottom:12px; }
+        .ck { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 13px; display:flex; gap:10px; align-items:flex-start; box-shadow:var(--sh-xs); transition:border-color .15s; min-width:0; }
         .ck:hover { border-color:var(--border-2); }
-        .ck-ic { width:38px; height:38px; border-radius:11px; display:grid; place-items:center; flex-shrink:0; }
-        .ck-ic svg { width:18px; height:18px; }
+        .ck-ic { width:32px; height:32px; border-radius:9px; display:grid; place-items:center; flex-shrink:0; }
+        .ck-ic svg { width:16px; height:16px; }
         .ck-body { min-width:0; flex:1; }
-        .ck-label { font-size:.78rem; font-weight:500; color:var(--ink-2); line-height:1.3; letter-spacing:0; text-transform:none; }
-        .ck-val { font-family:var(--ff-b); font-size:1.85rem; font-weight:700; color:var(--ink); margin-top:7px; line-height:1.15; letter-spacing:-.5px; }
-        .ck-sub { font-size:.75rem; color:var(--ink-3); margin-top:6px; display:flex; align-items:center; gap:5px; }
+        .ck-label { font-size:.7rem; font-weight:500; color:var(--ink-2); line-height:1.25; letter-spacing:0; text-transform:none; }
+        .ck-val { font-family:var(--ff-b); font-size:1.45rem; font-weight:700; color:var(--ink); margin-top:4px; line-height:1.15; letter-spacing:-.5px; }
+        .ck-sub { font-size:.66rem; color:var(--ink-3); margin-top:4px; display:flex; align-items:center; gap:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .ck-sub.ok { color:var(--ok); } .ck-sub.err { color:var(--err); } .ck-sub.warn { color:var(--warn); }
         .ck-sub .d { width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0; }
 
@@ -93,7 +89,7 @@ const OpsDashboard = (function () {
         .ih-bar { height:5px; border-radius:3px; background:var(--surface-3); overflow:hidden; }
         .ih-bar i { display:block; height:100%; border-radius:3px; }
 
-        .cmd-bottom { display:grid; grid-template-columns:1.1fr 1.2fr .9fr; gap:12px; }
+        .cmd-bottom { display:grid; grid-template-columns:1.3fr 1fr; gap:12px; }
         .radar-body { position:relative; height:205px; }
         #radar-map { position:absolute; inset:0; }
         .radar-cap { position:absolute; left:10px; bottom:10px; z-index:500; font-family:var(--ff-m); font-size:.62rem; color:var(--ink-2); background:var(--overlay); border:1px solid var(--border); border-radius:6px; padding:3px 8px; }
@@ -167,10 +163,6 @@ const OpsDashboard = (function () {
 
       <div class="cmd-bottom">
         <div class="cmd-panel">
-          <div class="cmd-panel-h"><b>Rainfall radar</b><span style="font-size:.62rem;color:var(--ink-3);font-family:var(--ff-m)" id="radar-ts"></span></div>
-          <div class="radar-body"><div id="radar-map"></div><div class="radar-cap">RainViewer · live composite</div></div>
-        </div>
-        <div class="cmd-panel">
           <div class="cmd-panel-h"><b>Work order queue</b><a onclick="switchTab('alerts')">All →</a></div>
           <div id="dash-workorders"><div class="pq-empty">Loading…</div></div>
         </div>
@@ -183,13 +175,12 @@ const OpsDashboard = (function () {
 
     await loadLeaflet();
     initMap();
-    initRadar();
     loadTimeline();
     loadAllData();
     // keep the map honest about its container for the panel's lifetime
     const mp = container.querySelector('.map-panel');
     if (mp && window.ResizeObserver) {
-      new ResizeObserver(() => { try { map && map.invalidateSize(); radarMap && radarMap.invalidateSize(); } catch (_) {} }).observe(mp);
+      new ResizeObserver(() => { try { map && map.invalidateSize();  } catch (_) {} }).observe(mp);
     }
   }
 
@@ -611,10 +602,6 @@ const OpsDashboard = (function () {
         'Teams Deployed', deployed,
         `${teams.length} in the field`, deployed ? 'ok' : '', !!deployed) +
 
-      card(ic('<path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>'), 'var(--ok)',
-        'Monthly Revenue', formatMoney(kpis.mrr || 0),
-        'Recurring', '', false) +
-
       card(ic('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>'), pending ? 'var(--warn)' : 'var(--ok)',
         'Pending Inspections', pending,
         pending ? 'Awaiting scheduling' : 'All scheduled', pending ? 'warn' : 'ok', false);
@@ -721,26 +708,6 @@ const OpsDashboard = (function () {
           ? `<b>${tot}mm expected in 24h</b> — peak around ${peak.t.getHours()}:00. Network capacity is adequate.`
           : `Light rainfall (${tot}mm) over the next 24h — no intervention window needed.`}</div>`;
     } catch (_) { el.innerHTML = '<div class="pq-empty">Weather service unreachable.</div>'; }
-  }
-
-  // ── Rainfall radar (RainViewer — real composite) ──
-  async function initRadar() {
-    const elMap = document.getElementById('radar-map');
-    if (!elMap || !window.L) return;
-    radarMap = L.map('radar-map', { center: [6.52, 3.55], zoom: 9, minZoom: 6, maxZoom: 11, zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false });
-    setTimeout(() => { try { radarMap.invalidateSize(); radarMap.setView([6.52, 3.55], 9); } catch (_) {} }, 250);
-    radarBase = L.tileLayer(tileUrl(), { subdomains: 'abcd', maxZoom: 11 }).addTo(radarMap);
-    try {
-      const r = await fetch('https://api.rainviewer.com/public/weather-maps.json');
-      const j = await r.json();
-      const frames = (j.radar && (j.radar.nowcast || []).concat(j.radar.past || [])) || [];
-      const frame = (j.radar && j.radar.past && j.radar.past[j.radar.past.length - 1]) || frames[0];
-      if (frame) {
-        L.tileLayer(`${j.host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, { opacity: .75, maxZoom: 11, maxNativeZoom: 10 }).addTo(radarMap);
-        const ts = document.getElementById('radar-ts');
-        if (ts) ts.textContent = new Date(frame.time * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' WAT';
-      }
-    } catch (_) { /* radar optional */ }
   }
 
   // ── Work order queue (tickets) ──
