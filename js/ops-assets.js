@@ -55,6 +55,7 @@ const OpsAssets = (function () {
         .as-group-h .line { flex:1; height:1px; background:var(--border); }
 
         .as-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; }
+        .ast:hover { border-color:var(--blue-dim); }
         .ast { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:13px 14px; box-shadow:var(--sh-xs); display:flex; gap:11px; align-items:flex-start; }
         .ast-ic { width:34px; height:34px; border-radius:9px; display:grid; place-items:center; flex-shrink:0; background:var(--neon-trace); color:var(--blue-hi); }
         .ast-ic svg { width:17px; height:17px; }
@@ -141,7 +142,7 @@ const OpsAssets = (function () {
     const icon = ICONS[a.property_type] || ICONS.catch_basin;
     const nodes = Number(a.node_count) || 0;
     return `
-      <div class="ast">
+      <div class="ast" ${a.parent_property_id ? `onclick="OpsNetwork.open('${a.parent_property_id}')" style="cursor:pointer"` : ''}>
         <div class="ast-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${icon}</svg></div>
         <div class="ast-b">
           <div class="ast-n">${esc(a.asset_code || a.property_name)}</div>

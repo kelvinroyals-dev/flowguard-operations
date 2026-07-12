@@ -49,7 +49,8 @@ const OpsSensors = (function () {
         .dev-cov { margin-top:12px; }
         .cov-k { font-size:.57rem; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:var(--ink-3); margin-bottom:6px; }
         .cov-list { display:flex; flex-wrap:wrap; gap:5px; }
-        .cov-tag { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:100px; background:var(--neon-trace); border:1px solid var(--blue-dim); font-size:.64rem; color:var(--blue-hi); white-space:nowrap; }
+        .cov-tag { cursor:pointer; font-family:var(--ff-b); display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:100px; background:var(--neon-trace); border:1px solid var(--blue-dim); font-size:.64rem; color:var(--blue-hi); white-space:nowrap; }
+        .cov-tag:hover { border-color:var(--ink-2); }
         .cov-tag.pri { background:var(--ok-bg); border-color:var(--ok); color:var(--ok); font-weight:700; }
         .cov-none { font-size:.68rem; color:var(--warn); }
 
@@ -168,7 +169,7 @@ const OpsSensors = (function () {
     const beat = rel(x.reading_time || x.last_ping);
     const assets = x.assets || [];
     const cov = assets.length
-      ? assets.map(a => `<span class="cov-tag ${a.is_primary ? 'pri' : ''}" title="${a.type ? a.type.replace(/_/g, ' ') : ''}">${a.is_primary ? '★ ' : ''}${esc(a.name)}</span>`).join('')
+      ? assets.map(a => `<button class="cov-tag ${a.is_primary ? 'pri' : ''}" onclick="OpsSensors.openAsset('${a.property_id}')" title="${a.type ? a.type.replace(/_/g, ' ') : ''} — open its property network">${a.is_primary ? '★ ' : ''}${esc(a.name)}</button>`).join('')
       : '<span class="cov-none">Covering no asset — assign one</span>';
 
     return `
@@ -324,9 +325,19 @@ const OpsSensors = (function () {
     }
   }
 
+  // a coverage tag drills through to the asset's parent property network
+  async function openAsset(assetId) {
+    try {
+      const r = await OpsModal.apiGet('/properties/assets');
+      const asset = (r.data || []).find(a => a.property_id === assetId);
+      if (asset && asset.parent_property_id) { OpsNetwork.open(asset.parent_property_id); return; }
+      OpsModal.toast('This asset is not attached to a property yet.', 'error');
+    } catch (_) { OpsModal.toast('Could not open the asset', 'error'); }
+  }
+
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
   function setFilter(f) { _filter = f; draw(); }
   function setQuery(q) { _q = q; draw(); }
 
-  return { render, setFilter, setQuery, coverage, saveCoverage, history, calibrate, confirmCalibrate };
+  return { render, setFilter, setQuery, coverage, saveCoverage, history, calibrate, confirmCalibrate, openAsset };
 })();

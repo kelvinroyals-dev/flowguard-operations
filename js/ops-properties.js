@@ -279,6 +279,32 @@ const OpsProperties = (function () {
     return `<span class="status-badge ${m[s] || 'offline'}">${s}</span>`;
   }
 
+  // the hierarchy, visible in the list: how many assets, how many watched
+  function networkCell(a) {
+    const assets = parseInt(a.asset_count) || 0;
+    const nodes = parseInt(a.sentinel_count) || 0;
+    const monitored = parseInt(a.monitored_assets) || 0;
+    if (!assets) {
+      return `<button class="btn-ghost" onclick="OpsNetwork.open('${a.property_id}')"
+        style="padding:4px 9px;font-size:.7rem;color:var(--warn);border-color:var(--warn);">No assets</button>`;
+    }
+    const gap = assets - monitored;
+    return `<button class="btn-ghost" onclick="OpsNetwork.open('${a.property_id}')"
+      style="padding:4px 9px;font-size:.72rem;display:inline-flex;gap:7px;align-items:center;">
+      <span><b style="color:var(--ink);font-family:var(--font-mono)">${assets}</b> asset${assets > 1 ? 's' : ''}</span>
+      <span style="color:var(--ink-4)">·</span>
+      <span><b style="color:${nodes ? 'var(--ok)' : 'var(--warn)'};font-family:var(--font-mono)">${nodes}</b> Sentinel${nodes === 1 ? '' : 's'}</span>
+      ${gap ? `<span style="color:var(--warn)">· ${gap} unwatched</span>` : ''}
+    </button>`;
+  }
+
+  function healthCell(score) {
+    if (score == null) return '<span style="color:var(--ink-4);font-size:.76rem;">—</span>';
+    const v = Math.round(Number(score));
+    const c = v >= 75 ? 'var(--ok)' : v >= 50 ? 'var(--warn)' : 'var(--err)';
+    return `<span style="font-family:var(--font-mono);font-weight:700;color:${c};font-size:.82rem">${v}</span>`;
+  }
+
   function urgencyBadge(u) {
     if (!u) return '<span style="color:var(--ink-4);font-size:.76rem;">—</span>';
     const m = { low:'nominal', medium:'watch', high:'warning', critical:'critical' };
@@ -307,6 +333,8 @@ const OpsProperties = (function () {
               <th>Type</th>
               <th>Client</th>
               <th>Location</th>
+              <th>Drainage network</th>
+              <th>Health</th>
               <th>Pipeline Status</th>
               <th>Inspection</th>
               <th>Urgency</th>
@@ -322,11 +350,14 @@ const OpsProperties = (function () {
                 <td style="font-size:.78rem;">${(a.property_type || '').replace(/_/g, ' ')}</td>
                 <td style="font-size:.82rem;">${a.client_name || a.client_email || '—'}</td>
                 <td style="font-size:.78rem;">${loc}</td>
+                <td>${networkCell(a)}</td>
+                <td>${healthCell(a.health_score)}</td>
                 <td>${pipelineBadge(a.status)}</td>
                 <td>${a.inspection_status ? inspBadge(a.inspection_status) : '<span style="color:var(--ink-4);font-size:.76rem;">—</span>'}</td>
                 <td>${urgencyBadge(a.urgency_level)}</td>
                 <td style="text-align:right;">
                   <div style="display:flex;gap:6px;justify-content:flex-end;">
+                    <button class="btn-ghost" onclick="OpsNetwork.open('${pid}')" style="padding:6px 12px;font-size:.76rem;color:var(--blue-hi);border-color:var(--blue-dim);">Network</button>
                     <button class="btn-ghost" onclick="OpsProperties.viewArea('${pid}')" style="padding:6px 12px;font-size:.76rem;">View</button>
                     <button class="btn-ghost" onclick="OpsProperties.editArea('${pid}')" style="padding:6px 12px;font-size:.76rem;">Edit</button>
                     ${a.status === 'submitted'

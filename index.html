@@ -1114,7 +1114,7 @@
     }
   </style>
 </head>
-<body>
+<body data-build="cmd8">
 
 <div class="app">
 
@@ -1156,9 +1156,13 @@
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         <span class="nav-label">Properties</span>
       </button>
+      <button class="nav-item" id="nav-assets" onclick="switchTab('assets')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20M2 7c4 0 4 10 8 10s4-10 8-10 4 10 4 10"/></svg>
+        <span class="nav-label">Assets</span>
+      </button>
       <button class="nav-item" id="nav-sensors" onclick="switchTab('sensors')">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="2.5"/><path d="M16.2 7.8a6 6 0 010 8.4M7.8 16.2a6 6 0 010-8.4M19 5a10 10 0 010 14M5 19A10 10 0 015 5"/></svg>
-        <span class="nav-label">Sentinel Nodes</span>
+        <span class="nav-label">Sentinel</span>
       </button>
       <div class="nav-sect">Field</div>
       <button class="nav-item" id="nav-teams" onclick="switchTab('teams')">
@@ -1266,6 +1270,8 @@
       <div id="content-dashboard"    class="tab-content active"></div>
       <div id="content-clients"      class="tab-content"></div>
       <div id="content-properties"   class="tab-content"></div>
+      <div id="content-assets"       class="tab-content"></div>
+      <div id="content-network"      class="tab-content"></div>
       <div id="content-sensors"      class="tab-content"></div>
       <div id="content-alerts"       class="tab-content"></div>
       <div id="content-teams"        class="tab-content"></div>
@@ -1296,22 +1302,29 @@
 </div>
 
 <!-- Scripts -->
-<script src="js/config.js?v=cmd6"></script>
-<script src="js/auth.js?v=cmd6"></script>
-<script src="js/ops-modal.js?v=cmd6"></script>
-<script src="js/fg-paginator.js?v=cmd6"></script>
-<script src="js/ops-dashboard.js?v=cmd6"></script>
-<script src="js/ops-user-management.js?v=cmd6"></script>
-<script src="js/ops-clients.js?v=cmd6"></script>
-<script src="js/ops-properties.js?v=cmd6"></script>
-  <script src="js/ops-sensors.js?v=cmd6"></script>
-<script src="js/ops-teams.js?v=cmd6"></script>
-<script src="js/ops-alerts-reports.js?v=cmd6"></script>
-<script src="js/ops-field-reports.js?v=cmd6"></script>
-<script src="js/ops-billing.js?v=cmd6"></script>
-<script src="js/ops-sla.js?v=cmd6"></script>
-<script src="js/ops-audit.js?v=cmd6"></script>
-<script src="js/ops-settings.js?v=cmd6"></script>
+<script>
+    window.FG_BUILD = 'cmd8';
+    console.log('%c FlowGuard Ops ' + FG_BUILD + ' ', 'background:#22d3ee;color:#04222b;font-weight:700;border-radius:3px',
+      '| tabs: dashboard, alerts, clients, properties, assets, sentinel, network, teams');
+  </script>
+  <script src="js/config.js?v=cmd8"></script>
+<script src="js/auth.js?v=cmd8"></script>
+<script src="js/ops-modal.js?v=cmd8"></script>
+<script src="js/fg-paginator.js?v=cmd8"></script>
+<script src="js/ops-dashboard.js?v=cmd8"></script>
+<script src="js/ops-user-management.js?v=cmd8"></script>
+<script src="js/ops-clients.js?v=cmd8"></script>
+<script src="js/ops-properties.js?v=cmd8"></script>
+  <script src="js/ops-assets.js?v=cmd8"></script>
+  <script src="js/ops-network.js?v=cmd8"></script>
+  <script src="js/ops-sensors.js?v=cmd8"></script>
+<script src="js/ops-teams.js?v=cmd8"></script>
+<script src="js/ops-alerts-reports.js?v=cmd8"></script>
+<script src="js/ops-field-reports.js?v=cmd8"></script>
+<script src="js/ops-billing.js?v=cmd8"></script>
+<script src="js/ops-sla.js?v=cmd8"></script>
+<script src="js/ops-audit.js?v=cmd8"></script>
+<script src="js/ops-settings.js?v=cmd8"></script>
 
 <script>
   if (typeof Auth === 'undefined' || !Auth.isAuthenticated()) window.location.href = 'login.html';
@@ -1321,7 +1334,9 @@
     dashboard:        { module:'Dashboard',    title:'Operations Overview'         },
     clients:          { module:'Clients',      title:'Client Accounts'             },
     properties:       { module:'Properties',   title:'Asset Registry'              },
-    sensors:          { module:'Operations',   title:'Sentinel Nodes'              },
+    assets:           { module:'Operations',   title:'Drainage Assets'             },
+    network:          { module:'Operations',   title:'Property Network'            },
+    sensors:          { module:'Operations',   title:'Sentinel'                    },
     alerts:           { module:'Alerts',       title:'Incident Management'         },
     teams:            { module:'Field',        title:'Team Dispatch'               },
     'team-members':   { module:'Field',        title:'Team Members'                },
@@ -1667,6 +1682,8 @@
       dashboard:        () => typeof OpsDashboard      !== 'undefined' ? OpsDashboard      : null,
       clients:          () => typeof OpsClients        !== 'undefined' ? OpsClients        : null,
       properties:       () => typeof OpsProperties     !== 'undefined' ? OpsProperties     : null,
+      assets:           () => typeof OpsAssets         !== 'undefined' ? OpsAssets         : null,
+      network:          () => typeof OpsNetwork        !== 'undefined' ? OpsNetwork        : null,
       sensors:          () => typeof OpsSensors        !== 'undefined' ? OpsSensors        : null,
       alerts:           () => typeof OpsAlerts         !== 'undefined' ? OpsAlerts         : null,
       teams:            () => typeof OpsTeams          !== 'undefined' ? OpsTeams          : null,
