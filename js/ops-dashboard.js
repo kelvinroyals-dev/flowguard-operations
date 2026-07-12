@@ -646,13 +646,95 @@ const OpsDashboard = (function () {
           <div class="pq-title">${a.alert_type || 'Alert'}${a.site_name ? ' — ' + a.site_name : ''}</div>
           <div class="pq-sub">${a.description || a.sensor_name || ''}</div>
           ${a.time_to_overflow_min ? `<div class="pq-sub" style="color:var(--err);font-weight:700">Overflow in ~${a.time_to_overflow_min} min</div>` : ''}
-          <button class="pq-btn" onclick="switchTab('alerts')">Respond →</button>
+          <button class="pq-btn" onclick="OpsDashboard.dispatch('${a.alert_id}')">Respond →</button>
         </div>
         <div class="pq-right">
           <span class="pq-chip" style="background:${sevColor(a.severity)}20;color:${sevColor(a.severity)}">${a.severity}</span>
           <div class="pq-age" style="margin-top:5px">${rel(a.created_at)}</div>
         </div>
       </div>`).join('');
+  }
+
+  // ── Dispatch: assign a team, create the work order, log the client's event ──
+  async function dispatch(alertId) {
+    let teams = [];
+    try {
+      const r = await OpsModal.apiGet('/teams');
+      teams = (r.data || []).filter(t => (t.status || 'idle') === 'idle');
+    } catch (_) {}
+    if (!teams.length) {
+      OpsModal.toast('No teams are free right now — every crew is already deployed.', 'error');
+      return;
+    }
+    const WORK = [
+      { value: 'silt_clearing', label: 'Silt clearing' },
+      { value: 'enzyme_refill', label: 'Enzyme refill' },
+      { value: 'node_repair',   label: 'Node repair' },
+      { value: 'inspection',    label: 'Inspection' },
+      { value: 'maintenance',   label: 'General maintenance' },
+    ];
+    OpsModal.open('Dispatch a crew', `
+      <p style="margin:0 0 14px;font-size:.8rem;color:var(--ink-3);line-height:1.5">
+        This assigns the team, raises a work order, and records a dispatch on the client's property record.
+      </p>
+      ${OpsModal.field('Team', 'team_id', 'select', '', {
+        options: teams.map(t => ({ value: t.team_id, label: `${t.team_name || t.team_id}${t.current_location ? ' · ' + t.current_location : ''}` })) })}
+      ${OpsModal.field('Work type', 'work_type', 'select', 'silt_clearing', { options: WORK })}
+      ${OpsModal.field('Note for the crew', 'note', 'textarea', '', { required: false, placeholder: 'Optional — what they should expect on site' })}
+    `, [
+      { label: 'Cancel', onclick: 'OpsModal.close()' },
+      { label: 'Dispatch', primary: true, onclick: `OpsDashboard.confirmDispatch('${alertId}')` },
+    ]);
+  }
+
+  async function confirmDispatch(alertId) {
+    const f = OpsModal.getFormData();
+    if (!f.team_id) { OpsModal.toast('Pick a team', 'error'); return; }
+    OpsModal.setLoading(true);
+    try {
+      const r = await OpsModal.apiPost(`/alerts/${alertId}/dispatch`, {
+        team_id: f.team_id, work_type: f.work_type, note: f.note || null,
+      });
+      OpsModal.close();
+      OpsModal.toast(`Crew dispatched — work order ${r.data.ticket_id} raised.`, 'success');
+      loadAllData();
+    } catch (err) {
+      OpsModal.setLoading(false);
+      OpsModal.toast(err.message || 'Dispatch failed', 'error');
+    }
+  }
+
+  // ── Resolve: the outcome decides what the client sees ──
+  function resolveAlert(alertId) {
+    OpsModal.open('Resolve alert', `
+      <p style="margin:0 0 14px;font-size:.8rem;color:var(--ink-3);line-height:1.5">
+        What actually happened? This is what the client's record will show — a prevented
+        incident is a win worth logging; a flood resets their days-flood-free counter.
+      </p>
+      ${OpsModal.field('Outcome', 'outcome', 'select', 'prevented', { options: [
+        { value: 'prevented',   label: 'Flooding prevented — we got there in time' },
+        { value: 'flooded',     label: 'Flooding occurred anyway' },
+        { value: 'false_alarm', label: 'False alarm — nothing happened' },
+      ]})}
+      ${OpsModal.field('Note', 'note', 'textarea', '', { required: false })}
+    `, [
+      { label: 'Cancel', onclick: 'OpsModal.close()' },
+      { label: 'Resolve', primary: true, onclick: `OpsDashboard.confirmResolve('${alertId}')` },
+    ]);
+  }
+
+  async function confirmResolve(alertId) {
+    const f = OpsModal.getFormData();
+    OpsModal.setLoading(true);
+    try {
+      await OpsModal.apiPost(`/alerts/${alertId}/resolve`, { outcome: f.outcome, note: f.note || null });
+      OpsModal.close();
+      OpsModal.toast('Alert resolved.', 'success');
+      loadAllData();
+    } catch (err) {
+      OpsModal.setLoading(false);
+      OpsModal.toast(err.message || 'Failed to resolve', 'error');
+    }
   }
 
   // ── Field teams ──
@@ -824,6 +906,6 @@ const OpsDashboard = (function () {
     return Number(n).toLocaleString();
   }
 
-  return { render, toggleLayer };
+  return { render, toggleLayer, dispatch, confirmDispatch, resolveAlert, confirmResolve };
 
 })();

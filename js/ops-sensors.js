@@ -35,6 +35,8 @@ const OpsSensors = (function () {
         .sn-bar { display:inline-block; width:52px; height:5px; border-radius:3px; background:var(--surface-3); vertical-align:middle; margin-right:7px; overflow:hidden; }
         .sn-bar i { display:block; height:100%; border-radius:3px; }
         .sn-mono { font-family:var(--ff-m); font-size:.7rem; }
+        .sn-link { background:none; border:none; padding:0; color:var(--blue-hi); font-size:.72rem; font-family:var(--ff-b); cursor:pointer; text-decoration:underline; text-underline-offset:2px; }
+        .sn-link:hover { color:var(--ink); }
         .sn-empty { padding:40px; text-align:center; color:var(--ink-3); font-size:.8rem; }
       </style>
       <div class="sn-kpis" id="sn-kpis"></div>
@@ -136,7 +138,7 @@ const OpsSensors = (function () {
          </div>` : '';
     el.innerHTML = banner + `<table class="sn-table">
       <thead><tr>
-        <th>Node</th><th>Deployment</th><th>Status</th><th>Water level</th>
+        <th>Node</th><th>Client</th><th>Status</th><th>Property</th><th>Water level</th>
         <th>Flow</th><th>Battery</th><th>Signal</th><th>Last ping</th>
       </tr></thead>
       <tbody>${rows.map(x => `
@@ -144,6 +146,11 @@ const OpsSensors = (function () {
           <td><div class="sn-node">${esc(x.name || x.sensor_id || 'Node')}</div><div class="sn-id">${esc(x.sensor_id || '')}</div></td>
           <td>${esc(x.client_name || x.zone || '—')}</td>
           <td>${stChip(x.status)}</td>
+          <td>
+            <button class="sn-link" onclick="OpsSensors.assign('${x.sensor_id}')" title="Assign this node to a property">
+              ${x.property_name ? esc(x.property_name) : '<span style="color:var(--warn)">Unassigned</span>'}
+            </button>
+          </td>
           <td>${x.level != null ? bar(Math.round(x.level), 50, 70) : '<span class="sn-mono" title="No readings received from this node yet">no data</span>'}</td>
           <td class="sn-mono">${x.flow_rate != null ? x.flow_rate.toFixed(1) + ' L/s' : '<span title="No readings received from this node yet">no data</span>'}</td>
           <td>${bar(x.battery_percent != null ? Math.round(x.battery_percent) : null, 40, 20, true)}</td>
@@ -153,9 +160,50 @@ const OpsSensors = (function () {
       </tbody></table>`;
   }
 
+  // ── Assign a node to a property (client portal scopes monitoring by this) ──
+  async function assign(sensorId) {
+    const node = _all.find(x => x.sensor_id === sensorId);
+    if (!node) return;
+    let props = [];
+    try {
+      const r = await OpsModal.apiGet('/properties');
+      props = (r.data || []).filter(p => !node.client_id || p.client_id === node.client_id);
+    } catch (_) {}
+    if (!props.length) {
+      OpsModal.toast('This client has no registered properties to assign the node to.', 'error');
+      return;
+    }
+    OpsModal.open(`Assign ${node.name || sensorId}`, `
+      <p style="margin:0 0 14px;font-size:.8rem;color:var(--ink-3);line-height:1.5">
+        Tying a node to a property is what lets the client see monitoring for that estate
+        specifically, rather than every node on their account.
+      </p>
+      ${OpsModal.field('Property', 'property_id', 'select', node.property_id || '', {
+        options: [{ value: '', label: '— Unassigned —' }].concat(
+          props.map(p => ({ value: p.property_id, label: `${p.property_name}${p.city ? ' · ' + p.city : ''}` }))) })}
+    `, [
+      { label: 'Cancel', onclick: 'OpsModal.close()' },
+      { label: 'Save', primary: true, onclick: `OpsSensors.confirmAssign('${sensorId}')` },
+    ]);
+  }
+
+  async function confirmAssign(sensorId) {
+    const f = OpsModal.getFormData();
+    OpsModal.setLoading(true);
+    try {
+      await OpsModal.apiPut(`/monitoring/sensors/${sensorId}/property`, { property_id: f.property_id || null });
+      OpsModal.close();
+      OpsModal.toast('Node assigned.', 'success');
+      await load();
+    } catch (err) {
+      OpsModal.setLoading(false);
+      OpsModal.toast(err.message || 'Assignment failed', 'error');
+    }
+  }
+
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
   function setFilter(f) { _filter = f; draw(); }
   function setQuery(q) { _q = q; draw(); }
 
-  return { render, setFilter, setQuery };
+  return { render, setFilter, setQuery, assign, confirmAssign };
 })();
