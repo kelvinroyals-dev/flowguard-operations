@@ -11,7 +11,12 @@ const OpsSensors = (function () {
   async function render(container) {
     container.innerHTML = `
       <style>
-        .sn-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:14px; }
+        .sn-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin-bottom:14px; }
+        .sn-kpis .ck { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; box-shadow:var(--sh-xs); min-width:0; }
+        .sn-kpis .ck-label { font-size:.68rem; font-weight:500; color:var(--ink-2); line-height:1.25; }
+        .sn-kpis .ck-val { font-family:var(--ff-b); font-size:1.5rem; font-weight:700; color:var(--ink); margin-top:5px; line-height:1.15; letter-spacing:-.5px; }
+        .sn-kpis .ck-sub { font-size:.66rem; color:var(--ink-3); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .sn-kpis .ck-sub.ok { color:var(--ok); } .sn-kpis .ck-sub.warn { color:var(--warn); } .sn-kpis .ck-sub.err { color:var(--err); }
         .sn-toolbar { display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
         .sn-chip { padding:6px 13px; border-radius:100px; border:1px solid var(--border-2); background:var(--surface); font-size:.68rem; font-weight:600; color:var(--ink-2); cursor:pointer; user-select:none; }
         .sn-chip.on { background:var(--neon-trace); border-color:var(--blue-dim); color:var(--blue-hi); }
@@ -124,7 +129,12 @@ const OpsSensors = (function () {
       } catch (_) { return '—'; }
     };
 
-    el.innerHTML = `<table class="sn-table">
+    const noTelemetry = rows.length && rows.every(x => x.level == null && x.flow_rate == null);
+    const banner = noTelemetry
+      ? `<div style="padding:11px 14px;border-bottom:1px solid var(--border);background:var(--wb);color:var(--warn);font-size:.74rem">
+           <b>No sensor readings received.</b> These nodes are registered and their radios report battery and signal, but no telemetry has reached <code>sensor_readings</code> yet — water level and flow will stay empty until the devices start posting.
+         </div>` : '';
+    el.innerHTML = banner + `<table class="sn-table">
       <thead><tr>
         <th>Node</th><th>Deployment</th><th>Status</th><th>Water level</th>
         <th>Flow</th><th>Battery</th><th>Signal</th><th>Last ping</th>
@@ -134,8 +144,8 @@ const OpsSensors = (function () {
           <td><div class="sn-node">${esc(x.name || x.sensor_id || 'Node')}</div><div class="sn-id">${esc(x.sensor_id || '')}</div></td>
           <td>${esc(x.client_name || x.zone || '—')}</td>
           <td>${stChip(x.status)}</td>
-          <td>${x.level != null ? bar(Math.round(x.level), 50, 70) : '<span class="sn-mono">—</span>'}</td>
-          <td class="sn-mono">${x.flow_rate != null ? x.flow_rate.toFixed(1) + ' L/s' : '—'}</td>
+          <td>${x.level != null ? bar(Math.round(x.level), 50, 70) : '<span class="sn-mono" title="No readings received from this node yet">no data</span>'}</td>
+          <td class="sn-mono">${x.flow_rate != null ? x.flow_rate.toFixed(1) + ' L/s' : '<span title="No readings received from this node yet">no data</span>'}</td>
           <td>${bar(x.battery_percent != null ? Math.round(x.battery_percent) : null, 40, 20, true)}</td>
           <td>${x.signal_strength != null ? bar(Math.round(x.signal_strength), 60, 35, true) : '<span class="sn-mono">—</span>'}</td>
           <td class="sn-mono">${rel(x.reading_time || x.last_ping)}</td>

@@ -678,7 +678,7 @@ const OpsDashboard = (function () {
   function renderFeed(nodes) {
     const el = document.getElementById('dash-feed');
     if (!el) return;
-    if (!nodes || !nodes.length) { el.innerHTML = '<div class="pq-empty">No Sentinel nodes reporting yet.</div>'; return; }
+    if (!nodes || !nodes.length) { el.innerHTML = '<div class="pq-empty">No Sentinel nodes registered yet.</div>'; return; }
 
     const stat = n => {
       if (n.status !== 'active') return ['var(--off)', 'Offline'];
