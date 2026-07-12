@@ -168,13 +168,14 @@ const OpsAssets = (function () {
       ${OpsModal.field('Serves which property', 'parent_property_id', 'select', '', {
         options: [{ value: '', label: '— None (standalone infrastructure) —' }].concat(
           _parents.map(p => ({ value: p.property_id, label: p.property_name }))) })}
-      ${OpsModal.row(
+      ${OpsModal.row([
         OpsModal.field('Capacity (litres)', 'capacity_liters', 'number', '', { required: false }),
         OpsModal.field('Risk level', 'risk_level', 'select', '', { required: false, options: [
           { value: '', label: '— Not assessed —' },
           { value: 'low', label: 'Low' }, { value: 'moderate', label: 'Moderate' },
           { value: 'high', label: 'High' }, { value: 'critical', label: 'Critical' },
-        ]}))}
+        ]}),
+      ])}
     `, [
       { label: 'Cancel', onclick: 'OpsModal.close()' },
       { label: 'Register asset', primary: true, onclick: 'OpsAssets.confirmAdd()' },
