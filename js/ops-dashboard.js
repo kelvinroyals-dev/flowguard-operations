@@ -80,6 +80,18 @@ const OpsDashboard = (function () {
         .ft-name { font-size:.73rem; font-weight:600; color:var(--ink); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .ft-meta { font-size:.66rem; color:var(--ink-3); font-family:var(--ff-m); white-space:nowrap; }
 
+        .feed { width:100%; border-collapse:collapse; font-size:.74rem; }
+        .feed th { text-align:left; font-weight:500; font-size:.68rem; color:var(--ink-3); padding:8px 12px; border-bottom:1px solid var(--border); white-space:nowrap; }
+        .feed th:not(:first-child), .feed td:not(:first-child) { text-align:right; }
+        .feed td { padding:9px 12px; border-bottom:1px solid var(--border); color:var(--ink); white-space:nowrap; }
+        .feed tbody tr:last-child td { border-bottom:none; }
+        .feed tbody tr:hover { background:var(--surface-h); }
+        .feed .loc { font-weight:600; }
+        .feed .flow { color:var(--blue-hi); font-family:var(--ff-m); }
+        .feed .lvl { font-family:var(--ff-m); color:var(--ink-2); }
+        .feed .st { display:inline-flex; align-items:center; gap:6px; font-weight:600; }
+        .feed .st i { width:7px; height:7px; border-radius:50%; background:currentColor; flex-shrink:0; }
+
         .cmd-mid { display:grid; grid-template-columns:1.15fr 1fr; gap:12px; margin-bottom:14px; }
         /* infrastructure health minis */
         .ih-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; padding:12px 13px; }
@@ -148,6 +160,10 @@ const OpsDashboard = (function () {
           <div class="cmd-panel">
             <div class="cmd-panel-h"><b>Field teams</b><a onclick="switchTab('teams')">All teams →</a></div>
             <div id="dash-teams"><div class="pq-empty">Loading…</div></div>
+          </div>
+          <div class="cmd-panel">
+            <div class="cmd-panel-h"><b>Live Sentinel Feed</b><a onclick="switchTab('sensors')">View all</a></div>
+            <div id="dash-feed"><div class="pq-empty">Loading…</div></div>
           </div>
         </div>
       </div>
@@ -274,6 +290,7 @@ const OpsDashboard = (function () {
       renderKpiStrip(kpis, md, teams);
       renderQueue(md.alerts || []);
       renderTeamsPanel(teams);
+      renderFeed(md.sensors || []);
       renderHealth(md.sensors || [], kpis);
       renderWorkOrders(ticks);
       renderUptime(kpis);
@@ -653,6 +670,33 @@ const OpsDashboard = (function () {
         <span class="pq-chip" style="background:${c}20;color:${c}">${lbl}</span>
       </div>`;
     }).join('');
+  }
+
+  // ── Live Sentinel Feed: latest reading per node ──
+  function renderFeed(sensors) {
+    const el = document.getElementById('dash-feed');
+    if (!el) return;
+    const rows = (sensors || []).slice(0, 6);
+    if (!rows.length) { el.innerHTML = '<div class="pq-empty">No nodes reporting yet.</div>'; return; }
+    // status from the node's own signals: water level + silt + link state
+    const stat = s => {
+      if (s.status !== 'active') return ['var(--off)', 'Offline'];
+      const lvl = s.level, silt = s.silt_level;
+      if ((lvl != null && lvl >= 70) || (silt != null && silt >= 80)) return ['var(--err)', 'Critical'];
+      if ((lvl != null && lvl >= 50) || (silt != null && silt >= 60)) return ['var(--warn)', 'Warning'];
+      return ['var(--ok)', 'Normal'];
+    };
+    el.innerHTML = `<table class="feed">
+      <thead><tr><th>Location</th><th>Water Level</th><th>Flow Rate</th><th>Status</th></tr></thead>
+      <tbody>${rows.map(s => {
+        const [c, lbl] = stat(s);
+        return `<tr>
+          <td class="loc">${(s.name || s.sensor_id || '—')}</td>
+          <td class="lvl">${s.level != null ? Math.round(s.level) + '%' : '—'}</td>
+          <td class="flow">${s.flow_rate != null ? s.flow_rate + ' L/s' : '—'}</td>
+          <td><span class="st" style="color:${c}"><i></i>${lbl}</span></td>
+        </tr>`;
+      }).join('')}</tbody></table>`;
   }
 
   // ── Infrastructure health: sensor network by state + battery/signal where present ──
