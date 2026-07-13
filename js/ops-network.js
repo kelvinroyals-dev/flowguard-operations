@@ -50,15 +50,32 @@ const OpsNetwork = (function () {
 
   function hCol(v) { return v >= 75 ? 'var(--ok)' : v >= 50 ? 'var(--warn)' : 'var(--err)'; }
 
-  // why is this asset unhealthy? name it, so a crew knows what to do
+  // why is this asset unhealthy? components are per-factor scores (0-100);
+  // the LOW ones are what's dragging it down, so surface those.
+  const FACTOR_LABEL = {
+    network:      v => `Only ${v}% of its Sentinels online`,
+    water_level:  v => `Water at ${v}% of capacity`,
+    silt:         v => `Silt at ${v}%`,
+    alerts:       v => `Open alerts on this asset`,
+    inspection:   v => `Inspection overdue`,
+    debris:       v => `Debris detected`,
+    telemetry:    v => `No recent readings`,
+  };
   function drivers(a) {
-    let d = a.health_drivers;
-    if (typeof d === 'string') { try { d = JSON.parse(d); } catch (_) { d = null; } }
-    if (!Array.isArray(d) || !d.length) return '';
-    const top = d.filter(x => x.penalty).sort((x, y) => y.penalty - x.penalty).slice(0, 3);
-    if (!top.length) return '';
-    return `<div class="ast-why">${top.map(x =>
-      `<span class="why"><i></i>${esc(x.detail || x.factor)}</span>`).join('')}</div>`;
+    let c = a.health_components;
+    if (typeof c === 'string') { try { c = JSON.parse(c); } catch (_) { c = null; } }
+    if (!c || typeof c !== 'object') return '';
+    // a component score below 70 is pulling the asset down
+    const bad = Object.entries(c)
+      .filter(([, v]) => typeof v === 'number' && v < 70)
+      .sort((x, y) => x[1] - y[1])
+      .slice(0, 3);
+    if (!bad.length) return '';
+    return `<div class="ast-why">${bad.map(([k, v]) => {
+      const fn = FACTOR_LABEL[k];
+      const txt = fn ? fn(Math.round(v)) : `${k.replace(/_/g, ' ')}: ${Math.round(v)}`;
+      return `<span class="why"><i></i>${esc(txt)}</span>`;
+    }).join('')}</div>`;
   }
 
   function draw() {
