@@ -20,7 +20,7 @@ const OpsAlerts = (function () {
         /* ── Stats row ── */
         .al-stats {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(5, 1fr);
           gap: 14px;
           margin-bottom: 20px;
         }
@@ -99,8 +99,9 @@ const OpsAlerts = (function () {
         }
 
         .al-filter-btn.active.critical { background: var(--err, #dc2626); border-color: var(--err, #dc2626); }
-        .al-filter-btn.active.warning  { background: var(--caut, #c2410c); border-color: var(--caut, #c2410c); }
-        .al-filter-btn.active.watch    { background: var(--warn, #b45309); border-color: var(--warn, #b45309); }
+        .al-filter-btn.active.high     { background: var(--caut, #c2410c); border-color: var(--caut, #c2410c); }
+        .al-filter-btn.active.moderate { background: var(--warn, #b45309); border-color: var(--warn, #b45309); }
+        .al-filter-btn.active.minor    { background: var(--ink-3, #64748b); border-color: var(--ink-3, #64748b); }
 
         .al-count-pill {
           display: inline-flex; align-items: center; justify-content: center;
@@ -222,19 +223,23 @@ const OpsAlerts = (function () {
         .al-empty-sub   { font-size: var(--fs-sm); }
       </style>
 
-      <!-- Stats -->
+      <!-- Stats — matches alerts.severity CHECK constraint exactly: critical | high | moderate | minor -->
       <div class="al-stats">
         <div class="al-stat critical">
           <div class="al-stat-label">Critical</div>
           <div class="al-stat-val critical" id="al-critical">—</div>
         </div>
-        <div class="al-stat warning">
-          <div class="al-stat-label">Warning</div>
-          <div class="al-stat-val warning" id="al-warning">—</div>
+        <div class="al-stat high">
+          <div class="al-stat-label">High</div>
+          <div class="al-stat-val high" id="al-high">—</div>
         </div>
-        <div class="al-stat watch">
-          <div class="al-stat-label">Watch</div>
-          <div class="al-stat-val watch" id="al-watch">—</div>
+        <div class="al-stat moderate">
+          <div class="al-stat-label">Moderate</div>
+          <div class="al-stat-val moderate" id="al-moderate">—</div>
+        </div>
+        <div class="al-stat minor">
+          <div class="al-stat-label">Minor</div>
+          <div class="al-stat-val minor" id="al-minor">—</div>
         </div>
         <div class="al-stat total">
           <div class="al-stat-label">Total Active</div>
@@ -246,8 +251,9 @@ const OpsAlerts = (function () {
       <div class="al-filters">
         <button class="al-filter-btn active" id="filter-all"      onclick="OpsAlerts.setFilter('all')">All</button>
         <button class="al-filter-btn critical" id="filter-critical" onclick="OpsAlerts.setFilter('critical')">Critical</button>
-        <button class="al-filter-btn warning"  id="filter-warning"  onclick="OpsAlerts.setFilter('warning')">Warning</button>
-        <button class="al-filter-btn watch"    id="filter-watch"    onclick="OpsAlerts.setFilter('watch')">Watch</button>
+        <button class="al-filter-btn high"     id="filter-high"     onclick="OpsAlerts.setFilter('high')">High</button>
+        <button class="al-filter-btn moderate" id="filter-moderate" onclick="OpsAlerts.setFilter('moderate')">Moderate</button>
+        <button class="al-filter-btn minor"    id="filter-minor"    onclick="OpsAlerts.setFilter('minor')">Minor</button>
       </div>
 
       <!-- Feed -->
@@ -291,39 +297,31 @@ const OpsAlerts = (function () {
 
   function updateStats(alerts) {
     // alerts.severity CHECK constraint: critical | high | moderate | minor.
-    // This used to fold 'high' into "Warning" and both 'moderate' and 'minor'
-    // into "Watch" — so the same incident read High on the dashboard and
-    // Warning here, and a minor was indistinguishable from a moderate.
+    // One count per real value — no folding into legacy 3-bucket labels.
     let critical = 0, high = 0, moderate = 0, minor = 0;
     alerts.forEach(a => {
-      switch ((a.severity || '').toLowerCase()) {
+      switch (severityClass(a.severity)) {
         case 'critical': critical++; break;
         case 'high':     high++;     break;
         case 'moderate': moderate++; break;
         default:         minor++;
       }
     });
-    const warning = high, watch = moderate + minor;   // legacy names still referenced below
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
     set('al-critical', critical);
-    set('al-warning',  warning);
-    set('al-watch',    watch);
+    set('al-high',     high);
+    set('al-moderate', moderate);
+    set('al-minor',    minor);
     set('al-total',    alerts.length);
   }
 
   function setFilter(f) {
     _filter = f;
-    ['all','critical','warning','watch'].forEach(k => {
+    ['all','critical','high','moderate','minor'].forEach(k => {
       const btn = document.getElementById(`filter-${k}`);
       if (btn) btn.classList.toggle('active', k === f);
     });
-    const filtered = f === 'all' ? _allAlerts : _allAlerts.filter(a => {
-      const s = a.severity?.toLowerCase();
-      if (f === 'critical') return s === 'critical';
-      if (f === 'warning')  return s === 'high' || s === 'warning';
-      if (f === 'watch')    return s !== 'critical' && s !== 'high' && s !== 'warning';
-      return true;
-    });
+    const filtered = f === 'all' ? _allAlerts : _allAlerts.filter(a => severityClass(a.severity) === f);
     if (_pg) _pg.update(filtered);
     else renderFeed(filtered, f);
   }
@@ -361,6 +359,15 @@ const OpsAlerts = (function () {
     return { color: colors[sc] || 'var(--warn)', bg: bgs[sc] || 'var(--wb)' };
   }
 
+  // maps the 4 real severities onto the shared .status-badge palette
+  // (index.html) instead of a 3-bucket approximation:
+  //   critical -> critical (red)   high -> warning (orange)
+  //   moderate -> watch (amber)    minor -> offline (grey)
+  function severityBadgeClass(s) {
+    const m = { critical: 'critical', high: 'warning', moderate: 'watch', minor: 'offline' };
+    return m[severityClass(s)] || 'watch';
+  }
+
   function renderFeed(alerts, filter) {
     const feed = document.getElementById('al-feed');
     if (!feed) return;
@@ -396,7 +403,7 @@ const OpsAlerts = (function () {
 
           <div class="al-row-body">
             <div class="al-row-top">
-              <span class="status-badge ${sc === 'watch' ? 'watch' : sc === 'warning' ? 'warning' : 'critical'}">${a.severity || sc}</span>
+              <span class="status-badge ${severityBadgeClass(a.severity)}">${severityLabel(a.severity)}</span>
               <span class="al-row-title">${type}</span>
             </div>
             <div class="al-row-location">
@@ -470,7 +477,7 @@ const OpsAlerts = (function () {
         <div class="ops-modal-detail"><span class="label">Location</span><span class="value">${a.location || a.property || '—'}</span></div>
         <div class="ops-modal-detail"><span class="label">Sensor</span><span class="value">${a.sensor_name || '—'}</span></div>
         <div class="ops-modal-detail"><span class="label">Site</span><span class="value">${a.site_name || '—'}</span></div>
-        <div class="ops-modal-detail"><span class="label">Status</span><span class="value"><span class="status-badge ${a.status === 'resolved' ? 'nominal' : sc === 'critical' ? 'critical' : 'watch'}">${a.status || 'active'}</span></span></div>
+        <div class="ops-modal-detail"><span class="label">Status</span><span class="value"><span class="status-badge ${a.status === 'resolved' ? 'nominal' : severityBadgeClass(a.severity)}">${a.status || 'active'}</span></span></div>
         <div class="ops-modal-detail"><span class="label">Reported</span><span class="value">${time ? new Date(time).toLocaleString() : '—'}</span></div>
         <div class="ops-modal-detail"><span class="label">Assigned To</span><span class="value">${a.assigned_team || 'Unassigned'}</span></div>
         ${a.time_to_overflow_min ? `<div class="ops-modal-detail" style="grid-column:1/-1;"><span class="label">Time to Overflow</span><span class="value" style="color:var(--err);font-weight:700;">${a.time_to_overflow_min} minutes</span></div>` : ''}

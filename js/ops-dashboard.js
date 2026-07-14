@@ -218,11 +218,29 @@ const OpsDashboard = (function () {
     initMap();
     loadTimeline();
     loadAllData();
+    // "Live Sentinel Feed" was live in name only — it fetched once on tab load
+    // and never again, so its "last reading" ages froze while the Sensors tab
+    // (which refetches on every open) kept moving. Poll the fleet endpoint so
+    // the two screens can't drift apart while the dashboard sits open.
+    if (_feedTimer) clearInterval(_feedTimer);
+    _feedTimer = setInterval(refreshFeed, 30000);
     // keep the map honest about its container for the panel's lifetime
     const mp = container.querySelector('.map-panel');
     if (mp && window.ResizeObserver) {
       new ResizeObserver(() => { try { map && map.invalidateSize();  } catch (_) {} }).observe(mp);
     }
+  }
+
+  let _feedTimer = null;
+  let _lastKpis = {};
+  async function refreshFeed() {
+    if (!Auth.isAuthenticated()) return;
+    try {
+      const fleetRes = await OpsModal.apiGet('/monitoring/sensors/all');
+      const fleet = fleetRes.data || [];
+      renderFeed(fleet);
+      renderHealth(fleet, _lastKpis);
+    } catch (_) { /* keep last-known feed on a transient failure */ }
   }
 
   function initMap() {
@@ -303,6 +321,7 @@ const OpsDashboard = (function () {
       const teams = teamRes.data || [];
       const ticks = tickRes.data || [];
       const fleet = fleetRes.data || [];
+      _lastKpis   = kpis;   // reused by refreshFeed() so its lighter poll doesn't blank the KPI-derived health cells
 
       plotAreas(md.areas || []);
       plotSites(md.sites || []);
@@ -607,8 +626,7 @@ const OpsDashboard = (function () {
   function renderKpiStrip(kpis, md, teams) {
     const el = document.getElementById('dash-kpis');
     if (!el) return;
-    const areas = md.areas || [];
-    const active = areas.filter(a => a.status === 'active').length;
+    const am = kpis.assetsMonitored || {};
     const so = kpis.sensorsOnline || {};
     const pct = so.total ? Math.round((so.online / so.total) * 100) : null;
     const crit = parseInt(kpis.criticalAlerts) || 0;
@@ -631,8 +649,9 @@ const OpsDashboard = (function () {
 
     el.innerHTML =
       card(ic('<path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/>'), 'var(--blue-hi)',
-        'Assets Under Monitoring', areas.length.toLocaleString(),
-        `${active} live`, active ? 'ok' : '', !!active) +
+        'Assets Under Monitoring', (am.total || 0).toLocaleString(),
+        am.total ? `${am.monitored} monitored` : 'None registered yet',
+        am.monitored ? 'ok' : '', !!am.monitored) +
 
       card(ic('<circle cx="12" cy="12" r="3"/><path d="M12 5V3M12 21v-2M5 12H3M21 12h-2M6.4 6.4L5 5M19 19l-1.4-1.4M6.4 17.6L5 19M19 5l-1.4 1.4"/>'), 'var(--ok)',
         'Active Sensors', so.total ? `${so.online}/${so.total}` : '—',
