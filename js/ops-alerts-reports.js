@@ -43,6 +43,9 @@ const OpsAlerts = (function () {
         }
 
         .al-stat.critical::after { background: var(--err, #dc2626); }
+        .al-stat.high::after     { background: var(--caut, #c2410c); }
+        .al-stat.moderate::after { background: var(--warn, #b45309); }
+        .al-stat.minor::after    { background: var(--ink-3, #64748b); }
         .al-stat.warning::after  { background: var(--caut, #c2410c); }
         .al-stat.watch::after    { background: var(--warn, #b45309); }
         .al-stat.total::after    { background: linear-gradient(90deg, var(--navy, #0a2a3d), var(--blue, #16a8d3)); }
@@ -61,8 +64,14 @@ const OpsAlerts = (function () {
         }
 
         .al-stat-val.critical { color: var(--err, #dc2626); }
+        .al-stat-val.high     { color: var(--caut, #c2410c); }
+        .al-stat-val.moderate { color: var(--warn, #b45309); }
+        .al-stat-val.minor    { color: var(--ink-3, #64748b); }
         .al-stat-val.warning  { color: var(--caut, #c2410c); }
         .al-stat-val.watch    { color: var(--warn, #b45309); }
+        .severity-high     { border-left-color: var(--caut, #c2410c) !important; }
+        .severity-moderate { border-left-color: var(--warn, #b45309) !important; }
+        .severity-minor    { border-left-color: var(--ink-3, #64748b) !important; }
 
         /* ── Filter tabs ── */
         .al-filters {
@@ -281,13 +290,20 @@ const OpsAlerts = (function () {
   }
 
   function updateStats(alerts) {
-    let critical = 0, warning = 0, watch = 0;
+    // alerts.severity CHECK constraint: critical | high | moderate | minor.
+    // This used to fold 'high' into "Warning" and both 'moderate' and 'minor'
+    // into "Watch" — so the same incident read High on the dashboard and
+    // Warning here, and a minor was indistinguishable from a moderate.
+    let critical = 0, high = 0, moderate = 0, minor = 0;
     alerts.forEach(a => {
-      const s = a.severity?.toLowerCase();
-      if (s === 'critical')                        critical++;
-      else if (s === 'high' || s === 'warning')    warning++;
-      else                                         watch++;
+      switch ((a.severity || '').toLowerCase()) {
+        case 'critical': critical++; break;
+        case 'high':     high++;     break;
+        case 'moderate': moderate++; break;
+        default:         minor++;
+      }
     });
+    const warning = high, watch = moderate + minor;   // legacy names still referenced below
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
     set('al-critical', critical);
     set('al-warning',  warning);
@@ -322,16 +338,25 @@ const OpsAlerts = (function () {
   }
 
   function severityClass(s) {
-    s = s?.toLowerCase();
-    if (s === 'critical')              return 'critical';
-    if (s === 'high' || s === 'warning') return 'warning';
-    return 'watch';
+    switch ((s || '').toLowerCase()) {
+      case 'critical': return 'critical';
+      case 'high':     return 'high';
+      case 'moderate': return 'moderate';
+      case 'minor':    return 'minor';
+      default:         return 'minor';
+    }
+  }
+
+  // one label, used everywhere, matching what the database actually stores
+  function severityLabel(s) {
+    const c = severityClass(s);
+    return c.charAt(0).toUpperCase() + c.slice(1);
   }
 
   function severityIcon(s) {
     s = s?.toLowerCase();
-    const colors = { critical: 'var(--err)', warning: 'var(--caut)', watch: 'var(--warn)' };
-    const bgs    = { critical: 'var(--eb)',   warning: 'var(--cb)',   watch: 'var(--wb)' };
+    const colors = { critical: 'var(--err)', high: 'var(--caut)', moderate: 'var(--warn)', minor: 'var(--ink-3)' };
+    const bgs    = { critical: 'var(--eb)',   high: 'var(--cb)',   moderate: 'var(--wb)',   minor: 'var(--surface-2)' };
     const sc     = severityClass(s);
     return { color: colors[sc] || 'var(--warn)', bg: bgs[sc] || 'var(--wb)' };
   }

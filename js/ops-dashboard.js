@@ -3,6 +3,8 @@
 // ============================================
 
 const OpsDashboard = (function () {
+  let _apiOk = null;
+  let _lastOk = null;
   // identifiers embedded in inline handlers: restrict to a safe charset.
   // HTML-escaping does NOT protect here — the browser decodes entities before
   // parsing the JS, so a quote can still break out of the string.
@@ -296,6 +298,7 @@ const OpsDashboard = (function () {
       if (map) { setTimeout(() => { try { map.invalidateSize(); } catch (_) {} }, 60); }
       renderKpiStrip(kpis, md, teams);
       renderQueue(md.alerts || []);
+      _apiOk = true; _lastOk = Date.now();
       renderTeamsPanel(teams);
       renderFeed(fleet);
       renderHealth(fleet.length ? fleet : (md.sensors || []), kpis);
@@ -309,6 +312,7 @@ const OpsDashboard = (function () {
       }
 
     } catch (err) {
+      _apiOk = false;
       console.error('Dashboard data error:', err);
     }
   }
@@ -865,6 +869,20 @@ const OpsDashboard = (function () {
     } catch (_) { el.innerHTML = '<div class="pq-empty">Weather service unreachable.</div>'; }
   }
 
+  /* The API row used to be hard-coded to a green "Operational". An operations
+     console that asserts the backend is healthy while its own requests are
+     failing is worse than one that says nothing — it is the exact moment an
+     operator most needs the truth. Report what we actually observed. */
+  function apiStatus() {
+    if (_apiOk === true) {
+      const age = _lastOk ? Math.round((Date.now() - _lastOk) / 1000) : null;
+      return `<b style="color:var(--ok)">Operational</b>`
+        + (age != null && age > 120 ? `<span style="color:var(--ink-3);font-size:.62rem"> · ${Math.floor(age / 60)}m ago</span>` : '');
+    }
+    if (_apiOk === false) return '<b style="color:var(--err)">Unreachable</b>';
+    return '<b style="color:var(--ink-3)">Checking…</b>';
+  }
+
   // ── Work order queue (tickets) ──
   function renderWorkOrders(ticks) {
     const el = document.getElementById('dash-workorders');
@@ -901,7 +919,7 @@ const OpsDashboard = (function () {
       </svg>
       <div class="up-rows">
         <div class="up-row"><span>Sensors online</span><b>${so.online ?? '—'}/${so.total ?? '—'}</b></div>
-        <div class="up-row"><span>API</span><b style="color:var(--ok)">Operational</b></div>
+        <div class="up-row"><span>API</span>${apiStatus()}</div>
         <div class="up-row"><span>Critical alerts</span><b style="color:${(parseInt(kpis.criticalAlerts) || 0) ? 'var(--err)' : 'var(--ok)'}">${parseInt(kpis.criticalAlerts) || 0}</b></div>
         <div class="up-row"><span>Pending inspections</span><b>${parseInt(kpis.pendingInspections) || 0}</b></div>
       </div>`;

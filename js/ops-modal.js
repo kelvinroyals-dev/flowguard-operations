@@ -87,7 +87,23 @@ const OpsModal = (function () {
   }
 
   function setLoading(btnId, loading) {
+    // Tolerate setLoading(true|false): the common case is "the modal is busy",
+    // and the modal knows which button is its primary. The old contract silently
+    // no-opped on a boolean, leaving buttons live — a double-click fired a
+    // duplicate dispatch, which in this product means two crews sent to one job.
+    if (typeof btnId === 'boolean') {
+      loading = btnId;
+      const overlay = document.getElementById('ops-modal-overlay');
+      const primary = overlay && overlay.querySelector('.ops-modal-footer button:last-child');
+      if (!primary) return;
+      return applyLoading(primary, loading);
+    }
     const btn = document.getElementById(btnId);
+    if (!btn) return;
+    return applyLoading(btn, loading);
+  }
+
+  function applyLoading(btn, loading) {
     if (!btn) return;
     if (loading) {
       btn.dataset.originalHtml = btn.innerHTML;
@@ -247,12 +263,20 @@ const OpsModal = (function () {
     watch:    'var(--warn,#b45309)',
     warning:  'var(--caut,#c2410c)',
     critical: 'var(--err,#dc2626)',
+    // Aliases. Modules were calling toast(msg,'error') and toast(msg,'success');
+    // neither existed, so BOTH fell through to green — a failed dispatch looked
+    // like a successful one. Accept them rather than let an unknown type
+    // silently render as success.
+    success:  'var(--ok,#0a8a6a)',
+    error:    'var(--err,#dc2626)',
+    info:     'var(--blue,#0891b2)',
   };
 
   function toast(msg, type = 'nominal') {
     document.querySelectorAll('.fg-toast').forEach(t => t.remove());
 
-    const color = TOAST_COLORS[type] || TOAST_COLORS.nominal;
+    // an unrecognised type is a bug, not a success — fail loud, not green
+    const color = TOAST_COLORS[type] || TOAST_COLORS.info;
     const el    = document.createElement('div');
     el.className = 'fg-toast';
     el.style.cssText = `
