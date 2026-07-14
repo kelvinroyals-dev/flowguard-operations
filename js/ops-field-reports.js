@@ -49,7 +49,7 @@ window.OpsFieldReports = (function () {
                 <span class="fg-ws-dot" id="fgr-ws-dot"></span>
                 <span id="fgr-ws-lbl">Live</span>
               </div>
-              <button class="btn-secondary" onclick="OpsFieldReports.refresh()">
+              <button class="btn-ghost" onclick="OpsFieldReports.refresh()">
                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                 Refresh
               </button>
@@ -307,7 +307,7 @@ window.OpsFieldReports = (function () {
             { label: 'Close', class: 'btn-ghost', onclick: 'OpsModal.close()' },
         ];
         if (canReview) {
-            actions.push({ label: 'Mark Under Review', class: 'btn-secondary', onclick: `OpsFieldReports.updateStatus('${r.report_id}','under_review')` });
+            actions.push({ label: 'Mark Under Review', class: 'btn-ghost', onclick: `OpsFieldReports.updateStatus('${r.report_id}','under_review')` });
         }
         if (canApprove) {
             actions.push({ label: 'Approve Report', class: 'btn-primary', onclick: `OpsFieldReports.updateStatus('${r.report_id}','approved')` });
@@ -508,7 +508,7 @@ window.OpsAlerts = (function () {
               <h2 class="fg-module-title">Live Alerts</h2>
               <p class="fg-module-sub">Active alerts from monitored sites. Assign teams and track resolution.</p>
             </div>
-            <button class="btn-secondary" onclick="OpsAlerts.refresh()">
+            <button class="btn-ghost" onclick="OpsAlerts.refresh()">
               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
               Refresh
             </button>
@@ -590,7 +590,7 @@ window.OpsAlerts = (function () {
                    <button class="btn-primary btn-sm" onclick="OpsAlerts.dispatchAlert('${a.alert_id}')">Dispatch</button>
                  </div>`
             }
-            <button class="btn-secondary btn-sm" onclick="OpsAlerts.resolveAlert('${a.alert_id}')">Resolve</button>
+            <button class="btn-ghost btn-sm" onclick="OpsAlerts.resolveAlert('${a.alert_id}')">Resolve</button>
           </div>
         </div>`).join('');
     }
@@ -649,7 +649,7 @@ window.OpsAlerts = (function () {
       .fg-module-sub    { font-size:.82rem; color:var(--ink-3,#6b8fa3); }
 
       .fg-stat-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px; margin-bottom:18px; }
-      .fg-stat-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:12px; padding:14px 16px; cursor:pointer; transition:border-color .2s, box-shadow .2s; }
+      .fg-stat-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); padding:14px 16px; cursor:pointer; transition:border-color .2s, box-shadow .2s; }
       .fg-stat-card:hover { border-color:var(--blue,#16a8d3); box-shadow:0 2px 8px rgba(22,168,211,.12); }
       .fg-stat-label { font-size:.68rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3,#6b8fa3); margin-bottom:6px; }
       .fg-stat-value { font-size:1.6rem; font-weight:800; color:var(--ink,#0a1f2e); line-height:1; }
@@ -659,7 +659,7 @@ window.OpsAlerts = (function () {
       .fg-filter-label { font-size:.65rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3,#6b8fa3); }
       .fg-filter-select { padding:8px 12px; border:1px solid var(--border,#dae6ef); border-radius:8px; font-size:.84rem; background:var(--surface,#fff); color:var(--ink,#0a1f2e); cursor:pointer; }
 
-      .fg-report-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:14px; padding:16px 18px; margin-bottom:10px; cursor:pointer; transition:border-color .18s, box-shadow .18s, transform .1s; }
+      .fg-report-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); padding:16px 18px; margin-bottom:10px; cursor:pointer; transition:border-color .18s, box-shadow .18s, transform .1s; }
       .fg-report-card:hover { border-color:var(--blue,#16a8d3); box-shadow:0 2px 12px rgba(22,168,211,.12); }
       .fg-report-card:active { transform:scale(0.995); }
       .fg-report-card--action { border-left:3px solid var(--blue,#16a8d3); }
@@ -677,22 +677,22 @@ window.OpsAlerts = (function () {
 
       /* Type badges */
       .fg-type-badge { padding:3px 9px; border-radius:20px; font-size:.62rem; font-weight:800; letter-spacing:.8px; text-transform:uppercase; }
-      .type-incident   { background:rgba(220,38,38,.08);  color:var(--err,#dc2626); border:1px solid rgba(220,38,38,.2); }
+      .type-incident   { background:var(--eb);  color:var(--err,#dc2626); border:1px solid rgba(220,38,38,.2); }
       .type-inspection { background:rgba(22,168,211,.08); color:var(--blue,#16a8d3); border:1px solid rgba(22,168,211,.2); }
       .type-general    { background:rgba(10,31,46,.05);   color:var(--ink-2,#2d5068); border:1px solid var(--border,#dae6ef); }
       .type-backup     { background:rgba(196,130,0,.08);  color:#c48200; border:1px solid rgba(196,130,0,.2); }
 
       /* Status badges */
       .fg-status-badge { padding:3px 9px; border-radius:20px; font-size:.62rem; font-weight:800; letter-spacing:.8px; text-transform:uppercase; }
-      .badge-off   { background:rgba(100,116,139,.08); color:var(--off,#64748b); border:1px solid rgba(100,116,139,.15); }
-      .badge-warn  { background:rgba(180,83,9,.08);    color:var(--warn,#b45309); border:1px solid rgba(180,83,9,.2); }
-      .badge-watch { background:rgba(194,65,12,.08);   color:var(--caut,#c2410c); border:1px solid rgba(194,65,12,.2); }
-      .badge-ok    { background:rgba(10,138,106,.08);  color:var(--ok,#0a8a6a); border:1px solid rgba(10,138,106,.2); }
+      .badge-off   { background:var(--ob);  color:var(--off,#64748b); border:1px solid rgba(100,116,139,.15); }
+      .badge-warn  { background:var(--wb);  color:var(--warn,#b45309); border:1px solid rgba(180,83,9,.2); }
+      .badge-watch { background:var(--cb);  color:var(--caut,#c2410c); border:1px solid rgba(194,65,12,.2); }
+      .badge-ok    { background:var(--ok-bg); color:var(--ok,#0a8a6a); border:1px solid rgba(10,138,106,.2); }
       .badge-sent  { background:rgba(22,168,211,.08);  color:var(--blue,#16a8d3); border:1px solid rgba(22,168,211,.2); }
-      .badge-err   { background:rgba(220,38,38,.08);   color:var(--err,#dc2626); border:1px solid rgba(220,38,38,.2); }
+      .badge-err   { background:var(--eb);  color:var(--err,#dc2626); border:1px solid rgba(220,38,38,.2); }
 
       /* Alert card */
-      .fg-alert-card { background:var(--surface,#fff); border:1.5px solid var(--border,#dae6ef); border-radius:14px; padding:16px 18px; margin-bottom:10px; }
+      .fg-alert-card { background:var(--surface,#fff); border:1.5px solid var(--border,#dae6ef); border-radius:var(--r,14px); padding:16px 18px; margin-bottom:10px; }
       .fg-alert-card.sev-critical { border-left:4px solid var(--err,#dc2626); }
       .fg-alert-card.sev-high     { border-left:4px solid var(--caut,#c2410c); }
       .fg-alert-card.sev-moderate { border-left:4px solid var(--warn,#b45309); }
@@ -742,10 +742,6 @@ window.OpsAlerts = (function () {
       .fg-empty-icon  { margin-bottom:14px; opacity:.25; }
       .fg-empty-title { font-size:1rem; font-weight:700; color:var(--ink,#0a1f2e); margin-bottom:6px; }
       .fg-empty-sub   { font-size:.83rem; color:var(--ink-3,#6b8fa3); line-height:1.6; }
-
-      .btn-sm { padding:6px 12px; font-size:.78rem; }
-      .btn-success { background:var(--ok,#0a8a6a); color:white; padding:10px 18px; border-radius:10px; font-size:.88rem; font-weight:700; transition:opacity .15s; }
-      .btn-success:hover { opacity:.88; }
     `;
     document.head.appendChild(style);
 })();

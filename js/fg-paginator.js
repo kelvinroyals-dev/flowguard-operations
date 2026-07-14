@@ -55,7 +55,7 @@ const FGPaginator = (function () {
         padding:12px 20px;
         border-top:1px solid var(--border,#dae6ef);
         background:var(--surface-2,#f7fafc);
-        font-family:var(--ff-b,'Figtree',sans-serif);
+        font-family:var(--ff-b,'Inter',sans-serif);
         font-size:.79rem;
       `;
 
@@ -76,11 +76,11 @@ const FGPaginator = (function () {
         b.disabled   = disabled;
         b.style.cssText = `
           min-width:32px; height:32px; padding:0 8px;
-          border-radius:var(--rs,6px);
+          border-radius:var(--rs,9px);
           border:1px solid ${active ? 'var(--navy,#0a2a3d)' : 'var(--border,#dae6ef)'};
           background:${active ? 'var(--navy,#0a2a3d)' : 'var(--surface,#fff)'};
           color:${active ? '#fff' : disabled ? 'var(--ink-4,#9eb8c8)' : 'var(--ink-2,#2d5068)'};
-          font-family:var(--ff-b,'Figtree',sans-serif);
+          font-family:var(--ff-b,'Inter',sans-serif);
           font-size:.79rem; font-weight:${active ? '700' : '500'};
           cursor:${disabled ? 'not-allowed' : 'pointer'};
           transition:all .15s;

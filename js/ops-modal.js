@@ -335,7 +335,7 @@ const OpsModal = (function () {
       border-radius:10px; padding:12px 18px;
       display:flex; align-items:center; gap:10px;
       box-shadow:0 4px 20px rgba(10,31,46,.1),0 1px 4px rgba(10,31,46,.06);
-      font-family:var(--ff-b,'Figtree',sans-serif);
+      font-family:var(--ff-b,'Inter',sans-serif);
       font-size:.83rem; color:var(--ink-2,#2d5068);
       max-width:340px;
       opacity:0; transform:translateX(12px);

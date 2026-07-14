@@ -23,7 +23,7 @@ const OpsClients = (function () {
         }
 
         .cl-header-title {
-          font-family: var(--ff-d, 'Playfair Display', serif);
+          font-family: var(--ff-d, 'Space Grotesk', sans-serif);
           font-size: 1.3rem; font-weight: 800;
           color: var(--ink, #0a1f2e); letter-spacing: -.02em;
           margin-bottom: 3px;
@@ -39,7 +39,7 @@ const OpsClients = (function () {
         .cl-stat {
           background: var(--surface, #fff);
           border: 1px solid var(--border, #dae6ef);
-          border-radius: var(--r, 10px);
+          border-radius: var(--r, 14px);
           padding: 16px 18px;
           box-shadow: var(--sh-xs);
           position: relative; overflow: hidden;
@@ -64,7 +64,7 @@ const OpsClients = (function () {
         }
 
         .cl-stat-val {
-          font-family: var(--ff-d, 'Playfair Display', serif);
+          font-family: var(--ff-d, 'Space Grotesk', sans-serif);
           font-size: 1.9rem; font-weight: 900;
           color: var(--ink, #0a1f2e); letter-spacing: -.03em; line-height: 1;
         }
@@ -72,7 +72,7 @@ const OpsClients = (function () {
         .cl-table-wrap {
           background: var(--surface, #fff);
           border: 1px solid var(--border, #dae6ef);
-          border-radius: var(--r, 10px);
+          border-radius: var(--r, 14px);
           overflow: hidden;
           box-shadow: var(--sh-xs);
         }
@@ -84,7 +84,7 @@ const OpsClients = (function () {
         }
 
         .cl-table-title {
-          font-family: var(--ff-d, 'Playfair Display', serif);
+          font-family: var(--ff-d, 'Space Grotesk', sans-serif);
           font-size: .9rem; font-weight: 700; color: var(--ink, #0a1f2e);
         }
 
@@ -95,9 +95,9 @@ const OpsClients = (function () {
         .cl-search-input {
           padding: 7px 12px 7px 32px;
           border: 1px solid var(--border, #dae6ef);
-          border-radius: var(--rs, 6px);
+          border-radius: var(--rs, 9px);
           background: var(--surface-2, #f7fafc);
-          font-family: var(--ff-b, 'Figtree', sans-serif);
+          font-family: var(--ff-b, 'Inter', sans-serif);
           font-size: .8rem; color: var(--ink, #0a1f2e);
           outline: none; transition: all .2s; width: 220px;
           position: relative;

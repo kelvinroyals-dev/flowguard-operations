@@ -14,6 +14,22 @@ const OpsDashboard = (function () {
   let layers = {};
   let baseTiles = null;
 
+  // Single source of truth for map marker/popup colors — mirrors the app's
+  // dark-theme status tokens (--err/--caut/--warn/--ok/--blue-hi/--off in
+  // index.html). Kept as a literal hex map (not CSS var()) because these
+  // values feed Leaflet's SVG path attributes and string-concatenated
+  // alpha-channel suffixes (e.g. `${MAP_COLORS.ok}18`), which don't support
+  // var() substitution. Always pull from here rather than inlining hex.
+  const MAP_COLORS = {
+    crit:   '#f87171', // matches --err
+    high:   '#fb923c', // matches --caut
+    warn:   '#fbbf24', // matches --warn / --amber
+    ok:     '#34d399', // matches --ok
+    blue:   '#22d3ee', // matches --blue-hi
+    off:    '#7d8fa3', // matches --off
+    gold:   '#eab308', // report-ready status, no token equivalent
+  };
+
   function tileUrl() {
     const t = (window.OpsTheme && OpsTheme.get() === 'light') ? 'light_all' : 'dark_all';
     return `https://{s}.basemaps.cartocdn.com/${t}/{z}/{x}/{y}{r}.png`;
@@ -248,7 +264,7 @@ const OpsDashboard = (function () {
       { key: 'sites',            color: 'var(--ink-2)',   label: 'Sites' },
       { key: 'sensors',          color: 'var(--off)',     label: 'Sensors' },
       { key: 'alerts',           color: 'var(--err)',     label: 'Alerts' },
-      { key: 'flood_risk',       color: '#f87171',        label: 'Flood risk' },
+      { key: 'flood_risk',       color: 'var(--err)',     label: 'Flood risk' },
       { key: 'hfp_zones',        color: '#8b5cf6',        label: 'HFP zones' },
       { key: 'coverage',         color: 'var(--blue-dim)',label: 'Coverage' },
     ];
@@ -338,8 +354,8 @@ const OpsDashboard = (function () {
 
   // ── Popup helpers ──
   function statusColor(s) {
-    const m = { submitted:'#fbbf24', inspection_scheduled:'#fb923c', inspection_ongoing:'#fb923c', report_ready:'#eab308', active:'#22d3ee' };
-    return m[s] || '#7d8fa3';
+    const m = { submitted:MAP_COLORS.warn, inspection_scheduled:MAP_COLORS.high, inspection_ongoing:MAP_COLORS.high, report_ready:MAP_COLORS.gold, active:MAP_COLORS.blue };
+    return m[s] || MAP_COLORS.off;
   }
 
   function areaPopup(a) {
@@ -352,7 +368,7 @@ const OpsDashboard = (function () {
         <div class="fg-popup-row">${a.property_type ? `<span>Type</span>&nbsp;&nbsp;${(a.property_type||'').replace(/_/g,' ')}` : ''}</div>
         <div class="fg-popup-row">${a.city ? `<span>Location</span>&nbsp;&nbsp;${a.city}${a.state?', '+a.state:''}` : ''}</div>
         <div class="fg-popup-row">${a.client_name ? `<span>Client</span>&nbsp;&nbsp;${a.client_name}` : ''}</div>
-        ${a.urgency_level ? `<div class="fg-popup-row"><span>Urgency</span>&nbsp;&nbsp;<strong style="color:${{ critical:'#f87171',high:'#fb923c',medium:'#fbbf24',low:'#22d3ee' }[a.urgency_level]||'#7d8fa3'};">${a.urgency_level}</strong></div>` : ''}
+        ${a.urgency_level ? `<div class="fg-popup-row"><span>Urgency</span>&nbsp;&nbsp;<strong style="color:${{ critical:MAP_COLORS.crit,high:MAP_COLORS.high,medium:MAP_COLORS.warn,low:MAP_COLORS.blue }[a.urgency_level]||MAP_COLORS.off};">${a.urgency_level}</strong></div>` : ''}
       </div>`;
   }
 
@@ -361,16 +377,16 @@ const OpsDashboard = (function () {
     const total  = parseInt(s.sensor_count) || 0;
     const alerts = parseInt(s.active_alerts) || 0;
     const pct    = total > 0 ? Math.round((online / total) * 100) : 0;
-    const hc     = pct >= 90 ? '#0a8a6a' : pct >= 70 ? '#fbbf24' : '#f87171';
+    const hc     = pct >= 90 ? MAP_COLORS.ok : pct >= 70 ? MAP_COLORS.warn : MAP_COLORS.crit;
     return `
       <div style="min-width:220px;">
         <div class="fg-popup-title">⚡ ${s.name}</div>
-        <div class="fg-popup-badge" style="background:#22d3ee18;color:#22d3ee;border:1px solid #22d3ee40;">${s.tier} tier · ${s.status}</div>
+        <div class="fg-popup-badge" style="background:${MAP_COLORS.blue}18;color:${MAP_COLORS.blue};border:1px solid ${MAP_COLORS.blue}40;">${s.tier} tier · ${s.status}</div>
         <div class="fg-popup-row"><span>Location</span>&nbsp;&nbsp;${s.location || '—'}</div>
         <div class="fg-popup-row"><span>Coverage</span>&nbsp;&nbsp;${s.coverage_km || 0} km</div>
         <div class="fg-popup-row"><span>MRR</span>&nbsp;&nbsp;₦${Number(s.mrr || 0).toLocaleString()}</div>
         <div class="fg-popup-row"><span>Sensors</span>&nbsp;&nbsp;<strong style="color:${hc};">${online}/${total}</strong> online (${pct}%)</div>
-        <div class="fg-popup-row" style="color:${alerts>0?'#f87171':'#0a8a6a'};font-weight:600;">${alerts > 0 ? `⚠ ${alerts} active alert${alerts>1?'s':''}` : '✓ No active alerts'}</div>
+        <div class="fg-popup-row" style="color:${alerts>0?MAP_COLORS.crit:MAP_COLORS.ok};font-weight:600;">${alerts > 0 ? `⚠ ${alerts} active alert${alerts>1?'s':''}` : '✓ No active alerts'}</div>
       </div>`;
   }
 
@@ -387,11 +403,11 @@ const OpsDashboard = (function () {
       let layer, color, size;
       const s = a.status;
 
-      if (s === 'submitted')                                      { layer = layers.areas_submitted;  color = '#fbbf24'; size = 14; }
-      else if (['inspection_scheduled','inspection_ongoing'].includes(s)) { layer = layers.areas_inspection; color = '#fb923c'; size = 14; }
-      else if (s === 'active')                                    { layer = layers.areas_active;     color = '#22d3ee'; size = 16; }
-      else if (['report_ready','quote_sent','payment_pending','payment_completed','deployment_scheduled'].includes(s)) { layer = layers.areas_inspection; color = '#eab308'; size = 12; }
-      else                                                        { layer = layers.areas_submitted;  color = '#7d8fa3'; size = 10; }
+      if (s === 'submitted')                                      { layer = layers.areas_submitted;  color = MAP_COLORS.warn; size = 14; }
+      else if (['inspection_scheduled','inspection_ongoing'].includes(s)) { layer = layers.areas_inspection; color = MAP_COLORS.high; size = 14; }
+      else if (s === 'active')                                    { layer = layers.areas_active;     color = MAP_COLORS.blue; size = 16; }
+      else if (['report_ready','quote_sent','payment_pending','payment_completed','deployment_scheduled'].includes(s)) { layer = layers.areas_inspection; color = MAP_COLORS.gold; size = 12; }
+      else                                                        { layer = layers.areas_submitted;  color = MAP_COLORS.off; size = 10; }
 
       const marker = L.marker([lat, lng], { icon: makeIcon(color, size, s === 'submitted') });
       marker.bindPopup(areaPopup(a));
@@ -410,8 +426,8 @@ const OpsDashboard = (function () {
       // Coverage circle
       const radius = (parseFloat(s.coverage_km) || 2) * 1000;
       layers.coverage.addLayer(L.circle([lat, lng], {
-        radius, color: '#22d3ee', weight: 1, opacity: .35,
-        fillColor: '#22d3ee', fillOpacity: .06, dashArray: '5 4',
+        radius, color: MAP_COLORS.blue, weight: 1, opacity: .35,
+        fillColor: MAP_COLORS.blue, fillOpacity: .06, dashArray: '5 4',
       }));
 
       // Site marker — distinctive square icon
@@ -420,7 +436,7 @@ const OpsDashboard = (function () {
         iconSize: [28, 28],
         iconAnchor: [14, 14],
         html: `<div style="width:28px;height:28px;border-radius:7px;background:#1b3a52;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(10,42,61,.35);">
-          <svg width="13" height="13" fill="none" stroke="#22d3ee" stroke-width="2.5" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          <svg width="13" height="13" fill="none" stroke="${MAP_COLORS.blue}" stroke-width="2.5" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         </div>`,
       });
 
@@ -435,7 +451,7 @@ const OpsDashboard = (function () {
     sensors.forEach(s => {
       const lat = parseFloat(s.latitude), lng = parseFloat(s.longitude);
       if (!lat || !lng) return;
-      const c = s.status === 'active' ? '#22d3ee' : s.status === 'maintenance' ? '#fbbf24' : '#f87171';
+      const c = s.status === 'active' ? MAP_COLORS.blue : s.status === 'maintenance' ? MAP_COLORS.warn : MAP_COLORS.crit;
       const marker = L.marker([lat, lng], { icon: makeIcon(c, 8, false) });
       marker.bindPopup(`
         <div style="min-width:160px;">
@@ -455,7 +471,7 @@ const OpsDashboard = (function () {
       const lat = parseFloat(a.latitude), lng = parseFloat(a.longitude);
       if (!lat || !lng) return;
       const isCrit = a.severity === 'critical';
-      const color  = isCrit ? '#f87171' : a.severity === 'high' ? '#fb923c' : '#fbbf24';
+      const color  = isCrit ? MAP_COLORS.crit : a.severity === 'high' ? MAP_COLORS.high : MAP_COLORS.warn;
       const size   = isCrit ? 18 : 14;
       const marker = L.marker([lat, lng], { icon: makeIcon(color, size, true) });
       marker.bindPopup(`
@@ -465,7 +481,7 @@ const OpsDashboard = (function () {
           ${a.description   ? `<div class="fg-popup-row">${a.description}</div>` : ''}
           ${a.sensor_name   ? `<div class="fg-popup-row"><span>Sensor</span>&nbsp;&nbsp;${a.sensor_name}</div>` : ''}
           ${a.site_name     ? `<div class="fg-popup-row"><span>Site</span>&nbsp;&nbsp;${a.site_name}</div>` : ''}
-          ${a.time_to_overflow_min ? `<div class="fg-popup-row" style="color:#f87171;font-weight:600;">Overflow in: ${a.time_to_overflow_min} min</div>` : ''}
+          ${a.time_to_overflow_min ? `<div class="fg-popup-row" style="color:${MAP_COLORS.crit};font-weight:600;">Overflow in: ${a.time_to_overflow_min} min</div>` : ''}
           <div class="fg-popup-row"><span>Reported</span>&nbsp;&nbsp;${new Date(a.created_at).toLocaleString()}</div>
         </div>`);
       layers.alerts.addLayer(marker);
@@ -477,9 +493,9 @@ const OpsDashboard = (function () {
     risks.forEach(r => {
       const lat = parseFloat(r.latitude), lng = parseFloat(r.longitude);
       if (!lat || !lng) return;
-      const colors  = { critical:'#f87171', high:'#fb923c', moderate:'#fbbf24', low:'#22d3ee' };
+      const colors  = { critical:MAP_COLORS.crit, high:MAP_COLORS.high, moderate:MAP_COLORS.warn, low:MAP_COLORS.blue };
       const radii   = { critical:800, high:600, moderate:400, low:200 };
-      const color   = colors[r.flood_risk_level] || '#fbbf24';
+      const color   = colors[r.flood_risk_level] || MAP_COLORS.warn;
       layers.flood_risk.addLayer(L.circle([lat, lng], {
         radius: radii[r.flood_risk_level] || 400,
         color, weight: 1.5, opacity: .55,
@@ -531,7 +547,7 @@ const OpsDashboard = (function () {
           <div class="fg-popup-title" style="color:#7c3aed;">⚠ ${zone.name}</div>
           <div class="fg-popup-badge" style="background:#7c3aed18;color:#7c3aed;border:1px solid #7c3aed40;">${zone.risk} flood probability</div>
           <div class="fg-popup-row">${zone.reason}</div>
-          <div style="margin-top:8px;padding-top:6px;border-top:1px solid #dae6ef;font-size:.68rem;color:#7d8fa3;">
+          <div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border);font-size:.68rem;color:${MAP_COLORS.off};">
             Source: Lagos State flood assessments, NEMA/SEMA, EM-DAT records
           </div>
         </div>`);

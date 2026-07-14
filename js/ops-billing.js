@@ -28,7 +28,7 @@ const OpsBilling = (function () {
         .bl-kpi {
           background:var(--surface,#fff);
           border:1px solid var(--border,#dae6ef);
-          border-radius:var(--r,10px);
+          border-radius:var(--r,14px);
           padding:18px;
           box-shadow:var(--sh-xs);
           position:relative; overflow:hidden;
@@ -43,7 +43,7 @@ const OpsBilling = (function () {
         .bl-kpi.purple::after { background:#7c3aed; }
 
         .bl-kpi-label { font-size:.62rem; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-3,#6b8fa3); margin-bottom:6px; }
-        .bl-kpi-val   { font-family:var(--ff-d,'Playfair Display',serif); font-size:1.75rem; font-weight:900; color:var(--ink,#0a1f2e); letter-spacing:-.03em; line-height:1; }
+        .bl-kpi-val   { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:1.75rem; font-weight:900; color:var(--ink,#0a1f2e); letter-spacing:-.03em; line-height:1; }
         .bl-kpi-val.green  { color:var(--ok,#0a8a6a); }
         .bl-kpi-val.blue   { color:var(--blue,#16a8d3); }
         .bl-kpi-val.amber  { color:var(--amber,#f5a623); }
@@ -56,9 +56,9 @@ const OpsBilling = (function () {
         .bl-mid { display:grid; grid-template-columns:1fr 360px; gap:16px; margin-bottom:20px; }
 
         /* MRR chart card */
-        .bl-chart-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,10px); box-shadow:var(--sh-xs); overflow:hidden; }
+        .bl-chart-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); box-shadow:var(--sh-xs); overflow:hidden; }
         .bl-card-head { padding:14px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; }
-        .bl-card-title { font-family:var(--ff-d,'Playfair Display',serif); font-size:.9rem; font-weight:700; color:var(--ink,#0a1f2e); }
+        .bl-card-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:.9rem; font-weight:700; color:var(--ink,#0a1f2e); }
         .bl-chart-body { padding:20px; }
 
         /* Bar chart */
@@ -71,22 +71,22 @@ const OpsBilling = (function () {
         .bl-bar-label { font-size:.62rem; color:var(--ink-4,#9eb8c8); font-family:var(--ff-m,'JetBrains Mono',monospace); }
 
         /* Overdue list */
-        .bl-overdue-card { background:var(--surface,#fff); border:1px solid rgba(220,38,38,.2); border-radius:var(--r,10px); box-shadow:var(--sh-xs); overflow:hidden; }
+        .bl-overdue-card { background:var(--surface,#fff); border:1px solid rgba(220,38,38,.2); border-radius:var(--r,14px); box-shadow:var(--sh-xs); overflow:hidden; }
         .bl-overdue-head { padding:14px 18px; border-bottom:1px solid rgba(220,38,38,.12); display:flex; align-items:center; gap:8px; background:rgba(220,38,38,.03); }
-        .bl-overdue-title { font-family:var(--ff-d,'Playfair Display',serif); font-size:.9rem; font-weight:700; color:var(--err,#dc2626); }
+        .bl-overdue-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:.9rem; font-weight:700; color:var(--err,#dc2626); }
         .bl-overdue-item { padding:11px 18px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; gap:10px; transition:background .12s; }
         .bl-overdue-item:last-child { border-bottom:none; }
         .bl-overdue-item:hover { background:var(--surface-2,#f7fafc); }
         .bl-overdue-name { font-size:.83rem; font-weight:600; color:var(--ink,#0a1f2e); }
         .bl-overdue-days { font-size:.74rem; color:var(--err,#dc2626); font-weight:600; }
-        .bl-overdue-amount { font-family:var(--ff-d,'Playfair Display',serif); font-size:.95rem; font-weight:800; color:var(--err,#dc2626); }
+        .bl-overdue-amount { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:.95rem; font-weight:800; color:var(--err,#dc2626); }
 
         /* ── Invoice table ── */
-        .bl-table-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,10px); box-shadow:var(--sh-xs); overflow:hidden; }
+        .bl-table-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); box-shadow:var(--sh-xs); overflow:hidden; }
         .bl-table-head { padding:14px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; gap:12px; }
 
         .bl-filter-tabs { display:flex; gap:5px; }
-        .bl-filter-btn { padding:5px 14px; border-radius:20px; border:1px solid var(--border,#dae6ef); background:var(--surface,#fff); font-family:var(--ff-b,'Figtree',sans-serif); font-size:.76rem; font-weight:600; color:var(--ink-3,#6b8fa3); cursor:pointer; transition:all .15s; }
+        .bl-filter-btn { padding:5px 14px; border-radius:20px; border:1px solid var(--border,#dae6ef); background:var(--surface,#fff); font-family:var(--ff-b,'Inter',sans-serif); font-size:.76rem; font-weight:600; color:var(--ink-3,#6b8fa3); cursor:pointer; transition:all .15s; }
         .bl-filter-btn:hover { border-color:var(--border-2,#b8d0de); color:var(--ink-2,#2d5068); }
         .bl-filter-btn.active { background:var(--navy,#0a2a3d); border-color:var(--navy,#0a2a3d); color:white; }
         .bl-filter-btn.active.overdue { background:var(--err,#dc2626); border-color:var(--err,#dc2626); }

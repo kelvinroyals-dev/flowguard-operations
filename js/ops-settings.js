@@ -40,7 +40,7 @@ const OpsSettings = (function () {
         }
 
         .st-header-title {
-          font-family: var(--ff-d, 'Playfair Display', serif);
+          font-family: var(--ff-d, 'Space Grotesk', sans-serif);
           font-size: 1.3rem; font-weight: 800;
           color: var(--ink, #0a1f2e); letter-spacing: -.02em; margin-bottom: 3px;
         }
@@ -57,7 +57,7 @@ const OpsSettings = (function () {
         .st-card {
           background: var(--surface, #fff);
           border: 1px solid var(--border, #dae6ef);
-          border-radius: var(--r, 10px);
+          border-radius: var(--r, 14px);
           overflow: hidden;
           box-shadow: var(--sh-xs);
         }
@@ -75,7 +75,7 @@ const OpsSettings = (function () {
         }
 
         .st-card-title {
-          font-family: var(--ff-d, 'Playfair Display', serif);
+          font-family: var(--ff-d, 'Space Grotesk', sans-serif);
           font-size: .88rem; font-weight: 700; color: var(--ink, #0a1f2e);
         }
 
@@ -93,9 +93,9 @@ const OpsSettings = (function () {
         .st-input {
           padding: 9px 12px;
           border: 1px solid var(--border, #dae6ef);
-          border-radius: var(--rs, 6px);
+          border-radius: var(--rs, 9px);
           background: var(--surface-2, #f7fafc);
-          font-family: var(--ff-b, 'Figtree', sans-serif);
+          font-family: var(--ff-b, 'Inter', sans-serif);
           font-size: .85rem; color: var(--ink, #0a1f2e);
           outline: none; transition: all .2s; width: 100%;
         }
@@ -114,7 +114,7 @@ const OpsSettings = (function () {
           justify-content: space-between;
           padding: 12px 14px;
           background: var(--surface-2, #f7fafc);
-          border-radius: var(--rs, 6px);
+          border-radius: var(--rs, 9px);
           border: 1px solid var(--border, #dae6ef);
           transition: background .15s;
         }
@@ -181,7 +181,7 @@ const OpsSettings = (function () {
         }
 
         .st-threshold-val {
-          font-family: var(--ff-d, 'Playfair Display', serif);
+          font-family: var(--ff-d, 'Space Grotesk', sans-serif);
           font-size: 1.1rem; font-weight: 800;
           color: var(--ink, #0a1f2e);
           min-width: 44px; text-align: right;
@@ -218,7 +218,7 @@ const OpsSettings = (function () {
         .st-save-bar {
           background: var(--surface, #fff);
           border: 1px solid var(--border, #dae6ef);
-          border-radius: var(--r, 10px);
+          border-radius: var(--r, 14px);
           padding: 16px 20px;
           display: flex; align-items: center;
           justify-content: space-between;
@@ -234,7 +234,7 @@ const OpsSettings = (function () {
         /* Version info */
         .st-version-card {
           background: var(--navy-deep, #050f18);
-          border-radius: var(--r, 10px);
+          border-radius: var(--r, 14px);
           padding: 20px 24px;
           display: flex; align-items: center;
           justify-content: space-between;

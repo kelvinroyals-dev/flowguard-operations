@@ -24,7 +24,7 @@ const OpsSLA = (function () {
       <style>
         /* KPI row */
         .sla-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
-        .sla-kpi { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,10px); padding:18px; box-shadow:var(--sh-xs); position:relative; overflow:hidden; transition:all .2s; }
+        .sla-kpi { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); padding:18px; box-shadow:var(--sh-xs); position:relative; overflow:hidden; transition:all .2s; }
         .sla-kpi:hover { transform:translateY(-2px); box-shadow:var(--sh-md); }
         .sla-kpi::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; }
         .sla-kpi.green::after  { background:var(--ok,#0a8a6a); }
@@ -32,7 +32,7 @@ const OpsSLA = (function () {
         .sla-kpi.amber::after  { background:var(--amber,#f5a623); }
         .sla-kpi.red::after    { background:var(--err,#dc2626); }
         .sla-kpi-label { font-size:.62rem; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-3,#6b8fa3); margin-bottom:6px; }
-        .sla-kpi-val { font-family:var(--ff-d,'Playfair Display',serif); font-size:1.75rem; font-weight:900; color:var(--ink,#0a1f2e); letter-spacing:-.03em; line-height:1; }
+        .sla-kpi-val { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:1.75rem; font-weight:900; color:var(--ink,#0a1f2e); letter-spacing:-.03em; line-height:1; }
         .sla-kpi-val.green { color:var(--ok,#0a8a6a); }
         .sla-kpi-val.amber { color:var(--amber,#f5a623); }
         .sla-kpi-val.red   { color:var(--err,#dc2626); }
@@ -42,18 +42,18 @@ const OpsSLA = (function () {
         .sla-grid { display:grid; grid-template-columns:1fr 360px; gap:16px; margin-bottom:20px; }
 
         /* Per-client table */
-        .sla-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,10px); box-shadow:var(--sh-xs); overflow:hidden; }
+        .sla-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); box-shadow:var(--sh-xs); overflow:hidden; }
         .sla-card-head { padding:14px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; }
-        .sla-card-title { font-family:var(--ff-d,'Playfair Display',serif); font-size:.9rem; font-weight:700; color:var(--ink,#0a1f2e); }
+        .sla-card-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:.9rem; font-weight:700; color:var(--ink,#0a1f2e); }
 
         /* Compliance bar */
         .sla-bar-track { height:6px; background:var(--border,#dae6ef); border-radius:3px; overflow:hidden; margin-top:5px; }
         .sla-bar-fill { height:100%; border-radius:3px; transition:width .5s cubic-bezier(.22,1,.36,1); }
 
         /* Breach list */
-        .sla-breach-card { background:var(--surface,#fff); border:1px solid rgba(220,38,38,.2); border-radius:var(--r,10px); box-shadow:var(--sh-xs); overflow:hidden; }
+        .sla-breach-card { background:var(--surface,#fff); border:1px solid rgba(220,38,38,.2); border-radius:var(--r,14px); box-shadow:var(--sh-xs); overflow:hidden; }
         .sla-breach-head { padding:14px 18px; border-bottom:1px solid rgba(220,38,38,.1); background:rgba(220,38,38,.03); display:flex; align-items:center; gap:8px; }
-        .sla-breach-title { font-family:var(--ff-d,'Playfair Display',serif); font-size:.9rem; font-weight:700; color:var(--err,#dc2626); }
+        .sla-breach-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:.9rem; font-weight:700; color:var(--err,#dc2626); }
         .sla-breach-item { padding:11px 18px; border-bottom:1px solid var(--border,#dae6ef); transition:background .12s; }
         .sla-breach-item:last-child { border-bottom:none; }
         .sla-breach-item:hover { background:var(--surface-2,#f7fafc); }

@@ -50,15 +50,15 @@ const OpsUserManagement = (function () {
     container.innerHTML = `
       <style>
         .um-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
-        .um-header-title { font-family:var(--ff-d,'Playfair Display',serif); font-size:1.3rem; font-weight:800; color:var(--ink,#0a1f2e); letter-spacing:-.02em; margin-bottom:3px; }
+        .um-header-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:1.3rem; font-weight:800; color:var(--ink,#0a1f2e); letter-spacing:-.02em; margin-bottom:3px; }
         .um-header-sub { font-size:.8rem; color:var(--ink-3,#6b8fa3); }
 
-        .um-table-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,10px); overflow:hidden; box-shadow:var(--sh-xs); margin-bottom:18px; }
+        .um-table-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); overflow:hidden; box-shadow:var(--sh-xs); margin-bottom:18px; }
         .um-table-head { padding:14px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; gap:12px; }
-        .um-table-title { font-family:var(--ff-d,'Playfair Display',serif); font-size:.9rem; font-weight:700; color:var(--ink,#0a1f2e); }
+        .um-table-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:.9rem; font-weight:700; color:var(--ink,#0a1f2e); }
         .um-controls { display:flex; align-items:center; gap:8px; }
 
-        .um-filter { padding:7px 12px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,6px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Figtree',sans-serif); font-size:.8rem; color:var(--ink,#0a1f2e); outline:none; cursor:pointer; transition:border-color .2s; }
+        .um-filter { padding:7px 12px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:.8rem; color:var(--ink,#0a1f2e); outline:none; cursor:pointer; transition:border-color .2s; }
         .um-filter:focus { border-color:var(--blue,#16a8d3); }
 
         .um-avatar { width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:.72rem; font-weight:700; color:white; flex-shrink:0; font-family:var(--ff-m,'JetBrains Mono',monospace); letter-spacing:.5px; }
@@ -75,7 +75,7 @@ const OpsUserManagement = (function () {
 
         /* Permissions grid */
         .um-perms-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
-        .um-perm-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,10px); padding:16px 18px; box-shadow:var(--sh-xs); position:relative; overflow:hidden; }
+        .um-perm-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); padding:16px 18px; box-shadow:var(--sh-xs); position:relative; overflow:hidden; }
         .um-perm-title { font-size:.84rem; font-weight:700; color:var(--ink,#0a1f2e); margin-bottom:8px; }
         .um-perm-list  { list-style:none; display:flex; flex-direction:column; gap:5px; }
         .um-perm-item  { font-size:.74rem; color:var(--ink-2,#2d5068); display:flex; align-items:flex-start; gap:6px; line-height:1.4; }
@@ -197,7 +197,7 @@ const OpsUserManagement = (function () {
   // ── HELPERS ───────────────────────────────────────────────────────────
 
   function avatarColor(name) {
-    const colors = ['#0a2a3d','#0d7fa0','#16a8d3','#0a8a6a','#7c3aed','#b45309'];
+    const colors = CONFIG.AVATAR_COLORS;
     let h = 0;
     for (let i = 0; i < (name || '').length; i++) h = (h * 31 + name.charCodeAt(i)) % colors.length;
     return colors[h];

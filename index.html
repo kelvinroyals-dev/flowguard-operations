@@ -162,23 +162,6 @@
       --font-display: var(--ff-d); --font-mono: var(--ff-m);
     }
 
-
-
-
-    .tb-search { position:relative; display:flex; align-items:center; gap:7px; background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:6px 11px; width:216px; color:var(--ink-3); margin-left:18px; }
-    .tb-search input { flex:1; min-width:0; background:transparent; border:none; outline:none; color:var(--ink); font-family:var(--ff-b); font-size:.78rem; }
-    .tb-search input::placeholder { color:var(--ink-4); }
-    .tb-search:focus-within { border-color:var(--blue-dim); box-shadow:0 0 0 3px var(--neon-trace); }
-    .tb-search-drop { position:absolute; top:calc(100% + 6px); left:0; right:0; background:var(--surface); border:1px solid var(--border-2); border-radius:10px; box-shadow:var(--sh-md); z-index:900; display:none; overflow:hidden; max-height:320px; overflow-y:auto; }
-    .tbs-item { display:flex; align-items:center; gap:9px; padding:9px 12px; cursor:pointer; font-size:.78rem; color:var(--ink); border-bottom:1px solid var(--border); }
-    .tbs-item:last-child { border-bottom:none; }
-    .tbs-item:hover { background:var(--surface-h); }
-    .tbs-kind { font-size:.56rem; font-weight:800; letter-spacing:.8px; text-transform:uppercase; padding:2px 6px; border-radius:5px; background:var(--neon-trace); color:var(--blue-hi); flex-shrink:0; }
-    .tbs-sub { margin-left:auto; font-size:.66rem; color:var(--ink-3); }
-    .tb-storm { display:flex; align-items:center; gap:8px; margin-left:14px; padding:6px 12px; border-radius:9px; background:var(--eb); border:1px solid var(--err); color:var(--err); font-size:.72rem; font-weight:700; cursor:pointer; white-space:nowrap; }
-    .tb-storm b { font-weight:800; }
-
-
     .topbar { gap: 16px; overflow: visible; padding: 0 18px; min-width: 0; }
     .topbar > * { min-width: 0; }
     .topbar .tb-btn { flex-shrink: 0; }
@@ -781,7 +764,8 @@
 
     .gkpi-val.blue  { color: var(--blue); }
     .gkpi-val.amber { color: var(--amber); }
-    .gkpi-val.red   { color: #ff8080; }
+    .gkpi-val.red   { color: var(--err); }
+    .gkpi-val.green { color: var(--ok); }
 
     .gkpi-lbl {
       font-size: .58rem; font-weight: 700;
@@ -1028,12 +1012,11 @@
     .btn-primary:hover { background:var(--navy-mid); box-shadow:0 4px 16px rgba(10,31,46,.28); transform:translateY(-1px); }
     .btn-ghost { padding:8px 16px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--rs); color:var(--ink-2); font-family:var(--ff-b); font-size:.82rem; font-weight:500; cursor:pointer; transition:all .18s; display:inline-flex; align-items:center; gap:7px; }
     .btn-ghost:hover { border-color:var(--blue); color:var(--blue); background:rgba(22,168,211,.05); }
-    .btn-secondary { padding:8px 16px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--rs); color:var(--ink-2); font-family:var(--ff-b); font-size:.82rem; font-weight:500; cursor:pointer; transition:all .18s; display:inline-flex; align-items:center; gap:7px; }
-    .btn-secondary:hover { border-color:var(--border-2); color:var(--ink); }
     .btn-danger { padding:8px 16px; background:var(--eb); border:1px solid var(--err); border-radius:var(--rs); color:var(--err); font-family:var(--ff-b); font-size:.82rem; font-weight:600; cursor:pointer; transition:all .18s; }
     .btn-danger:hover { background:var(--err); color:white; }
-    .btn-table-action { width:30px; height:30px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--rs); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ink-3); transition:all .18s; }
-    .btn-table-action:hover { border-color:var(--blue); color:var(--blue); background:rgba(22,168,211,.05); transform:translateY(-1px); }
+    .btn-success { padding:8px 16px; background:var(--ok); border:none; border-radius:var(--rs); color:white; font-family:var(--ff-b); font-size:.82rem; font-weight:600; cursor:pointer; transition:all .18s; display:inline-flex; align-items:center; gap:7px; }
+    .btn-success:hover { opacity:.88; }
+    .btn-sm { padding:6px 12px; font-size:.78rem; }
 
     .ops-input,.input-field { background:var(--surface-2); border:1px solid var(--border); border-radius:var(--rs); padding:9px 13px; font-family:var(--ff-b); font-size:.85rem; color:var(--ink); outline:none; transition:all .2s; width:100%; }
     .ops-input::placeholder,.input-field::placeholder { color:var(--ink-4); }

@@ -28,6 +28,12 @@ const CONFIG = Object.freeze({
     sky:       '#cceeff',
   }),
 
+  // ── AVATAR / IDENTITY COLORS ───────────────────────────────────────────
+  // Shared hash-based palette for avatar initials (users, teams, team
+  // members). Used by ops-user-management.js and ops-teams.js — keep this
+  // as the one definition rather than re-declaring the array per module.
+  AVATAR_COLORS: Object.freeze(['#0a2a3d','#0d7fa0','#16a8d3','#0a8a6a','#7c3aed','#b45309']),
+
   // ── ROLE-BASED NAV ACCESS ─────────────────────────────────────────────
   // To grant a role access to a new tab: add the key here only.
   // 'admin' is an API alias for 'super_admin'.

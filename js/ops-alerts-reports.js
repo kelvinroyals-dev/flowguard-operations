@@ -28,7 +28,7 @@ const OpsAlerts = (function () {
         .al-stat {
           background: var(--surface, #fff);
           border: 1px solid var(--border, #dae6ef);
-          border-radius: var(--r, 10px);
+          border-radius: var(--r, 14px);
           padding: 18px 20px;
           position: relative; overflow: hidden;
           box-shadow: var(--sh-xs, 0 1px 2px rgba(10,31,46,.06));
@@ -57,7 +57,7 @@ const OpsAlerts = (function () {
         }
 
         .al-stat-val {
-          font-family: var(--ff-d, 'Playfair Display', serif);
+          font-family: var(--ff-d, 'Space Grotesk', sans-serif);
           font-size: 2.2rem; font-weight: 900;
           line-height: 1; letter-spacing: -.03em;
           color: var(--ink, #0a1f2e);
@@ -84,7 +84,7 @@ const OpsAlerts = (function () {
           border-radius: 20px;
           border: 1px solid var(--border, #dae6ef);
           background: var(--surface, #fff);
-          font-family: var(--ff-b, 'Figtree', sans-serif);
+          font-family: var(--ff-b, 'Inter', sans-serif);
           font-size: .78rem; font-weight: 600;
           color: var(--ink-3, #6b8fa3);
           cursor: pointer; transition: all .18s;
@@ -114,7 +114,7 @@ const OpsAlerts = (function () {
         .al-feed-card {
           background: var(--surface, #fff);
           border: 1px solid var(--border, #dae6ef);
-          border-radius: var(--r, 10px);
+          border-radius: var(--r, 14px);
           overflow: hidden;
           box-shadow: var(--sh-xs, 0 1px 2px rgba(10,31,46,.06));
         }
@@ -126,7 +126,7 @@ const OpsAlerts = (function () {
         }
 
         .al-feed-title {
-          font-family: var(--ff-d, 'Playfair Display', serif);
+          font-family: var(--ff-d, 'Space Grotesk', sans-serif);
           font-size: .9rem; font-weight: 700; color: var(--ink, #0a1f2e);
         }
 
@@ -195,10 +195,10 @@ const OpsAlerts = (function () {
 
         .al-action-btn {
           padding: 6px 14px;
-          border-radius: var(--rs, 6px);
+          border-radius: var(--rs, 9px);
           border: 1px solid var(--border, #dae6ef);
           background: var(--surface-2, #f7fafc);
-          font-family: var(--ff-b, 'Figtree', sans-serif);
+          font-family: var(--ff-b, 'Inter', sans-serif);
           font-size: .75rem; font-weight: 600;
           color: var(--ink-2, #2d5068);
           cursor: pointer; transition: all .18s;
@@ -609,7 +609,7 @@ const OpsReports = (function () {
         .rp-card {
           background: var(--surface, #fff);
           border: 1px solid var(--border, #dae6ef);
-          border-radius: var(--r, 10px);
+          border-radius: var(--r, 14px);
           padding: 24px 20px;
           cursor: pointer;
           transition: all .22s cubic-bezier(.22,1,.36,1);
@@ -637,13 +637,13 @@ const OpsReports = (function () {
           margin-bottom: 16px;
         }
 
-        .rp-card-title { font-family: var(--ff-d, 'Playfair Display', serif); font-size: .95rem; font-weight: 700; color: var(--ink, #0a1f2e); margin-bottom: 4px; }
+        .rp-card-title { font-family: var(--ff-d, 'Space Grotesk', sans-serif); font-size: .95rem; font-weight: 700; color: var(--ink, #0a1f2e); margin-bottom: 4px; }
         .rp-card-sub   { font-size: .76rem; color: var(--ink-3, #6b8fa3); line-height: 1.5; }
 
         .rp-recent {
           background: var(--surface, #fff);
           border: 1px solid var(--border, #dae6ef);
-          border-radius: var(--r, 10px);
+          border-radius: var(--r, 14px);
           overflow: hidden;
           box-shadow: var(--sh-xs, 0 1px 2px rgba(10,31,46,.06));
         }
@@ -654,7 +654,7 @@ const OpsReports = (function () {
           display: flex; align-items: center; justify-content: space-between;
         }
 
-        .rp-recent-title { font-family: var(--ff-d, 'Playfair Display', serif); font-size: .9rem; font-weight: 700; color: var(--ink, #0a1f2e); }
+        .rp-recent-title { font-family: var(--ff-d, 'Space Grotesk', sans-serif); font-size: .9rem; font-weight: 700; color: var(--ink, #0a1f2e); }
 
         .rp-report-row {
           padding: 14px 20px;

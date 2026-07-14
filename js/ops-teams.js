@@ -25,11 +25,11 @@ const OpsTeams = (function () {
     container.innerHTML = `
       <style>
         .tm-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
-        .tm-header-title { font-family:var(--ff-d,'Playfair Display',serif); font-size:1.3rem; font-weight:800; color:var(--ink,#0a1f2e); letter-spacing:-.02em; margin-bottom:3px; }
+        .tm-header-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:1.3rem; font-weight:800; color:var(--ink,#0a1f2e); letter-spacing:-.02em; margin-bottom:3px; }
         .tm-header-sub { font-size:.8rem; color:var(--ink-3,#6b8fa3); }
 
         .tm-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
-        .tm-stat { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,10px); padding:16px 18px; box-shadow:var(--sh-xs); position:relative; overflow:hidden; transition:all .2s; }
+        .tm-stat { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); padding:16px 18px; box-shadow:var(--sh-xs); position:relative; overflow:hidden; transition:all .2s; }
         .tm-stat:hover { transform:translateY(-2px); box-shadow:var(--sh-md); }
         .tm-stat::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2.5px; }
         .tm-stat.onsite::after  { background:var(--ok,#0a8a6a); }
@@ -37,14 +37,14 @@ const OpsTeams = (function () {
         .tm-stat.idle::after    { background:var(--ink-4,#9eb8c8); }
         .tm-stat.total::after   { background:linear-gradient(90deg,var(--navy,#0a2a3d),var(--blue,#16a8d3)); }
         .tm-stat-label { font-size:.62rem; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-3,#6b8fa3); margin-bottom:6px; }
-        .tm-stat-val { font-family:var(--ff-d,'Playfair Display',serif); font-size:1.9rem; font-weight:900; color:var(--ink,#0a1f2e); letter-spacing:-.03em; line-height:1; }
+        .tm-stat-val { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:1.9rem; font-weight:900; color:var(--ink,#0a1f2e); letter-spacing:-.03em; line-height:1; }
         .tm-stat-val.green { color:var(--ok,#0a8a6a); }
         .tm-stat-val.amber { color:var(--warn,#b45309); }
 
         /* Team cards */
         .tm-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:16px; }
 
-        .tm-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,10px); overflow:hidden; box-shadow:var(--sh-xs); transition:all .2s; }
+        .tm-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); overflow:hidden; box-shadow:var(--sh-xs); transition:all .2s; }
         .tm-card:hover { box-shadow:var(--sh-md); border-color:var(--border-2,#b8d0de); }
 
         .tm-card-head { padding:14px 16px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; gap:12px; }
@@ -77,7 +77,7 @@ const OpsTeams = (function () {
         .tm-modal-member-av { width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:.7rem; font-weight:700; color:white; flex-shrink:0; font-family:var(--ff-m,'JetBrains Mono',monospace); }
         .tm-modal-member-name { font-size:.84rem; font-weight:600; color:var(--ink,#0a1f2e); }
         .tm-modal-member-role { font-size:.73rem; color:var(--ink-3,#6b8fa3); margin-top:1px; }
-        .tm-modal-member-remove { margin-left:auto; padding:4px 10px; font-size:.72rem; font-weight:600; color:var(--err,#dc2626); background:var(--eb,#fef2f2); border:1px solid rgba(220,38,38,.2); border-radius:var(--rs,6px); cursor:pointer; transition:all .18s; }
+        .tm-modal-member-remove { margin-left:auto; padding:4px 10px; font-size:.72rem; font-weight:600; color:var(--err,#dc2626); background:var(--eb,#fef2f2); border:1px solid rgba(220,38,38,.2); border-radius:var(--rs,9px); cursor:pointer; transition:all .18s; }
         .tm-modal-member-remove:hover { background:var(--err,#dc2626); color:white; }
       </style>
 
@@ -161,14 +161,16 @@ const OpsTeams = (function () {
   }
 
   function teamColor(name) {
-    const colors = ['#0a2a3d','#0d7fa0','#16a8d3','#0a8a6a','#7c3aed','#b45309'];
+    const colors = CONFIG.AVATAR_COLORS;
     let h = 0;
     for (let i = 0; i < (name || '').length; i++) h = (h * 31 + name.charCodeAt(i)) % colors.length;
     return colors[h];
   }
 
   function memberColor(name) {
-    const colors = ['#0d7fa0','#16a8d3','#0a8a6a','#7c3aed','#b45309','#0a2a3d'];
+    // rotated by one so a member's avatar doesn't land on the same color
+    // as a team sharing the same name-hash bucket
+    const colors = [...CONFIG.AVATAR_COLORS.slice(1), CONFIG.AVATAR_COLORS[0]];
     let h = 0;
     for (let i = 0; i < (name || '').length; i++) h = (h * 31 + name.charCodeAt(i)) % colors.length;
     return colors[h];
