@@ -198,7 +198,9 @@ window.OpsFieldReports = (function () {
         const needsAction = r.status === 'submitted' || r.status === 'approved';
 
         return `
-        <div class="fg-report-card ${needsAction ? 'fg-report-card--action' : ''}" onclick="OpsFieldReports.openReport('${r.report_id}')">
+        <div class="fg-report-card ${needsAction ? 'fg-report-card--action' : ''}" role="button" tabindex="0" aria-label="Open report: ${_esc(title)}"
+          onclick="OpsFieldReports.openReport('${r.report_id}')"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();OpsFieldReports.openReport('${r.report_id}')}">
           <div class="fg-rc-header">
             <div class="fg-rc-badges">
               <span class="fg-type-badge ${tm.cls}">${tm.label}</span>

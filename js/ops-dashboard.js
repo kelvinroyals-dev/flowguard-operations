@@ -161,15 +161,15 @@ const OpsDashboard = (function () {
         </div>
         <div class="cmd-side">
           <div class="cmd-panel">
-            <div class="cmd-panel-h"><b>Priority queue</b><a onclick="switchTab('alerts')">All incidents →</a></div>
+            <div class="cmd-panel-h"><b>Priority queue</b><a role="button" tabindex="0" onclick="switchTab('alerts')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchTab('alerts')}">All incidents →</a></div>
             <div id="dash-queue"><div class="pq-empty">Loading…</div></div>
           </div>
           <div class="cmd-panel">
-            <div class="cmd-panel-h"><b>Field teams</b><a onclick="switchTab('teams')">All teams →</a></div>
+            <div class="cmd-panel-h"><b>Field teams</b><a role="button" tabindex="0" onclick="switchTab('teams')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchTab('teams')}">All teams →</a></div>
             <div id="dash-teams"><div class="pq-empty">Loading…</div></div>
           </div>
           <div class="cmd-panel">
-            <div class="cmd-panel-h"><b>Live Sentinel Feed</b><a onclick="switchTab('sensors')">View all</a></div>
+            <div class="cmd-panel-h"><b>Live Sentinel Feed</b><a role="button" tabindex="0" onclick="switchTab('sensors')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchTab('sensors')}">View all</a></div>
             <div id="dash-feed"><div class="pq-empty">Loading…</div></div>
           </div>
         </div>
@@ -177,7 +177,7 @@ const OpsDashboard = (function () {
 
       <div class="cmd-mid">
         <div class="cmd-panel">
-          <div class="cmd-panel-h"><b>Infrastructure health</b><a onclick="switchTab('sensors')">All nodes →</a></div>
+          <div class="cmd-panel-h"><b>Infrastructure health</b><a role="button" tabindex="0" onclick="switchTab('sensors')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchTab('sensors')}">All nodes →</a></div>
           <div class="ih-grid" id="dash-health"></div>
         </div>
         <div class="cmd-panel">
@@ -188,7 +188,7 @@ const OpsDashboard = (function () {
 
       <div class="cmd-bottom">
         <div class="cmd-panel">
-          <div class="cmd-panel-h"><b>Work order queue</b><a onclick="switchTab('alerts')">All →</a></div>
+          <div class="cmd-panel-h"><b>Work order queue</b><a role="button" tabindex="0" onclick="switchTab('alerts')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchTab('alerts')}">All →</a></div>
           <div id="dash-workorders"><div class="pq-empty">Loading…</div></div>
         </div>
         <div class="cmd-panel">

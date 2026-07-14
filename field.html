@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!-- user-scalable/maximum-scale removed: locking pinch-zoom fails WCAG 1.4.4
+       (Resize Text) and is a real usability problem for low-vision crew members
+       reading small readings/labels in the field, or filling forms outdoors. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FlowGuard Field</title>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#061824">

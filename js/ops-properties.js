@@ -134,27 +134,37 @@ const OpsProperties = (function () {
 
       <!-- Pipeline stages -->
       <div class="pr-pipeline">
-        <div class="pr-stage s0" id="prs-0" onclick="OpsProperties.filterStage('submitted')">
+        <div class="pr-stage s0" id="prs-0" role="button" tabindex="0" aria-label="Filter: Awaiting Review"
+          onclick="OpsProperties.filterStage('submitted')"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();OpsProperties.filterStage('submitted')}">
           <div class="pr-stage-label">Awaiting Review</div>
           <div class="pr-stage-val" id="prc-0">—</div>
           <div class="pr-stage-sub">Submitted</div>
         </div>
-        <div class="pr-stage s1" id="prs-1" onclick="OpsProperties.filterStage('inspection')">
+        <div class="pr-stage s1" id="prs-1" role="button" tabindex="0" aria-label="Filter: In Inspection"
+          onclick="OpsProperties.filterStage('inspection')"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();OpsProperties.filterStage('inspection')}">
           <div class="pr-stage-label">In Inspection</div>
           <div class="pr-stage-val" id="prc-1">—</div>
           <div class="pr-stage-sub">Scheduled / Ongoing</div>
         </div>
-        <div class="pr-stage s2" id="prs-2" onclick="OpsProperties.filterStage('report')">
+        <div class="pr-stage s2" id="prs-2" role="button" tabindex="0" aria-label="Filter: Report Ready"
+          onclick="OpsProperties.filterStage('report')"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();OpsProperties.filterStage('report')}">
           <div class="pr-stage-label">Report Ready</div>
           <div class="pr-stage-val" id="prc-2">—</div>
           <div class="pr-stage-sub">Awaiting quote</div>
         </div>
-        <div class="pr-stage s3" id="prs-3" onclick="OpsProperties.filterStage('billing')">
+        <div class="pr-stage s3" id="prs-3" role="button" tabindex="0" aria-label="Filter: Quote / Payment"
+          onclick="OpsProperties.filterStage('billing')"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();OpsProperties.filterStage('billing')}">
           <div class="pr-stage-label">Quote / Payment</div>
           <div class="pr-stage-val" id="prc-3">—</div>
           <div class="pr-stage-sub">In billing</div>
         </div>
-        <div class="pr-stage s4" id="prs-4" onclick="OpsProperties.filterStage('active')">
+        <div class="pr-stage s4" id="prs-4" role="button" tabindex="0" aria-label="Filter: Active"
+          onclick="OpsProperties.filterStage('active')"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();OpsProperties.filterStage('active')}">
           <div class="pr-stage-label">Active</div>
           <div class="pr-stage-val" id="prc-4">—</div>
           <div class="pr-stage-sub">Monitored</div>

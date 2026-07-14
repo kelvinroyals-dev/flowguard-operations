@@ -42,15 +42,35 @@ const OpsModal = (function () {
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
+  // ── FOCUS MANAGEMENT ───────────────────────────────────────────────────
+  // The modal used to set role="dialog" and an initial focus and stop there:
+  // no Escape-to-close, no focus trap (Tab could walk out into the page
+  // behind the overlay), and closing dropped focus back to <body> instead of
+  // wherever the user was before opening it. All three are real keyboard/
+  // screen-reader blockers, not polish.
+  let _lastFocused    = null;
+  let _modalKeydown   = null;
+
+  function focusableIn(container) {
+    return Array.from(container.querySelectorAll(
+      'a[href], button:not([disabled]), textarea:not([disabled]), ' +
+      'input:not([disabled]):not([type="hidden"]), select:not([disabled]), ' +
+      '[tabindex]:not([tabindex="-1"])'
+    )).filter(el => el.offsetParent !== null);
+  }
+
   function open(title, bodyHTML, actions = []) {
     close();
+
+    // remember what had focus so close() can put it back there
+    _lastFocused = document.activeElement;
 
     const overlay     = document.createElement('div');
     overlay.id        = 'ops-modal-overlay';
     overlay.className = 'ops-modal-overlay';
 
     overlay.innerHTML = `
-      <div class="ops-modal" role="dialog" aria-modal="true" aria-label="${escape(title)}" onclick="event.stopPropagation()">
+      <div class="ops-modal" role="dialog" aria-modal="true" aria-label="${escape(title)}" tabindex="-1" onclick="event.stopPropagation()">
         <div class="ops-modal-header">
           <div class="ops-modal-title">${escape(title)}</div>
           <button class="ops-modal-close" onclick="OpsModal.close()" aria-label="Close">✕</button>
@@ -71,19 +91,47 @@ const OpsModal = (function () {
     document.body.appendChild(overlay);
     requestAnimationFrame(() => overlay.classList.add('visible'));
 
+    const dialog = overlay.querySelector('.ops-modal');
+
     setTimeout(() => {
-      const first = overlay.querySelector('.ops-input, input:not([readonly]), select, textarea');
-      if (first) first.focus();
+      const firstInput = overlay.querySelector('.ops-input, input:not([readonly]), select, textarea');
+      if (firstInput) { firstInput.focus(); return; }
+      const focusable = dialog ? focusableIn(dialog) : [];
+      if (focusable.length) focusable[0].focus();
+      else if (dialog) dialog.focus();
     }, 120);
+
+    // Escape closes the modal; Tab/Shift+Tab is trapped inside it so
+    // keyboard navigation can't walk into the page underneath while it's open.
+    _modalKeydown = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+      if (e.key !== 'Tab' || !dialog) return;
+      const focusable = focusableIn(dialog);
+      if (!focusable.length) { e.preventDefault(); return; }
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', _modalKeydown);
   }
 
   function close() {
     _pendingConfirm = null;
     const overlay = document.getElementById('ops-modal-overlay');
+    if (_modalKeydown) {
+      document.removeEventListener('keydown', _modalKeydown);
+      _modalKeydown = null;
+    }
     if (overlay) {
       overlay.classList.remove('visible');
       setTimeout(() => overlay.remove(), 220);
     }
+    // return focus to whatever opened the modal (a button, a card, etc.)
+    // instead of leaving it to fall back to <body>
+    if (_lastFocused && typeof _lastFocused.focus === 'function' && document.contains(_lastFocused)) {
+      _lastFocused.focus();
+    }
+    _lastFocused = null;
   }
 
   function setLoading(btnId, loading) {
