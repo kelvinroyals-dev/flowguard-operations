@@ -48,15 +48,15 @@ const OpsAssets = (function () {
     container.innerHTML = `
       <style>
         .as-head { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
-        .as-chip { padding:6px 13px; border-radius:100px; border:1px solid var(--border-2); background:var(--surface); font-size:.68rem; font-weight:600; color:var(--ink-2); cursor:pointer; user-select:none; }
+        .as-chip { padding:6px 13px; border-radius:100px; border:1px solid var(--border-2); background:var(--surface); font-size:var(--fs-xs); font-weight:600; color:var(--ink-2); cursor:pointer; user-select:none; }
         .as-chip.on { background:var(--neon-trace); border-color:var(--blue-dim); color:var(--blue-hi); }
-        .as-add { margin-left:auto; padding:8px 15px; border-radius:9px; border:1px solid var(--blue-dim); background:var(--neon-trace); color:var(--blue-hi); font-size:.74rem; font-weight:700; font-family:var(--ff-b); cursor:pointer; }
+        .as-add { margin-left:auto; padding:8px 15px; border-radius:9px; border:1px solid var(--blue-dim); background:var(--neon-trace); color:var(--blue-hi); font-size:var(--fs-sm); font-weight:700; font-family:var(--ff-b); cursor:pointer; }
         .as-add:hover { background:var(--blue-dim); color:var(--ink); }
 
         .as-group { margin-bottom:18px; }
         .as-group-h { display:flex; align-items:center; gap:9px; margin-bottom:9px; }
-        .as-group-h b { font-size:.8rem; font-weight:700; color:var(--ink); }
-        .as-group-h span { font-size:.66rem; color:var(--ink-3); }
+        .as-group-h b { font-size:var(--fs-base); font-weight:700; color:var(--ink); }
+        .as-group-h span { font-size:var(--fs-xs); color:var(--ink-3); }
         .as-group-h .line { flex:1; height:1px; background:var(--border); }
 
         .as-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; }
@@ -65,16 +65,16 @@ const OpsAssets = (function () {
         .ast-ic { width:34px; height:34px; border-radius:9px; display:grid; place-items:center; flex-shrink:0; background:var(--neon-trace); color:var(--blue-hi); }
         .ast-ic svg { width:17px; height:17px; }
         .ast-b { flex:1; min-width:0; }
-        .ast-n { font-size:.79rem; font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .ast-t { font-size:.64rem; color:var(--ink-3); margin-top:2px; }
+        .ast-n { font-size:var(--fs-base); font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .ast-t { font-size:var(--fs-2xs); color:var(--ink-3); margin-top:2px; }
         .ast-m { display:flex; gap:8px; margin-top:7px; flex-wrap:wrap; }
-        .ast-tag { font-size:.6rem; padding:2px 7px; border-radius:5px; background:var(--surface-3); color:var(--ink-2); white-space:nowrap; }
+        .ast-tag { font-size:var(--fs-2xs); padding:2px 7px; border-radius:5px; background:var(--surface-3); color:var(--ink-2); white-space:nowrap; }
         .ast-tag.nodes { background:var(--ok-bg); color:var(--ok); }
         .ast-tag.none  { background:var(--wb); color:var(--warn); }
         .ast-tag.risk-high, .ast-tag.risk-critical { background:var(--eb); color:var(--err); }
         .ast-tag.risk-moderate { background:var(--wb); color:var(--warn); }
 
-        .as-empty { padding:44px; text-align:center; color:var(--ink-3); font-size:.8rem; background:var(--surface); border:1px solid var(--border); border-radius:14px; line-height:1.6; }
+        .as-empty { padding:44px; text-align:center; color:var(--ink-3); font-size:var(--fs-base); background:var(--surface); border:1px solid var(--border); border-radius:14px; line-height:1.6; }
       </style>
       <div class="as-head" id="as-head"></div>
       <div id="as-body"><div class="as-empty">Loading the drainage network…</div></div>
@@ -163,7 +163,7 @@ const OpsAssets = (function () {
 
   function add() {
     OpsModal.open('Register a drainage asset', `
-      <p style="margin:0 0 14px;font-size:.8rem;color:var(--ink-3);line-height:1.5">
+      <p style="margin:0 0 14px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">
         Assets are the infrastructure itself — a canal, a catch basin, a pump station. They sit under
         the customer property they serve, and a Sentinel is assigned to monitor them.
       </p>

@@ -59,19 +59,19 @@ const OpsAudit = (function () {
     container.innerHTML = `
       <style>
         .au-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
-        .au-header-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:1.3rem; font-weight:800; color:var(--ink,#0a1f2e); letter-spacing:-.02em; margin-bottom:3px; }
-        .au-header-sub { font-size:.8rem; color:var(--ink-3,#6b8fa3); }
+        .au-header-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#0a1f2e); letter-spacing:-.02em; margin-bottom:3px; }
+        .au-header-sub { font-size:var(--fs-base); color:var(--ink-3,#6b8fa3); }
 
         /* Filters bar */
         .au-filters { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); padding:14px 20px; display:flex; align-items:center; gap:10px; margin-bottom:16px; box-shadow:var(--sh-xs); flex-wrap:wrap; }
-        .au-filter-input { padding:7px 12px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:.8rem; color:var(--ink,#0a1f2e); outline:none; transition:all .2s; }
+        .au-filter-input { padding:7px 12px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:var(--fs-base); color:var(--ink,#0a1f2e); outline:none; transition:all .2s; }
         .au-filter-input:focus { border-color:var(--blue,#16a8d3); box-shadow:0 0 0 3px rgba(22,168,211,.1); background:var(--surface,#fff); }
-        .au-filter-label { font-size:.68rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--ink-3,#6b8fa3); }
+        .au-filter-label { font-size:var(--fs-xs); font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--ink-3,#6b8fa3); }
 
         /* Log table */
         .au-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); overflow:hidden; box-shadow:var(--sh-xs); }
         .au-card-head { padding:14px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; }
-        .au-card-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:.9rem; font-weight:700; color:var(--ink,#0a1f2e); }
+        .au-card-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--ink,#0a1f2e); }
 
         /* Log row */
         .au-row { padding:12px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:flex-start; gap:12px; transition:background .12s; cursor:pointer; }
@@ -82,15 +82,15 @@ const OpsAudit = (function () {
 
         .au-body { flex:1; min-width:0; }
         .au-action-row { display:flex; align-items:center; gap:8px; margin-bottom:3px; flex-wrap:wrap; }
-        .au-action-badge { display:inline-flex; padding:2px 8px; border-radius:12px; font-size:.68rem; font-weight:700; letter-spacing:.3px; white-space:nowrap; }
-        .au-desc { font-size:.82rem; color:var(--ink-2,#2d5068); line-height:1.4; }
-        .au-meta { font-size:.72rem; color:var(--ink-4,#9eb8c8); margin-top:3px; font-family:var(--ff-m,'JetBrains Mono',monospace); display:flex; align-items:center; gap:8px; }
+        .au-action-badge { display:inline-flex; padding:2px 8px; border-radius:12px; font-size:var(--fs-xs); font-weight:700; letter-spacing:.3px; white-space:nowrap; }
+        .au-desc { font-size:var(--fs-base); color:var(--ink-2,#2d5068); line-height:1.4; }
+        .au-meta { font-size:var(--fs-xs); color:var(--ink-4,#9eb8c8); margin-top:3px; font-family:var(--ff-m,'JetBrains Mono',monospace); display:flex; align-items:center; gap:8px; }
 
         .au-actor { display:flex; align-items:center; gap:6px; flex-shrink:0; }
-        .au-actor-av { width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:.62rem; font-weight:700; color:white; flex-shrink:0; font-family:var(--ff-m,'JetBrains Mono',monospace); }
-        .au-actor-name { font-size:.78rem; font-weight:600; color:var(--ink-2,#2d5068); white-space:nowrap; }
-        .au-actor-role { font-size:.68rem; color:var(--ink-4,#9eb8c8); }
-        .au-time { font-family:var(--ff-m,'JetBrains Mono',monospace); font-size:.7rem; color:var(--ink-4,#9eb8c8); flex-shrink:0; white-space:nowrap; }
+        .au-actor-av { width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:var(--fs-2xs); font-weight:700; color:white; flex-shrink:0; font-family:var(--ff-m,'JetBrains Mono',monospace); }
+        .au-actor-name { font-size:var(--fs-sm); font-weight:600; color:var(--ink-2,#2d5068); white-space:nowrap; }
+        .au-actor-role { font-size:var(--fs-xs); color:var(--ink-4,#9eb8c8); }
+        .au-time { font-family:var(--ff-m,'JetBrains Mono',monospace); font-size:var(--fs-xs); color:var(--ink-4,#9eb8c8); flex-shrink:0; white-space:nowrap; }
       </style>
 
       <div class="au-header">
@@ -98,7 +98,7 @@ const OpsAudit = (function () {
           <div class="au-header-title">Audit Log</div>
           <div class="au-header-sub">Every significant action with actor, timestamp, and context</div>
         </div>
-        <button class="btn-ghost" onclick="reloadTab('audit')" style="font-size:.8rem;padding:7px 14px;">
+        <button class="btn-ghost" onclick="reloadTab('audit')" style="font-size:var(--fs-base);padding:7px 14px;">
           <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right:5px;"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
           Refresh
         </button>
@@ -113,21 +113,21 @@ const OpsAudit = (function () {
         </select>
         <input class="au-filter-input" id="au-actor-filter" placeholder="Actor name…" oninput="OpsAudit.applyFilters()" style="width:160px;">
         <input class="au-filter-input" type="date" id="au-from-filter" onchange="OpsAudit.applyFilters()" title="From date">
-        <span style="font-size:.78rem;color:var(--ink-3);">→</span>
+        <span style="font-size:var(--fs-sm);color:var(--ink-3);">→</span>
         <input class="au-filter-input" type="date" id="au-to-filter" onchange="OpsAudit.applyFilters()" title="To date">
-        <button class="btn-ghost" onclick="OpsAudit.clearFilters()" style="font-size:.76rem;padding:6px 12px;">Clear</button>
+        <button class="btn-ghost" onclick="OpsAudit.clearFilters()" style="font-size:var(--fs-sm);padding:6px 12px;">Clear</button>
       </div>
 
       <!-- Log -->
       <div class="au-card">
         <div class="au-card-head">
           <div class="au-card-title">Activity</div>
-          <span id="au-count" style="font-size:.76rem;color:var(--ink-3);font-family:var(--ff-m);"></span>
+          <span id="au-count" style="font-size:var(--fs-sm);color:var(--ink-3);font-family:var(--ff-m);"></span>
         </div>
         <div id="au-log-body">
           <div style="padding:48px;text-align:center;color:var(--ink-3);">
             <div class="loading" style="margin:0 auto 12px;"></div>
-            <div style="font-size:.82rem;">Loading audit log…</div>
+            <div style="font-size:var(--fs-base);">Loading audit log…</div>
           </div>
         </div>
       </div>
@@ -148,7 +148,7 @@ const OpsAudit = (function () {
       if (el) el.innerHTML = `
         <div style="padding:48px;text-align:center;">
           <div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load audit log</div>
-          <div style="color:var(--ink-3);font-size:.78rem;margin-bottom:16px;">${err.message}</div>
+          <div style="color:var(--ink-3);font-size:var(--fs-sm);margin-bottom:16px;">${err.message}</div>
           <button class="btn-ghost" onclick="reloadTab('audit')">Retry</button>
         </div>`;
     }
@@ -192,7 +192,7 @@ const OpsAudit = (function () {
       el.innerHTML = `
         <div style="padding:60px;text-align:center;color:var(--ink-3);">
           <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" style="margin:0 auto 12px;opacity:.25;display:block;"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-          <div style="font-size:.88rem;font-weight:600;color:var(--ink-2);">No entries match your filter</div>
+          <div style="font-size:var(--fs-md);font-weight:600;color:var(--ink-2);">No entries match your filter</div>
         </div>`;
       return;
     }
@@ -221,7 +221,7 @@ const OpsAudit = (function () {
           <div class="au-body">
             <div class="au-action-row">
               <span class="au-action-badge" style="background:${ac.bg};color:${ac.color};">${ac.label}</span>
-              ${log.target_label ? `<span style="font-size:.78rem;color:var(--ink-2);font-weight:500;">${log.target_label}</span>` : ''}
+              ${log.target_label ? `<span style="font-size:var(--fs-sm);color:var(--ink-2);font-weight:500;">${log.target_label}</span>` : ''}
             </div>
             <div class="au-desc">${log.description || '—'}</div>
             <div class="au-meta">
@@ -254,22 +254,22 @@ const OpsAudit = (function () {
 
     OpsModal.open('Audit Entry', `
       <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:${ac.bg};border-radius:10px;margin-bottom:18px;">
-        <span style="display:inline-flex;padding:4px 12px;border-radius:12px;font-size:.74rem;font-weight:700;background:${ac.bg};color:${ac.color};border:1px solid ${ac.color}30;">${ac.label}</span>
-        <div style="font-size:.84rem;color:var(--ink-2);">${log.description || '—'}</div>
+        <span style="display:inline-flex;padding:4px 12px;border-radius:12px;font-size:var(--fs-sm);font-weight:700;background:${ac.bg};color:${ac.color};border:1px solid ${ac.color}30;">${ac.label}</span>
+        <div style="font-size:var(--fs-base);color:var(--ink-2);">${log.description || '—'}</div>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
         <div class="ops-modal-detail"><span class="label">Actor</span><span class="value">${log.actor_name || 'System'}</span></div>
         <div class="ops-modal-detail"><span class="label">Role</span><span class="value">${log.actor_role ? log.actor_role.replace(/_/g, ' ') : '—'}</span></div>
-        <div class="ops-modal-detail"><span class="label">Timestamp</span><span class="value" style="font-family:var(--ff-m);font-size:.78rem;">${log.created_at ? new Date(log.created_at).toLocaleString() : '—'}</span></div>
-        <div class="ops-modal-detail"><span class="label">IP Address</span><span class="value" style="font-family:var(--ff-m);font-size:.78rem;">${log.ip_address || '—'}</span></div>
+        <div class="ops-modal-detail"><span class="label">Timestamp</span><span class="value" style="font-family:var(--ff-m);font-size:var(--fs-sm);">${log.created_at ? new Date(log.created_at).toLocaleString() : '—'}</span></div>
+        <div class="ops-modal-detail"><span class="label">IP Address</span><span class="value" style="font-family:var(--ff-m);font-size:var(--fs-sm);">${log.ip_address || '—'}</span></div>
         ${log.target_type ? `<div class="ops-modal-detail"><span class="label">Target Type</span><span class="value">${log.target_type}</span></div>` : ''}
-        ${log.target_id   ? `<div class="ops-modal-detail"><span class="label">Target ID</span><span class="value" style="font-family:var(--ff-m);font-size:.78rem;">${log.target_id}</span></div>` : ''}
+        ${log.target_id   ? `<div class="ops-modal-detail"><span class="label">Target ID</span><span class="value" style="font-family:var(--ff-m);font-size:var(--fs-sm);">${log.target_id}</span></div>` : ''}
       </div>
 
       ${log.metadata && Object.keys(log.metadata).length > 0 ? `
-        <div style="margin-bottom:8px;font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Metadata</div>
-        <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:var(--ff-m);font-size:.76rem;color:var(--ink-2);white-space:pre-wrap;overflow-x:auto;max-height:160px;overflow-y:auto;">
+        <div style="margin-bottom:8px;font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Metadata</div>
+        <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:var(--ff-m);font-size:var(--fs-sm);color:var(--ink-2);white-space:pre-wrap;overflow-x:auto;max-height:160px;overflow-y:auto;">
           ${JSON.stringify(log.metadata, null, 2)}
         </div>` : ''}
     `, [

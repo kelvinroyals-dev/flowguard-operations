@@ -41,11 +41,11 @@ const OpsSettings = (function () {
 
         .st-header-title {
           font-family: var(--ff-d, 'Space Grotesk', sans-serif);
-          font-size: 1.3rem; font-weight: 800;
+          font-size: var(--fs-xl); font-weight: 800;
           color: var(--ink, #0a1f2e); letter-spacing: -.02em; margin-bottom: 3px;
         }
 
-        .st-header-sub { font-size: .8rem; color: var(--ink-3, #6b8fa3); }
+        .st-header-sub { font-size: var(--fs-base); color: var(--ink-3, #6b8fa3); }
 
         .st-grid {
           display: grid;
@@ -76,7 +76,7 @@ const OpsSettings = (function () {
 
         .st-card-title {
           font-family: var(--ff-d, 'Space Grotesk', sans-serif);
-          font-size: .88rem; font-weight: 700; color: var(--ink, #0a1f2e);
+          font-size: var(--fs-md); font-weight: 700; color: var(--ink, #0a1f2e);
         }
 
         .st-card-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
@@ -85,7 +85,7 @@ const OpsSettings = (function () {
         .st-field { display: flex; flex-direction: column; gap: 6px; }
 
         .st-label {
-          font-size: .67rem; font-weight: 700;
+          font-size: var(--fs-xs); font-weight: 700;
           letter-spacing: 1px; text-transform: uppercase;
           color: var(--ink-3, #6b8fa3);
         }
@@ -96,7 +96,7 @@ const OpsSettings = (function () {
           border-radius: var(--rs, 9px);
           background: var(--surface-2, #f7fafc);
           font-family: var(--ff-b, 'Inter', sans-serif);
-          font-size: .85rem; color: var(--ink, #0a1f2e);
+          font-size: var(--fs-md); color: var(--ink, #0a1f2e);
           outline: none; transition: all .2s; width: 100%;
         }
 
@@ -124,12 +124,12 @@ const OpsSettings = (function () {
         .st-toggle-left { flex: 1; min-width: 0; }
 
         .st-toggle-name {
-          font-size: .84rem; font-weight: 600;
+          font-size: var(--fs-base); font-weight: 600;
           color: var(--ink, #0a1f2e); margin-bottom: 2px;
         }
 
         .st-toggle-desc {
-          font-size: .74rem; color: var(--ink-3, #6b8fa3);
+          font-size: var(--fs-sm); color: var(--ink-3, #6b8fa3);
         }
 
         /* iOS-style toggle */
@@ -182,7 +182,7 @@ const OpsSettings = (function () {
 
         .st-threshold-val {
           font-family: var(--ff-d, 'Space Grotesk', sans-serif);
-          font-size: 1.1rem; font-weight: 800;
+          font-size: var(--fs-lg); font-weight: 800;
           color: var(--ink, #0a1f2e);
           min-width: 44px; text-align: right;
         }
@@ -226,7 +226,7 @@ const OpsSettings = (function () {
         }
 
         .st-save-note {
-          font-size: .8rem; color: var(--ink-3, #6b8fa3);
+          font-size: var(--fs-base); color: var(--ink-3, #6b8fa3);
         }
 
         .st-save-note strong { color: var(--ink-2, #2d5068); }
@@ -250,19 +250,19 @@ const OpsSettings = (function () {
         }
 
         .st-version-label {
-          font-size: .62rem; font-weight: 700;
+          font-size: var(--fs-2xs); font-weight: 700;
           letter-spacing: 2px; text-transform: uppercase;
           color: rgba(255,255,255,.3); margin-bottom: 4px;
         }
 
         .st-version-val {
           font-family: var(--ff-m, 'JetBrains Mono', monospace);
-          font-size: .88rem; color: rgba(255,255,255,.85);
+          font-size: var(--fs-md); color: rgba(255,255,255,.85);
         }
 
         .st-status-row {
           display: flex; align-items: center; gap: 6px;
-          font-size: .72rem; color: rgba(255,255,255,.45);
+          font-size: var(--fs-xs); color: rgba(255,255,255,.45);
           font-family: var(--ff-m, 'JetBrains Mono', monospace);
         }
 
@@ -291,13 +291,13 @@ const OpsSettings = (function () {
             <div class="st-status-dot"></div>
             All systems operational
           </div>
-          <div style="font-size:.68rem;color:rgba(255,255,255,.25);font-family:var(--ff-m);">api.flowguard.ng · <span id="st-time"></span></div>
+          <div style="font-size:var(--fs-xs);color:rgba(255,255,255,.25);font-family:var(--ff-m);">api.flowguard.ng · <span id="st-time"></span></div>
         </div>
       </div>
 
       <div id="st-loading" style="padding:48px;text-align:center;color:var(--ink-3);">
         <div class="loading" style="margin:0 auto 12px;"></div>
-        <div style="font-size:.82rem;">Loading settings…</div>
+        <div style="font-size:var(--fs-base);">Loading settings…</div>
       </div>
 
       <div id="st-body" style="display:none;">
@@ -454,7 +454,7 @@ const OpsSettings = (function () {
 
               <div class="st-field">
                 <label class="st-label">API Base URL</label>
-                <input class="st-input" type="text" value="${typeof CONFIG !== 'undefined' ? CONFIG.API_BASE : '—'}" readonly style="opacity:.6;cursor:not-allowed;font-family:var(--ff-m);font-size:.76rem;">
+                <input class="st-input" type="text" value="${typeof CONFIG !== 'undefined' ? CONFIG.API_BASE : '—'}" readonly style="opacity:.6;cursor:not-allowed;font-family:var(--ff-m);font-size:var(--fs-sm);">
               </div>
 
               <div class="st-field">
@@ -473,12 +473,12 @@ const OpsSettings = (function () {
             Settings are saved to <strong>api.flowguard.ng</strong> and take effect immediately.
           </div>
           <div style="display:flex;gap:10px;align-items:center;">
-            <span id="st-dirty-note" style="display:none;align-items:center;gap:6px;font-size:.78rem;color:var(--warn);font-weight:600;">
+            <span id="st-dirty-note" style="display:none;align-items:center;gap:6px;font-size:var(--fs-sm);color:var(--warn);font-weight:600;">
               <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               Unsaved changes
             </span>
-            <span id="st-saved-msg" style="font-size:.78rem;color:var(--ok);font-weight:600;opacity:0;transition:opacity .3s;">✓ Saved</span>
-            <button class="btn-ghost" onclick="OpsSettings.reset()" style="font-size:.8rem;">Reset to Defaults</button>
+            <span id="st-saved-msg" style="font-size:var(--fs-sm);color:var(--ok);font-weight:600;opacity:0;transition:opacity .3s;">✓ Saved</span>
+            <button class="btn-ghost" onclick="OpsSettings.reset()" style="font-size:var(--fs-base);">Reset to Defaults</button>
             <button class="btn-primary" id="st-save-btn" onclick="OpsSettings.save()">
               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
               Save Settings

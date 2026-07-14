@@ -24,12 +24,12 @@ const OpsClients = (function () {
 
         .cl-header-title {
           font-family: var(--ff-d, 'Space Grotesk', sans-serif);
-          font-size: 1.3rem; font-weight: 800;
+          font-size: var(--fs-xl); font-weight: 800;
           color: var(--ink, #0a1f2e); letter-spacing: -.02em;
           margin-bottom: 3px;
         }
 
-        .cl-header-sub { font-size: .8rem; color: var(--ink-3, #6b8fa3); }
+        .cl-header-sub { font-size: var(--fs-base); color: var(--ink-3, #6b8fa3); }
 
         .cl-stats {
           display: grid; grid-template-columns: repeat(4,1fr);
@@ -58,14 +58,14 @@ const OpsClients = (function () {
         .cl-stat.warn::after { background: var(--warn, #b45309); opacity: .7; }
 
         .cl-stat-label {
-          font-size: .62rem; font-weight: 700;
+          font-size: var(--fs-2xs); font-weight: 700;
           letter-spacing: 1.5px; text-transform: uppercase;
           color: var(--ink-3, #6b8fa3); margin-bottom: 6px;
         }
 
         .cl-stat-val {
           font-family: var(--ff-d, 'Space Grotesk', sans-serif);
-          font-size: 1.9rem; font-weight: 900;
+          font-size: var(--fs-2xl); font-weight: 900;
           color: var(--ink, #0a1f2e); letter-spacing: -.03em; line-height: 1;
         }
 
@@ -85,7 +85,7 @@ const OpsClients = (function () {
 
         .cl-table-title {
           font-family: var(--ff-d, 'Space Grotesk', sans-serif);
-          font-size: .9rem; font-weight: 700; color: var(--ink, #0a1f2e);
+          font-size: var(--fs-md); font-weight: 700; color: var(--ink, #0a1f2e);
         }
 
         .cl-search {
@@ -98,7 +98,7 @@ const OpsClients = (function () {
           border-radius: var(--rs, 9px);
           background: var(--surface-2, #f7fafc);
           font-family: var(--ff-b, 'Inter', sans-serif);
-          font-size: .8rem; color: var(--ink, #0a1f2e);
+          font-size: var(--fs-base); color: var(--ink, #0a1f2e);
           outline: none; transition: all .2s; width: 220px;
           position: relative;
         }
@@ -121,14 +121,14 @@ const OpsClients = (function () {
         .cl-avatar {
           width: 32px; height: 32px; border-radius: 8px;
           display: flex; align-items: center; justify-content: center;
-          font-size: .75rem; font-weight: 700; color: white;
+          font-size: var(--fs-sm); font-weight: 700; color: white;
           flex-shrink: 0; font-family: var(--ff-m, 'JetBrains Mono', monospace);
         }
 
         .cl-name-wrap { display: flex; align-items: center; gap: 10px; }
 
-        .cl-name { font-size: .85rem; font-weight: 600; color: var(--ink, #0a1f2e); }
-        .cl-email { font-size: .74rem; color: var(--ink-3, #6b8fa3); margin-top: 1px; }
+        .cl-name { font-size: var(--fs-md); font-weight: 600; color: var(--ink, #0a1f2e); }
+        .cl-email { font-size: var(--fs-sm); color: var(--ink-3, #6b8fa3); margin-top: 1px; }
       </style>
 
       <div class="cl-header">
@@ -158,7 +158,7 @@ const OpsClients = (function () {
         <div id="cl-table-body">
           <div style="padding:48px;text-align:center;color:var(--ink-3);">
             <div class="loading" style="margin:0 auto 12px;"></div>
-            <div style="font-size:.82rem;">Loading clients…</div>
+            <div style="font-size:var(--fs-base);">Loading clients…</div>
           </div>
         </div>
       </div>
@@ -181,7 +181,7 @@ const OpsClients = (function () {
       document.getElementById('cl-table-body').innerHTML = `
         <div style="padding:48px;text-align:center;">
           <div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load clients</div>
-          <div style="color:var(--ink-3);font-size:.78rem;margin-bottom:16px;">${err.message}</div>
+          <div style="color:var(--ink-3);font-size:var(--fs-sm);margin-bottom:16px;">${err.message}</div>
           <button class="btn-ghost" onclick="reloadTab('clients')">Retry</button>
         </div>`;
     }
@@ -210,7 +210,7 @@ const OpsClients = (function () {
   }
 
   function avatarColor(name) {
-    const colors = ['#0a2a3d','#0d7fa0','#16a8d3','#0a8a6a','#b45309','#7c3aed'];
+    const colors = CONFIG.AVATAR_COLORS;
     let h = 0;
     for (let i = 0; i < (name || '').length; i++) h = (h * 31 + name.charCodeAt(i)) % colors.length;
     return colors[h];
@@ -228,7 +228,7 @@ const OpsClients = (function () {
       el.innerHTML = `
         <div style="padding:60px;text-align:center;color:var(--ink-3);">
           <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" style="margin:0 auto 14px;opacity:.25;display:block;"><path stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-          <div style="font-size:.88rem;font-weight:600;color:var(--ink-2);">No clients found</div>
+          <div style="font-size:var(--fs-md);font-weight:600;color:var(--ink-2);">No clients found</div>
         </div>`;
       return;
     }
@@ -260,7 +260,7 @@ const OpsClients = (function () {
                     </div>
                   </div>
                 </td>
-                <td style="font-family:var(--ff-m);font-size:.79rem;">${c.phone || '—'}</td>
+                <td style="font-family:var(--ff-m);font-size:var(--fs-base);">${c.phone || '—'}</td>
                 <td style="text-align:center;font-family:var(--ff-d);font-weight:800;">${c.submitted_areas || 0}</td>
                 <td style="text-align:center;">
                   ${parseInt(c.pending_areas) > 0
@@ -273,14 +273,14 @@ const OpsClients = (function () {
                     : '<span style="color:var(--ink-4);">0</span>'}
                 </td>
                 <td>${statusBadge(c.status, c.is_active)}</td>
-                <td style="font-size:.76rem;color:var(--ink-3);font-family:var(--ff-m);">
+                <td style="font-size:var(--fs-sm);color:var(--ink-3);font-family:var(--ff-m);">
                   ${c.created_at ? new Date(c.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '—'}
                 </td>
                 <td style="text-align:right;">
                   <div style="display:flex;gap:6px;justify-content:flex-end;">
-                    <button class="btn-ghost" onclick="OpsClients.viewClient(${c.client_id})" style="padding:6px 12px;font-size:.76rem;">View</button>
-                    <button class="btn-ghost" onclick="OpsClients.editClient(${c.client_id})" style="padding:6px 12px;font-size:.76rem;">Edit</button>
-                    ${_isAdmin ? `<button class="btn-ghost" onclick="OpsClients.deleteClient(${c.client_id},'${(c.full_name||'').replace(/'/g,"\\'")}')" style="padding:6px 12px;font-size:.76rem;color:var(--err);border-color:rgba(220,38,38,.2);">Delete</button>` : ''}
+                    <button class="btn-ghost" onclick="OpsClients.viewClient(${c.client_id})" style="padding:6px 12px;font-size:var(--fs-sm);">View</button>
+                    <button class="btn-ghost" onclick="OpsClients.editClient(${c.client_id})" style="padding:6px 12px;font-size:var(--fs-sm);">Edit</button>
+                    ${_isAdmin ? `<button class="btn-ghost" onclick="OpsClients.deleteClient(${c.client_id},'${(c.full_name||'').replace(/'/g,"\\'")}')" style="padding:6px 12px;font-size:var(--fs-sm);color:var(--err);border-color:rgba(220,38,38,.2);">Delete</button>` : ''}
                   </div>
                 </td>
               </tr>`).join('')}
@@ -325,30 +325,30 @@ const OpsClients = (function () {
         </div>
 
         ${areas.length > 0 ? `
-          <div style="margin-bottom:6px;font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Submitted Areas</div>
+          <div style="margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Submitted Areas</div>
           <table class="ops-table" style="margin-bottom:16px;">
             <thead><tr><th>Area Name</th><th>Type</th><th>Location</th><th>Pipeline</th><th>Inspection</th></tr></thead>
             <tbody>
               ${areas.map(a => `<tr>
                 <td class="bright">${a.property_name || '—'}</td>
-                <td style="font-size:.78rem;">${(a.property_type || '').replace(/_/g, ' ')}</td>
-                <td style="font-size:.78rem;">${[a.city, a.state].filter(Boolean).join(', ') || '—'}</td>
+                <td style="font-size:var(--fs-sm);">${(a.property_type || '').replace(/_/g, ' ')}</td>
+                <td style="font-size:var(--fs-sm);">${[a.city, a.state].filter(Boolean).join(', ') || '—'}</td>
                 <td>${pipelineBadge(a.status)}</td>
-                <td>${a.inspection_status ? inspBadge(a.inspection_status) : '<span style="color:var(--ink-4);font-size:.76rem;">Not scheduled</span>'}</td>
+                <td>${a.inspection_status ? inspBadge(a.inspection_status) : '<span style="color:var(--ink-4);font-size:var(--fs-sm);">Not scheduled</span>'}</td>
               </tr>`).join('')}
             </tbody>
-          </table>` : '<div style="color:var(--ink-3);font-size:.82rem;padding:12px 0 16px;">No areas submitted yet</div>'}
+          </table>` : '<div style="color:var(--ink-3);font-size:var(--fs-base);padding:12px 0 16px;">No areas submitted yet</div>'}
 
         ${invoices.length > 0 ? `
-          <div style="margin-bottom:6px;font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Invoices</div>
+          <div style="margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Invoices</div>
           <table class="ops-table">
             <thead><tr><th>Invoice</th><th>Amount</th><th>Status</th><th>Due</th></tr></thead>
             <tbody>
               ${invoices.map(inv => `<tr>
-                <td class="bright" style="font-family:var(--ff-m);font-size:.78rem;">${inv.invoice_id}</td>
+                <td class="bright" style="font-family:var(--ff-m);font-size:var(--fs-sm);">${inv.invoice_id}</td>
                 <td style="font-family:var(--ff-d);font-weight:700;">₦${Number(inv.total_amount || 0).toLocaleString()}</td>
                 <td><span class="status-badge ${inv.payment_status === 'paid' ? 'nominal' : inv.payment_status === 'overdue' ? 'critical' : 'watch'}">${inv.payment_status}</span></td>
-                <td style="font-size:.78rem;">${inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '—'}</td>
+                <td style="font-size:var(--fs-sm);">${inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '—'}</td>
               </tr>`).join('')}
             </tbody>
           </table>` : ''}

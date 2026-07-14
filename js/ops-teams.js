@@ -25,8 +25,8 @@ const OpsTeams = (function () {
     container.innerHTML = `
       <style>
         .tm-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
-        .tm-header-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:1.3rem; font-weight:800; color:var(--ink,#0a1f2e); letter-spacing:-.02em; margin-bottom:3px; }
-        .tm-header-sub { font-size:.8rem; color:var(--ink-3,#6b8fa3); }
+        .tm-header-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#0a1f2e); letter-spacing:-.02em; margin-bottom:3px; }
+        .tm-header-sub { font-size:var(--fs-base); color:var(--ink-3,#6b8fa3); }
 
         .tm-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
         .tm-stat { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); padding:16px 18px; box-shadow:var(--sh-xs); position:relative; overflow:hidden; transition:all .2s; }
@@ -36,8 +36,8 @@ const OpsTeams = (function () {
         .tm-stat.enroute::after { background:var(--warn,#b45309); }
         .tm-stat.idle::after    { background:var(--ink-4,#9eb8c8); }
         .tm-stat.total::after   { background:linear-gradient(90deg,var(--navy,#0a2a3d),var(--blue,#16a8d3)); }
-        .tm-stat-label { font-size:.62rem; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-3,#6b8fa3); margin-bottom:6px; }
-        .tm-stat-val { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:1.9rem; font-weight:900; color:var(--ink,#0a1f2e); letter-spacing:-.03em; line-height:1; }
+        .tm-stat-label { font-size:var(--fs-2xs); font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-3,#6b8fa3); margin-bottom:6px; }
+        .tm-stat-val { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-2xl); font-weight:900; color:var(--ink,#0a1f2e); letter-spacing:-.03em; line-height:1; }
         .tm-stat-val.green { color:var(--ok,#0a8a6a); }
         .tm-stat-val.amber { color:var(--warn,#b45309); }
 
@@ -48,21 +48,21 @@ const OpsTeams = (function () {
         .tm-card:hover { box-shadow:var(--sh-md); border-color:var(--border-2,#b8d0de); }
 
         .tm-card-head { padding:14px 16px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; gap:12px; }
-        .tm-card-avatar { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-family:var(--ff-m,'JetBrains Mono',monospace); font-size:.8rem; font-weight:700; color:white; flex-shrink:0; }
-        .tm-card-name { font-size:.9rem; font-weight:700; color:var(--ink,#0a1f2e); margin-bottom:2px; }
-        .tm-card-id { font-family:var(--ff-m,'JetBrains Mono',monospace); font-size:.68rem; color:var(--ink-4,#9eb8c8); }
+        .tm-card-avatar { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-family:var(--ff-m,'JetBrains Mono',monospace); font-size:var(--fs-base); font-weight:700; color:white; flex-shrink:0; }
+        .tm-card-name { font-size:var(--fs-md); font-weight:700; color:var(--ink,#0a1f2e); margin-bottom:2px; }
+        .tm-card-id { font-family:var(--ff-m,'JetBrains Mono',monospace); font-size:var(--fs-xs); color:var(--ink-4,#9eb8c8); }
 
         /* Members strip inside card */
         .tm-members-strip { padding:10px 16px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--surface-2,#f7fafc); }
         .tm-member-avatars { display:flex; }
-        .tm-member-av { width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:.62rem; font-weight:700; color:white; border:2px solid var(--surface,#fff); margin-left:-6px; flex-shrink:0; }
+        .tm-member-av { width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:var(--fs-2xs); font-weight:700; color:white; border:2px solid var(--surface,#fff); margin-left:-6px; flex-shrink:0; }
         .tm-member-av:first-child { margin-left:0; }
-        .tm-member-count { font-size:.78rem; color:var(--ink-3,#6b8fa3); font-weight:500; }
-        .tm-member-add { font-size:.72rem; color:var(--blue,#16a8d3); font-weight:600; cursor:pointer; white-space:nowrap; background:none; border:none; padding:0; }
+        .tm-member-count { font-size:var(--fs-sm); color:var(--ink-3,#6b8fa3); font-weight:500; }
+        .tm-member-add { font-size:var(--fs-xs); color:var(--blue,#16a8d3); font-weight:600; cursor:pointer; white-space:nowrap; background:none; border:none; padding:0; }
         .tm-member-add:hover { text-decoration:underline; }
 
         .tm-card-body { padding:12px 16px; display:flex; flex-direction:column; gap:7px; }
-        .tm-detail-row { display:flex; align-items:center; justify-content:space-between; font-size:.79rem; }
+        .tm-detail-row { display:flex; align-items:center; justify-content:space-between; font-size:var(--fs-base); }
         .tm-detail-label { color:var(--ink-3,#6b8fa3); font-weight:500; }
         .tm-detail-val { color:var(--ink-2,#2d5068); font-weight:600; text-align:right; }
 
@@ -74,10 +74,10 @@ const OpsTeams = (function () {
           padding:9px 0; border-bottom:1px solid var(--border,#dae6ef);
         }
         .tm-modal-member-row:last-child { border-bottom:none; }
-        .tm-modal-member-av { width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:.7rem; font-weight:700; color:white; flex-shrink:0; font-family:var(--ff-m,'JetBrains Mono',monospace); }
-        .tm-modal-member-name { font-size:.84rem; font-weight:600; color:var(--ink,#0a1f2e); }
-        .tm-modal-member-role { font-size:.73rem; color:var(--ink-3,#6b8fa3); margin-top:1px; }
-        .tm-modal-member-remove { margin-left:auto; padding:4px 10px; font-size:.72rem; font-weight:600; color:var(--err,#dc2626); background:var(--eb,#fef2f2); border:1px solid rgba(220,38,38,.2); border-radius:var(--rs,9px); cursor:pointer; transition:all .18s; }
+        .tm-modal-member-av { width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:var(--fs-xs); font-weight:700; color:white; flex-shrink:0; font-family:var(--ff-m,'JetBrains Mono',monospace); }
+        .tm-modal-member-name { font-size:var(--fs-base); font-weight:600; color:var(--ink,#0a1f2e); }
+        .tm-modal-member-role { font-size:var(--fs-sm); color:var(--ink-3,#6b8fa3); margin-top:1px; }
+        .tm-modal-member-remove { margin-left:auto; padding:4px 10px; font-size:var(--fs-xs); font-weight:600; color:var(--err,#dc2626); background:var(--eb,#fef2f2); border:1px solid rgba(220,38,38,.2); border-radius:var(--rs,9px); cursor:pointer; transition:all .18s; }
         .tm-modal-member-remove:hover { background:var(--err,#dc2626); color:white; }
       </style>
 
@@ -102,7 +102,7 @@ const OpsTeams = (function () {
       <div id="tm-content">
         <div style="padding:48px;text-align:center;color:var(--ink-3);">
           <div class="loading" style="margin:0 auto 12px;"></div>
-          <div style="font-size:.82rem;">Loading teams…</div>
+          <div style="font-size:var(--fs-base);">Loading teams…</div>
         </div>
       </div>
     `;
@@ -127,7 +127,7 @@ const OpsTeams = (function () {
       document.getElementById('tm-content').innerHTML = `
         <div style="padding:48px;text-align:center;">
           <div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load teams</div>
-          <div style="color:var(--ink-3);font-size:.78rem;margin-bottom:16px;">${err.message}</div>
+          <div style="color:var(--ink-3);font-size:var(--fs-sm);margin-bottom:16px;">${err.message}</div>
           <button class="btn-ghost" onclick="reloadTab('teams')">Retry</button>
         </div>`;
     }
@@ -201,7 +201,7 @@ const OpsTeams = (function () {
       el.innerHTML = `
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:60px;text-align:center;box-shadow:var(--sh-xs);">
           <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" style="margin:0 auto 14px;opacity:.25;display:block;"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0112 0v2"/></svg>
-          <div style="font-size:.88rem;font-weight:600;color:var(--ink-2);margin-bottom:8px;">No teams yet</div>
+          <div style="font-size:var(--fs-md);font-weight:600;color:var(--ink-2);margin-bottom:8px;">No teams yet</div>
           <button class="btn-primary" onclick="OpsTeams.createTeam()">Create First Team</button>
         </div>`;
       return;
@@ -266,11 +266,11 @@ const OpsTeams = (function () {
 
           <div class="tm-card-foot">
             <button class="btn-ghost" onclick="OpsTeams.editStatus('${id}','${name.replace(/'/g, "\\'")}')
-" style="flex:1;justify-content:center;font-size:.76rem;">Update Status</button>
+" style="flex:1;justify-content:center;font-size:var(--fs-sm);">Update Status</button>
             ${isIdle
               ? `<button class="btn-primary" onclick="OpsTeams.dispatch('${id}','${name.replace(/'/g, "\\'")}')
-" style="flex:1;justify-content:center;font-size:.76rem;">Dispatch</button>`
-              : `<button class="btn-ghost" onclick="OpsTeams.viewTeam('${id}')" style="flex:1;justify-content:center;font-size:.76rem;">View Details</button>`}
+" style="flex:1;justify-content:center;font-size:var(--fs-sm);">Dispatch</button>`
+              : `<button class="btn-ghost" onclick="OpsTeams.viewTeam('${id}')" style="flex:1;justify-content:center;font-size:var(--fs-sm);">View Details</button>`}
             ${_isAdmin ? `<button class="btn-ghost" onclick="OpsTeams.deleteTeam('${id}','${name.replace(/'/g, "\\'")}')
 " style="padding:7px 10px;color:var(--err);border-color:rgba(220,38,38,.2);" title="Delete team">
               <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -289,7 +289,7 @@ const OpsTeams = (function () {
     OpsModal.open(`${teamName} — Members`, `
       <div id="mm-loading" style="padding:32px;text-align:center;color:var(--ink-3);">
         <div class="loading" style="margin:0 auto 10px;"></div>
-        <div style="font-size:.82rem;">Loading…</div>
+        <div style="font-size:var(--fs-base);">Loading…</div>
       </div>
       <div id="mm-body" style="display:none;"></div>
     `, [
@@ -319,14 +319,14 @@ const OpsTeams = (function () {
         body.innerHTML = `
           <div style="padding:32px;text-align:center;color:var(--ink-3);">
             <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" style="margin:0 auto 12px;opacity:.25;display:block;"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-            <div style="font-size:.84rem;font-weight:600;color:var(--ink-2);margin-bottom:4px;">No members yet</div>
-            <div style="font-size:.76rem;">Click "Add Member" to assign staff to this team.</div>
+            <div style="font-size:var(--fs-base);font-weight:600;color:var(--ink-2);margin-bottom:4px;">No members yet</div>
+            <div style="font-size:var(--fs-sm);">Click "Add Member" to assign staff to this team.</div>
           </div>`;
         return;
       }
 
       body.innerHTML = `
-        <div style="margin-bottom:10px;font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">
+        <div style="margin-bottom:10px;font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">
           Current Members (${members.length})
         </div>
         <div id="mm-member-list">
@@ -379,7 +379,7 @@ const OpsTeams = (function () {
       : [{ value: '', label: 'No available users' }];
 
     OpsModal.open(`Add Member — ${teamName}`, `
-      <p style="font-size:.83rem;color:var(--ink-3);margin-bottom:16px;line-height:1.55;">
+      <p style="font-size:var(--fs-base);color:var(--ink-3);margin-bottom:16px;line-height:1.55;">
         Select a staff member to add to this team. They will appear in the team's member list and can be dispatched together.
       </p>
       ${OpsModal.field('Select Staff Member', 'user_id', 'select', '', { options: userOptions })}
@@ -447,11 +447,11 @@ const OpsTeams = (function () {
       </div>
 
       <div style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
-        <div style="font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Members (${members.length})</div>
-        <button class="btn-ghost" style="font-size:.74rem;padding:5px 10px;" onclick="OpsModal.close();OpsTeams.manageMembers('${id}','${name.replace(/'/g, "\\'")}')">Manage</button>
+        <div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Members (${members.length})</div>
+        <button class="btn-ghost" style="font-size:var(--fs-sm);padding:5px 10px;" onclick="OpsModal.close();OpsTeams.manageMembers('${id}','${name.replace(/'/g, "\\'")}')">Manage</button>
       </div>
       ${members.length === 0
-        ? `<div style="font-size:.82rem;color:var(--ink-3);padding:12px 0;">No members assigned to this team yet.</div>`
+        ? `<div style="font-size:var(--fs-base);color:var(--ink-3);padding:12px 0;">No members assigned to this team yet.</div>`
         : members.map(m => `
           <div class="tm-modal-member-row">
             <div class="tm-modal-member-av" style="background:${memberColor(m.full_name || m.name || '')};">${initials(m.full_name || m.name || '')}</div>
@@ -563,7 +563,7 @@ const OpsTeams = (function () {
         OpsModal.field('Base Location', 'base_location', 'text', '', { placeholder: 'e.g. VI Depot', required: false }),
       ])}
       ${OpsModal.field('Equipment', 'equipment', 'text', '', { placeholder: 'e.g. Hydro-jetting unit, vacuum truck', required: false })}
-      <div style="padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--rs);font-size:.78rem;color:var(--ink-3);margin-top:4px;">
+      <div style="padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--rs);font-size:var(--fs-sm);color:var(--ink-3);margin-top:4px;">
         After creating the team, use <strong style="color:var(--ink-2);">Manage Members</strong> on the team card to assign staff.
       </div>
     `, [

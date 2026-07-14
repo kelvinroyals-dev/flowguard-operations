@@ -50,35 +50,35 @@ const OpsUserManagement = (function () {
     container.innerHTML = `
       <style>
         .um-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
-        .um-header-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:1.3rem; font-weight:800; color:var(--ink,#0a1f2e); letter-spacing:-.02em; margin-bottom:3px; }
-        .um-header-sub { font-size:.8rem; color:var(--ink-3,#6b8fa3); }
+        .um-header-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#0a1f2e); letter-spacing:-.02em; margin-bottom:3px; }
+        .um-header-sub { font-size:var(--fs-base); color:var(--ink-3,#6b8fa3); }
 
         .um-table-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); overflow:hidden; box-shadow:var(--sh-xs); margin-bottom:18px; }
         .um-table-head { padding:14px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; gap:12px; }
-        .um-table-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:.9rem; font-weight:700; color:var(--ink,#0a1f2e); }
+        .um-table-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--ink,#0a1f2e); }
         .um-controls { display:flex; align-items:center; gap:8px; }
 
-        .um-filter { padding:7px 12px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:.8rem; color:var(--ink,#0a1f2e); outline:none; cursor:pointer; transition:border-color .2s; }
+        .um-filter { padding:7px 12px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:var(--fs-base); color:var(--ink,#0a1f2e); outline:none; cursor:pointer; transition:border-color .2s; }
         .um-filter:focus { border-color:var(--blue,#16a8d3); }
 
-        .um-avatar { width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:.72rem; font-weight:700; color:white; flex-shrink:0; font-family:var(--ff-m,'JetBrains Mono',monospace); letter-spacing:.5px; }
+        .um-avatar { width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:var(--fs-xs); font-weight:700; color:white; flex-shrink:0; font-family:var(--ff-m,'JetBrains Mono',monospace); letter-spacing:.5px; }
         .um-user-wrap { display:flex; align-items:center; gap:10px; }
-        .um-user-name  { font-size:.85rem; font-weight:600; color:var(--ink,#0a1f2e); }
-        .um-user-email { font-size:.74rem; color:var(--ink-3,#6b8fa3); margin-top:1px; }
+        .um-user-name  { font-size:var(--fs-md); font-weight:600; color:var(--ink,#0a1f2e); }
+        .um-user-email { font-size:var(--fs-sm); color:var(--ink-3,#6b8fa3); margin-top:1px; }
 
-        .um-role-chip { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:.72rem; font-weight:700; white-space:nowrap; }
+        .um-role-chip { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:var(--fs-xs); font-weight:700; white-space:nowrap; }
 
         /* Team chip */
-        .um-team-chip { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:20px; font-size:.72rem; font-weight:600; background:rgba(22,168,211,.08); color:var(--blue,#16a8d3); border:1px solid rgba(22,168,211,.18); white-space:nowrap; cursor:pointer; transition:all .18s; }
+        .um-team-chip { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:20px; font-size:var(--fs-xs); font-weight:600; background:rgba(22,168,211,.08); color:var(--blue,#16a8d3); border:1px solid rgba(22,168,211,.18); white-space:nowrap; cursor:pointer; transition:all .18s; }
         .um-team-chip:hover { background:rgba(22,168,211,.15); }
         .um-team-chip.unassigned { background:var(--surface-2,#f7fafc); color:var(--ink-4,#9eb8c8); border-color:var(--border,#dae6ef); cursor:default; }
 
         /* Permissions grid */
         .um-perms-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
         .um-perm-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); padding:16px 18px; box-shadow:var(--sh-xs); position:relative; overflow:hidden; }
-        .um-perm-title { font-size:.84rem; font-weight:700; color:var(--ink,#0a1f2e); margin-bottom:8px; }
+        .um-perm-title { font-size:var(--fs-base); font-weight:700; color:var(--ink,#0a1f2e); margin-bottom:8px; }
         .um-perm-list  { list-style:none; display:flex; flex-direction:column; gap:5px; }
-        .um-perm-item  { font-size:.74rem; color:var(--ink-2,#2d5068); display:flex; align-items:flex-start; gap:6px; line-height:1.4; }
+        .um-perm-item  { font-size:var(--fs-sm); color:var(--ink-2,#2d5068); display:flex; align-items:flex-start; gap:6px; line-height:1.4; }
       </style>
 
       <div class="um-header">
@@ -108,15 +108,15 @@ const OpsUserManagement = (function () {
         <div id="um-table-body">
           <div style="padding:48px;text-align:center;color:var(--ink-3);">
             <div class="loading" style="margin:0 auto 12px;"></div>
-            <div style="font-size:.82rem;">Loading members…</div>
+            <div style="font-size:var(--fs-base);">Loading members…</div>
           </div>
         </div>
       </div>
 
       <!-- Role permissions reference -->
       <div style="margin-bottom:12px;">
-        <div style="font-family:var(--ff-d);font-size:.9rem;font-weight:700;color:var(--ink);margin-bottom:4px;">Role Permissions</div>
-        <div style="font-size:.78rem;color:var(--ink-3);">What each role can access within the operations center</div>
+        <div style="font-family:var(--ff-d);font-size:var(--fs-md);font-weight:700;color:var(--ink);margin-bottom:4px;">Role Permissions</div>
+        <div style="font-size:var(--fs-sm);color:var(--ink-3);">What each role can access within the operations center</div>
       </div>
       <div class="um-perms-grid">
         ${Object.entries(ROLE_CONFIG)
@@ -125,7 +125,7 @@ const OpsUserManagement = (function () {
             <div class="um-perm-card" style="border-color:${rc.color}20;">
               <div style="position:absolute;top:0;left:0;bottom:0;width:3px;background:${rc.color};"></div>
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-                <span style="display:inline-flex;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:700;background:${rc.bg};color:${rc.color};">${rc.label}</span>
+                <span style="display:inline-flex;padding:3px 10px;border-radius:20px;font-size:var(--fs-xs);font-weight:700;background:${rc.bg};color:${rc.color};">${rc.label}</span>
               </div>
               <ul class="um-perm-list">
                 ${rc.perms.map(p => `<li class="um-perm-item"><span style="color:${rc.color};margin-top:1px;">✓</span><span>${p}</span></li>`).join('')}
@@ -237,7 +237,7 @@ const OpsUserManagement = (function () {
     if (!users || users.length === 0) {
       el.innerHTML = `
         <div style="padding:48px;text-align:center;color:var(--ink-3);">
-          <div style="font-size:.88rem;font-weight:600;color:var(--ink-2);margin-bottom:8px;">No members found</div>
+          <div style="font-size:var(--fs-md);font-weight:600;color:var(--ink-2);margin-bottom:8px;">No members found</div>
           <button class="btn-primary" onclick="OpsUserManagement.openInvite()">Invite First Member</button>
         </div>`;
       return;
@@ -289,16 +289,16 @@ const OpsUserManagement = (function () {
                 <td>
                   <span class="status-badge ${isActive ? 'nominal' : 'offline'}">${u.status || 'active'}</span>
                 </td>
-                <td style="font-family:var(--ff-m);font-size:.76rem;color:var(--ink-3);">
+                <td style="font-family:var(--ff-m);font-size:var(--fs-sm);color:var(--ink-3);">
                   ${formatTime(u.last_login || u.last_active)}
                 </td>
                 <td style="text-align:right;">
                   <div style="display:flex;gap:6px;justify-content:flex-end;">
-                    <button class="btn-ghost" onclick="OpsUserManagement.editUser('${id}','${name.replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:.76rem;">Edit</button>
+                    <button class="btn-ghost" onclick="OpsUserManagement.editUser('${id}','${name.replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:var(--fs-sm);">Edit</button>
                     ${isActive
-                      ? `<button class="btn-ghost" onclick="OpsUserManagement.deactivateUser('${id}','${name.replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:.76rem;color:var(--warn);border-color:rgba(180,83,9,.2);">Deactivate</button>`
-                      : `<button class="btn-ghost" onclick="OpsUserManagement.reactivateUser('${id}')" style="padding:6px 12px;font-size:.76rem;color:var(--ok);">Reactivate</button>`}
-                    ${_isAdmin ? `<button class="btn-ghost" onclick="OpsUserManagement.deleteUser('${id}','${name.replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:.76rem;color:var(--err);border-color:rgba(220,38,38,.2);">Delete</button>` : ''}
+                      ? `<button class="btn-ghost" onclick="OpsUserManagement.deactivateUser('${id}','${name.replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:var(--fs-sm);color:var(--warn);border-color:rgba(180,83,9,.2);">Deactivate</button>`
+                      : `<button class="btn-ghost" onclick="OpsUserManagement.reactivateUser('${id}')" style="padding:6px 12px;font-size:var(--fs-sm);color:var(--ok);">Reactivate</button>`}
+                    ${_isAdmin ? `<button class="btn-ghost" onclick="OpsUserManagement.deleteUser('${id}','${name.replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:var(--fs-sm);color:var(--err);border-color:rgba(220,38,38,.2);">Delete</button>` : ''}
                   </div>
                 </td>
               </tr>`;
@@ -314,7 +314,7 @@ const OpsUserManagement = (function () {
     el.innerHTML = `
       <div style="padding:48px;text-align:center;">
         <div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load members</div>
-        <div style="color:var(--ink-3);font-size:.78rem;margin-bottom:16px;">${message}</div>
+        <div style="color:var(--ink-3);font-size:var(--fs-sm);margin-bottom:16px;">${message}</div>
         <button class="btn-ghost" onclick="reloadTab('team-members')">Retry</button>
       </div>`;
   }
@@ -337,7 +337,7 @@ const OpsUserManagement = (function () {
         OpsModal.field('Assign to Team', 'team_id', 'select', '', { options: teamOptions, required: false }),
         OpsModal.field('Phone (optional)', 'phone', 'text', '', { placeholder: '+234…', required: false }),
       ])}
-      <div style="padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--rs);font-size:.78rem;color:var(--ink-3);margin-top:4px;">
+      <div style="padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--rs);font-size:var(--fs-sm);color:var(--ink-3);margin-top:4px;">
         An invitation email will be sent. The member will appear in their team's roster immediately.
       </div>
     `, [

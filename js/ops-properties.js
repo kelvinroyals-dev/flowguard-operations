@@ -28,11 +28,11 @@ const OpsProperties = (function () {
 
         .pr-header-title {
           font-family: var(--ff-d, 'Space Grotesk', sans-serif);
-          font-size: 1.3rem; font-weight: 800;
+          font-size: var(--fs-xl); font-weight: 800;
           color: var(--ink, #0a1f2e); letter-spacing: -.02em; margin-bottom: 3px;
         }
 
-        .pr-header-sub { font-size: .8rem; color: var(--ink-3, #6b8fa3); }
+        .pr-header-sub { font-size: var(--fs-base); color: var(--ink-3, #6b8fa3); }
 
         /* Pipeline stage tiles */
         .pr-pipeline {
@@ -66,18 +66,18 @@ const OpsProperties = (function () {
         .pr-stage.s4::after { background: linear-gradient(90deg, var(--navy, #0a2a3d), var(--blue, #16a8d3)); }
 
         .pr-stage-label {
-          font-size: .6rem; font-weight: 700;
+          font-size: var(--fs-2xs); font-weight: 700;
           letter-spacing: 1.2px; text-transform: uppercase;
           color: var(--ink-3, #6b8fa3); margin-bottom: 6px;
         }
 
         .pr-stage-val {
           font-family: var(--ff-d, 'Space Grotesk', sans-serif);
-          font-size: 1.8rem; font-weight: 900;
+          font-size: var(--fs-2xl); font-weight: 900;
           color: var(--ink, #0a1f2e); letter-spacing: -.03em; line-height: 1;
         }
 
-        .pr-stage-sub { font-size: .68rem; color: var(--ink-3, #6b8fa3); margin-top: 3px; }
+        .pr-stage-sub { font-size: var(--fs-xs); color: var(--ink-3, #6b8fa3); margin-top: 3px; }
 
         /* Table card */
         .pr-table-card {
@@ -95,7 +95,7 @@ const OpsProperties = (function () {
 
         .pr-table-title {
           font-family: var(--ff-d, 'Space Grotesk', sans-serif);
-          font-size: .9rem; font-weight: 700; color: var(--ink, #0a1f2e);
+          font-size: var(--fs-md); font-weight: 700; color: var(--ink, #0a1f2e);
         }
 
         .pr-controls { display: flex; align-items: center; gap: 8px; }
@@ -114,7 +114,7 @@ const OpsProperties = (function () {
           border-radius: var(--rs, 9px);
           background: var(--surface-2, #f7fafc);
           font-family: var(--ff-b, 'Inter', sans-serif);
-          font-size: .8rem; color: var(--ink, #0a1f2e);
+          font-size: var(--fs-base); color: var(--ink, #0a1f2e);
           outline: none; transition: all .2s; width: 200px;
         }
 
@@ -180,7 +180,7 @@ const OpsProperties = (function () {
               <svg class="pr-search-icon" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"/></svg>
               <input class="pr-search" id="pr-search" placeholder="Search areas…" oninput="OpsProperties.search(this.value)">
             </div>
-            <button class="btn-ghost" onclick="OpsProperties.filterStage('all')" style="font-size:.76rem;padding:6px 12px;">
+            <button class="btn-ghost" onclick="OpsProperties.filterStage('all')" style="font-size:var(--fs-sm);padding:6px 12px;">
               Show All
             </button>
           </div>
@@ -188,7 +188,7 @@ const OpsProperties = (function () {
         <div id="pr-table-body">
           <div style="padding:48px;text-align:center;color:var(--ink-3);">
             <div class="loading" style="margin:0 auto 12px;"></div>
-            <div style="font-size:.82rem;">Loading areas…</div>
+            <div style="font-size:var(--fs-base);">Loading areas…</div>
           </div>
         </div>
       </div>
@@ -210,7 +210,7 @@ const OpsProperties = (function () {
       document.getElementById('pr-table-body').innerHTML = `
         <div style="padding:48px;text-align:center;">
           <div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load areas</div>
-          <div style="color:var(--ink-3);font-size:.78rem;margin-bottom:16px;">${err.message}</div>
+          <div style="color:var(--ink-3);font-size:var(--fs-sm);margin-bottom:16px;">${err.message}</div>
           <button class="btn-ghost" onclick="reloadTab('properties')">Retry</button>
         </div>`;
     }
@@ -296,11 +296,11 @@ const OpsProperties = (function () {
     const monitored = parseInt(a.monitored_assets) || 0;
     if (!assets) {
       return `<button class="btn-ghost" onclick="OpsNetwork.open('${a.property_id}')"
-        style="padding:4px 9px;font-size:.7rem;color:var(--warn);border-color:var(--warn);">No assets</button>`;
+        style="padding:4px 9px;font-size:var(--fs-xs);color:var(--warn);border-color:var(--warn);">No assets</button>`;
     }
     const gap = assets - monitored;
     return `<button class="btn-ghost" onclick="OpsNetwork.open('${a.property_id}')"
-      style="padding:4px 9px;font-size:.72rem;display:inline-flex;gap:7px;align-items:center;">
+      style="padding:4px 9px;font-size:var(--fs-xs);display:inline-flex;gap:7px;align-items:center;">
       <span><b style="color:var(--ink);font-family:var(--font-mono)">${assets}</b> asset${assets > 1 ? 's' : ''}</span>
       <span style="color:var(--ink-4)">·</span>
       <span><b style="color:${nodes ? 'var(--ok)' : 'var(--warn)'};font-family:var(--font-mono)">${nodes}</b> Sentinel${nodes === 1 ? '' : 's'}</span>
@@ -309,14 +309,14 @@ const OpsProperties = (function () {
   }
 
   function healthCell(score) {
-    if (score == null) return '<span style="color:var(--ink-4);font-size:.76rem;">—</span>';
+    if (score == null) return '<span style="color:var(--ink-4);font-size:var(--fs-sm);">—</span>';
     const v = Math.round(Number(score));
     const c = v >= 75 ? 'var(--ok)' : v >= 50 ? 'var(--warn)' : 'var(--err)';
-    return `<span style="font-family:var(--font-mono);font-weight:700;color:${c};font-size:.82rem">${v}</span>`;
+    return `<span style="font-family:var(--font-mono);font-weight:700;color:${c};font-size:var(--fs-base)">${v}</span>`;
   }
 
   function urgencyBadge(u) {
-    if (!u) return '<span style="color:var(--ink-4);font-size:.76rem;">—</span>';
+    if (!u) return '<span style="color:var(--ink-4);font-size:var(--fs-sm);">—</span>';
     const m = { low:'nominal', medium:'watch', high:'warning', critical:'critical' };
     return `<span class="status-badge ${m[u] || 'offline'}">${u}</span>`;
   }
@@ -329,7 +329,7 @@ const OpsProperties = (function () {
       el.innerHTML = `
         <div style="padding:60px;text-align:center;color:var(--ink-3);">
           <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" style="margin:0 auto 14px;opacity:.25;display:block;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          <div style="font-size:.88rem;font-weight:600;color:var(--ink-2);">No areas found</div>
+          <div style="font-size:var(--fs-md);font-weight:600;color:var(--ink-2);">No areas found</div>
         </div>`;
       return;
     }
@@ -357,23 +357,23 @@ const OpsProperties = (function () {
               const pid = a.property_id;
               return `<tr>
                 <td class="bright">${a.property_name || '—'}</td>
-                <td style="font-size:.78rem;">${(a.property_type || '').replace(/_/g, ' ')}</td>
-                <td style="font-size:.82rem;">${a.client_name || a.client_email || '—'}</td>
-                <td style="font-size:.78rem;">${loc}</td>
+                <td style="font-size:var(--fs-sm);">${(a.property_type || '').replace(/_/g, ' ')}</td>
+                <td style="font-size:var(--fs-base);">${a.client_name || a.client_email || '—'}</td>
+                <td style="font-size:var(--fs-sm);">${loc}</td>
                 <td>${networkCell(a)}</td>
                 <td>${healthCell(a.health_score)}</td>
                 <td>${pipelineBadge(a.status)}</td>
-                <td>${a.inspection_status ? inspBadge(a.inspection_status) : '<span style="color:var(--ink-4);font-size:.76rem;">—</span>'}</td>
+                <td>${a.inspection_status ? inspBadge(a.inspection_status) : '<span style="color:var(--ink-4);font-size:var(--fs-sm);">—</span>'}</td>
                 <td>${urgencyBadge(a.urgency_level)}</td>
                 <td style="text-align:right;">
                   <div style="display:flex;gap:6px;justify-content:flex-end;">
-                    <button class="btn-ghost" onclick="OpsNetwork.open('${pid}')" style="padding:6px 12px;font-size:.76rem;color:var(--blue-hi);border-color:var(--blue-dim);">Network</button>
-                    <button class="btn-ghost" onclick="OpsProperties.viewArea('${pid}')" style="padding:6px 12px;font-size:.76rem;">View</button>
-                    <button class="btn-ghost" onclick="OpsProperties.editArea('${pid}')" style="padding:6px 12px;font-size:.76rem;">Edit</button>
+                    <button class="btn-ghost" onclick="OpsNetwork.open('${pid}')" style="padding:6px 12px;font-size:var(--fs-sm);color:var(--blue-hi);border-color:var(--blue-dim);">Network</button>
+                    <button class="btn-ghost" onclick="OpsProperties.viewArea('${pid}')" style="padding:6px 12px;font-size:var(--fs-sm);">View</button>
+                    <button class="btn-ghost" onclick="OpsProperties.editArea('${pid}')" style="padding:6px 12px;font-size:var(--fs-sm);">Edit</button>
                     ${a.status === 'submitted'
-                      ? `<button class="btn-primary" onclick="OpsProperties.scheduleInspection('${pid}','${(a.property_name || '').replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:.76rem;">Schedule</button>`
+                      ? `<button class="btn-primary" onclick="OpsProperties.scheduleInspection('${pid}','${(a.property_name || '').replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:var(--fs-sm);">Schedule</button>`
                       : ''}
-                    ${_isAdmin ? `<button class="btn-ghost" onclick="OpsProperties.deleteArea('${pid}','${(a.property_name||'').replace(/'/g,"\\'")}')" style="padding:6px 12px;font-size:.76rem;color:var(--err);border-color:rgba(220,38,38,.2);">Delete</button>` : ''}
+                    ${_isAdmin ? `<button class="btn-ghost" onclick="OpsProperties.deleteArea('${pid}','${(a.property_name||'').replace(/'/g,"\\'")}')" style="padding:6px 12px;font-size:var(--fs-sm);color:var(--err);border-color:rgba(220,38,38,.2);">Delete</button>` : ''}
                   </div>
                 </td>
               </tr>`;
@@ -412,15 +412,15 @@ const OpsProperties = (function () {
         </div>
 
         ${inspections.length > 0 ? `
-          <div style="margin-bottom:6px;font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Inspections (${inspections.length})</div>
+          <div style="margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Inspections (${inspections.length})</div>
           <table class="ops-table" style="margin-bottom:16px;">
             <thead><tr><th>ID</th><th>Status</th><th>Date</th><th>Team</th><th>Risk</th><th>Score</th></tr></thead>
             <tbody>
               ${inspections.map(i => `<tr>
-                <td style="font-family:var(--ff-m);font-size:.74rem;">${i.inspection_id}</td>
+                <td style="font-family:var(--ff-m);font-size:var(--fs-sm);">${i.inspection_id}</td>
                 <td>${inspBadge(i.status)}</td>
-                <td style="font-size:.78rem;">${i.scheduled_date ? new Date(i.scheduled_date).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '—'}</td>
-                <td style="font-size:.78rem;">${i.assigned_team || '—'}</td>
+                <td style="font-size:var(--fs-sm);">${i.scheduled_date ? new Date(i.scheduled_date).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '—'}</td>
+                <td style="font-size:var(--fs-sm);">${i.assigned_team || '—'}</td>
                 <td>${i.flood_risk_level ? urgencyBadge(i.flood_risk_level) : '—'}</td>
                 <td style="font-family:var(--ff-d);font-weight:700;">${i.drainage_condition_score ? i.drainage_condition_score + '/10' : '—'}</td>
               </tr>`).join('')}
@@ -428,12 +428,12 @@ const OpsProperties = (function () {
           </table>` : ''}
 
         ${quotes.length > 0 ? `
-          <div style="margin-bottom:6px;font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Quotes</div>
+          <div style="margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Quotes</div>
           <table class="ops-table" style="margin-bottom:16px;">
             <thead><tr><th>Quote ID</th><th>Monthly</th><th>Status</th></tr></thead>
             <tbody>
               ${quotes.map(q => `<tr>
-                <td style="font-family:var(--ff-m);font-size:.74rem;">${q.quote_id}</td>
+                <td style="font-family:var(--ff-m);font-size:var(--fs-sm);">${q.quote_id}</td>
                 <td style="font-family:var(--ff-d);font-weight:700;">₦${Number(q.total_monthly || 0).toLocaleString()}</td>
                 <td>${pipelineBadge(q.status)}</td>
               </tr>`).join('')}
@@ -441,15 +441,15 @@ const OpsProperties = (function () {
           </table>` : ''}
 
         ${invoices.length > 0 ? `
-          <div style="margin-bottom:6px;font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Invoices</div>
+          <div style="margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Invoices</div>
           <table class="ops-table">
             <thead><tr><th>Invoice</th><th>Amount</th><th>Status</th><th>Due</th></tr></thead>
             <tbody>
               ${invoices.map(inv => `<tr>
-                <td style="font-family:var(--ff-m);font-size:.74rem;">${inv.invoice_id}</td>
+                <td style="font-family:var(--ff-m);font-size:var(--fs-sm);">${inv.invoice_id}</td>
                 <td style="font-family:var(--ff-d);font-weight:700;">₦${Number(inv.total_amount || 0).toLocaleString()}</td>
                 <td><span class="status-badge ${inv.payment_status === 'paid' ? 'nominal' : inv.payment_status === 'overdue' ? 'critical' : 'watch'}">${inv.payment_status}</span></td>
-                <td style="font-size:.78rem;">${inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '—'}</td>
+                <td style="font-size:var(--fs-sm);">${inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '—'}</td>
               </tr>`).join('')}
             </tbody>
           </table>` : ''}

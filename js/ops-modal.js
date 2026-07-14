@@ -336,7 +336,7 @@ const OpsModal = (function () {
       display:flex; align-items:center; gap:10px;
       box-shadow:0 4px 20px rgba(10,31,46,.1),0 1px 4px rgba(10,31,46,.06);
       font-family:var(--ff-b,'Inter',sans-serif);
-      font-size:.83rem; color:var(--ink-2,#2d5068);
+      font-size:var(--fs-base); color:var(--ink-2,#2d5068);
       max-width:340px;
       opacity:0; transform:translateX(12px);
       transition:opacity .25s,transform .25s cubic-bezier(.22,1,.36,1);`;
@@ -385,8 +385,8 @@ const OpsModal = (function () {
               d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
           </svg>
         </div>
-        <div style="font-size:.9rem;font-weight:600;color:var(--ink,#0a1f2e);margin-bottom:6px;">${message}</div>
-        <div style="font-size:.78rem;color:var(--ink-3,#6b8fa3);">This action cannot be undone.</div>
+        <div style="font-size:var(--fs-md);font-weight:600;color:var(--ink,#0a1f2e);margin-bottom:6px;">${message}</div>
+        <div style="font-size:var(--fs-sm);color:var(--ink-3,#6b8fa3);">This action cannot be undone.</div>
       </div>`;
 
     open('Confirm Action', body, [

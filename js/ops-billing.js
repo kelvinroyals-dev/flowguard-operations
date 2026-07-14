@@ -42,14 +42,14 @@ const OpsBilling = (function () {
         .bl-kpi.red::after    { background:var(--err,#dc2626); }
         .bl-kpi.purple::after { background:#7c3aed; }
 
-        .bl-kpi-label { font-size:.62rem; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-3,#6b8fa3); margin-bottom:6px; }
-        .bl-kpi-val   { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:1.75rem; font-weight:900; color:var(--ink,#0a1f2e); letter-spacing:-.03em; line-height:1; }
+        .bl-kpi-label { font-size:var(--fs-2xs); font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-3,#6b8fa3); margin-bottom:6px; }
+        .bl-kpi-val   { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-2xl); font-weight:900; color:var(--ink,#0a1f2e); letter-spacing:-.03em; line-height:1; }
         .bl-kpi-val.green  { color:var(--ok,#0a8a6a); }
         .bl-kpi-val.blue   { color:var(--blue,#16a8d3); }
         .bl-kpi-val.amber  { color:var(--amber,#f5a623); }
         .bl-kpi-val.red    { color:var(--err,#dc2626); }
         .bl-kpi-val.purple { color:#7c3aed; }
-        .bl-kpi-sub { font-size:.72rem; color:var(--ink-3,#6b8fa3); margin-top:4px; }
+        .bl-kpi-sub { font-size:var(--fs-xs); color:var(--ink-3,#6b8fa3); margin-top:4px; }
         .bl-kpi-sub.red { color:var(--err,#dc2626); font-weight:600; }
 
         /* ── Trend + overdue row ── */
@@ -58,7 +58,7 @@ const OpsBilling = (function () {
         /* MRR chart card */
         .bl-chart-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); box-shadow:var(--sh-xs); overflow:hidden; }
         .bl-card-head { padding:14px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; }
-        .bl-card-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:.9rem; font-weight:700; color:var(--ink,#0a1f2e); }
+        .bl-card-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--ink,#0a1f2e); }
         .bl-chart-body { padding:20px; }
 
         /* Bar chart */
@@ -66,27 +66,27 @@ const OpsBilling = (function () {
         .bl-bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
         .bl-bar { width:100%; border-radius:4px 4px 0 0; background:linear-gradient(180deg,var(--blue,#16a8d3),var(--navy,#0a2a3d)); min-height:4px; transition:height .4s cubic-bezier(.22,1,.36,1); position:relative; cursor:pointer; }
         .bl-bar:hover { filter:brightness(1.15); }
-        .bl-bar-tip { position:absolute; top:-28px; left:50%; transform:translateX(-50%); background:var(--navy,#0a2a3d); color:white; font-size:.65rem; font-weight:700; padding:2px 6px; border-radius:4px; white-space:nowrap; opacity:0; transition:opacity .15s; pointer-events:none; }
+        .bl-bar-tip { position:absolute; top:-28px; left:50%; transform:translateX(-50%); background:var(--navy,#0a2a3d); color:white; font-size:var(--fs-2xs); font-weight:700; padding:2px 6px; border-radius:4px; white-space:nowrap; opacity:0; transition:opacity .15s; pointer-events:none; }
         .bl-bar:hover .bl-bar-tip { opacity:1; }
-        .bl-bar-label { font-size:.62rem; color:var(--ink-4,#9eb8c8); font-family:var(--ff-m,'JetBrains Mono',monospace); }
+        .bl-bar-label { font-size:var(--fs-2xs); color:var(--ink-4,#9eb8c8); font-family:var(--ff-m,'JetBrains Mono',monospace); }
 
         /* Overdue list */
         .bl-overdue-card { background:var(--surface,#fff); border:1px solid rgba(220,38,38,.2); border-radius:var(--r,14px); box-shadow:var(--sh-xs); overflow:hidden; }
         .bl-overdue-head { padding:14px 18px; border-bottom:1px solid rgba(220,38,38,.12); display:flex; align-items:center; gap:8px; background:rgba(220,38,38,.03); }
-        .bl-overdue-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:.9rem; font-weight:700; color:var(--err,#dc2626); }
+        .bl-overdue-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--err,#dc2626); }
         .bl-overdue-item { padding:11px 18px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; gap:10px; transition:background .12s; }
         .bl-overdue-item:last-child { border-bottom:none; }
         .bl-overdue-item:hover { background:var(--surface-2,#f7fafc); }
-        .bl-overdue-name { font-size:.83rem; font-weight:600; color:var(--ink,#0a1f2e); }
-        .bl-overdue-days { font-size:.74rem; color:var(--err,#dc2626); font-weight:600; }
-        .bl-overdue-amount { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:.95rem; font-weight:800; color:var(--err,#dc2626); }
+        .bl-overdue-name { font-size:var(--fs-base); font-weight:600; color:var(--ink,#0a1f2e); }
+        .bl-overdue-days { font-size:var(--fs-sm); color:var(--err,#dc2626); font-weight:600; }
+        .bl-overdue-amount { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-lg); font-weight:800; color:var(--err,#dc2626); }
 
         /* ── Invoice table ── */
         .bl-table-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); box-shadow:var(--sh-xs); overflow:hidden; }
         .bl-table-head { padding:14px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; gap:12px; }
 
         .bl-filter-tabs { display:flex; gap:5px; }
-        .bl-filter-btn { padding:5px 14px; border-radius:20px; border:1px solid var(--border,#dae6ef); background:var(--surface,#fff); font-family:var(--ff-b,'Inter',sans-serif); font-size:.76rem; font-weight:600; color:var(--ink-3,#6b8fa3); cursor:pointer; transition:all .15s; }
+        .bl-filter-btn { padding:5px 14px; border-radius:20px; border:1px solid var(--border,#dae6ef); background:var(--surface,#fff); font-family:var(--ff-b,'Inter',sans-serif); font-size:var(--fs-sm); font-weight:600; color:var(--ink-3,#6b8fa3); cursor:pointer; transition:all .15s; }
         .bl-filter-btn:hover { border-color:var(--border-2,#b8d0de); color:var(--ink-2,#2d5068); }
         .bl-filter-btn.active { background:var(--navy,#0a2a3d); border-color:var(--navy,#0a2a3d); color:white; }
         .bl-filter-btn.active.overdue { background:var(--err,#dc2626); border-color:var(--err,#dc2626); }
@@ -128,11 +128,11 @@ const OpsBilling = (function () {
         <div class="bl-chart-card">
           <div class="bl-card-head">
             <div class="bl-card-title">MRR Trend</div>
-            <span style="font-size:.72rem;color:var(--ink-3);font-family:var(--ff-m);">Last 6 months</span>
+            <span style="font-size:var(--fs-xs);color:var(--ink-3);font-family:var(--ff-m);">Last 6 months</span>
           </div>
           <div class="bl-chart-body">
             <div class="bl-bars" id="bl-bars">
-              <div style="margin:auto;color:var(--ink-3);font-size:.82rem;">Loading…</div>
+              <div style="margin:auto;color:var(--ink-3);font-size:var(--fs-base);">Loading…</div>
             </div>
           </div>
         </div>
@@ -143,7 +143,7 @@ const OpsBilling = (function () {
             <div class="bl-overdue-title">Overdue Invoices</div>
           </div>
           <div id="bl-overdue-list">
-            <div style="padding:28px;text-align:center;color:var(--ink-3);font-size:.82rem;">Loading…</div>
+            <div style="padding:28px;text-align:center;color:var(--ink-3);font-size:var(--fs-base);">Loading…</div>
           </div>
         </div>
       </div>
@@ -162,7 +162,7 @@ const OpsBilling = (function () {
         <div id="bl-table-body">
           <div style="padding:48px;text-align:center;color:var(--ink-3);">
             <div class="loading" style="margin:0 auto 12px;"></div>
-            <div style="font-size:.82rem;">Loading invoices…</div>
+            <div style="font-size:var(--fs-base);">Loading invoices…</div>
           </div>
         </div>
       </div>
@@ -192,7 +192,7 @@ const OpsBilling = (function () {
       document.getElementById('bl-table-body').innerHTML = `
         <div style="padding:48px;text-align:center;">
           <div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load billing data</div>
-          <div style="color:var(--ink-3);font-size:.78rem;margin-bottom:16px;">${err.message}</div>
+          <div style="color:var(--ink-3);font-size:var(--fs-sm);margin-bottom:16px;">${err.message}</div>
           <button class="btn-ghost" onclick="reloadTab('billing')">Retry</button>
         </div>`;
     }
@@ -221,7 +221,7 @@ const OpsBilling = (function () {
     if (!el) return;
 
     if (!trend || trend.length === 0) {
-      el.innerHTML = '<div style="margin:auto;color:var(--ink-3);font-size:.82rem;">No trend data yet</div>';
+      el.innerHTML = '<div style="margin:auto;color:var(--ink-3);font-size:var(--fs-base);">No trend data yet</div>';
       return;
     }
 
@@ -249,7 +249,7 @@ const OpsBilling = (function () {
       el.innerHTML = `
         <div style="padding:28px;text-align:center;color:var(--ok);">
           <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 8px;display:block;"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          <div style="font-size:.82rem;font-weight:600;">No overdue invoices</div>
+          <div style="font-size:var(--fs-base);font-weight:600;">No overdue invoices</div>
         </div>`;
       return;
     }
@@ -264,7 +264,7 @@ const OpsBilling = (function () {
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
             <div class="bl-overdue-amount">₦${Number(inv.total_amount || 0).toLocaleString()}</div>
-            <button class="btn-ghost" onclick="OpsBilling.sendReminder('${inv.invoice_id || inv.id}')" style="padding:5px 10px;font-size:.72rem;">Remind</button>
+            <button class="btn-ghost" onclick="OpsBilling.sendReminder('${inv.invoice_id || inv.id}')" style="padding:5px 10px;font-size:var(--fs-xs);">Remind</button>
           </div>
         </div>`;
     }).join('');
@@ -292,7 +292,7 @@ const OpsBilling = (function () {
     if (!invoices || invoices.length === 0) {
       el.innerHTML = `
         <div style="padding:48px;text-align:center;color:var(--ink-3);">
-          <div style="font-size:.88rem;font-weight:600;color:var(--ink-2);">No invoices found</div>
+          <div style="font-size:var(--fs-md);font-weight:600;color:var(--ink-2);">No invoices found</div>
         </div>`;
       return;
     }
@@ -318,17 +318,17 @@ const OpsBilling = (function () {
               const badge  = { paid:'nominal', overdue:'critical', pending:'watch', cancelled:'offline' }[status] || 'watch';
               const isOverdue = status === 'overdue';
               return `<tr>
-                <td style="font-family:var(--ff-m);font-size:.78rem;" class="bright">${id}</td>
+                <td style="font-family:var(--ff-m);font-size:var(--fs-sm);" class="bright">${id}</td>
                 <td>${inv.client_name || '—'}</td>
                 <td style="font-family:var(--ff-d);font-weight:800;color:${isOverdue ? 'var(--err)' : 'var(--ink)'};">₦${Number(inv.total_amount || 0).toLocaleString()}</td>
                 <td><span class="status-badge ${badge}">${status}</span></td>
-                <td style="font-size:.78rem;font-family:var(--ff-m);">${fmtDate(inv.issue_date || inv.created_at)}</td>
-                <td style="font-size:.78rem;font-family:var(--ff-m);${isOverdue ? 'color:var(--err);font-weight:700;' : ''}">${fmtDate(inv.due_date)}</td>
+                <td style="font-size:var(--fs-sm);font-family:var(--ff-m);">${fmtDate(inv.issue_date || inv.created_at)}</td>
+                <td style="font-size:var(--fs-sm);font-family:var(--ff-m);${isOverdue ? 'color:var(--err);font-weight:700;' : ''}">${fmtDate(inv.due_date)}</td>
                 <td style="text-align:right;">
                   <div style="display:flex;gap:5px;justify-content:flex-end;">
-                    <button class="btn-ghost" onclick="OpsBilling.viewInvoice('${id}')" style="padding:5px 10px;font-size:.74rem;">View</button>
-                    ${status !== 'paid' ? `<button class="btn-ghost" onclick="OpsBilling.sendReminder('${id}')" style="padding:5px 10px;font-size:.74rem;">Remind</button>` : ''}
-                    ${status !== 'paid' ? `<button class="btn-ghost" onclick="OpsBilling.markPaid('${id}')" style="padding:5px 10px;font-size:.74rem;color:var(--ok);border-color:rgba(10,138,106,.25);">Mark Paid</button>` : ''}
+                    <button class="btn-ghost" onclick="OpsBilling.viewInvoice('${id}')" style="padding:5px 10px;font-size:var(--fs-sm);">View</button>
+                    ${status !== 'paid' ? `<button class="btn-ghost" onclick="OpsBilling.sendReminder('${id}')" style="padding:5px 10px;font-size:var(--fs-sm);">Remind</button>` : ''}
+                    ${status !== 'paid' ? `<button class="btn-ghost" onclick="OpsBilling.markPaid('${id}')" style="padding:5px 10px;font-size:var(--fs-sm);color:var(--ok);border-color:rgba(10,138,106,.25);">Mark Paid</button>` : ''}
                   </div>
                 </td>
               </tr>`;
@@ -350,7 +350,7 @@ const OpsBilling = (function () {
       OpsModal.open(`Invoice — ${id}`, `
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
           <div class="ops-modal-detail"><span class="label">Client</span><span class="value">${inv.client_name || '—'}</span></div>
-          <div class="ops-modal-detail"><span class="label">Amount</span><span class="value" style="font-family:var(--ff-d);font-size:1rem;font-weight:800;">₦${Number(inv.total_amount || 0).toLocaleString()}</span></div>
+          <div class="ops-modal-detail"><span class="label">Amount</span><span class="value" style="font-family:var(--ff-d);font-size:var(--fs-lg);font-weight:800;">₦${Number(inv.total_amount || 0).toLocaleString()}</span></div>
           <div class="ops-modal-detail"><span class="label">Status</span><span class="value"><span class="status-badge ${badge}">${status}</span></span></div>
           <div class="ops-modal-detail"><span class="label">Due Date</span><span class="value">${fmtDate(inv.due_date)}</span></div>
           <div class="ops-modal-detail"><span class="label">Issue Date</span><span class="value">${fmtDate(inv.issue_date || inv.created_at)}</span></div>
@@ -359,7 +359,7 @@ const OpsBilling = (function () {
         </div>
 
         ${inv.line_items?.length ? `
-          <div style="margin-bottom:6px;font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Line Items</div>
+          <div style="margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Line Items</div>
           <table class="ops-table" style="margin-bottom:0;">
             <thead><tr><th>Description</th><th style="text-align:right;">Amount</th></tr></thead>
             <tbody>${inv.line_items.map(l => `

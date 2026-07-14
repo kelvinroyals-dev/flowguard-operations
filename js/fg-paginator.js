@@ -56,7 +56,7 @@ const FGPaginator = (function () {
         border-top:1px solid var(--border,#dae6ef);
         background:var(--surface-2,#f7fafc);
         font-family:var(--ff-b,'Inter',sans-serif);
-        font-size:.79rem;
+        font-size:var(--fs-base);
       `;
 
       // Page range info
@@ -81,7 +81,7 @@ const FGPaginator = (function () {
           background:${active ? 'var(--navy,#0a2a3d)' : 'var(--surface,#fff)'};
           color:${active ? '#fff' : disabled ? 'var(--ink-4,#9eb8c8)' : 'var(--ink-2,#2d5068)'};
           font-family:var(--ff-b,'Inter',sans-serif);
-          font-size:.79rem; font-weight:${active ? '700' : '500'};
+          font-size:var(--fs-base); font-weight:${active ? '700' : '500'};
           cursor:${disabled ? 'not-allowed' : 'pointer'};
           transition:all .15s;
         `;
@@ -109,7 +109,7 @@ const FGPaginator = (function () {
         if (p - lastPage > 1) {
           const ellipsis = document.createElement('span');
           ellipsis.textContent = '…';
-          ellipsis.style.cssText = 'color:var(--ink-4,#9eb8c8);padding:0 4px;font-size:.79rem;';
+          ellipsis.style.cssText = 'color:var(--ink-4,#9eb8c8);padding:0 4px;font-size:var(--fs-base);';
           btns.appendChild(ellipsis);
         }
         btns.appendChild(btn(p, p, p === _page));

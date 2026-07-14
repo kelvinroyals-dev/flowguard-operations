@@ -64,9 +64,9 @@ const OpsDashboard = (function () {
         .ck-ic { width:32px; height:32px; border-radius:9px; display:grid; place-items:center; flex-shrink:0; }
         .ck-ic svg { width:16px; height:16px; }
         .ck-body { min-width:0; flex:1; }
-        .ck-label { font-size:.7rem; font-weight:500; color:var(--ink-2); line-height:1.25; letter-spacing:0; text-transform:none; }
-        .ck-val { font-family:var(--ff-b); font-size:1.45rem; font-weight:700; color:var(--ink); margin-top:4px; line-height:1.15; letter-spacing:-.5px; }
-        .ck-sub { font-size:.66rem; color:var(--ink-3); margin-top:4px; display:flex; align-items:center; gap:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .ck-label { font-size:var(--fs-2xs); font-weight:500; color:var(--ink-2); line-height:1.25; letter-spacing:0; text-transform:none; }
+        .ck-val { font-family:var(--ff-b); font-size:var(--fs-2xl); font-weight:700; color:var(--ink); margin-top:4px; line-height:1.15; letter-spacing:-.5px; }
+        .ck-sub { font-size:var(--fs-xs); color:var(--ink-3); margin-top:4px; display:flex; align-items:center; gap:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .ck-sub.ok { color:var(--ok); } .ck-sub.err { color:var(--err); } .ck-sub.warn { color:var(--warn); }
         .ck-sub .d { width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0; }
 
@@ -79,37 +79,37 @@ const OpsDashboard = (function () {
         .cmd-side { display:flex; flex-direction:column; gap:14px; min-width:0; }
         .cmd-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; box-shadow:var(--sh-xs); }
         .cmd-panel-h { padding:10px 13px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
-        .cmd-panel-h b { font-size:.62rem; font-weight:700; letter-spacing:1.3px; text-transform:uppercase; color:var(--ink-2); }
-        .cmd-panel-h a { font-size:.7rem; color:var(--blue-hi); cursor:pointer; text-decoration:none; font-weight:600; }
+        .cmd-panel-h b { font-size:var(--fs-2xs); font-weight:700; letter-spacing:1.3px; text-transform:uppercase; color:var(--ink-2); }
+        .cmd-panel-h a { font-size:var(--fs-xs); color:var(--blue-hi); cursor:pointer; text-decoration:none; font-weight:600; }
 
         /* priority queue */
         .pq-item { display:flex; gap:9px; padding:9px 12px; border-bottom:1px solid var(--border); align-items:flex-start; }
         .pq-item:last-child { border-bottom:none; }
-        .pq-rank { width:20px; height:20px; border-radius:6px; flex-shrink:0; display:grid; place-items:center; font-family:var(--ff-m); font-size:.68rem; font-weight:700; color:#fff; margin-top:1px; }
+        .pq-rank { width:20px; height:20px; border-radius:6px; flex-shrink:0; display:grid; place-items:center; font-family:var(--ff-m); font-size:var(--fs-xs); font-weight:700; color:#fff; margin-top:1px; }
         .pq-body { flex:1; min-width:0; }
-        .pq-title { font-size:.74rem; font-weight:600; color:var(--ink); line-height:1.3; }
-        .pq-sub { font-size:.68rem; color:var(--ink-3); margin-top:2px; }
+        .pq-title { font-size:var(--fs-sm); font-weight:600; color:var(--ink); line-height:1.3; }
+        .pq-sub { font-size:var(--fs-xs); color:var(--ink-3); margin-top:2px; }
         .pq-right { text-align:right; flex-shrink:0; }
-        .pq-age { font-family:var(--ff-m); font-size:.66rem; color:var(--ink-3); white-space:nowrap; }
-        .pq-chip { display:inline-block; padding:2px 7px; border-radius:5px; font-size:.58rem; font-weight:800; letter-spacing:.8px; text-transform:uppercase; }
-        .pq-btn { margin-top:6px; padding:4px 10px; border-radius:7px; border:1px solid var(--blue-dim); background:transparent; color:var(--blue-hi); font-size:.66rem; font-weight:700; cursor:pointer; font-family:var(--ff-b); }
+        .pq-age { font-family:var(--ff-m); font-size:var(--fs-xs); color:var(--ink-3); white-space:nowrap; }
+        .pq-chip { display:inline-block; padding:2px 7px; border-radius:5px; font-size:var(--fs-2xs); font-weight:800; letter-spacing:.8px; text-transform:uppercase; }
+        .pq-btn { margin-top:6px; padding:4px 10px; border-radius:7px; border:1px solid var(--blue-dim); background:transparent; color:var(--blue-hi); font-size:var(--fs-xs); font-weight:700; cursor:pointer; font-family:var(--ff-b); }
         .pq-btn:hover { background:var(--neon-glow); }
-        .pq-empty { padding:22px 14px; font-size:.76rem; color:var(--ink-3); text-align:center; }
+        .pq-empty { padding:22px 14px; font-size:var(--fs-sm); color:var(--ink-3); text-align:center; }
 
         /* field teams */
         .ft-row { display:flex; align-items:center; gap:9px; padding:8px 12px; border-bottom:1px solid var(--border); }
         .ft-row:last-child { border-bottom:none; }
         .ft-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-        .ft-name { font-size:.73rem; font-weight:600; color:var(--ink); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .ft-meta { font-size:.66rem; color:var(--ink-3); font-family:var(--ff-m); white-space:nowrap; }
+        .ft-name { font-size:var(--fs-sm); font-weight:600; color:var(--ink); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .ft-meta { font-size:var(--fs-xs); color:var(--ink-3); font-family:var(--ff-m); white-space:nowrap; }
 
         .feed-row { display:grid; grid-template-columns:1fr auto; gap:3px 8px; padding:10px 12px; border-bottom:1px solid var(--border); }
         .feed-row:last-child { border-bottom:none; }
         .feed-row:hover { background:var(--surface-h); }
-        .fr-name { font-size:.76rem; font-weight:600; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .fr-st { display:inline-flex; align-items:center; gap:5px; font-size:.62rem; font-weight:700; letter-spacing:.4px; text-transform:uppercase; white-space:nowrap; }
+        .fr-name { font-size:var(--fs-sm); font-weight:600; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .fr-st { display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-2xs); font-weight:700; letter-spacing:.4px; text-transform:uppercase; white-space:nowrap; }
         .fr-st i { width:6px; height:6px; border-radius:50%; background:currentColor; box-shadow:0 0 5px currentColor; flex-shrink:0; }
-        .fr-meta { grid-column:1 / -1; display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-family:var(--ff-m); font-size:.66rem; color:var(--ink-3); }
+        .fr-meta { grid-column:1 / -1; display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-family:var(--ff-m); font-size:var(--fs-xs); color:var(--ink-3); }
         .fr-meta b { color:var(--ink-2); font-weight:600; }
         .fr-bar { flex:1; min-width:44px; height:4px; border-radius:2px; background:var(--surface-3); overflow:hidden; }
         .fr-bar i { display:block; height:100%; border-radius:2px; }
@@ -119,30 +119,30 @@ const OpsDashboard = (function () {
         /* infrastructure health minis */
         .ih-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; padding:12px 13px; }
         .ih-cell { border:1px solid var(--border); border-radius:9px; padding:10px 12px; }
-        .ih-k { font-size:.62rem; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--ink-3); }
-        .ih-v { font-family:var(--ff-m); font-size:1rem; font-weight:600; color:var(--ink); margin:4px 0 6px; }
+        .ih-k { font-size:var(--fs-2xs); font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--ink-3); }
+        .ih-v { font-family:var(--ff-m); font-size:var(--fs-lg); font-weight:600; color:var(--ink); margin:4px 0 6px; }
         .ih-bar { height:5px; border-radius:3px; background:var(--surface-3); overflow:hidden; }
         .ih-bar i { display:block; height:100%; border-radius:3px; }
 
         .cmd-bottom { display:grid; grid-template-columns:1.3fr 1fr; gap:12px; }
         .radar-body { position:relative; height:205px; }
         #radar-map { position:absolute; inset:0; }
-        .radar-cap { position:absolute; left:10px; bottom:10px; z-index:500; font-family:var(--ff-m); font-size:.62rem; color:var(--ink-2); background:var(--overlay); border:1px solid var(--border); border-radius:6px; padding:3px 8px; }
+        .radar-cap { position:absolute; left:10px; bottom:10px; z-index:500; font-family:var(--ff-m); font-size:var(--fs-2xs); color:var(--ink-2); background:var(--overlay); border:1px solid var(--border); border-radius:6px; padding:3px 8px; }
 
         .wo-row { display:flex; align-items:center; gap:9px; padding:8px 12px; border-bottom:1px solid var(--border); }
         .wo-row:last-child { border-bottom:none; }
-        .wo-id { font-family:var(--ff-m); font-size:.66rem; color:var(--ink-3); flex-shrink:0; }
-        .wo-title { flex:1; min-width:0; font-size:.76rem; font-weight:500; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .wo-id { font-family:var(--ff-m); font-size:var(--fs-xs); color:var(--ink-3); flex-shrink:0; }
+        .wo-title { flex:1; min-width:0; font-size:var(--fs-sm); font-weight:500; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .wo-right { display:flex; gap:6px; align-items:center; flex-shrink:0; }
 
         .up-body { display:flex; gap:13px; align-items:center; padding:12px 13px; }
         .up-rows { flex:1; min-width:0; }
-        .up-row { display:flex; justify-content:space-between; font-size:.72rem; color:var(--ink-2); padding:5px 0; border-bottom:1px solid var(--border); }
+        .up-row { display:flex; justify-content:space-between; font-size:var(--fs-xs); color:var(--ink-2); padding:5px 0; border-bottom:1px solid var(--border); }
         .up-row:last-child { border-bottom:none; }
         .up-row b { color:var(--ink); font-family:var(--ff-m); font-weight:600; }
 
         .tl-body { padding:10px 12px 6px; }
-        .tl-note { margin:0 14px 12px; padding:9px 12px; border-radius:9px; background:var(--surface-3); font-size:.72rem; color:var(--ink-2); line-height:1.5; }
+        .tl-note { margin:0 14px 12px; padding:9px 12px; border-radius:9px; background:var(--surface-3); font-size:var(--fs-xs); color:var(--ink-2); line-height:1.5; }
 
         @media (max-width: 1500px) { .cmd-bottom { grid-template-columns:1fr 1fr; } }
         @media (max-width: 860px)  { .cmd-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); } }
@@ -151,16 +151,16 @@ const OpsDashboard = (function () {
         @media (max-width: 1100px) { .cmd-mid, .cmd-bottom { grid-template-columns:1fr; }  .map-panel{height:400px;} }
 
         /* popup styles (unchanged) */
-        .fg-popup-title { font-family:var(--ff-d); font-size:.88rem; font-weight:700; color:var(--ink); margin-bottom:4px; }
-        .fg-popup-badge { display:inline-block; padding:2px 8px; border-radius:12px; font-size:.65rem; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin-bottom:8px; }
-        .fg-popup-row { font-size:.75rem; color:var(--ink-2); line-height:1.7; margin-bottom:1px; }
+        .fg-popup-title { font-family:var(--ff-d); font-size:var(--fs-md); font-weight:700; color:var(--ink); margin-bottom:4px; }
+        .fg-popup-badge { display:inline-block; padding:2px 8px; border-radius:12px; font-size:var(--fs-2xs); font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin-bottom:8px; }
+        .fg-popup-row { font-size:var(--fs-sm); color:var(--ink-2); line-height:1.7; margin-bottom:1px; }
         .fg-popup-row span { color:var(--ink-3); }
         .leaflet-popup-content-wrapper, .leaflet-popup-tip { background:var(--surface); color:var(--ink); }
 
         /* legend + stat chips over the map */
-        .lgd-chip, .mst-chip { background:var(--overlay); backdrop-filter:blur(6px); border:1px solid var(--border-2); border-radius:100px; padding:5px 12px; font-size:.68rem; font-weight:600; color:var(--ink-2); display:inline-flex; align-items:center; gap:7px; cursor:pointer; user-select:none; box-shadow:var(--sh-xs); white-space:nowrap; transition:all .12s; }
+        .lgd-chip, .mst-chip { background:var(--overlay); backdrop-filter:blur(6px); border:1px solid var(--border-2); border-radius:100px; padding:5px 12px; font-size:var(--fs-xs); font-weight:600; color:var(--ink-2); display:inline-flex; align-items:center; gap:7px; cursor:pointer; user-select:none; box-shadow:var(--sh-xs); white-space:nowrap; transition:all .12s; }
         .lgd-chip:hover { border-color:var(--blue-dim); color:var(--ink); }
-        .lgd-title { background:transparent; border:none; box-shadow:none; cursor:default; color:var(--ink-3); font-size:.6rem; letter-spacing:1.2px; text-transform:uppercase; font-weight:800; padding:5px 2px; }
+        .lgd-title { background:transparent; border:none; box-shadow:none; cursor:default; color:var(--ink-3); font-size:var(--fs-2xs); letter-spacing:1.2px; text-transform:uppercase; font-weight:800; padding:5px 2px; }
         .mst-chip { cursor:default; gap:5px; }
         .lgd-chip .dot { width:8px; height:8px; border-radius:50%; box-shadow:0 0 5px currentColor; flex-shrink:0; }
         .lgd-chip.off { opacity:.45; }
@@ -197,7 +197,7 @@ const OpsDashboard = (function () {
           <div class="ih-grid" id="dash-health"></div>
         </div>
         <div class="cmd-panel">
-          <div class="cmd-panel-h"><b>Rainfall outlook — next 24h</b><span style="font-size:.62rem;color:var(--ink-3);font-family:var(--ff-m)">Open-Meteo · Lagos</span></div>
+          <div class="cmd-panel-h"><b>Rainfall outlook — next 24h</b><span style="font-size:var(--fs-2xs);color:var(--ink-3);font-family:var(--ff-m)">Open-Meteo · Lagos</span></div>
           <div class="tl-body" id="dash-timeline"></div>
         </div>
       </div>
@@ -547,7 +547,7 @@ const OpsDashboard = (function () {
           <div class="fg-popup-title" style="color:#7c3aed;">⚠ ${zone.name}</div>
           <div class="fg-popup-badge" style="background:#7c3aed18;color:#7c3aed;border:1px solid #7c3aed40;">${zone.risk} flood probability</div>
           <div class="fg-popup-row">${zone.reason}</div>
-          <div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border);font-size:.68rem;color:${MAP_COLORS.off};">
+          <div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border);font-size:var(--fs-xs);color:${MAP_COLORS.off};">
             Source: Lagos State flood assessments, NEMA/SEMA, EM-DAT records
           </div>
         </div>`);
@@ -701,7 +701,7 @@ const OpsDashboard = (function () {
       { value: 'maintenance',   label: 'General maintenance' },
     ];
     OpsModal.open('Dispatch a crew', `
-      <p style="margin:0 0 14px;font-size:.8rem;color:var(--ink-3);line-height:1.5">
+      <p style="margin:0 0 14px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">
         This assigns the team, raises a work order, and records a dispatch on the client's property record.
       </p>
       ${OpsModal.field('Team', 'team_id', 'select', '', {
@@ -734,7 +734,7 @@ const OpsDashboard = (function () {
   // ── Resolve: the outcome decides what the client sees ──
   function resolveAlert(alertId) {
     OpsModal.open('Resolve alert', `
-      <p style="margin:0 0 14px;font-size:.8rem;color:var(--ink-3);line-height:1.5">
+      <p style="margin:0 0 14px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">
         What actually happened? This is what the client's record will show — a prevented
         incident is a win worth logging; a flood resets their days-flood-free counter.
       </p>
@@ -893,7 +893,7 @@ const OpsDashboard = (function () {
     if (_apiOk === true) {
       const age = _lastOk ? Math.round((Date.now() - _lastOk) / 1000) : null;
       return `<b style="color:var(--ok)">Operational</b>`
-        + (age != null && age > 120 ? `<span style="color:var(--ink-3);font-size:.62rem"> · ${Math.floor(age / 60)}m ago</span>` : '');
+        + (age != null && age > 120 ? `<span style="color:var(--ink-3);font-size:var(--fs-2xs)"> · ${Math.floor(age / 60)}m ago</span>` : '');
     }
     if (_apiOk === false) return '<b style="color:var(--err)">Unreachable</b>';
     return '<b style="color:var(--ink-3)">Checking…</b>';

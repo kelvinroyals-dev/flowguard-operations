@@ -51,14 +51,14 @@ const OpsAlerts = (function () {
         .al-stat.total::after    { background: linear-gradient(90deg, var(--navy, #0a2a3d), var(--blue, #16a8d3)); }
 
         .al-stat-label {
-          font-size: .62rem; font-weight: 700;
+          font-size: var(--fs-2xs); font-weight: 700;
           letter-spacing: 1.5px; text-transform: uppercase;
           color: var(--ink-3, #6b8fa3); margin-bottom: 6px;
         }
 
         .al-stat-val {
           font-family: var(--ff-d, 'Space Grotesk', sans-serif);
-          font-size: 2.2rem; font-weight: 900;
+          font-size: var(--fs-2xl); font-weight: 900;
           line-height: 1; letter-spacing: -.03em;
           color: var(--ink, #0a1f2e);
         }
@@ -85,7 +85,7 @@ const OpsAlerts = (function () {
           border: 1px solid var(--border, #dae6ef);
           background: var(--surface, #fff);
           font-family: var(--ff-b, 'Inter', sans-serif);
-          font-size: .78rem; font-weight: 600;
+          font-size: var(--fs-sm); font-weight: 600;
           color: var(--ink-3, #6b8fa3);
           cursor: pointer; transition: all .18s;
         }
@@ -105,7 +105,7 @@ const OpsAlerts = (function () {
         .al-count-pill {
           display: inline-flex; align-items: center; justify-content: center;
           width: 18px; height: 18px; border-radius: 50%;
-          font-size: .62rem; font-weight: 700;
+          font-size: var(--fs-2xs); font-weight: 700;
           background: rgba(255,255,255,.2);
           margin-left: 4px;
         }
@@ -127,7 +127,7 @@ const OpsAlerts = (function () {
 
         .al-feed-title {
           font-family: var(--ff-d, 'Space Grotesk', sans-serif);
-          font-size: .9rem; font-weight: 700; color: var(--ink, #0a1f2e);
+          font-size: var(--fs-md); font-weight: 700; color: var(--ink, #0a1f2e);
         }
 
         .al-feed-body { display: flex; flex-direction: column; }
@@ -164,19 +164,19 @@ const OpsAlerts = (function () {
         }
 
         .al-row-title {
-          font-size: .88rem; font-weight: 700;
+          font-size: var(--fs-md); font-weight: 700;
           color: var(--ink, #0a1f2e);
         }
 
         .al-row-location {
-          font-size: .79rem; color: var(--ink-3, #6b8fa3);
+          font-size: var(--fs-base); color: var(--ink-3, #6b8fa3);
           margin-bottom: 3px;
           display: flex; align-items: center; gap: 4px;
         }
 
         .al-row-meta {
           display: flex; align-items: center; gap: 10px;
-          font-size: .72rem; color: var(--ink-4, #9eb8c8);
+          font-size: var(--fs-xs); color: var(--ink-4, #9eb8c8);
           font-family: var(--ff-m, 'JetBrains Mono', monospace);
         }
 
@@ -184,7 +184,7 @@ const OpsAlerts = (function () {
           margin-top: 8px; padding: 6px 10px;
           background: var(--surface-3, #eef4f8);
           border-radius: 6px;
-          font-size: .75rem; color: var(--ink-2, #2d5068);
+          font-size: var(--fs-sm); color: var(--ink-2, #2d5068);
           display: flex; align-items: center; gap: 6px;
         }
 
@@ -199,7 +199,7 @@ const OpsAlerts = (function () {
           border: 1px solid var(--border, #dae6ef);
           background: var(--surface-2, #f7fafc);
           font-family: var(--ff-b, 'Inter', sans-serif);
-          font-size: .75rem; font-weight: 600;
+          font-size: var(--fs-sm); font-weight: 600;
           color: var(--ink-2, #2d5068);
           cursor: pointer; transition: all .18s;
           white-space: nowrap;
@@ -218,8 +218,8 @@ const OpsAlerts = (function () {
         }
 
         .al-empty svg { margin: 0 auto 14px; display: block; opacity: .25; }
-        .al-empty-title { font-size: .9rem; font-weight: 600; color: var(--ink-2, #2d5068); margin-bottom: 4px; }
-        .al-empty-sub   { font-size: .78rem; }
+        .al-empty-title { font-size: var(--fs-md); font-weight: 600; color: var(--ink-2, #2d5068); margin-bottom: 4px; }
+        .al-empty-sub   { font-size: var(--fs-sm); }
       </style>
 
       <!-- Stats -->
@@ -254,7 +254,7 @@ const OpsAlerts = (function () {
       <div class="al-feed-card">
         <div class="al-feed-head">
           <div class="al-feed-title">Active Incidents</div>
-          <button class="btn-ghost" onclick="OpsAlerts.refresh()" style="font-size:.76rem;padding:6px 12px;">
+          <button class="btn-ghost" onclick="OpsAlerts.refresh()" style="font-size:var(--fs-sm);padding:6px 12px;">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             Refresh
           </button>
@@ -262,7 +262,7 @@ const OpsAlerts = (function () {
         <div class="al-feed-body" id="al-feed">
           <div style="padding:40px;text-align:center;color:var(--ink-3);">
             <div class="loading" style="margin:0 auto 12px;"></div>
-            <div style="font-size:.82rem;">Loading alerts…</div>
+            <div style="font-size:var(--fs-base);">Loading alerts…</div>
           </div>
         </div>
       </div>
@@ -330,7 +330,7 @@ const OpsAlerts = (function () {
 
   function refresh() {
     const feed = document.getElementById('al-feed');
-    if (feed) feed.innerHTML = '<div style="padding:40px;text-align:center;color:var(--ink-3);"><div class="loading" style="margin:0 auto 12px;"></div><div style="font-size:.82rem;">Refreshing…</div></div>';
+    if (feed) feed.innerHTML = '<div style="padding:40px;text-align:center;color:var(--ink-3);"><div class="loading" style="margin:0 auto 12px;"></div><div style="font-size:var(--fs-base);">Refreshing…</div></div>';
     // Remove data-rendered so reload works
     const container = document.getElementById('content-alerts');
     if (container) container.removeAttribute('data-rendered');
@@ -461,8 +461,8 @@ const OpsAlerts = (function () {
           </svg>
         </div>
         <div>
-          <div style="font-family:var(--ff-d);font-size:1rem;font-weight:700;color:var(--ink);">${a.alert_type || 'System Alert'}</div>
-          <div style="font-size:.78rem;color:${ico.color};font-weight:600;text-transform:uppercase;letter-spacing:.5px;">${a.severity} severity</div>
+          <div style="font-family:var(--ff-d);font-size:var(--fs-lg);font-weight:700;color:var(--ink);">${a.alert_type || 'System Alert'}</div>
+          <div style="font-size:var(--fs-sm);color:${ico.color};font-weight:600;text-transform:uppercase;letter-spacing:.5px;">${a.severity} severity</div>
         </div>
       </div>
 
@@ -478,14 +478,14 @@ const OpsAlerts = (function () {
 
       ${a.description ? `
         <div style="margin-bottom:14px;">
-          <div style="font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;">Description</div>
-          <div style="font-size:.84rem;color:var(--ink-2);line-height:1.6;padding:12px 14px;background:var(--surface-2);border-radius:8px;">${a.description}</div>
+          <div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;">Description</div>
+          <div style="font-size:var(--fs-base);color:var(--ink-2);line-height:1.6;padding:12px 14px;background:var(--surface-2);border-radius:8px;">${a.description}</div>
         </div>` : ''}
 
       ${a.notes ? `
         <div style="margin-bottom:14px;">
-          <div style="font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;">Field Notes</div>
-          <div style="font-size:.84rem;color:var(--ink-2);line-height:1.6;padding:12px 14px;background:var(--surface-2);border-radius:8px;">${a.notes}</div>
+          <div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;">Field Notes</div>
+          <div style="font-size:var(--fs-base);color:var(--ink-2);line-height:1.6;padding:12px 14px;background:var(--surface-2);border-radius:8px;">${a.notes}</div>
         </div>` : ''}
     `, [
       { label: 'Close',         class: 'btn-ghost',    onclick: 'OpsModal.close()' },
@@ -513,8 +513,8 @@ const OpsAlerts = (function () {
 
     OpsModal.open(`Assign Incident`, `
       <div style="padding:12px 14px;background:var(--surface-2);border-radius:8px;margin-bottom:18px;">
-        <div style="font-size:.82rem;font-weight:600;color:var(--ink);">${alertLabel}</div>
-        ${location ? `<div style="font-size:.76rem;color:var(--ink-3);margin-top:2px;">${location}</div>` : ''}
+        <div style="font-size:var(--fs-base);font-weight:600;color:var(--ink);">${alertLabel}</div>
+        ${location ? `<div style="font-size:var(--fs-sm);color:var(--ink-3);margin-top:2px;">${location}</div>` : ''}
       </div>
       ${OpsModal.field('Assign to Team', 'team_id', 'select', '', { options: teamOptions })}
       ${OpsModal.field('Priority Instructions (optional)', 'notes', 'textarea', '', { placeholder: 'E.g. High-pressure hydro-jetting required. Report on arrival.', required: false, rows: 3 })}
@@ -583,8 +583,8 @@ const OpsAlerts = (function () {
     if (!feed) return;
     feed.innerHTML = `
       <div style="padding:48px;text-align:center;">
-        <div style="color:var(--err);font-weight:700;margin-bottom:8px;font-size:.88rem;">Failed to load alerts</div>
-        <div style="color:var(--ink-3);font-size:.78rem;margin-bottom:18px;">${message}</div>
+        <div style="color:var(--err);font-weight:700;margin-bottom:8px;font-size:var(--fs-md);">Failed to load alerts</div>
+        <div style="color:var(--ink-3);font-size:var(--fs-sm);margin-bottom:18px;">${message}</div>
         <button class="btn-ghost" onclick="OpsAlerts.refresh()">Retry</button>
       </div>`;
   }
@@ -637,8 +637,8 @@ const OpsReports = (function () {
           margin-bottom: 16px;
         }
 
-        .rp-card-title { font-family: var(--ff-d, 'Space Grotesk', sans-serif); font-size: .95rem; font-weight: 700; color: var(--ink, #0a1f2e); margin-bottom: 4px; }
-        .rp-card-sub   { font-size: .76rem; color: var(--ink-3, #6b8fa3); line-height: 1.5; }
+        .rp-card-title { font-family: var(--ff-d, 'Space Grotesk', sans-serif); font-size: var(--fs-lg); font-weight: 700; color: var(--ink, #0a1f2e); margin-bottom: 4px; }
+        .rp-card-sub   { font-size: var(--fs-sm); color: var(--ink-3, #6b8fa3); line-height: 1.5; }
 
         .rp-recent {
           background: var(--surface, #fff);
@@ -654,7 +654,7 @@ const OpsReports = (function () {
           display: flex; align-items: center; justify-content: space-between;
         }
 
-        .rp-recent-title { font-family: var(--ff-d, 'Space Grotesk', sans-serif); font-size: .9rem; font-weight: 700; color: var(--ink, #0a1f2e); }
+        .rp-recent-title { font-family: var(--ff-d, 'Space Grotesk', sans-serif); font-size: var(--fs-md); font-weight: 700; color: var(--ink, #0a1f2e); }
 
         .rp-report-row {
           padding: 14px 20px;
@@ -672,8 +672,8 @@ const OpsReports = (function () {
           flex-shrink: 0;
         }
 
-        .rp-report-name  { font-size: .85rem; font-weight: 600; color: var(--ink, #0a1f2e); margin-bottom: 2px; }
-        .rp-report-meta  { font-size: .72rem; color: var(--ink-3, #6b8fa3); font-family: var(--ff-m, 'JetBrains Mono', monospace); }
+        .rp-report-name  { font-size: var(--fs-md); font-weight: 600; color: var(--ink, #0a1f2e); margin-bottom: 2px; }
+        .rp-report-meta  { font-size: var(--fs-xs); color: var(--ink-3, #6b8fa3); font-family: var(--ff-m, 'JetBrains Mono', monospace); }
       </style>
 
       <div class="rp-grid">
@@ -715,7 +715,7 @@ const OpsReports = (function () {
         <div id="rp-list">
           <div style="padding:40px;text-align:center;color:var(--ink-3);">
             <div class="loading" style="margin:0 auto 12px;"></div>
-            <div style="font-size:.82rem;">Loading reports…</div>
+            <div style="font-size:var(--fs-base);">Loading reports…</div>
           </div>
         </div>
       </div>
@@ -744,8 +744,8 @@ const OpsReports = (function () {
           <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" style="margin:0 auto 12px;opacity:.25;display:block;">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
           </svg>
-          <div style="font-size:.84rem;font-weight:600;color:var(--ink-2);">No reports generated yet</div>
-          <div style="font-size:.76rem;margin-top:3px;">Generate your first report above</div>
+          <div style="font-size:var(--fs-base);font-weight:600;color:var(--ink-2);">No reports generated yet</div>
+          <div style="font-size:var(--fs-sm);margin-top:3px;">Generate your first report above</div>
         </div>`;
       return;
     }
@@ -772,7 +772,7 @@ const OpsReports = (function () {
           </div>
           ${r.download_url ? `
             <a href="${r.download_url}" target="_blank" rel="noopener">
-              <button class="btn-ghost" style="font-size:.76rem;padding:6px 12px;">
+              <button class="btn-ghost" style="font-size:var(--fs-sm);padding:6px 12px;">
                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                 Download
               </button>

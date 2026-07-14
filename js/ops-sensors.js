@@ -13,61 +13,53 @@ const OpsSensors = (function () {
   let _all = [];
   let _filter = 'all';
   let _q = '';
+  let _pg = null;
 
   async function render(container) {
     container.innerHTML = `
       <style>
         .sn-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:14px; }
         .sn-kpis .ck { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; box-shadow:var(--sh-xs); min-width:0; }
-        .sn-kpis .ck-label { font-size:.68rem; font-weight:500; color:var(--ink-2); line-height:1.25; }
-        .sn-kpis .ck-val { font-family:var(--ff-b); font-size:1.5rem; font-weight:700; color:var(--ink); margin-top:5px; line-height:1.15; letter-spacing:-.5px; }
-        .sn-kpis .ck-sub { font-size:.66rem; color:var(--ink-3); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .sn-kpis .ck-label { font-size:var(--fs-2xs); font-weight:500; color:var(--ink-2); line-height:1.25; }
+        .sn-kpis .ck-val { font-family:var(--ff-b); font-size:var(--fs-2xl); font-weight:700; color:var(--ink); margin-top:5px; line-height:1.15; letter-spacing:-.5px; }
+        .sn-kpis .ck-sub { font-size:var(--fs-xs); color:var(--ink-3); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .sn-kpis .ck-sub.ok { color:var(--ok); } .sn-kpis .ck-sub.warn { color:var(--warn); } .sn-kpis .ck-sub.err { color:var(--err); }
 
         .sn-toolbar { display:flex; gap:9px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
-        .sn-chip { padding:6px 13px; border-radius:100px; border:1px solid var(--border-2); background:var(--surface); font-size:.68rem; font-weight:600; color:var(--ink-2); cursor:pointer; user-select:none; }
+        .sn-chip { padding:6px 13px; border-radius:100px; border:1px solid var(--border-2); background:var(--surface); font-size:var(--fs-xs); font-weight:600; color:var(--ink-2); cursor:pointer; user-select:none; }
         .sn-chip.on { background:var(--neon-trace); border-color:var(--blue-dim); color:var(--blue-hi); }
         .sn-search { display:flex; align-items:center; gap:7px; background:var(--surface); border:1px solid var(--border-2); border-radius:9px; padding:7px 12px; width:220px; color:var(--ink-3); margin-left:auto; }
-        .sn-search input { flex:1; min-width:0; background:transparent; border:none; outline:none; color:var(--ink); font-size:.76rem; font-family:var(--ff-b); }
+        .sn-search input { flex:1; min-width:0; background:transparent; border:none; outline:none; color:var(--ink); font-size:var(--fs-sm); font-family:var(--ff-b); }
 
-        .sn-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:12px; }
-        .dev { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:15px 16px; box-shadow:var(--sh-xs); }
-        .dev-top { display:flex; align-items:flex-start; gap:10px; margin-bottom:11px; }
-        .dev-id { flex:1; min-width:0; }
-        .dev-name { font-size:.86rem; font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .dev-code { font-family:var(--ff-m); font-size:.63rem; color:var(--ink-3); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .dev-st { display:inline-flex; align-items:center; gap:6px; padding:4px 9px; border-radius:100px; font-size:.6rem; font-weight:800; letter-spacing:.6px; text-transform:uppercase; flex-shrink:0; }
-        .dev-st i { width:6px; height:6px; border-radius:50%; background:currentColor; box-shadow:0 0 6px currentColor; }
+        /* Dense fleet table — built to stay scannable at hundreds/thousands of rows */
+        .sn-table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; box-shadow:var(--sh-xs); }
+        .sn-row { cursor:pointer; }
+        .sn-row:hover td { background:var(--surface-3); }
+        .sn-dev-name { font-size:var(--fs-md); font-weight:700; color:var(--ink); }
+        .sn-dev-code { font-family:var(--ff-m); font-size:var(--fs-2xs); color:var(--ink-3); margin-top:2px; }
+        .sn-vit { font-family:var(--ff-m); font-size:var(--fs-base); font-weight:600; white-space:nowrap; }
+        .sn-cov-count { font-size:var(--fs-base); color:var(--ink-2); }
+        .sn-cov-count.warn { color:var(--warn); font-weight:600; }
 
-        .dev-vitals { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; padding:10px 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
-        .vit { min-width:0; }
-        .vit-k { font-size:.57rem; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:var(--ink-3); }
-        .vit-v { font-family:var(--ff-m); font-size:.8rem; font-weight:600; color:var(--ink); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .vit-bar { height:4px; border-radius:2px; background:var(--surface-3); margin-top:5px; overflow:hidden; }
-        .vit-bar i { display:block; height:100%; border-radius:2px; }
-
-        .dev-read { display:flex; flex-wrap:wrap; gap:6px; margin:11px 0 0; }
-        .rd { display:flex; align-items:center; gap:5px; padding:4px 9px; border-radius:7px; background:var(--surface-2); border:1px solid var(--border); font-size:.65rem; color:var(--ink-2); white-space:nowrap; }
+        /* Detail modal (opened on row click) */
+        .snd-section-title { font-size:var(--fs-xs); font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--ink-3); margin:18px 0 8px; }
+        .snd-section-title:first-child { margin-top:0; }
+        .snd-read { display:flex; flex-wrap:wrap; gap:6px; }
+        .rd { display:flex; align-items:center; gap:5px; padding:4px 9px; border-radius:7px; background:var(--surface-2); border:1px solid var(--border); font-size:var(--fs-2xs); color:var(--ink-2); white-space:nowrap; }
         .rd b { font-family:var(--ff-m); color:var(--ink); font-weight:600; }
         .rd.off { opacity:.45; }
-
-        .dev-cov { margin-top:12px; }
-        .cov-k { font-size:.57rem; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:var(--ink-3); margin-bottom:6px; }
         .cov-list { display:flex; flex-wrap:wrap; gap:5px; }
-        .cov-tag { cursor:pointer; font-family:var(--ff-b); display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:100px; background:var(--neon-trace); border:1px solid var(--blue-dim); font-size:.64rem; color:var(--blue-hi); white-space:nowrap; }
+        .cov-tag { cursor:pointer; font-family:var(--ff-b); display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:100px; background:var(--neon-trace); border:1px solid var(--blue-dim); font-size:var(--fs-2xs); color:var(--blue-hi); white-space:nowrap; }
         .cov-tag:hover { border-color:var(--ink-2); }
         .cov-tag.pri { background:var(--ok-bg); border-color:var(--ok); color:var(--ok); font-weight:700; }
-        .cov-none { font-size:.68rem; color:var(--warn); }
+        .cov-none { font-size:var(--fs-xs); color:var(--warn); }
 
-        .dev-acts { display:flex; gap:7px; margin-top:12px; }
-        .dev-btn { flex:1; padding:6px 8px; border-radius:8px; border:1px solid var(--border-2); background:transparent; color:var(--ink-2); font-size:.67rem; font-weight:600; font-family:var(--ff-b); cursor:pointer; }
-        .dev-btn:hover { border-color:var(--blue-dim); color:var(--blue-hi); }
-
-        .sn-empty { padding:40px; text-align:center; color:var(--ink-3); font-size:.8rem; background:var(--surface); border:1px solid var(--border); border-radius:14px; }
-        .sn-note { padding:11px 14px; border-radius:10px; background:var(--wb); color:var(--warn); font-size:.74rem; margin-bottom:12px; line-height:1.5; }
+        .sn-empty { padding:40px; text-align:center; color:var(--ink-3); font-size:var(--fs-base); background:var(--surface); border:1px solid var(--border); border-radius:14px; }
+        .sn-note { padding:11px 14px; border-radius:10px; background:var(--wb); color:var(--warn); font-size:var(--fs-sm); margin-bottom:12px; line-height:1.5; }
       </style>
       <div class="sn-kpis" id="sn-kpis"></div>
       <div class="sn-toolbar" id="sn-toolbar"></div>
+      <div id="sn-note-slot"></div>
       <div id="sn-body"><div class="sn-empty">Loading the Sentinel fleet…</div></div>
     `;
     await load();
@@ -140,29 +132,79 @@ const OpsSensors = (function () {
       rows = rows.filter(x => `${x.name || ''} ${x.sensor_id || ''} ${x.client_name || ''} ${(x.assets || []).map(a => a.name).join(' ')}`.toLowerCase().includes(q));
     }
 
-    const banner = (silent === total && total)
+    document.getElementById('sn-note-slot').innerHTML = (silent === total && total)
       ? '<div class="sn-note"><b>No Sentinel is reporting telemetry.</b> Devices are registered and their vitals are on record, but no readings have reached the platform — level, flow and silt stay empty until the nodes start posting.</div>'
       : '';
 
     if (!rows.length) {
-      el.innerHTML = banner + `<div class="sn-empty">${total ? 'No Sentinels match this filter.' : 'No Sentinels deployed yet.'}</div>`;
+      el.innerHTML = `<div class="sn-empty">${total ? 'No Sentinels match this filter.' : 'No Sentinels deployed yet.'}</div>`;
+      _pg = null;
       return;
     }
-    el.innerHTML = banner + `<div class="sn-grid">${rows.map(card).join('')}</div>`;
+
+    _pg = FGPaginator.create(rows, { pageSize: 25, containerId: 'sn-body' });
+    _pg.render(renderTable);
   }
 
-  function card(x) {
-    const stMap = { active: ['var(--ok)', 'Online'], maintenance: ['var(--warn)', 'Maintenance'] };
-    const [c, lbl] = stMap[x.status] || ['var(--err)', 'Offline'];
+  function statusBadge(status) {
+    const m = { active: 'nominal', maintenance: 'watch' };
+    const lbl = { active: 'Online', maintenance: 'Maintenance' };
+    return `<span class="status-badge ${m[status] || 'critical'}">${lbl[status] || 'Offline'}</span>`;
+  }
 
-    const bar = (v, invert) => {
-      if (v == null) return '<div class="vit-v">—</div>';
-      const bad = invert ? v <= 20 : v >= 80;
-      const mid = invert ? v <= 40 : v >= 60;
-      const col = bad ? 'var(--err)' : mid ? 'var(--warn)' : 'var(--ok)';
-      return `<div class="vit-v" style="color:${col}">${v}%</div>
-              <div class="vit-bar"><i style="width:${Math.max(2, v)}%;background:${col}"></i></div>`;
-    };
+  function vitColor(v, invert) {
+    if (v == null) return 'var(--ink-4)';
+    const bad = invert ? v <= 20 : v >= 80;
+    const mid = invert ? v <= 40 : v >= 60;
+    return bad ? 'var(--err)' : mid ? 'var(--warn)' : 'var(--ok)';
+  }
+
+  function renderTable(rows) {
+    const el = document.getElementById('sn-body');
+    if (!el) return;
+    el.innerHTML = `
+      <div class="sn-table-wrap">
+        <div style="overflow-x:auto;">
+          <table class="ops-table">
+            <thead>
+              <tr>
+                <th>Sentinel</th>
+                <th>Status</th>
+                <th style="text-align:right;">Battery</th>
+                <th style="text-align:right;">Signal</th>
+                <th>Last reading</th>
+                <th>Coverage</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(x => {
+                const beat = rel(x.reading_time || x.last_ping);
+                const assets = x.assets || [];
+                return `
+                <tr class="sn-row" onclick="OpsSensors.viewSensor('${__sid(x.sensor_id)}')">
+                  <td>
+                    <div class="sn-dev-name">${esc(x.name || x.sensor_id)}</div>
+                    <div class="sn-dev-code">${esc(x.sensor_id)}</div>
+                  </td>
+                  <td>${statusBadge(x.status)}</td>
+                  <td class="sn-vit" style="text-align:right;color:${vitColor(x.battery_percent, true)};">${x.battery_percent != null ? x.battery_percent + '%' : '—'}</td>
+                  <td class="sn-vit" style="text-align:right;color:${vitColor(x.signal_strength, true)};">${x.signal_strength != null ? x.signal_strength + '%' : '—'}</td>
+                  <td class="sn-vit" style="color:${beat ? 'var(--ink-2)' : 'var(--err)'};">${beat || 'never'}</td>
+                  <td class="sn-cov-count ${assets.length ? '' : 'warn'}">${assets.length ? `${assets.length} asset${assets.length > 1 ? 's' : ''}` : 'Unassigned'}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  }
+
+  // ── Detail modal — every field, at a click, matching the pattern used
+  // for clients/properties/field-reports. The table row is for scanning;
+  // this is for the one record you actually need to dig into. ──
+  function viewSensor(sensorId) {
+    const x = _all.find(s => s.sensor_id === sensorId);
+    if (!x) return;
 
     const cap = x.capabilities || {};
     const reading = (on, label, val, unit) => {
@@ -170,54 +212,44 @@ const OpsSensors = (function () {
       const has = val != null;
       return `<span class="rd ${has ? '' : 'off'}">${label} <b>${has ? val + unit : '—'}</b></span>`;
     };
-
     const beat = rel(x.reading_time || x.last_ping);
     const assets = x.assets || [];
     const cov = assets.length
       ? assets.map(a => `<button class="cov-tag ${a.is_primary ? 'pri' : ''}" onclick="OpsSensors.openAsset('${__sid(a.property_id)}')" title="${a.type ? a.type.replace(/_/g, ' ') : ''} — open its property network">${a.is_primary ? '★ ' : ''}${esc(a.name)}</button>`).join('')
       : '<span class="cov-none">Covering no asset — assign one</span>';
 
-    return `
-      <div class="dev">
-        <div class="dev-top">
-          <div class="dev-id">
-            <div class="dev-name">${esc(x.name || x.sensor_id)}</div>
-            <div class="dev-code">${esc(x.sensor_id)}${x.device_variant ? ' · ' + x.device_variant.replace(/_/g, ' ') : ''}${x.firmware_version ? ' · fw ' + esc(x.firmware_version) : ''}${x.link_type ? ' · ' + x.link_type : ''}</div>
-          </div>
-          <span class="dev-st" style="color:${c};background:${c}18;border:1px solid ${c}40"><i></i>${lbl}</span>
-        </div>
+    OpsModal.open(esc(x.name || x.sensor_id), `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="ops-modal-detail"><span class="label">Sensor ID</span><span class="value">${esc(x.sensor_id)}</span></div>
+        <div class="ops-modal-detail"><span class="label">Status</span><span class="value">${statusBadge(x.status)}</span></div>
+        <div class="ops-modal-detail"><span class="label">Battery</span><span class="value" style="color:${vitColor(x.battery_percent, true)};">${x.battery_percent != null ? x.battery_percent + '%' : '—'}</span></div>
+        <div class="ops-modal-detail"><span class="label">Signal</span><span class="value" style="color:${vitColor(x.signal_strength, true)};">${x.signal_strength != null ? x.signal_strength + '%' : '—'}</span></div>
+        <div class="ops-modal-detail"><span class="label">Last reading</span><span class="value" style="color:${beat ? 'var(--ink)' : 'var(--err)'};">${beat || 'never'}</span></div>
+        <div class="ops-modal-detail"><span class="label">Device variant</span><span class="value">${x.device_variant ? esc(x.device_variant.replace(/_/g, ' ')) : '—'}</span></div>
+        <div class="ops-modal-detail"><span class="label">Firmware</span><span class="value">${x.firmware_version ? esc(x.firmware_version) : '—'}</span></div>
+        <div class="ops-modal-detail"><span class="label">Link type</span><span class="value">${x.link_type ? esc(x.link_type) : '—'}</span></div>
+        <div class="ops-modal-detail"><span class="label">Client</span><span class="value">${x.client_name ? esc(x.client_name) : '—'}</span></div>
+      </div>
 
-        <div class="dev-vitals">
-          <div class="vit"><div class="vit-k">Battery</div>${bar(x.battery_percent, true)}</div>
-          <div class="vit"><div class="vit-k">Signal</div>${bar(x.signal_strength, true)}</div>
-          <div class="vit">
-            <div class="vit-k">Heartbeat</div>
-            <div class="vit-v" style="color:${beat ? 'var(--ink)' : 'var(--err)'}">${beat || 'never'}</div>
-            <div class="vit-bar"><i style="width:100%;background:${beat ? 'var(--ok)' : 'var(--err)'}"></i></div>
-          </div>
-        </div>
+      <div class="snd-section-title">Readings</div>
+      <div class="snd-read">
+        ${reading(cap.water_level !== false, 'Level', x.level != null ? Math.round(x.level) : null, '%')}
+        ${reading(cap.flow_rate !== false, 'Flow', x.flow_rate != null ? x.flow_rate.toFixed(1) : null, ' L/s')}
+        ${reading(!!cap.silt, 'Silt', x.silt_depth_mm, ' mm')}
+        ${reading(!!cap.rain_gauge, 'Rain', x.rainfall_mm, ' mm')}
+        ${reading(!!cap.water_quality, 'pH', x.water_quality_ph, '')}
+        ${reading(!!cap.enzyme_dispenser, 'Enzyme', x.enzyme_level_percent != null ? Math.round(x.enzyme_level_percent) : null, '%')}
+        ${x.debris_detected ? '<span class="rd" style="color:var(--caut);border-color:var(--caut)">Debris</span>' : ''}
+      </div>
 
-        <div class="dev-read">
-          ${reading(cap.water_level !== false, 'Level', x.level != null ? Math.round(x.level) : null, '%')}
-          ${reading(cap.flow_rate !== false, 'Flow', x.flow_rate != null ? x.flow_rate.toFixed(1) : null, ' L/s')}
-          ${reading(!!cap.silt, 'Silt', x.silt_depth_mm, ' mm')}
-          ${reading(!!cap.rain_gauge, 'Rain', x.rainfall_mm, ' mm')}
-          ${reading(!!cap.water_quality, 'pH', x.water_quality_ph, '')}
-          ${reading(!!cap.enzyme_dispenser, 'Enzyme', x.enzyme_level_percent != null ? Math.round(x.enzyme_level_percent) : null, '%')}
-          ${x.debris_detected ? '<span class="rd" style="color:var(--caut);border-color:var(--caut)">Debris</span>' : ''}
-        </div>
-
-        <div class="dev-cov">
-          <div class="cov-k">Monitors${assets.length ? ` · ${assets.length} asset${assets.length > 1 ? 's' : ''}` : ''}</div>
-          <div class="cov-list">${cov}</div>
-        </div>
-
-        <div class="dev-acts">
-          <button class="dev-btn" onclick="OpsSensors.coverage('${__sid(x.sensor_id)}')">Coverage</button>
-          <button class="dev-btn" onclick="OpsSensors.history('${__sid(x.sensor_id)}')">History</button>
-          <button class="dev-btn" onclick="OpsSensors.calibrate('${__sid(x.sensor_id)}')">Calibrate</button>
-        </div>
-      </div>`;
+      <div class="snd-section-title">Monitors${assets.length ? ` · ${assets.length} asset${assets.length > 1 ? 's' : ''}` : ''}</div>
+      <div class="cov-list">${cov}</div>
+    `, [
+      { label: 'Close', onclick: 'OpsModal.close()' },
+      { label: 'Coverage', onclick: `OpsSensors.coverage('${sensorId}')` },
+      { label: 'History', onclick: `OpsSensors.history('${sensorId}')` },
+      { label: 'Calibrate', class: 'btn-primary', onclick: `OpsSensors.calibrate('${sensorId}')` },
+    ]);
   }
 
   // ── Coverage: one Sentinel, several nearby assets ──
@@ -237,7 +269,7 @@ const OpsSensors = (function () {
     const primary = (node.assets || []).find(a => a.is_primary);
 
     OpsModal.open(`Coverage — ${esc(node.name || sensorId)}`, `
-      <p style="margin:0 0 12px;font-size:.8rem;color:var(--ink-3);line-height:1.5">
+      <p style="margin:0 0 12px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">
         Tick every asset this Sentinel monitors. Mark one as <b>primary</b> — the asset the device is physically installed on.
       </p>
       <div style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:10px">
@@ -245,17 +277,17 @@ const OpsSensors = (function () {
           <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border)">
             <input type="checkbox" name="cov" value="${a.property_id}" ${covered.has(a.property_id) ? 'checked' : ''}>
             <span style="flex:1;min-width:0">
-              <span style="font-size:.78rem;font-weight:600;color:var(--ink)">${esc(a.asset_code || a.property_name)}</span>
-              <span style="display:block;font-size:.65rem;color:var(--ink-3)">${(a.property_type || '').replace(/_/g, ' ')}${a.parent_name ? ' · ' + esc(a.parent_name) : ''}</span>
+              <span style="font-size:var(--fs-sm);font-weight:600;color:var(--ink)">${esc(a.asset_code || a.property_name)}</span>
+              <span style="display:block;font-size:var(--fs-2xs);color:var(--ink-3)">${(a.property_type || '').replace(/_/g, ' ')}${a.parent_name ? ' · ' + esc(a.parent_name) : ''}</span>
             </span>
-            <label style="display:flex;align-items:center;gap:5px;font-size:.65rem;color:var(--ink-3);white-space:nowrap">
+            <label style="display:flex;align-items:center;gap:5px;font-size:var(--fs-2xs);color:var(--ink-3);white-space:nowrap">
               <input type="radio" name="primary" value="${a.property_id}" ${primary && primary.property_id === a.property_id ? 'checked' : ''}> primary
             </label>
           </div>`).join('')}
       </div>
     `, [
       { label: 'Cancel', onclick: 'OpsModal.close()' },
-      { label: 'Save coverage', primary: true, onclick: `OpsSensors.saveCoverage('${sensorId}')` },
+      { label: 'Save coverage', class: 'btn-primary', onclick: `OpsSensors.saveCoverage('${sensorId}')` },
     ]);
   }
 
@@ -284,7 +316,7 @@ const OpsSensors = (function () {
   async function history(sensorId) {
     const node = _all.find(x => x.sensor_id === sensorId);
     OpsModal.open(`History — ${esc(node ? (node.name || sensorId) : sensorId)}`,
-      '<div style="padding:20px;color:var(--ink-3);font-size:.8rem">Loading…</div>',
+      '<div style="padding:20px;color:var(--ink-3);font-size:var(--fs-base)">Loading…</div>',
       [{ label: 'Close', onclick: 'OpsModal.close()' }]);
     try {
       const r = await OpsModal.apiGet(`/monitoring/sensors/${sensorId}/events`);
@@ -294,23 +326,23 @@ const OpsSensors = (function () {
       body.innerHTML = evts.length
         ? `<div>${evts.map(e => `
             <div style="display:flex;gap:10px;padding:10px 2px;border-bottom:1px solid var(--border)">
-              <span style="font-size:.6rem;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--blue-hi);min-width:102px">${(e.event_type || '').replace(/_/g, ' ')}</span>
-              <span style="flex:1;min-width:0;font-size:.76rem;color:var(--ink-2)">${esc(e.detail || '—')}</span>
-              <span style="font-family:var(--ff-m);font-size:.65rem;color:var(--ink-3);white-space:nowrap">${new Date(e.occurred_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
+              <span style="font-size:var(--fs-2xs);font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--blue-hi);min-width:102px">${(e.event_type || '').replace(/_/g, ' ')}</span>
+              <span style="flex:1;min-width:0;font-size:var(--fs-sm);color:var(--ink-2)">${esc(e.detail || '—')}</span>
+              <span style="font-family:var(--ff-m);font-size:var(--fs-2xs);color:var(--ink-3);white-space:nowrap">${new Date(e.occurred_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
             </div>`).join('')}</div>`
-        : '<div style="padding:22px;text-align:center;color:var(--ink-3);font-size:.8rem">No recorded history for this device yet.</div>';
+        : '<div style="padding:22px;text-align:center;color:var(--ink-3);font-size:var(--fs-base)">No recorded history for this device yet.</div>';
     } catch (_) {}
   }
 
   function calibrate(sensorId) {
     OpsModal.open('Record calibration', `
-      <p style="margin:0 0 12px;font-size:.8rem;color:var(--ink-3);line-height:1.5">
+      <p style="margin:0 0 12px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">
         Logs a calibration against this Sentinel and resets its calibration due date.
       </p>
       ${OpsModal.field('Notes', 'detail', 'textarea', '', { required: false, placeholder: 'What was calibrated, and against what reference' })}
     `, [
       { label: 'Cancel', onclick: 'OpsModal.close()' },
-      { label: 'Record', primary: true, onclick: `OpsSensors.confirmCalibrate('${sensorId}')` },
+      { label: 'Record', class: 'btn-primary', onclick: `OpsSensors.confirmCalibrate('${sensorId}')` },
     ]);
   }
 
@@ -344,5 +376,5 @@ const OpsSensors = (function () {
   function setFilter(f) { _filter = f; draw(); }
   function setQuery(q) { _q = q; draw(); }
 
-  return { render, setFilter, setQuery, coverage, saveCoverage, history, calibrate, confirmCalibrate, openAsset };
+  return { render, setFilter, setQuery, viewSensor, coverage, saveCoverage, history, calibrate, confirmCalibrate, openAsset };
 })();
