@@ -63,12 +63,24 @@ const Auth = (function () {
 
   // ── SESSION MANAGEMENT ─────────────────────────────────────────────────
 
-  function logout() {
+  async function logout() {
     // Clear both stores — handles both persistent and session-only logins
     CONFIG.STORAGE_KEYS.forEach(k => {
       localStorage.removeItem(k);
       sessionStorage.removeItem(k);
     });
+
+    // Dropping the token is not enough. The field PWA's service worker may
+    // hold cached API responses, and crews share handsets — without this the
+    // next person to open the app can be served the previous user's alerts,
+    // properties and team data straight from cache.
+    try {
+      if (window.caches) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+    } catch (_) { /* never block a logout */ }
+
     window.location.href = 'login.html';
   }
 

@@ -5,6 +5,11 @@
    Sentinel is bolted to. Grouped under the customer property they serve.
    ══════════════════════════════════════════════════════════════ */
 const OpsAssets = (function () {
+  // identifiers embedded in inline handlers: restrict to a safe charset.
+  // HTML-escaping does NOT protect here — the browser decodes entities before
+  // parsing the JS, so a quote can still break out of the string.
+  const __sid = v => String(v == null ? '' : v).replace(/[^A-Za-z0-9_\-.:]/g, '');
+
   let _assets = [];
   let _parents = [];
   let _filter = 'all';
@@ -104,7 +109,7 @@ const OpsAssets = (function () {
       ['unmonitored', `No Sentinel (${unmonitored})`],
     ];
     hd.innerHTML = chips.map(([k, l]) =>
-      `<span class="as-chip ${_filter === k ? 'on' : ''}" onclick="OpsAssets.setFilter('${k}')">${l}</span>`).join('')
+      `<span class="as-chip ${_filter === k ? 'on' : ''}" onclick="OpsAssets.setFilter('${__sid(k)}')">${l}</span>`).join('')
       + `<button class="as-add" onclick="OpsAssets.add()">+ Register asset</button>`;
 
     let rows = _assets;
@@ -142,7 +147,7 @@ const OpsAssets = (function () {
     const icon = ICONS[a.property_type] || ICONS.catch_basin;
     const nodes = Number(a.node_count) || 0;
     return `
-      <div class="ast" ${a.parent_property_id ? `onclick="OpsNetwork.open('${a.parent_property_id}')" style="cursor:pointer"` : ''}>
+      <div class="ast" ${a.parent_property_id ? `onclick="OpsNetwork.open('${__sid(a.parent_property_id)}')" style="cursor:pointer"` : ''}>
         <div class="ast-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${icon}</svg></div>
         <div class="ast-b">
           <div class="ast-n">${esc(a.asset_code || a.property_name)}</div>

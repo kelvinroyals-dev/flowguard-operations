@@ -5,6 +5,11 @@
    calibration, and the assets each node covers (many-to-many).
    ══════════════════════════════════════════════════════════════ */
 const OpsSensors = (function () {
+  // identifiers embedded in inline handlers: restrict to a safe charset.
+  // HTML-escaping does NOT protect here — the browser decodes entities before
+  // parsing the JS, so a quote can still break out of the string.
+  const __sid = v => String(v == null ? '' : v).replace(/[^A-Za-z0-9_\-.:]/g, '');
+
   let _all = [];
   let _filter = 'all';
   let _q = '';
@@ -118,7 +123,7 @@ const OpsSensors = (function () {
       ['unassigned', `Unassigned (${unassigned})`],
     ];
     tb.innerHTML = chips.map(([k, l]) =>
-      `<span class="sn-chip ${_filter === k ? 'on' : ''}" onclick="OpsSensors.setFilter('${k}')">${l}</span>`).join('') + `
+      `<span class="sn-chip ${_filter === k ? 'on' : ''}" onclick="OpsSensors.setFilter('${__sid(k)}')">${l}</span>`).join('') + `
       <span class="sn-search">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
         <input placeholder="Search Sentinels…" value="${_q.replace(/"/g, '&quot;')}" oninput="OpsSensors.setQuery(this.value)">
@@ -169,7 +174,7 @@ const OpsSensors = (function () {
     const beat = rel(x.reading_time || x.last_ping);
     const assets = x.assets || [];
     const cov = assets.length
-      ? assets.map(a => `<button class="cov-tag ${a.is_primary ? 'pri' : ''}" onclick="OpsSensors.openAsset('${a.property_id}')" title="${a.type ? a.type.replace(/_/g, ' ') : ''} — open its property network">${a.is_primary ? '★ ' : ''}${esc(a.name)}</button>`).join('')
+      ? assets.map(a => `<button class="cov-tag ${a.is_primary ? 'pri' : ''}" onclick="OpsSensors.openAsset('${__sid(a.property_id)}')" title="${a.type ? a.type.replace(/_/g, ' ') : ''} — open its property network">${a.is_primary ? '★ ' : ''}${esc(a.name)}</button>`).join('')
       : '<span class="cov-none">Covering no asset — assign one</span>';
 
     return `
@@ -208,9 +213,9 @@ const OpsSensors = (function () {
         </div>
 
         <div class="dev-acts">
-          <button class="dev-btn" onclick="OpsSensors.coverage('${x.sensor_id}')">Coverage</button>
-          <button class="dev-btn" onclick="OpsSensors.history('${x.sensor_id}')">History</button>
-          <button class="dev-btn" onclick="OpsSensors.calibrate('${x.sensor_id}')">Calibrate</button>
+          <button class="dev-btn" onclick="OpsSensors.coverage('${__sid(x.sensor_id)}')">Coverage</button>
+          <button class="dev-btn" onclick="OpsSensors.history('${__sid(x.sensor_id)}')">History</button>
+          <button class="dev-btn" onclick="OpsSensors.calibrate('${__sid(x.sensor_id)}')">Calibrate</button>
         </div>
       </div>`;
   }

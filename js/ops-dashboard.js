@@ -3,6 +3,11 @@
 // ============================================
 
 const OpsDashboard = (function () {
+  // identifiers embedded in inline handlers: restrict to a safe charset.
+  // HTML-escaping does NOT protect here — the browser decodes entities before
+  // parsing the JS, so a quote can still break out of the string.
+  const __sid = v => String(v == null ? '' : v).replace(/[^A-Za-z0-9_\-.:]/g, '');
+
   let map = null;
   let layers = {};
   let baseTiles = null;
@@ -648,7 +653,7 @@ const OpsDashboard = (function () {
           <div class="pq-title">${a.alert_type || 'Alert'}${a.site_name ? ' — ' + a.site_name : ''}</div>
           <div class="pq-sub">${a.description || a.sensor_name || ''}</div>
           ${a.time_to_overflow_min ? `<div class="pq-sub" style="color:var(--err);font-weight:700">Overflow in ~${a.time_to_overflow_min} min</div>` : ''}
-          <button class="pq-btn" onclick="OpsDashboard.dispatch('${a.alert_id}')">Respond →</button>
+          <button class="pq-btn" onclick="OpsDashboard.dispatch('${__sid(a.alert_id)}')">Respond →</button>
         </div>
         <div class="pq-right">
           <span class="pq-chip" style="background:${sevColor(a.severity)}20;color:${sevColor(a.severity)}">${a.severity}</span>

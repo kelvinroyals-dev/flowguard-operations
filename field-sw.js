@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME  = 'fg-field-v3';
+const CACHE_NAME  = 'fg-field-v4';
 const SYNC_TAG    = 'fg-report-sync';
 const DRAFT_KEY   = 'fg_draft_queue';
 
@@ -21,20 +21,45 @@ self.addEventListener('install', event => {
 
 // ── Activate: purge old caches ────────────────────────────────────
 self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  );
+  event.waitUntil((async () => {
+    // drop every previous cache generation
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
+
+    // Previous versions cached authenticated API responses. Those are already
+    // sitting on crews' handsets — a prior user's alerts, properties and team
+    // data, served to whoever opens the app next. Evict them explicitly; simply
+    // no longer writing new ones would leave the old leak in place.
+    const cache = await caches.open(CACHE_NAME);
+    const reqs = await cache.keys();
+    await Promise.all(reqs.map(r => {
+      const u = new URL(r.url);
+      if (u.hostname.includes('api.flowguard') || u.pathname.startsWith('/socket.io')) {
+        return cache.delete(r);
+      }
+      return null;
+    }));
+
+    await self.clients.claim();
+  })());
 });
 
 // ── Fetch: cache-first for shell, network-first for API ──────────
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Always go network for API and socket.io
+  // ── API + sockets: NEVER cached ──────────────────────────────────────
+  // These responses are authenticated and user-specific. Caching them keys
+  // the data by URL alone, so after logout — or for the next crew member on
+  // a shared handset — caches.match() would serve the previous user's
+  // properties, alerts and team data straight back. Always hit the network;
+  // if we're offline, fail honestly rather than lie with someone else's data.
   if (url.hostname.includes('api.flowguard') || url.pathname.startsWith('/socket.io')) {
-    event.respondWith(networkFirst(event.request));
+    event.respondWith(
+      fetch(event.request).catch(() =>
+        new Response(JSON.stringify({ success: false, error: 'Offline — no connection to FlowGuard.' }),
+          { status: 503, headers: { 'Content-Type': 'application/json' } }))
+    );
     return;
   }
 
@@ -53,7 +78,8 @@ async function cacheFirst(request) {
   if (cached) return cached;
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    const authed = request.headers.has('Authorization') || request.credentials === 'include';
+    if (response.ok && !authed) {
       const cache = await caches.open(CACHE_NAME);
       cache.put(request, response.clone());
     }
@@ -71,7 +97,9 @@ async function cacheFirst(request) {
 async function networkFirst(request) {
   try {
     const response = await fetch(request);
-    if (response.ok && request.method === 'GET') {
+    // never cache anything carrying credentials, belt-and-braces
+    const authed = request.headers.has('Authorization') || request.credentials === 'include';
+    if (response.ok && request.method === 'GET' && !authed) {
       const cache = await caches.open(CACHE_NAME);
       cache.put(request, response.clone());
     }

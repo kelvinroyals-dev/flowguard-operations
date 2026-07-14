@@ -30,6 +30,18 @@ const OpsModal = (function () {
 
   // ── MODAL CORE ─────────────────────────────────────────────────────────
 
+  /* ── XSS ──────────────────────────────────────────────────────────────
+     Everything below renders SERVER data into innerHTML. Alert descriptions,
+     client names, error strings — all attacker-influencable. Unescaped, a
+     field value like  <img src=x onerror=...>  executes, and since the JWT
+     lives in localStorage, that is a token-theft chain, not a cosmetic bug.
+     escape() is applied at every sink. Error/toast text uses textContent. */
+  function escape(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
   function open(title, bodyHTML, actions = []) {
     close();
 
@@ -38,9 +50,9 @@ const OpsModal = (function () {
     overlay.className = 'ops-modal-overlay';
 
     overlay.innerHTML = `
-      <div class="ops-modal" role="dialog" aria-modal="true" aria-label="${title}" onclick="event.stopPropagation()">
+      <div class="ops-modal" role="dialog" aria-modal="true" aria-label="${escape(title)}" onclick="event.stopPropagation()">
         <div class="ops-modal-header">
-          <div class="ops-modal-title">${title}</div>
+          <div class="ops-modal-title">${escape(title)}</div>
           <button class="ops-modal-close" onclick="OpsModal.close()" aria-label="Close">✕</button>
         </div>
         <div class="ops-modal-body">${bodyHTML}</div>
@@ -50,7 +62,7 @@ const OpsModal = (function () {
               <button class="${a.class || 'btn-ghost'}"
                 onclick="${a.onclick}"
                 ${a.id ? `id="${a.id}"` : ''}>
-                ${a.label}
+                ${escape(a.label)}
               </button>`).join('')}
           </div>` : ''}
       </div>`;
@@ -99,11 +111,11 @@ const OpsModal = (function () {
       const opts = (options.options || []).map(o => {
         const v = typeof o === 'object' ? o.value : o;
         const l = typeof o === 'object' ? o.label : o;
-        return `<option value="${v}" ${v == value ? 'selected' : ''}>${l}</option>`;
+        return `<option value="${escape(v)}" ${v == value ? 'selected' : ''}>${escape(l)}</option>`;
       }).join('');
       return `
         <div class="ops-modal-field">
-          <label class="ops-label">${label}</label>
+          <label class="ops-label">${escape(label)}</label>
           <select name="${name}" class="ops-input" ${required}>${opts}</select>
         </div>`;
     }
@@ -111,18 +123,18 @@ const OpsModal = (function () {
     if (type === 'textarea') {
       return `
         <div class="ops-modal-field">
-          <label class="ops-label">${label}</label>
+          <label class="ops-label">${escape(label)}</label>
           <textarea name="${name}" class="ops-input" rows="${options.rows || 3}"
-            placeholder="${placeholder}" ${required}
+            placeholder="${escape(placeholder)}" ${required}
             style="resize:vertical;${extraStyle}">${value || ''}</textarea>
         </div>`;
     }
 
     return `
       <div class="ops-modal-field">
-        <label class="ops-label">${label}</label>
+        <label class="ops-label">${escape(label)}</label>
         <input type="${type}" name="${name}" class="ops-input"
-          value="${value || ''}" placeholder="${placeholder}"
+          value="${escape(value)}" placeholder="${escape(placeholder)}"
           ${required} ${readonly} style="${extraStyle}">
       </div>`;
   }
@@ -149,13 +161,50 @@ const OpsModal = (function () {
 
   // ── API HELPERS ────────────────────────────────────────────────────────
 
+  /* ── Defence in depth: sanitise at the API boundary ────────────────────
+     Twelve modules render server data into innerHTML. Escaping each of ~80
+     sinks by hand guarantees one gets missed, and one miss is a stolen JWT
+     (tokens live in localStorage). So every string that arrives from the API
+     is HTML-escaped HERE, once, before any module can touch it.
+
+     Safe by construction: escaped entities decode correctly when parsed as
+     HTML (innerHTML, attribute values), so "O'Brien" still displays as
+     O'Brien — it simply can no longer close a tag or an attribute.
+
+     Enum-ish values (status, severity, ids) contain no special characters,
+     so comparisons and filters are unaffected. */
+  const SKIP_ESCAPE = new Set(['created_at', 'updated_at', 'time', 'occurred_at',
+    'reading_time', 'last_ping', 'recorded_at', 'breach_start', 'breach_end']);
+
+  function deepEscape(node, key) {
+    if (typeof node === 'string') {
+      return SKIP_ESCAPE.has(key) ? node : escape(node);
+    }
+    if (Array.isArray(node)) return node.map(v => deepEscape(v, key));
+    if (node && typeof node === 'object') {
+      const out = {};
+      for (const [k, v] of Object.entries(node)) out[k] = deepEscape(v, k);
+      return out;
+    }
+    return node;   // numbers, booleans, null pass through untouched
+  }
+
+  /* Values embedded inside inline handlers — onclick="X.go('${id}')" — are
+     NOT protected by HTML escaping: the browser decodes entities BEFORE the
+     JS is parsed, so &#39; becomes a real quote and can still break out of
+     the string. These slots only ever carry identifiers, so restrict them to
+     an identifier charset. Anything else is dropped, not escaped. */
+  function sid(v) {
+    return String(v == null ? '' : v).replace(/[^A-Za-z0-9_\-.:]/g, '');
+  }
+
   async function apiGet(endpoint) {
     const res = await fetch(`${CONFIG.API_BASE}${endpoint}`, { headers: getHeaders() });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error || `API ${res.status}`);
     }
-    return await res.json();
+    return deepEscape(await res.json());
   }
 
   async function apiPost(endpoint, body) {
@@ -220,9 +269,14 @@ const OpsModal = (function () {
       opacity:0; transform:translateX(12px);
       transition:opacity .25s,transform .25s cubic-bezier(.22,1,.36,1);`;
 
-    el.innerHTML = `
-      <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></div>
-      <span>${msg}</span>`;
+    // built with DOM APIs, not innerHTML: a malicious API error message
+    // must not be able to inject markup here.
+    const dot = document.createElement('div');
+    dot.style.cssText = `width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;`;
+    const span = document.createElement('span');
+    span.textContent = String(msg == null ? '' : msg);
+    el.appendChild(dot);
+    el.appendChild(span);
 
     document.body.appendChild(el);
     requestAnimationFrame(() => {
@@ -284,6 +338,7 @@ const OpsModal = (function () {
     open, close, setLoading,
     field, row, getFormData,
     apiGet, apiPost, apiPut, apiDelete,
+    escape, sid,
     toast, confirm, _runConfirm,
   };
 
