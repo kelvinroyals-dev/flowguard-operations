@@ -136,6 +136,23 @@ const OpsDashboard = (function () {
         .tl-body { padding:10px 12px 6px; }
         .tl-note { margin:0 14px 12px; padding:9px 12px; border-radius:9px; background:var(--surface-3); font-size:var(--fs-xs); color:var(--ink-2); line-height:1.5; }
 
+        /* ── Proactive risk advisory — synthesizes rainfall forecast, mapped
+           flood-risk zones, and pattern-detected incident candidates into
+           one "what should I do about this" statement at the top of the
+           page, instead of leaving an operator to notice a chart, a map
+           layer, and an alerts-tab badge separately and connect them. ── */
+        .adv-banner { display:flex; gap:13px; align-items:flex-start; padding:14px 16px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:12px; }
+        .adv-banner.err  { background:var(--eb, rgba(248,113,113,.08)); border-color:var(--err); }
+        .adv-banner.warn { background:var(--wb); border-color:var(--warn); }
+        .adv-banner.ok   { background:var(--ok-bg); border-color:var(--ok); }
+        .adv-icon { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .adv-body { flex:1; min-width:0; }
+        .adv-title { font-family:var(--ff-d); font-size:var(--fs-md); font-weight:800; color:var(--ink); margin-bottom:5px; }
+        .adv-reasons { display:flex; flex-direction:column; gap:3px; margin-bottom:9px; }
+        .adv-reason { font-size:var(--fs-sm); color:var(--ink-2); line-height:1.5; }
+        .adv-actions { display:flex; gap:8px; flex-wrap:wrap; }
+        .adv-btn { padding:6px 13px; border-radius:8px; border:1px solid currentColor; background:transparent; font-size:var(--fs-xs); font-weight:700; cursor:pointer; font-family:var(--ff-b); }
+
         @media (max-width: 1500px) { .cmd-bottom { grid-template-columns:1fr 1fr; } }
         @media (max-width: 1100px) { .cmd-main { grid-template-columns:1fr; } }
         @media (max-width: 1100px) { .cmd-mid, .cmd-bottom { grid-template-columns:1fr; }  .map-panel{height:400px;} }
@@ -158,6 +175,7 @@ const OpsDashboard = (function () {
       </style>
 
       <div id="dash-kpis"></div>
+      <div id="dash-advisory"></div>
 
       <div class="cmd-main">
         <div class="map-panel">
@@ -298,12 +316,13 @@ const OpsDashboard = (function () {
     if (!Auth.isAuthenticated()) return;
 
     try {
-      const [mapRes, kpiRes, teamRes, tickRes, fleetRes] = await Promise.all([
+      const [mapRes, kpiRes, teamRes, tickRes, fleetRes, candRes] = await Promise.all([
         OpsModal.apiGet('/analytics/map-data'),
         OpsModal.apiGet('/analytics/kpis'),
         OpsModal.apiGet('/teams').catch(() => ({ data: [] })),
         OpsModal.apiGet('/tickets?limit=8').catch(() => ({ data: [] })),
         OpsModal.apiGet('/monitoring/sensors/all').catch(() => ({ data: [] })),
+        OpsModal.apiGet('/monitoring/incident-candidates?status=pending').catch(() => ({ data: [] })),
       ]);
 
       const md    = mapRes.data || {};
@@ -312,6 +331,10 @@ const OpsDashboard = (function () {
       const ticks = tickRes.data || [];
       const fleet = fleetRes.data || [];
       _lastKpis   = kpis;   // reused by refreshFeed() so its lighter poll doesn't blank the KPI-derived health cells
+
+      _advisory.floodRisk  = md.flood_risk || [];
+      _advisory.candidates = candRes.data || [];
+      maybeRenderAdvisory();
 
       plotAreas(md.areas || []);
       plotSites(md.sites || []);
@@ -889,7 +912,101 @@ const OpsDashboard = (function () {
           : tot >= 4
           ? `<b>${tot}mm expected in 24h</b> — peak around ${peak.t.getHours()}:00. Network capacity is adequate.`
           : `Light rainfall (${tot}mm) over the next 24h — no intervention window needed.`}</div>`;
-    } catch (_) { el.innerHTML = '<div class="pq-empty">Weather service unreachable.</div>'; }
+      _advisory.rain = { tot, peakHour: peak.t.getHours(), peakMm: peak.mm };
+      maybeRenderAdvisory();
+    } catch (_) {
+      el.innerHTML = '<div class="pq-empty">Weather service unreachable.</div>';
+      _advisory.rain = { tot: 0, peakHour: null, peakMm: 0, unavailable: true };
+      maybeRenderAdvisory();
+    }
+  }
+
+  // ── Proactive risk advisory: rainfall forecast + mapped flood-risk zones +
+  // pattern-detected incident candidates, synthesized into one statement
+  // with a recommended next action, instead of three separate widgets an
+  // operator has to notice and connect themselves. ──
+  let _advisory = { rain: null, floodRisk: null, candidates: null };
+
+  function maybeRenderAdvisory() {
+    const { rain, floodRisk, candidates } = _advisory;
+    if (rain == null || floodRisk == null || candidates == null) return;   // still waiting on one source
+    renderAdvisoryBanner(rain, floodRisk, candidates);
+  }
+
+  function renderAdvisoryBanner(rain, floodRisk, candidates) {
+    const el = document.getElementById('dash-advisory');
+    if (!el) return;
+
+    const criticalZones = floodRisk.filter(r => r.flood_risk_level === 'critical').length;
+    const highZones = floodRisk.filter(r => r.flood_risk_level === 'high').length;
+    const heavyRain = rain.tot >= 15;
+    const moderateRain = !heavyRain && rain.tot >= 4;
+
+    const reasons = [];
+    if (candidates.length) {
+      reasons.push({
+        text: `<b>${candidates.length}</b> sustained-breach candidate${candidates.length > 1 ? 's' : ''} awaiting review — the network already flagged ${candidates.length > 1 ? 'these' : 'this'}.`,
+        action: { label: 'Review candidates', onclick: "switchTab('alerts')" },
+      });
+    }
+    if (heavyRain) {
+      reasons.push({
+        text: `<b>${rain.tot}mm</b> of rain forecast in the next 24h, heaviest around ${rain.peakHour}:00 — pre-emptive silt clearing on high-risk assets is cheaper than a flood response.`,
+        action: { label: 'View Sentinel fleet', onclick: "switchTab('sensors')" },
+      });
+    }
+    if (criticalZones) {
+      reasons.push({
+        text: `<b>${criticalZones}</b> zone${criticalZones > 1 ? 's' : ''} on the map are at critical flood risk right now.`,
+        action: { label: 'Show risk zones on map', onclick: 'OpsDashboard.focusMap()' },
+      });
+    }
+    if (!reasons.length && (moderateRain || highZones)) {
+      reasons.push({
+        text: moderateRain
+          ? `Moderate rainfall (${rain.tot}mm) forecast — network capacity looks adequate, worth a routine check.`
+          : `${highZones} zone${highZones > 1 ? 's' : ''} at elevated flood risk — nothing urgent, worth keeping an eye on.`,
+        action: { label: 'Show risk zones on map', onclick: 'OpsDashboard.focusMap()' },
+      });
+    }
+
+    const level = (candidates.length || heavyRain || criticalZones) ? 'err'
+      : reasons.length ? 'warn' : 'ok';
+    const icon = level === 'ok'
+      ? '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>'
+      : '<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>';
+    const iconColor = level === 'err' ? 'var(--err)' : level === 'warn' ? 'var(--warn)' : 'var(--ok)';
+    const title = level === 'err' ? 'Pre-emptive action advised'
+      : level === 'warn' ? 'Worth a look' : 'No elevated risk right now';
+
+    const allActions = reasons.filter(r => r.action);
+    const seen = new Set();
+    const actions = allActions.filter(r => (seen.has(r.action.label) ? false : (seen.add(r.action.label), true)));
+
+    el.innerHTML = `
+      <div class="adv-banner ${level}">
+        <div class="adv-icon" style="background:${iconColor}20;">
+          <svg width="18" height="18" fill="none" stroke="${iconColor}" stroke-width="2" viewBox="0 0 24 24">${icon}</svg>
+        </div>
+        <div class="adv-body">
+          <div class="adv-title">${title}</div>
+          <div class="adv-reasons">${reasons.length
+            ? reasons.map(r => `<div class="adv-reason">${r.text}</div>`).join('')
+            : '<div class="adv-reason">Rainfall is light, no pattern-detected candidates, and no zones at critical risk.</div>'}
+          </div>
+          ${actions.length ? `<div class="adv-actions">${actions.map(a => `<button class="adv-btn" style="color:${iconColor};" onclick="${a.action.onclick}">${a.action.label}</button>`).join('')}</div>` : ''}
+        </div>
+      </div>`;
+  }
+
+  // scrolls the map into view and makes sure the flood-risk layer is visible
+  function focusMap() {
+    const panel = document.querySelector('.map-panel');
+    if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (map && layers.flood_risk && !map.hasLayer(layers.flood_risk)) {
+      layers.flood_risk.addTo(map);
+      renderLegend();
+    }
   }
 
   /* The API row used to be hard-coded to a green "Operational". An operations
@@ -954,6 +1071,6 @@ const OpsDashboard = (function () {
     return Number(n).toLocaleString();
   }
 
-  return { render, toggleLayer, dispatch, confirmDispatch, resolveAlert, confirmResolve };
+  return { render, toggleLayer, dispatch, confirmDispatch, resolveAlert, confirmResolve, focusMap };
 
 })();
