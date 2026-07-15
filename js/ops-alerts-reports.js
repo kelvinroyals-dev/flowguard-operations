@@ -9,14 +9,32 @@ const OpsAlerts = (function () {
   let _allAlerts = [];
   let _filter    = 'all';
   let _pg        = null;
+  let _container = null;
+  const _dash = v => (v == null || v === '') ? '—' : v;
 
   function getToken() {
     return localStorage.getItem('token') || sessionStorage.getItem('token');
   }
 
   function render(container) {
+    _container = container;
     container.innerHTML = `
       <style>
+        .ops-table tbody tr.clickable { cursor:pointer; transition:background .12s; }
+        .ops-table tbody tr.clickable:hover { background:var(--surface-2,#f2f8fb); }
+        .al-back { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:8px 13px; cursor:pointer; }
+        .al-detail-top { display:flex; align-items:center; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
+        .al-detail-name { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; }
+        .al-detail-meta { font-size:var(--fs-sm); color:var(--ink-3); margin-top:3px; }
+        .al-detail-actions { margin-left:auto; display:flex; gap:8px; }
+        .al-section { background:var(--surface,#fff); border:1px solid var(--border); border-radius:var(--r,14px); box-shadow:var(--sh-xs); margin-bottom:14px; overflow:hidden; }
+        .al-section-h { padding:12px 18px; border-bottom:1px solid var(--border); font-family:var(--ff-d); font-size:var(--fs-sm); font-weight:700; letter-spacing:.4px; color:var(--ink); display:flex; align-items:center; justify-content:space-between; }
+        .al-section-b { padding:16px 18px; }
+        .al-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px 22px; }
+        .al-field .k { font-size:var(--fs-2xs); font-weight:700; letter-spacing:.9px; text-transform:uppercase; color:var(--ink-3); }
+        .al-field .v { font-size:var(--fs-md); color:var(--ink); font-weight:600; margin-top:3px; }
+        .al-empty { color:var(--ink-3); font-size:var(--fs-sm); padding:6px 0; }
+        .al-needs { font-size:var(--fs-xs); color:var(--ink-4); font-style:italic; }
         /* ── Stats row — shared .fg-kpis/.fg-kpi (OpsModal.kpiStrip), and the
            cards double as the severity filter, so the separate al-filters
            button row underneath it is gone (was two rows doing the same
@@ -405,60 +423,34 @@ const OpsAlerts = (function () {
       return;
     }
 
-    feed.innerHTML = alerts.map(a => {
-      const id       = a.alert_id || a.id;
-      const sc       = severityClass(a.severity);
-      const ico      = severityIcon(a.severity);
-      const isPending = !a.assigned_team && a.status !== 'resolved';
-      const time     = formatTime(a.timestamp || a.created_at);
-      const location = a.location || a.property || a.site_name || '—';
-      const type     = a.alert_type || a.type || 'System Alert';
-
-      return `
-        <div class="al-row severity-${sc}" id="al-row-${id}">
-          <div class="al-row-icon" style="background:${ico.bg};">
-            <svg width="16" height="16" fill="none" stroke="${ico.color}" stroke-width="2.2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-            </svg>
-          </div>
-
-          <div class="al-row-body">
-            <div class="al-row-top">
-              <span class="status-badge ${severityBadgeClass(a.severity)}">${severityLabel(a.severity)}</span>
-              <span class="al-row-title">${type}</span>
-            </div>
-            <div class="al-row-location">
-              <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-              ${location}
-            </div>
-            <div class="al-row-meta">
-              <span>${time}</span>
-              ${a.sensor_name ? `<span>· ${a.sensor_name}</span>` : ''}
-              ${a.time_to_overflow_min ? `<span style="color:var(--err);font-weight:600;">· Overflow in ${a.time_to_overflow_min} min</span>` : ''}
-            </div>
-            ${a.assigned_team ? `
-              <div class="al-row-assigned">
-                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0112 0v2"/></svg>
-                Assigned to <strong>${a.assigned_team}</strong>
-              </div>` : ''}
-          </div>
-
-          <div class="al-row-actions">
-            ${isPending ? `
-              <button class="al-action-btn primary" onclick="OpsAlerts.assignAlert('${id}')">
-                Assign
-              </button>` : ''}
-            <button class="al-action-btn" onclick="OpsAlerts.viewAlert('${id}')">
-              View
-            </button>
-            ${a.status !== 'resolved' ? `
-              <button class="al-action-btn resolve" onclick="OpsAlerts.resolveAlert('${id}')">
-                Resolve
-              </button>` : ''}
-          </div>
-        </div>
-      `;
-    }).join('');
+    // Columns per spec: Alert ID, Alert Type, Property, Device, Severity, Trigger Time, Status, Assigned To
+    feed.innerHTML = `
+      <div style="overflow-x:auto;">
+        <table class="ops-table">
+          <thead><tr>
+            <th>Alert ID</th><th>Alert Type</th><th>Property</th><th>Device</th>
+            <th>Severity</th><th>Trigger Time</th><th>Status</th><th>Assigned To</th>
+          </tr></thead>
+          <tbody>
+            ${alerts.map(a => {
+              const id = a.alert_id || a.id;
+              const type = a.alert_type || a.type || 'System Alert';
+              const location = a.location || a.property || a.property_name || a.site_name || '—';
+              const status = a.status || 'active';
+              return `<tr class="clickable" onclick="OpsAlerts.open('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsAlerts.open('${id}')}">
+                <td style="font-family:var(--ff-m);font-size:var(--fs-sm);" class="bright">${id}</td>
+                <td>${type}</td>
+                <td style="font-size:var(--fs-sm);">${_dash(location)}</td>
+                <td style="font-size:var(--fs-sm);">${_dash(a.sensor_name || a.device_name)}</td>
+                <td><span class="status-badge ${severityBadgeClass(a.severity)}">${severityLabel(a.severity)}</span></td>
+                <td style="font-size:var(--fs-sm);font-family:var(--ff-m);">${formatTime(a.timestamp || a.created_at)}</td>
+                <td><span class="status-badge ${status === 'resolved' ? 'nominal' : severityBadgeClass(a.severity)}">${status}</span></td>
+                <td style="font-size:var(--fs-sm);">${a.assigned_team || '<span style="color:var(--ink-4);">Unassigned</span>'}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
   }
 
   function formatTime(ds) {
@@ -472,54 +464,57 @@ const OpsAlerts = (function () {
     return new Date(ds).toLocaleDateString('en-GB', { day:'numeric', month:'short' });
   }
 
-  // ── View alert modal ──
-  async function viewAlert(id) {
+  function back() { if (_container) render(_container); }
+
+  // ── FULL DETAIL SCREEN (no pop-up) ──
+  function open(id) {
+    if (!_container) return;
     const a = _allAlerts.find(x => (x.alert_id || x.id) == id);
     if (!a) { OpsModal.toast('Alert not found', 'warning'); return; }
+    const status = a.status || 'active';
+    const badge = status === 'resolved' ? 'nominal' : severityBadgeClass(a.severity);
+    const field = (k, v) => `<div class="al-field"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+    const s = (title, body, needs) => `<div class="al-section"><div class="al-section-h">${title}${needs ? '<span class="al-needs">pending backend data</span>' : ''}</div><div class="al-section-b">${body}</div></div>`;
 
-    const sc    = severityClass(a.severity);
-    const ico   = severityIcon(a.severity);
-    const time  = a.timestamp || a.created_at;
+    const info = `<div class="al-grid">
+      ${field('Alert ID', a.alert_id || a.id)}
+      ${field('Alert Type', a.alert_type || a.type || 'System Alert')}
+      ${field('Severity', `<span class="status-badge ${severityBadgeClass(a.severity)}">${severityLabel(a.severity)}</span>`)}
+      ${field('Status', `<span class="status-badge ${badge}">${status}</span>`)}
+      ${field('Property', _dash(a.location || a.property || a.property_name || a.site_name))}
+      ${field('Device', _dash(a.sensor_name || a.device_name))}
+      ${field('Trigger Time', a.timestamp || a.created_at ? OpsModal.fmtDateTime(a.timestamp || a.created_at) : '—')}
+      ${field('Assigned To', _dash(a.assigned_team))}
+      ${a.time_to_overflow_min ? field('Time to Overflow', `<span style="color:var(--err);font-weight:700;">${a.time_to_overflow_min} min</span>`) : ''}
+    </div>${a.description ? `<div style="margin-top:12px;">${field('Description', a.description)}</div>` : ''}`;
 
-    OpsModal.open(`Incident — ${a.alert_type || 'Alert'}`, `
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:14px 16px;background:${ico.bg};border-radius:10px;border:1px solid ${ico.color}25;">
-        <div style="width:40px;height:40px;border-radius:10px;background:${ico.color}20;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <svg width="18" height="18" fill="none" stroke="${ico.color}" stroke-width="2.2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-          </svg>
-        </div>
+    const resolution = status === 'resolved'
+      ? `<div class="al-grid">${field('Outcome', _dash(a.outcome))}${field('Resolved', a.resolved_at ? OpsModal.fmtDateTime(a.resolved_at) : '—')}</div>${a.notes ? `<div style="margin-top:12px;">${field('Notes', a.notes)}</div>` : ''}`
+      : `<div class="al-empty">This incident is still open.</div>${a.notes ? `<div style="margin-top:10px;">${field('Field Notes', a.notes)}</div>` : ''}`;
+
+    const actions = [
+      status !== 'resolved' ? `<button class="btn-primary" onclick="OpsAlerts.assignAlert('${id}')">Assign Team</button>` : '',
+      status !== 'resolved' ? `<button class="btn-ghost" onclick="OpsAlerts.resolveAlert('${id}')">Resolve</button>` : '',
+    ].filter(Boolean).join('');
+
+    _container.innerHTML = `
+      <div class="al-detail-top">
+        <button class="al-back" onclick="OpsAlerts.back()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Alerts</button>
         <div>
-          <div style="font-family:var(--ff-d);font-size:var(--fs-lg);font-weight:700;color:var(--ink);">${a.alert_type || 'System Alert'}</div>
-          <div style="font-size:var(--fs-sm);color:${ico.color};font-weight:600;text-transform:uppercase;letter-spacing:.5px;">${a.severity} severity</div>
+          <div class="al-detail-name">${a.alert_type || 'System Alert'}</div>
+          <div class="al-detail-meta">${a.alert_id || a.id} · ${_dash(a.location || a.property || a.site_name)}</div>
         </div>
+        <div class="al-detail-actions">${actions}</div>
       </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
-        <div class="ops-modal-detail"><span class="label">Location</span><span class="value">${a.location || a.property || '—'}</span></div>
-        <div class="ops-modal-detail"><span class="label">Sensor</span><span class="value">${a.sensor_name || '—'}</span></div>
-        <div class="ops-modal-detail"><span class="label">Site</span><span class="value">${a.site_name || '—'}</span></div>
-        <div class="ops-modal-detail"><span class="label">Status</span><span class="value"><span class="status-badge ${a.status === 'resolved' ? 'nominal' : severityBadgeClass(a.severity)}">${a.status || 'active'}</span></span></div>
-        <div class="ops-modal-detail"><span class="label">Reported</span><span class="value">${OpsModal.fmtDateTime(time)}</span></div>
-        <div class="ops-modal-detail"><span class="label">Assigned To</span><span class="value">${a.assigned_team || 'Unassigned'}</span></div>
-        ${a.time_to_overflow_min ? `<div class="ops-modal-detail" style="grid-column:1/-1;"><span class="label">Time to Overflow</span><span class="value" style="color:var(--err);font-weight:700;">${a.time_to_overflow_min} minutes</span></div>` : ''}
-      </div>
-
-      ${a.description ? `
-        <div style="margin-bottom:14px;">
-          <div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;">Description</div>
-          <div style="font-size:var(--fs-base);color:var(--ink-2);line-height:1.6;padding:12px 14px;background:var(--surface-2);border-radius:8px;">${a.description}</div>
-        </div>` : ''}
-
-      ${a.notes ? `
-        <div style="margin-bottom:14px;">
-          <div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;">Field Notes</div>
-          <div style="font-size:var(--fs-base);color:var(--ink-2);line-height:1.6;padding:12px 14px;background:var(--surface-2);border-radius:8px;">${a.notes}</div>
-        </div>` : ''}
-    `, [
-      { label: 'Close',         class: 'btn-ghost',    onclick: 'OpsModal.close()' },
-      { label: 'Assign Team',   class: 'btn-primary',  onclick: `OpsModal.close();OpsAlerts.assignAlert('${id}')`, id: 'modal-assign-btn' },
-      ...(a.status !== 'resolved' ? [{ label: 'Resolve', class: 'btn-ghost', onclick: `OpsModal.close();OpsAlerts.resolveAlert('${id}')` }] : []),
-    ]);
+      ${s('Alert Information', info)}
+      ${s('Map', a.latitude && a.longitude ? `<div class="al-grid">${field('Latitude', a.latitude)}${field('Longitude', a.longitude)}</div><div style="margin-top:10px;"><a class="btn-ghost" style="text-decoration:none;padding:7px 12px;" onclick="switchTab('dashboard')">Open on operational map →</a></div>` : '<div class="al-empty">No coordinates on this alert.</div>', !(a.latitude && a.longitude))}
+      ${s('Related Device', a.sensor_name || a.device_name ? `<div class="al-grid">${field('Device', a.sensor_name || a.device_name)}</div>` : '<div class="al-empty">No device linked.</div>')}
+      ${s('Related Property', a.property || a.property_name || a.site_name ? `<div class="al-grid">${field('Property', a.property || a.property_name || a.site_name)}</div>` : '<div class="al-empty">No property linked.</div>')}
+      ${s('Timeline', `<div class="al-empty">Triggered ${a.timestamp || a.created_at ? OpsModal.fmtDateTime(a.timestamp || a.created_at) : '—'}${a.assigned_team ? ' · Assigned to ' + a.assigned_team : ''}${status === 'resolved' ? ' · Resolved' : ''}.</div>`, true)}
+      ${s('Resolution', resolution)}
+      ${s('Attachments', '<div class="al-empty">No attachments.</div>', true)}
+      ${s('Activity Log', '<div class="al-empty">No activity log in this response.</div>', true)}
+    `;
   }
 
   // ── Assign alert modal ──
@@ -618,7 +613,7 @@ const OpsAlerts = (function () {
   }
 
   return {
-    render, setFilter, refresh, viewAlert, assignAlert, confirmAssign, resolveAlert,
+    render, setFilter, refresh, open, back, assignAlert, confirmAssign, resolveAlert,
     confirmCandidate, dismissCandidate, resolveCandidate,
   };
 
@@ -632,9 +627,16 @@ const OpsAlerts = (function () {
 const OpsReports = (function () {
   'use strict';
 
+  let _reports = [];
+  let _rc = null;
+  const _d = v => (v == null || v === '') ? '—' : v;
+
   function render(container) {
+    _rc = container;
     container.innerHTML = `
       <style>
+        .ops-table tbody tr.clickable { cursor:pointer; transition:background .12s; }
+        .ops-table tbody tr.clickable:hover { background:var(--surface-2,#f2f8fb); }
         .rp-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 24px; }
 
         .rp-card {
@@ -759,6 +761,7 @@ const OpsReports = (function () {
     try {
       const res  = await OpsModal.apiGet('/reports');
       const list = res.data || res.reports || [];
+      _reports = list;
       renderReports(list);
     } catch {
       renderReports([]);
@@ -787,29 +790,57 @@ const OpsReports = (function () {
       financial: { icon: 'var(--ok)',      bg: 'var(--ok-bg)',           label: 'Financial Report' },
     };
 
-    el.innerHTML = reports.map(r => {
-      const tc   = typeConfig[r.type] || typeConfig.daily;
-      const date = r.generated_at ? new Date(r.generated_at).toLocaleString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
-      return `
-        <div class="rp-report-row">
-          <div class="rp-report-icon" style="background:${tc.bg};">
-            <svg width="16" height="16" fill="none" stroke="${tc.icon}" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
-          </div>
-          <div style="flex:1;min-width:0;">
-            <div class="rp-report-name">${r.name || tc.label}</div>
-            <div class="rp-report-meta">${date}</div>
-          </div>
-          ${r.download_url ? `
-            <a href="${r.download_url}" target="_blank" rel="noopener">
-              <button class="btn-ghost" style="font-size:var(--fs-sm);padding:6px 12px;">
-                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                Download
-              </button>
-            </a>` : ''}
-        </div>`;
-    }).join('');
+    const fmtOf = r => (r.format || (r.download_url ? (r.download_url.split('.').pop() || '').toUpperCase().slice(0, 4) : '')) || '—';
+    // Columns per spec: Report, Category, Property, Date, Generated By, Format
+    el.innerHTML = `
+      <div style="overflow-x:auto;">
+        <table class="ops-table">
+          <thead><tr><th>Report</th><th>Category</th><th>Property</th><th>Date</th><th>Generated By</th><th>Format</th></tr></thead>
+          <tbody>
+            ${reports.map((r, i) => {
+              const tc = typeConfig[r.type] || typeConfig.daily;
+              const date = r.generated_at ? new Date(r.generated_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+              return `<tr class="clickable" onclick="OpsReports.open(${i})" tabindex="0" onkeydown="if(event.key==='Enter'){OpsReports.open(${i})}">
+                <td class="bright">${r.name || tc.label}</td>
+                <td style="font-size:var(--fs-sm);">${tc.label}</td>
+                <td style="font-size:var(--fs-sm);">${_d(r.property_name)}</td>
+                <td style="font-size:var(--fs-sm);font-family:var(--ff-m);">${date}</td>
+                <td style="font-size:var(--fs-sm);">${_d(r.generated_by || r.generated_by_name)}</td>
+                <td style="font-size:var(--fs-sm);">${fmtOf(r)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  function back() { if (_rc) render(_rc); }
+
+  // ── FULL DETAIL SCREEN (no pop-up) ──
+  function open(i) {
+    const r = _reports[i];
+    if (!_rc || !r) return;
+    const date = r.generated_at ? new Date(r.generated_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+    const field = (k, v) => `<div style="margin-bottom:2px;"><div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3);">${k}</div><div style="font-size:var(--fs-md);color:var(--ink);font-weight:600;margin-top:3px;">${v}</div></div>`;
+    const sec = (t, b, needs) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r,14px);box-shadow:var(--sh-xs);margin-bottom:14px;overflow:hidden;"><div style="padding:12px 18px;border-bottom:1px solid var(--border);font-family:var(--ff-d);font-size:var(--fs-sm);font-weight:700;color:var(--ink);display:flex;justify-content:space-between;">${t}${needs ? '<span style="font-size:var(--fs-xs);color:var(--ink-4);font-style:italic;">pending backend data</span>' : ''}</div><div style="padding:16px 18px;">${b}</div></div>`;
+    const preview = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px 22px;">
+      ${field('Report', r.name || (typeConfig[r.type] || typeConfig.daily).label)}
+      ${field('Category', (typeConfig[r.type] || typeConfig.daily).label)}
+      ${field('Date', date)}
+      ${field('Generated By', _d(r.generated_by || r.generated_by_name))}
+    </div>${r.download_url ? `<div style="margin-top:14px;"><a href="${r.download_url}" target="_blank" rel="noopener"><button class="btn-primary" style="font-size:var(--fs-sm);">Open / Download report</button></a></div>` : '<div style="color:var(--ink-3);font-size:var(--fs-sm);margin-top:12px;">No downloadable file for this report.</div>'}`;
+
+    _rc.innerHTML = `
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap;">
+        <button class="btn-ghost" onclick="OpsReports.back()" style="display:inline-flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Reports</button>
+        <div><div style="font-family:var(--ff-d);font-size:var(--fs-xl);font-weight:700;color:var(--ink);">${r.name || (typeConfig[r.type] || typeConfig.daily).label}</div><div style="font-size:var(--fs-sm);color:var(--ink-3);margin-top:3px;">${date}</div></div>
+      </div>
+      ${sec('Report Preview', preview)}
+      ${sec('Charts', '<div style="color:var(--ink-3);font-size:var(--fs-sm);">Chart previews render from the report payload.</div>', true)}
+      ${sec('Filters', '<div style="color:var(--ink-3);font-size:var(--fs-sm);">No filter metadata in this response.</div>', true)}
+      ${sec('Export', r.download_url ? `<a href="${r.download_url}" target="_blank" rel="noopener" style="color:var(--blue-hi);">Download file →</a>` : '<div style="color:var(--ink-3);font-size:var(--fs-sm);">No export available.</div>')}
+      ${sec('Share', '<div style="color:var(--ink-3);font-size:var(--fs-sm);">Sharing links are generated on export.</div>', true)}
+    `;
   }
 
   async function generate(type) {
@@ -823,6 +854,6 @@ const OpsReports = (function () {
     }
   }
 
-  return { render, generate };
+  return { render, generate, open, back };
 
 })();
