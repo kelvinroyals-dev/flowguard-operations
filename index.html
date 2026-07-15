@@ -1157,167 +1157,116 @@
       .quick-grid { gap: 8px; }
     }
   </style>
+
+    /* ══ Neon top-nav shell (replaces sidebar) ══ */
+    .app-neon { flex:1; display:flex; flex-direction:column; overflow:hidden; min-height:0; }
+    .tnav { display:flex; align-items:center; gap:16px; padding:9px 20px; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; position:relative; z-index:1000; box-shadow:var(--sh-xs); }
+    .app-neon > .content { flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; }
+    .tnav-brand { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+    .tnav-mark { width:30px; height:30px; object-fit:contain; }
+    .tnav-name { font-size:14px; font-weight:800; color:var(--ink); line-height:1; letter-spacing:.2px; }
+    .tnav-sub { font-size:9.5px; letter-spacing:1.3px; text-transform:uppercase; color:var(--ink-3); margin-top:3px; }
+    .tnav-menu { display:flex; align-items:center; gap:3px; flex-wrap:wrap; }
+    .tnav-grp { position:relative; }
+    .tnav-item { display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:600; color:var(--ink-2); padding:8px 13px; border-radius:9px; cursor:pointer; background:transparent; border:none; font-family:var(--ff-b); white-space:nowrap; }
+    .tnav-item:hover { background:var(--surface-2); color:var(--ink); }
+    .tnav-item.active, .tnav-grp.active > .tnav-item { background:var(--surface-3); color:var(--ink); box-shadow:inset 0 0 0 1px var(--border-2); }
+    .tnav-caret::after { content:'▾'; font-size:9px; opacity:.55; margin-left:1px; }
+    .tnav-drop { position:absolute; top:calc(100% + 6px); left:0; min-width:194px; background:var(--surface); border:1px solid var(--border-2); border-radius:12px; box-shadow:var(--sh-md); padding:6px; display:none; z-index:1200; }
+    .tnav-grp:hover .tnav-drop, .tnav-grp:focus-within .tnav-drop { display:block; }
+    .tnav-link { display:flex; align-items:center; gap:8px; width:100%; text-align:left; font-size:12.5px; font-weight:500; color:var(--ink-2); padding:8px 11px; border-radius:8px; cursor:pointer; background:transparent; border:none; font-family:var(--ff-b); white-space:nowrap; }
+    .tnav-link:hover { background:var(--surface-2); color:var(--ink); }
+    .tnav-link.active { background:var(--neon-glow); color:var(--ink); font-weight:600; }
+    .tnav-right { display:flex; align-items:center; gap:10px; flex-shrink:0; margin-left:auto; position:relative; }
+    .tnav-status { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:600; color:var(--ok); background:var(--ok-bg); border:1px solid var(--ok); border-radius:20px; padding:5px 11px; white-space:nowrap; }
+    .tnav-status-dot { width:6px; height:6px; border-radius:50%; background:var(--ok); box-shadow:0 0 6px var(--ok); }
+    @media (max-width:900px){ .tnav-sub{display:none;} .tnav-status{display:none;} .tnav{gap:10px;padding:8px 12px;} }
 </head>
 <body data-build="cmd8">
 
-<div class="app">
-
-  <!-- ═══ SIDEBAR ═══ -->
-  <aside class="sidebar">
-    <div class="sb-brand">
-      <div class="sb-mark-wrap">
-        <img class="sb-mark" src="fg-logo-dark.png" alt="FlowGuard" style="width:100%;height:100%;object-fit:contain">
-      </div>
-      <div class="sb-brand-text">
-        <div class="sb-name">FlowGuard</div>
-        <div class="sb-sub">Ops Center</div>
-      </div>
+<div class="app-neon">
+  <header class="tnav">
+    <div class="tnav-brand">
+      <img class="tnav-mark" src="flowguard_mark_B_brand_colours.svg" alt="FlowGuard">
+      <div><div class="tnav-name">FlowGuard</div><div class="tnav-sub">Ops Center</div></div>
     </div>
-
-    <div class="sb-status">
-      <div class="sb-status-dot"></div>
-      <span class="sb-status-text">Operational</span>
-    </div>
-
-    <div class="sb-nav">
-      <div class="nav-sect">Operations</div>
-      <button class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        <span class="nav-label">Dashboard</span>
-      </button>
-      <button class="nav-item" id="nav-alerts" onclick="switchTab('alerts')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
-        <span class="nav-label">Alerts</span>
-        <span class="nav-badge" id="nav-badge-alerts" style="display:none;">0</span>
-      </button>
-
-      <button class="nav-item" id="nav-clients" onclick="switchTab('clients')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-        <span class="nav-label">Clients</span>
-      </button>
-      <button class="nav-item" id="nav-properties" onclick="switchTab('properties')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-        <span class="nav-label">Properties</span>
-      </button>
-      <button class="nav-item" id="nav-assets" onclick="switchTab('assets')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20M2 7c4 0 4 10 8 10s4-10 8-10 4 10 4 10"/></svg>
-        <span class="nav-label">Assets</span>
-      </button>
-      <button class="nav-item" id="nav-sensors" onclick="switchTab('sensors')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="2.5"/><path d="M16.2 7.8a6 6 0 010 8.4M7.8 16.2a6 6 0 010-8.4M19 5a10 10 0 010 14M5 19A10 10 0 015 5"/></svg>
-        <span class="nav-label">Sentinel</span>
-      </button>
-      <div class="nav-sect">Field</div>
-      <button class="nav-item" id="nav-teams" onclick="switchTab('teams')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0112 0v2"/></svg>
-        <span class="nav-label">Teams</span>
-      </button>
-      <button class="nav-item" id="nav-team-members" onclick="switchTab('team-members')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="9.5" y1="14" x2="14.5" y2="14"/></svg>
-        <span class="nav-label">Team Members</span>
-      </button>
-      <button class="nav-item" id="nav-field-reports" onclick="switchTab('field-reports')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-        <span class="nav-label">Field Reports</span>
-        <span class="nav-badge" id="nav-badge-field-reports" style="display:none;">0</span>
-      </button>
-      <button class="nav-item" id="nav-maintenance" onclick="switchTab('maintenance')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="18" height="4" rx="1"/></svg>
-        <span class="nav-label">Maintenance Planner</span>
-      </button>
-      <div class="nav-sect">Intelligence</div>
-      <button class="nav-item" id="nav-forecast" onclick="switchTab('forecast')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 15l4-6 4 3 5-8"/></svg>
-        <span class="nav-label">AI Risk Forecast</span>
-      </button>
-      <button class="nav-item" id="nav-reports" onclick="switchTab('reports')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        <span class="nav-label">Reports</span>
-      </button>
-      <button class="nav-item" id="nav-billing" onclick="switchTab('billing')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-        <span class="nav-label">Billing</span>
-      </button>
-      <button class="nav-item" id="nav-sla" onclick="switchTab('sla')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        <span class="nav-label">SLA Tracker</span>
-      </button>
-      <button class="nav-item" id="nav-audit" onclick="switchTab('audit')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/><path stroke-linecap="round" d="M9 12h6M9 16h4"/></svg>
-        <span class="nav-label">Audit Log</span>
-      </button>
-      <div class="nav-sect">System</div>
-      <button class="nav-item" id="nav-settings" onclick="switchTab('settings')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-        <span class="nav-label">Settings</span>
-      </button>
-    </div>
-
-  </aside>
-
-  <!-- ═══ MAIN ═══ -->
-  <div class="main">
-
-    <!-- Topbar -->
-    <div class="topbar">
-      <button class="mob-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')" aria-label="Menu">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
-      </button>
-      <!-- search -->
-      <div class="tb-search" id="tb-search-wrap">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-        <input id="tb-search" type="text" placeholder="Search assets, locations, incidents..." autocomplete="off">
-        <kbd>⌘K</kbd>
-        <div class="tb-search-drop" id="tb-search-drop"></div>
+    <nav class="tnav-menu">
+      <button class="tnav-item" id="nav-dashboard" onclick="switchTab('dashboard')">Situation</button>
+      <button class="tnav-item" id="nav-alerts" onclick="switchTab('alerts')">Alerts<span class="nav-badge" id="nav-badge-alerts" style="display:none;">0</span></button>
+      <div class="tnav-grp">
+        <span class="tnav-item tnav-caret" tabindex="0">Network</span>
+        <div class="tnav-drop">
+          <button class="tnav-link" id="nav-network" onclick="switchTab('network')">Network Map</button>
+          <button class="tnav-link" id="nav-sensors" onclick="switchTab('sensors')">Sentinel Devices</button>
+          <button class="tnav-link" id="nav-assets" onclick="switchTab('assets')">Assets</button>
+          <button class="tnav-link" id="nav-maintenance" onclick="switchTab('maintenance')">Maintenance Planner</button>
+        </div>
       </div>
-
-      <!-- storm warning (hidden until a real storm) -->
+      <div class="tnav-grp">
+        <span class="tnav-item tnav-caret" tabindex="0">Clients</span>
+        <div class="tnav-drop">
+          <button class="tnav-link" id="nav-clients" onclick="switchTab('clients')">Clients</button>
+          <button class="tnav-link" id="nav-properties" onclick="switchTab('properties')">Properties</button>
+          <button class="tnav-link" id="nav-billing" onclick="switchTab('billing')">Billing</button>
+        </div>
+      </div>
+      <div class="tnav-grp">
+        <span class="tnav-item tnav-caret" tabindex="0">Field ops</span>
+        <div class="tnav-drop">
+          <button class="tnav-link" id="nav-field-reports" onclick="switchTab('field-reports')">Field Reports<span class="nav-badge" id="nav-badge-field-reports" style="display:none;">0</span></button>
+          <button class="tnav-link" id="nav-teams" onclick="switchTab('teams')">Teams</button>
+          <button class="tnav-link" id="nav-team-members" onclick="switchTab('team-members')">Team Members</button>
+        </div>
+      </div>
+      <div class="tnav-grp">
+        <span class="tnav-item tnav-caret" tabindex="0">Insights</span>
+        <div class="tnav-drop">
+          <button class="tnav-link" id="nav-forecast" onclick="switchTab('forecast')">AI Risk Forecast</button>
+          <button class="tnav-link" id="nav-reports" onclick="switchTab('reports')">Reports</button>
+          <button class="tnav-link" id="nav-sla" onclick="switchTab('sla')">SLA Tracker</button>
+          <button class="tnav-link" id="nav-audit" onclick="switchTab('audit')">Audit Log</button>
+        </div>
+      </div>
+    </nav>
+    <div class="tnav-right">
       <div class="tb-storm" id="tb-storm" style="display:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
         <span class="tb-storm-txt"><b id="tb-storm-t">Active Storm Warning</b><i id="tb-storm-s"></i></span>
         <button class="tb-storm-btn" onclick="switchTab('alerts')">View Details</button>
       </div>
-
-      <!-- right cluster: weather · rainfall · live time · user -->
-      <div class="tb-right">
-        <div class="tb-metric" id="tb-weather-wrap">
-          <svg class="tb-mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 16.2A4.5 4.5 0 0017.5 8h-1.8A7 7 0 104 14.9"/><path d="M8 19v2M12 20v2M16 19v2"/></svg>
-          <span class="tb-mv"><b id="tb-temp">—</b><i id="tb-cond">—</i></span>
-        </div>
-
-        <div class="tb-metric">
-          <svg class="tb-mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a6 6 0 006-6c0-4-6-10-6-10S6 12 6 16a6 6 0 006 6z"/></svg>
-          <span class="tb-mv"><i>Rainfall (1h)</i><b id="tb-rain">0.0 mm</b></span>
-        </div>
-
-        <div class="tb-metric">
-          <span class="tb-mv"><i>Live Time</i><b><span id="current-time">--:--:--</span> <em>WAT</em></b></span>
-        </div>
-
-        <button class="tb-btn" id="theme-toggle" onclick="OpsTheme.toggle()" aria-label="Toggle theme">
-          <svg id="theme-icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-          <svg id="theme-icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+      <div class="tnav-status"><span class="tnav-status-dot"></span>Operational</div>
+      <button class="tb-btn" id="theme-toggle" onclick="OpsTheme.toggle()" aria-label="Toggle theme">
+        <svg id="theme-icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        <svg id="theme-icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+      </button>
+      <button class="tb-btn" onclick="toggleAlertPanel()" aria-label="Alerts">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+        <span class="tb-badge" id="alert-badge" style="display:none">0</span>
+      </button>
+      <div class="tb-user" id="tb-user">
+        <button class="tb-user-btn" onclick="toggleUserMenu(event)">
+          <span class="tb-av" id="user-avatar">--</span>
+          <span class="tb-user-txt"><b id="user-name">Loading&#8230;</b><i id="user-role">&#8212;</i></span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
         </button>
-        <button class="tb-btn" onclick="toggleAlertPanel()" aria-label="Alerts">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
-          <span class="tb-badge" id="alert-badge" style="display:none">0</span>
-        </button>
-
-        <div class="tb-user" id="tb-user">
-          <button class="tb-user-btn" onclick="toggleUserMenu(event)">
-            <span class="tb-av" id="user-avatar">--</span>
-            <span class="tb-user-txt"><b id="user-name">Loading…</b><i id="user-role">—</i></span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-          </button>
-          <div class="tb-user-menu" id="tb-user-menu">
-            <button onclick="switchTab('settings');closeUserMenu()">Settings</button>
-            <button class="danger" onclick="handleLogout()">Sign out</button>
-          </div>
+        <div class="tb-user-menu" id="tb-user-menu">
+          <button id="nav-settings" onclick="switchTab('settings');closeUserMenu()">Settings</button>
+          <button class="danger" onclick="handleLogout()">Sign out</button>
         </div>
       </div>
+      <div style="display:none" aria-hidden="true">
+        <div class="tb-search" id="tb-search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input id="tb-search" type="text" placeholder="Search..." autocomplete="off">
+          <kbd>&#8984;K</kbd>
+          <div class="tb-search-drop" id="tb-search-drop"></div>
+        </div>
+        <span id="tb-temp">&#8212;</span><span id="tb-cond">&#8212;</span><span id="tb-rain">0.0 mm</span><span id="current-time">--:--:--</span>
+        <span id="topbar-module"></span><span id="topbar-title"></span>
+      </div>
     </div>
-
-    <div class="content">
+  </header>
+  <div class="content">
       <div id="content-dashboard"    class="tab-content active"></div>
       <div id="content-clients"      class="tab-content"></div>
       <div id="content-properties"   class="tab-content"></div>
@@ -1336,7 +1285,6 @@
       <div id="content-audit"        class="tab-content"></div>
       <div id="content-settings"     class="tab-content"></div>
     </div>
-  </div>
 </div>
 
 <!-- Alert Tray -->
@@ -1665,13 +1613,10 @@
       const btn = document.getElementById(`nav-${tab}`);
       if (btn) btn.style.display = Auth.hasNavAccess(tab) ? '' : 'none';
     });
-    document.querySelectorAll('.nav-sect').forEach(sec => {
-      let el = sec.nextElementSibling, vis = false;
-      while (el && !el.classList.contains('nav-sect')) {
-        if (el.style.display !== 'none') { vis = true; break; }
-        el = el.nextElementSibling;
-      }
-      sec.style.display = vis ? '' : 'none';
+    // hide a top-nav group when all of its links are inaccessible
+    document.querySelectorAll('.tnav-grp').forEach(grp => {
+      const links = [...grp.querySelectorAll('.tnav-link')];
+      grp.style.display = links.some(l => l.style.display !== 'none') ? '' : 'none';
     });
   }
 
@@ -1696,6 +1641,8 @@
 
     document.getElementById(`content-${name}`)?.classList.add('active');
     document.getElementById(`nav-${name}`)?.classList.add('active');
+    document.querySelectorAll('.tnav-grp.active').forEach(g => g.classList.remove('active'));
+    document.getElementById(`nav-${name}`)?.closest('.tnav-grp')?.classList.add('active');
 
     const m = TAB_META[name] || {};
     const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
