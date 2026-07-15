@@ -232,6 +232,23 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
 .neon-dash .incident-scroll::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:3px;}
 .neon-dash .incident-scroll::-webkit-scrollbar-track{background:transparent;}
 .neon-dash .incident-empty{padding:8px 0;font-size:11.5px;color:var(--text-3);}
+/* ── Responsive: stack the dashboard grids on smaller screens ── */
+@media (max-width:1080px){
+  .neon-dash .main-grid{grid-template-columns:1fr;}
+  .neon-dash .ops-row{grid-template-columns:1fr;}
+  .neon-dash .bottom-row{grid-template-columns:1fr;}
+  .neon-dash .incident-scroll{max-height:none;}
+}
+@media (max-width:880px){
+  .neon-dash .story-strip{grid-template-columns:repeat(2,1fr);}
+  .neon-dash .map-panel{height:380px;}
+}
+@media (max-width:560px){
+  .neon-dash .story-strip{grid-template-columns:1fr;}
+  .neon-dash .portfolio-grid{grid-template-columns:1fr 1fr;}
+  .neon-dash .inspector{width:auto;left:12px;right:12px;bottom:12px;}
+  .neon-dash .device-hero{flex-direction:column;align-items:flex-start;}
+}
 `;
   const NEON_HTML = `<div class="neon-dash">
 <div class="wrap">
