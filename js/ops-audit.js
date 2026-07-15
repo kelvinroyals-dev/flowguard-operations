@@ -261,7 +261,7 @@ const OpsAudit = (function () {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
         <div class="ops-modal-detail"><span class="label">Actor</span><span class="value">${log.actor_name || 'System'}</span></div>
         <div class="ops-modal-detail"><span class="label">Role</span><span class="value">${log.actor_role ? log.actor_role.replace(/_/g, ' ') : '—'}</span></div>
-        <div class="ops-modal-detail"><span class="label">Timestamp</span><span class="value" style="font-family:var(--ff-m);font-size:var(--fs-sm);">${log.created_at ? new Date(log.created_at).toLocaleString() : '—'}</span></div>
+        <div class="ops-modal-detail"><span class="label">Timestamp</span><span class="value" style="font-family:var(--ff-m);font-size:var(--fs-sm);">${OpsModal.fmtDateTime(log.created_at)}</span></div>
         <div class="ops-modal-detail"><span class="label">IP Address</span><span class="value" style="font-family:var(--ff-m);font-size:var(--fs-sm);">${log.ip_address || '—'}</span></div>
         ${log.target_type ? `<div class="ops-modal-detail"><span class="label">Target Type</span><span class="value">${log.target_type}</span></div>` : ''}
         ${log.target_id   ? `<div class="ops-modal-detail"><span class="label">Target ID</span><span class="value" style="font-family:var(--ff-m);font-size:var(--fs-sm);">${log.target_id}</span></div>` : ''}

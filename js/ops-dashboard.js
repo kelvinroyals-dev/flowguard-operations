@@ -58,17 +58,9 @@ const OpsDashboard = (function () {
     container.innerHTML = `
       <style>
         /* ══ COMMAND dashboard composition ══ */
-        .cmd-kpis { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin-bottom:12px; }
-        .ck { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 13px; display:flex; gap:10px; align-items:flex-start; box-shadow:var(--sh-xs); transition:border-color .15s; min-width:0; }
-        .ck:hover { border-color:var(--border-2); }
-        .ck-ic { width:32px; height:32px; border-radius:9px; display:grid; place-items:center; flex-shrink:0; }
-        .ck-ic svg { width:16px; height:16px; }
-        .ck-body { min-width:0; flex:1; }
-        .ck-label { font-size:var(--fs-2xs); font-weight:500; color:var(--ink-2); line-height:1.25; letter-spacing:0; text-transform:none; }
-        .ck-val { font-family:var(--ff-b); font-size:var(--fs-2xl); font-weight:700; color:var(--ink); margin-top:4px; line-height:1.15; letter-spacing:-.5px; }
-        .ck-sub { font-size:var(--fs-xs); color:var(--ink-3); margin-top:4px; display:flex; align-items:center; gap:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .ck-sub.ok { color:var(--ok); } .ck-sub.err { color:var(--err); } .ck-sub.warn { color:var(--warn); }
-        .ck-sub .d { width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0; }
+        /* KPI strip is the shared .fg-kpis/.fg-kpi component (index.html,
+           built via OpsModal.kpiStrip) — #dash-kpis is a bare mount point,
+           no wrapping grid class needed here anymore. */
 
         .cmd-main { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:12px; margin-bottom:14px; }
         .map-panel { position:relative; border-radius:var(--r); overflow:hidden; border:1px solid var(--border); min-height:430px; height:52vh; box-shadow:var(--sh-xs); }
@@ -145,8 +137,6 @@ const OpsDashboard = (function () {
         .tl-note { margin:0 14px 12px; padding:9px 12px; border-radius:9px; background:var(--surface-3); font-size:var(--fs-xs); color:var(--ink-2); line-height:1.5; }
 
         @media (max-width: 1500px) { .cmd-bottom { grid-template-columns:1fr 1fr; } }
-        @media (max-width: 860px)  { .cmd-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-        @media (max-width: 480px)  { .cmd-kpis { grid-template-columns:1fr; } }
         @media (max-width: 1100px) { .cmd-main { grid-template-columns:1fr; } }
         @media (max-width: 1100px) { .cmd-mid, .cmd-bottom { grid-template-columns:1fr; }  .map-panel{height:400px;} }
 
@@ -167,7 +157,7 @@ const OpsDashboard = (function () {
         .mst-chip b { font-family:var(--ff-m); color:var(--ink); }
       </style>
 
-      <div class="cmd-kpis" id="dash-kpis"></div>
+      <div id="dash-kpis"></div>
 
       <div class="cmd-main">
         <div class="map-panel">
@@ -478,7 +468,7 @@ const OpsDashboard = (function () {
           <div class="fg-popup-row"><span>Status</span>&nbsp;&nbsp;<strong style="color:${c};">${s.status}</strong></div>
           ${s.site_name  ? `<div class="fg-popup-row"><span>Site</span>&nbsp;&nbsp;${s.site_name}</div>`  : ''}
           ${s.zone       ? `<div class="fg-popup-row"><span>Zone</span>&nbsp;&nbsp;${s.zone}</div>`       : ''}
-          ${s.last_ping  ? `<div class="fg-popup-row"><span>Last ping</span>&nbsp;&nbsp;${new Date(s.last_ping).toLocaleTimeString()}</div>` : ''}
+          ${s.last_ping  ? `<div class="fg-popup-row"><span>Last ping</span>&nbsp;&nbsp;${OpsModal.fmtDateTime(s.last_ping)}</div>` : ''}
         </div>`);
       layers.sensors.addLayer(marker);
     });
@@ -501,7 +491,7 @@ const OpsDashboard = (function () {
           ${a.sensor_name   ? `<div class="fg-popup-row"><span>Sensor</span>&nbsp;&nbsp;${a.sensor_name}</div>` : ''}
           ${a.site_name     ? `<div class="fg-popup-row"><span>Site</span>&nbsp;&nbsp;${a.site_name}</div>` : ''}
           ${a.time_to_overflow_min ? `<div class="fg-popup-row" style="color:${MAP_COLORS.crit};font-weight:600;">Overflow in: ${a.time_to_overflow_min} min</div>` : ''}
-          <div class="fg-popup-row"><span>Reported</span>&nbsp;&nbsp;${new Date(a.created_at).toLocaleString()}</div>
+          <div class="fg-popup-row"><span>Reported</span>&nbsp;&nbsp;${OpsModal.fmtDateTime(a.created_at)}</div>
         </div>`);
       layers.alerts.addLayer(marker);
     });
@@ -622,7 +612,7 @@ const OpsDashboard = (function () {
     } catch (_) { return ''; }
   }
 
-  // ── KPI strip (6) ──
+  // ── KPI strip (5) — shared OpsModal.kpiStrip() component ──
   function renderKpiStrip(kpis, md, teams) {
     const el = document.getElementById('dash-kpis');
     if (!el) return;
@@ -634,42 +624,40 @@ const OpsDashboard = (function () {
     const openInc = parseInt(kpis.activeAlerts) || 0;
     const deployed = teams.filter(t => ['on_site', 'en_route'].includes((t.status || '').toLowerCase())).length;
     const pending = parseInt(kpis.pendingInspections) || 0;
-    const ic = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+    const dot = '<span class="d"></span>';
 
-    // icon tile tinted to its metric's semantic colour — like the reference
-    const card = (icon, tint, label, val, sub, subCls, dot) => `
-      <div class="ck">
-        <div class="ck-ic" style="background:${tint}1c;color:${tint}">${icon}</div>
-        <div class="ck-body">
-          <div class="ck-label">${label}</div>
-          <div class="ck-val">${val}</div>
-          <div class="ck-sub ${subCls || ''}">${dot ? '<span class="d"></span>' : ''}${sub}</div>
-        </div>
-      </div>`;
-
-    el.innerHTML =
-      card(ic('<path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/>'), 'var(--blue-hi)',
-        'Assets Under Monitoring', (am.total || 0).toLocaleString(),
-        am.total ? `${am.monitored} monitored` : 'None registered yet',
-        am.monitored ? 'ok' : '', !!am.monitored) +
-
-      card(ic('<circle cx="12" cy="12" r="3"/><path d="M12 5V3M12 21v-2M5 12H3M21 12h-2M6.4 6.4L5 5M19 19l-1.4-1.4M6.4 17.6L5 19M19 5l-1.4 1.4"/>'), 'var(--ok)',
-        'Active Sensors', so.total ? `${so.online}/${so.total}` : '—',
-        pct != null ? `Online ${pct}%` : 'No nodes yet',
-        pct != null ? (pct >= 90 ? 'ok' : pct >= 75 ? 'warn' : 'err') : '', pct != null) +
-
-      card(ic('<path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/>'), crit ? 'var(--err)' : 'var(--ok)',
-        'Open Incidents', openInc,
-        crit || high ? `Critical ${crit} · High ${high}` : 'None critical',
-        crit ? 'err' : 'ok', false) +
-
-      card(ic('<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>'), 'var(--blue-hi)',
-        'Teams Deployed', deployed,
-        `${teams.length} in the field`, deployed ? 'ok' : '', !!deployed) +
-
-      card(ic('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>'), pending ? 'var(--warn)' : 'var(--ok)',
-        'Pending Inspections', pending,
-        pending ? 'Awaiting scheduling' : 'All scheduled', pending ? 'warn' : 'ok', false);
+    el.innerHTML = OpsModal.kpiStrip([
+      {
+        icon: '<path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/>', color: 'var(--blue-hi)',
+        label: 'Assets Under Monitoring', value: (am.total || 0).toLocaleString(),
+        sub: (am.monitored ? dot : '') + (am.total ? `${am.monitored} monitored` : 'None registered yet'),
+        subClass: am.monitored ? 'ok' : '',
+      },
+      {
+        icon: '<circle cx="12" cy="12" r="3"/><path d="M12 5V3M12 21v-2M5 12H3M21 12h-2M6.4 6.4L5 5M19 19l-1.4-1.4M6.4 17.6L5 19M19 5l-1.4 1.4"/>', color: 'var(--ok)',
+        label: 'Active Sensors', value: so.total ? `${so.online}/${so.total}` : '—',
+        sub: (pct != null ? dot : '') + (pct != null ? `Online ${pct}%` : 'No nodes yet'),
+        subClass: pct != null ? (pct >= 90 ? 'ok' : pct >= 75 ? 'warn' : 'err') : '',
+      },
+      {
+        icon: '<path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/>', color: crit ? 'var(--err)' : 'var(--ok)',
+        label: 'Open Incidents', value: openInc,
+        sub: crit || high ? `Critical ${crit} · High ${high}` : 'None critical',
+        subClass: crit ? 'err' : 'ok',
+      },
+      {
+        icon: '<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>', color: 'var(--blue-hi)',
+        label: 'Teams Deployed', value: deployed,
+        sub: (deployed ? dot : '') + `${teams.length} on the roster`,
+        subClass: deployed ? 'ok' : '',
+      },
+      {
+        icon: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>', color: pending ? 'var(--warn)' : 'var(--ok)',
+        label: 'Pending Inspections', value: pending,
+        sub: pending ? 'Awaiting scheduling' : 'All scheduled',
+        subClass: pending ? 'warn' : 'ok',
+      },
+    ]);
   }
 
   // ── Priority queue: incidents ranked by severity, then age ──
@@ -839,7 +827,7 @@ const OpsDashboard = (function () {
           <span class="fr-bar"><i style="width:${lvl != null ? Math.max(3, lvl) : 0}%;background:${lvlColor}"></i></span>
           <span class="fr-dot"></span>
           <b>${n.flow_rate != null ? n.flow_rate.toFixed(1) + ' L/s' : '— L/s'}</b>
-          ${batt != null ? `<span class="fr-dot"></span><b style="color:${batt < 20 ? 'var(--err)' : batt < 40 ? 'var(--warn)' : 'var(--ink-2)'}" title="Battery">${batt}% batt</b>` : ''}
+          ${batt != null ? `<span class="fr-dot"></span><b style="color:${OpsModal.vitalColor(batt)}" title="Battery">${batt}% batt</b>` : ''}
           <span class="fr-dot"></span>
           <span>${rel(n.reading_time || n.last_ping)}</span>
         </span>

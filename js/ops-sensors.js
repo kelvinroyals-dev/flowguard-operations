@@ -20,12 +20,9 @@ const OpsSensors = (function () {
 
   const STYLES = `
     <style>
-      .sn-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:14px; }
-      .sn-kpis .ck { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; box-shadow:var(--sh-xs); min-width:0; }
-      .sn-kpis .ck-label { font-size:var(--fs-2xs); font-weight:500; color:var(--ink-2); line-height:1.25; }
-      .sn-kpis .ck-val { font-family:var(--ff-b); font-size:var(--fs-2xl); font-weight:700; color:var(--ink); margin-top:5px; line-height:1.15; letter-spacing:-.5px; }
-      .sn-kpis .ck-sub { font-size:var(--fs-xs); color:var(--ink-3); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-      .sn-kpis .ck-sub.ok { color:var(--ok); } .sn-kpis .ck-sub.warn { color:var(--warn); } .sn-kpis .ck-sub.err { color:var(--err); }
+      /* KPI strip is now the shared .fg-kpis/.fg-kpi component (index.html,
+         built via OpsModal.kpiStrip) — this used to be a local .sn-kpis .ck
+         override, close to but not the same component the dashboard used. */
 
       .sn-toolbar { display:flex; gap:9px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
       .sn-chip { padding:6px 13px; border-radius:100px; border:1px solid var(--border-2); background:var(--surface); font-size:var(--fs-xs); font-weight:600; color:var(--ink-2); cursor:pointer; user-select:none; }
@@ -70,7 +67,13 @@ const OpsSensors = (function () {
     _container = container;
     _view = 'list';
     _container.innerHTML = STYLES + `
-      <div class="sn-kpis" id="sn-kpis"></div>
+      <div class="fg-page-header">
+        <div>
+          <div class="fg-page-title">Sentinel</div>
+          <div class="fg-page-sub">The devices themselves — online state, battery, signal, and the assets each node covers</div>
+        </div>
+      </div>
+      <div id="sn-kpis"></div>
       <div class="sn-toolbar" id="sn-toolbar"></div>
       <div id="sn-note-slot"></div>
       <div id="sn-body"><div class="sn-empty">Loading the Sentinel fleet…</div></div>
@@ -108,7 +111,13 @@ const OpsSensors = (function () {
     // rebuild the list shell if it's not there, otherwise just refresh it in place
     if (!document.getElementById('sn-kpis')) {
       _container.innerHTML = STYLES + `
-        <div class="sn-kpis" id="sn-kpis"></div>
+        <div class="fg-page-header">
+          <div>
+            <div class="fg-page-title">Sentinel</div>
+            <div class="fg-page-sub">The devices themselves — online state, battery, signal, and the assets each node covers</div>
+          </div>
+        </div>
+        <div id="sn-kpis"></div>
         <div class="sn-toolbar" id="sn-toolbar"></div>
         <div id="sn-note-slot"></div>
         <div id="sn-body"></div>
@@ -128,13 +137,13 @@ const OpsSensors = (function () {
     const unassigned = _all.filter(x => !x.assets || !x.assets.length).length;
     const silent = _all.filter(x => !x.reading_time && !x.last_ping).length;
 
-    kp.innerHTML = `
-      <div class="ck"><div class="ck-label">Fleet size</div><div class="ck-val">${total}</div><div class="ck-sub">Deployed Sentinels</div></div>
-      <div class="ck"><div class="ck-label">Online</div><div class="ck-val">${online}</div><div class="ck-sub ${online === total && total ? 'ok' : ''}">${total ? Math.round(online / total * 100) + '% reporting' : '—'}</div></div>
-      <div class="ck"><div class="ck-label">Offline / maintenance</div><div class="ck-val">${offline + maint}</div><div class="ck-sub ${offline ? 'err' : ''}">${offline} offline · ${maint} maintenance</div></div>
-      <div class="ck"><div class="ck-label">Low battery</div><div class="ck-val">${battKnown ? lowBatt : '—'}</div><div class="ck-sub ${lowBatt ? 'warn' : ''}">${battKnown ? 'Below 20%' : 'Not reported'}</div></div>
-      <div class="ck"><div class="ck-label">Unassigned</div><div class="ck-val">${unassigned}</div><div class="ck-sub ${unassigned ? 'warn' : 'ok'}">${unassigned ? 'Covering no asset' : 'All assigned'}</div></div>
-    `;
+    kp.innerHTML = OpsModal.kpiStrip([
+      { label: 'Fleet size', value: total, sub: 'Deployed Sentinels' },
+      { label: 'Online', value: online, sub: total ? Math.round(online / total * 100) + '% reporting' : '—', subClass: online === total && total ? 'ok' : '' },
+      { label: 'Offline / maintenance', value: offline + maint, sub: `${offline} offline · ${maint} maintenance`, subClass: offline ? 'err' : '' },
+      { label: 'Low battery', value: battKnown ? lowBatt : '—', sub: battKnown ? 'Below 20%' : 'Not reported', subClass: lowBatt ? 'warn' : '' },
+      { label: 'Unassigned', value: unassigned, sub: unassigned ? 'Covering no asset' : 'All assigned', subClass: unassigned ? 'warn' : 'ok' },
+    ]);
 
     const chips = [
       ['all', `All (${total})`], ['active', `Online (${online})`],
@@ -180,12 +189,9 @@ const OpsSensors = (function () {
     return `<span class="status-badge ${m[status] || 'critical'}">${lbl[status] || 'Offline'}</span>`;
   }
 
-  function vitColor(v, invert) {
-    if (v == null) return 'var(--ink-4)';
-    const bad = invert ? v <= 20 : v >= 80;
-    const mid = invert ? v <= 40 : v >= 60;
-    return bad ? 'var(--err)' : mid ? 'var(--warn)' : 'var(--ok)';
-  }
+  // Battery/signal color banding lives once in OpsModal.vitalColor() —
+  // used to be a local copy here with a too-lenient <=20/<=40 band that
+  // let a 47% battery render green.
 
   function renderTable(rows) {
     const el = document.getElementById('sn-body');
@@ -215,8 +221,8 @@ const OpsSensors = (function () {
                     <div class="sn-dev-code">${esc(x.sensor_id)}</div>
                   </td>
                   <td>${statusBadge(x.status)}</td>
-                  <td class="sn-vit" style="text-align:right;color:${vitColor(x.battery_percent, true)};">${x.battery_percent != null ? x.battery_percent + '%' : '—'}</td>
-                  <td class="sn-vit" style="text-align:right;color:${vitColor(x.signal_strength, true)};">${x.signal_strength != null ? x.signal_strength + '%' : '—'}</td>
+                  <td class="sn-vit" style="text-align:right;color:${OpsModal.vitalColor(x.battery_percent)};">${x.battery_percent != null ? x.battery_percent + '%' : '—'}</td>
+                  <td class="sn-vit" style="text-align:right;color:${OpsModal.vitalColor(x.signal_strength)};">${x.signal_strength != null ? x.signal_strength + '%' : '—'}</td>
                   <td class="sn-vit" style="color:${beat ? 'var(--ink-2)' : 'var(--err)'};">${beat || 'never'}</td>
                   <td class="sn-cov-count ${assets.length ? '' : 'warn'}">${assets.length ? `${assets.length} asset${assets.length > 1 ? 's' : ''}` : 'Unassigned'}</td>
                 </tr>`;
@@ -280,8 +286,8 @@ const OpsSensors = (function () {
 
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;">
         <div class="ops-modal-detail"><span class="label">Status</span><span class="value">${statusBadge(x.status)}</span></div>
-        <div class="ops-modal-detail"><span class="label">Battery</span><span class="value" style="color:${vitColor(x.battery_percent, true)};">${x.battery_percent != null ? x.battery_percent + '%' : '—'}</span></div>
-        <div class="ops-modal-detail"><span class="label">Signal</span><span class="value" style="color:${vitColor(x.signal_strength, true)};">${x.signal_strength != null ? x.signal_strength + '%' : '—'}</span></div>
+        <div class="ops-modal-detail"><span class="label">Battery</span><span class="value" style="color:${OpsModal.vitalColor(x.battery_percent)};">${x.battery_percent != null ? x.battery_percent + '%' : '—'}</span></div>
+        <div class="ops-modal-detail"><span class="label">Signal</span><span class="value" style="color:${OpsModal.vitalColor(x.signal_strength)};">${x.signal_strength != null ? x.signal_strength + '%' : '—'}</span></div>
         <div class="ops-modal-detail"><span class="label">Last reading</span><span class="value" style="color:${beat ? 'var(--ink)' : 'var(--err)'};">${beat || 'never'}</span></div>
         <div class="ops-modal-detail"><span class="label">Device variant</span><span class="value">${x.device_variant ? esc(x.device_variant.replace(/_/g, ' ')) : '—'}</span></div>
         <div class="ops-modal-detail"><span class="label">Firmware</span><span class="value">${x.firmware_version ? esc(x.firmware_version) : '—'}</span></div>

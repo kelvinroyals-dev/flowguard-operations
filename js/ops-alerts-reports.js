@@ -17,99 +17,14 @@ const OpsAlerts = (function () {
   function render(container) {
     container.innerHTML = `
       <style>
-        /* ── Stats row ── */
-        .al-stats {
-          display: grid;
-          grid-template-columns: repeat(5, 1fr);
-          gap: 14px;
-          margin-bottom: 20px;
-        }
-
-        .al-stat {
-          background: var(--surface, #fff);
-          border: 1px solid var(--border, #dae6ef);
-          border-radius: var(--r, 14px);
-          padding: 18px 20px;
-          position: relative; overflow: hidden;
-          box-shadow: var(--sh-xs, 0 1px 2px rgba(10,31,46,.06));
-          transition: all .2s;
-        }
-
-        .al-stat:hover { transform: translateY(-2px); box-shadow: var(--sh-md, 0 4px 20px rgba(10,31,46,.09)); }
-
-        .al-stat::after {
-          content: '';
-          position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
-        }
-
-        .al-stat.critical::after { background: var(--err, #dc2626); }
-        .al-stat.high::after     { background: var(--caut, #c2410c); }
-        .al-stat.moderate::after { background: var(--warn, #b45309); }
-        .al-stat.minor::after    { background: var(--ink-3, #64748b); }
-        .al-stat.warning::after  { background: var(--caut, #c2410c); }
-        .al-stat.watch::after    { background: var(--warn, #b45309); }
-        .al-stat.total::after    { background: linear-gradient(90deg, var(--navy, #0a2a3d), var(--blue, #16a8d3)); }
-
-        .al-stat-label {
-          font-size: var(--fs-2xs); font-weight: 700;
-          letter-spacing: 1.5px; text-transform: uppercase;
-          color: var(--ink-3, #6b8fa3); margin-bottom: 6px;
-        }
-
-        .al-stat-val {
-          font-family: var(--ff-d, 'Space Grotesk', sans-serif);
-          font-size: var(--fs-2xl); font-weight: 900;
-          line-height: 1; letter-spacing: -.03em;
-          color: var(--ink, #0a1f2e);
-        }
-
-        .al-stat-val.critical { color: var(--err, #dc2626); }
-        .al-stat-val.high     { color: var(--caut, #c2410c); }
-        .al-stat-val.moderate { color: var(--warn, #b45309); }
-        .al-stat-val.minor    { color: var(--ink-3, #64748b); }
-        .al-stat-val.warning  { color: var(--caut, #c2410c); }
-        .al-stat-val.watch    { color: var(--warn, #b45309); }
+        /* ── Stats row — shared .fg-kpis/.fg-kpi (OpsModal.kpiStrip), and the
+           cards double as the severity filter, so the separate al-filters
+           button row underneath it is gone (was two rows doing the same
+           job, and the extra row was pure vertical space with nothing else
+           on it — the KPI-strip-eats-300px-before-a-single-record problem). ── */
         .severity-high     { border-left-color: var(--caut, #c2410c) !important; }
         .severity-moderate { border-left-color: var(--warn, #b45309) !important; }
         .severity-minor    { border-left-color: var(--ink-3, #64748b) !important; }
-
-        /* ── Filter tabs ── */
-        .al-filters {
-          display: flex; align-items: center; gap: 6px;
-          margin-bottom: 16px;
-        }
-
-        .al-filter-btn {
-          padding: 6px 16px;
-          border-radius: 20px;
-          border: 1px solid var(--border, #dae6ef);
-          background: var(--surface, #fff);
-          font-family: var(--ff-b, 'Inter', sans-serif);
-          font-size: var(--fs-sm); font-weight: 600;
-          color: var(--ink-3, #6b8fa3);
-          cursor: pointer; transition: all .18s;
-        }
-
-        .al-filter-btn:hover { border-color: var(--border-2, #b8d0de); color: var(--ink-2, #2d5068); }
-
-        .al-filter-btn.active {
-          background: var(--navy, #0a2a3d);
-          border-color: var(--navy, #0a2a3d);
-          color: white;
-        }
-
-        .al-filter-btn.active.critical { background: var(--err, #dc2626); border-color: var(--err, #dc2626); }
-        .al-filter-btn.active.high     { background: var(--caut, #c2410c); border-color: var(--caut, #c2410c); }
-        .al-filter-btn.active.moderate { background: var(--warn, #b45309); border-color: var(--warn, #b45309); }
-        .al-filter-btn.active.minor    { background: var(--ink-3, #64748b); border-color: var(--ink-3, #64748b); }
-
-        .al-count-pill {
-          display: inline-flex; align-items: center; justify-content: center;
-          width: 18px; height: 18px; border-radius: 50%;
-          font-size: var(--fs-2xs); font-weight: 700;
-          background: rgba(255,255,255,.2);
-          margin-left: 4px;
-        }
 
         /* ── Feed card ── */
         .al-feed-card {
@@ -223,38 +138,15 @@ const OpsAlerts = (function () {
         .al-empty-sub   { font-size: var(--fs-sm); }
       </style>
 
-      <!-- Stats — matches alerts.severity CHECK constraint exactly: critical | high | moderate | minor -->
-      <div class="al-stats">
-        <div class="al-stat critical">
-          <div class="al-stat-label">Critical</div>
-          <div class="al-stat-val critical" id="al-critical">—</div>
-        </div>
-        <div class="al-stat high">
-          <div class="al-stat-label">High</div>
-          <div class="al-stat-val high" id="al-high">—</div>
-        </div>
-        <div class="al-stat moderate">
-          <div class="al-stat-label">Moderate</div>
-          <div class="al-stat-val moderate" id="al-moderate">—</div>
-        </div>
-        <div class="al-stat minor">
-          <div class="al-stat-label">Minor</div>
-          <div class="al-stat-val minor" id="al-minor">—</div>
-        </div>
-        <div class="al-stat total">
-          <div class="al-stat-label">Total Active</div>
-          <div class="al-stat-val" id="al-total">—</div>
+      <div class="fg-page-header">
+        <div>
+          <div class="fg-page-title">Alerts</div>
+          <div class="fg-page-sub">Active incidents raised by the Sentinel network, ranked by severity</div>
         </div>
       </div>
 
-      <!-- Filters -->
-      <div class="al-filters">
-        <button class="al-filter-btn active" id="filter-all"      onclick="OpsAlerts.setFilter('all')">All</button>
-        <button class="al-filter-btn critical" id="filter-critical" onclick="OpsAlerts.setFilter('critical')">Critical</button>
-        <button class="al-filter-btn high"     id="filter-high"     onclick="OpsAlerts.setFilter('high')">High</button>
-        <button class="al-filter-btn moderate" id="filter-moderate" onclick="OpsAlerts.setFilter('moderate')">Moderate</button>
-        <button class="al-filter-btn minor"    id="filter-minor"    onclick="OpsAlerts.setFilter('minor')">Minor</button>
-      </div>
+      <!-- Stats/filter — matches alerts.severity CHECK constraint exactly: critical | high | moderate | minor -->
+      <div id="al-stats"></div>
 
       <!-- Feed -->
       <div class="al-feed-card">
@@ -295,6 +187,13 @@ const OpsAlerts = (function () {
     }
   }
 
+  const WARN_ICON = '<path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/>';
+  const CHECK_ICON = '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>';
+
+  // Shared KpiStrip, doubling as the severity filter (matches the Properties
+  // pipeline pattern) — was a stat-card row PLUS a separate filter-button
+  // row underneath doing the same job, costing an extra ~40px of vertical
+  // space above the fold with nothing on it but redundant controls.
   function updateStats(alerts) {
     // alerts.severity CHECK constraint: critical | high | moderate | minor.
     // One count per real value — no folding into legacy 3-bucket labels.
@@ -307,20 +206,20 @@ const OpsAlerts = (function () {
         default:         minor++;
       }
     });
-    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-    set('al-critical', critical);
-    set('al-high',     high);
-    set('al-moderate', moderate);
-    set('al-minor',    minor);
-    set('al-total',    alerts.length);
+    const el = document.getElementById('al-stats');
+    if (!el) return;
+    el.innerHTML = OpsModal.kpiStrip([
+      { icon: WARN_ICON,  color: 'var(--err)',   label: 'Critical',    value: critical, active: _filter === 'critical', onClick: "OpsAlerts.setFilter('critical')" },
+      { icon: WARN_ICON,  color: 'var(--caut)',  label: 'High',        value: high,     active: _filter === 'high',     onClick: "OpsAlerts.setFilter('high')" },
+      { icon: WARN_ICON,  color: 'var(--warn)',  label: 'Moderate',    value: moderate, active: _filter === 'moderate', onClick: "OpsAlerts.setFilter('moderate')" },
+      { icon: WARN_ICON,  color: 'var(--ink-3)', label: 'Minor',       value: minor,    active: _filter === 'minor',    onClick: "OpsAlerts.setFilter('minor')" },
+      { icon: CHECK_ICON, color: 'var(--blue-hi)', label: 'Total Active', value: alerts.length, active: _filter === 'all', onClick: "OpsAlerts.setFilter('all')" },
+    ]);
   }
 
   function setFilter(f) {
     _filter = f;
-    ['all','critical','high','moderate','minor'].forEach(k => {
-      const btn = document.getElementById(`filter-${k}`);
-      if (btn) btn.classList.toggle('active', k === f);
-    });
+    updateStats(_allAlerts);
     const filtered = f === 'all' ? _allAlerts : _allAlerts.filter(a => severityClass(a.severity) === f);
     if (_pg) _pg.update(filtered);
     else renderFeed(filtered, f);
@@ -478,7 +377,7 @@ const OpsAlerts = (function () {
         <div class="ops-modal-detail"><span class="label">Sensor</span><span class="value">${a.sensor_name || '—'}</span></div>
         <div class="ops-modal-detail"><span class="label">Site</span><span class="value">${a.site_name || '—'}</span></div>
         <div class="ops-modal-detail"><span class="label">Status</span><span class="value"><span class="status-badge ${a.status === 'resolved' ? 'nominal' : severityBadgeClass(a.severity)}">${a.status || 'active'}</span></span></div>
-        <div class="ops-modal-detail"><span class="label">Reported</span><span class="value">${time ? new Date(time).toLocaleString() : '—'}</span></div>
+        <div class="ops-modal-detail"><span class="label">Reported</span><span class="value">${OpsModal.fmtDateTime(time)}</span></div>
         <div class="ops-modal-detail"><span class="label">Assigned To</span><span class="value">${a.assigned_team || 'Unassigned'}</span></div>
         ${a.time_to_overflow_min ? `<div class="ops-modal-detail" style="grid-column:1/-1;"><span class="label">Time to Overflow</span><span class="value" style="color:var(--err);font-weight:700;">${a.time_to_overflow_min} minutes</span></div>` : ''}
       </div>

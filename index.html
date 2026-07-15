@@ -387,12 +387,6 @@
       color: var(--blue); opacity: .85;
     }
 
-    .sb-status-time {
-      margin-left: auto;
-      font-family: var(--ff-m);
-      font-size: var(--fs-2xs); color: var(--sb-ink-4);
-    }
-
     /* ── Nav ── */
     .sb-nav {
       flex: 1; overflow-y: auto; overflow-x: hidden;
@@ -1016,6 +1010,40 @@
     .status-badge.critical { background:var(--eb);    color:var(--err); }
     .status-badge.offline  { background:var(--ob);    color:var(--off); }
 
+    /* ══ Shared page header — every module's opening H1 + subtitle ══
+       Properties and Clients each had their own identical copy of this
+       (.pr-header/.cl-header, byte-for-byte the same rules under different
+       prefixes); Sentinel and Alerts had no header at all and started cold
+       on their KPI strip. One class pair, used by all four. */
+    .fg-page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
+    .fg-page-title { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:800; color:var(--ink); letter-spacing:-.02em; margin-bottom:3px; }
+    .fg-page-sub { font-size:var(--fs-base); color:var(--ink-3); }
+
+    /* ══ Shared KPI strip — the ONE stat-card design every module uses ══
+       Built via OpsModal.kpiStrip()/kpiCard() (js/ops-modal.js). This
+       replaces five different bespoke KPI card implementations that used
+       to make Dashboard, Sentinel, Properties, Clients, and Alerts each
+       look like a different product (icon+sentence-case vs uppercase+
+       colored-border vs uppercase+colored-numerals, 5/5/4/4/5 card counts,
+       three different value type sizes). One card, one grid rhythm,
+       consumed everywhere. */
+    .fg-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px; margin-bottom:14px; }
+    .fg-kpi { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 14px; display:flex; gap:10px; align-items:flex-start; box-shadow:var(--sh-xs); transition:border-color .15s; min-width:0; }
+    .fg-kpi:hover { border-color:var(--border-2); }
+    .fg-kpi.clickable { cursor:pointer; }
+    .fg-kpi.active { border-color:var(--blue-dim); box-shadow:0 0 0 2px var(--neon-glow), var(--sh-xs); }
+    .fg-kpi-ic { width:32px; height:32px; border-radius:9px; display:grid; place-items:center; flex-shrink:0; }
+    .fg-kpi-ic svg { width:16px; height:16px; }
+    .fg-kpi-body { min-width:0; flex:1; }
+    .fg-kpi-label { font-size:var(--fs-2xs); font-weight:500; color:var(--ink-2); line-height:1.25; }
+    .fg-kpi-val { font-family:var(--ff-b); font-size:var(--fs-2xl); font-weight:700; color:var(--ink); margin-top:4px; line-height:1.15; letter-spacing:-.5px; }
+    /* sub-line WRAPS instead of silently ellipsis-truncating — a narrow
+       card used to cut "Deployed Sentinels" down to "Deployed Senti" with
+       no way to recover the rest of the sentence. */
+    .fg-kpi-sub { font-size:var(--fs-xs); color:var(--ink-3); margin-top:4px; display:flex; align-items:flex-start; gap:4px; line-height:1.35; }
+    .fg-kpi-sub.ok { color:var(--ok); } .fg-kpi-sub.err { color:var(--err); } .fg-kpi-sub.warn { color:var(--warn); }
+    .fg-kpi-sub .d { width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0; margin-top:5px; }
+
     .metric-tile { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:18px; position:relative; overflow:hidden; box-shadow:var(--sh-xs); transition:all .2s; }
     .metric-tile:hover { box-shadow:var(--sh-md); border-color:var(--border-2); transform:translateY(-2px); }
     .metric-tile::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--navy),var(--blue)); opacity:.45; }
@@ -1026,11 +1054,20 @@
     .metric-sub { font-size:var(--fs-xs); color:var(--ink-3); margin-top:5px; }
 
     .ops-table { width:100%; border-collapse:collapse; }
-    .ops-table th { padding:11px 16px; text-align:left; font-size:var(--fs-xs); font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--ink-3); border-bottom:1.5px solid var(--border); }
-    .ops-table td { padding:12px 16px; font-size:var(--fs-md); color:var(--ink-2); border-bottom:1px solid var(--border); transition:background .1s; }
+    .ops-table th { padding:9px 14px; text-align:left; font-size:var(--fs-xs); font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--ink-3); border-bottom:1.5px solid var(--border); white-space:nowrap; }
+    .ops-table td { padding:8px 14px; font-size:var(--fs-md); color:var(--ink-2); border-bottom:1px solid var(--border); transition:background .1s; }
     .ops-table tr:last-child td { border-bottom:none; }
     .ops-table tr:hover td { background:var(--surface-3); }
+    .ops-table tr:nth-child(even) td { background:var(--surface-2); }
+    .ops-table tr:nth-child(even):hover td { background:var(--surface-3); }
     .ops-table td.bright { color:var(--ink); font-weight:600; }
+    /* one truncated line beats a name wrapping the row to 3 lines and
+       tripling its height — hover (title attr, set per-row) recovers the
+       full text without spending permanent vertical space on it. */
+    .ops-table td.trunc { max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    /* numeric columns should line up on the decimal/last digit, not sit
+       ragged — set on any cell holding a count, %, or currency value. */
+    .ops-table td.num { font-variant-numeric:tabular-nums; font-family:var(--ff-m); }
 
     .btn-primary { padding:9px 18px; background:var(--navy); border:none; border-radius:var(--rs); color:white; font-family:var(--ff-b); font-size:var(--fs-base); font-weight:700; cursor:pointer; transition:all .18s; display:inline-flex; align-items:center; gap:7px; box-shadow:0 2px 8px rgba(10,31,46,.2); }
     .btn-primary:hover { background:var(--navy-mid); box-shadow:0 4px 16px rgba(10,31,46,.28); transform:translateY(-1px); }
@@ -1140,7 +1177,6 @@
     <div class="sb-status">
       <div class="sb-status-dot"></div>
       <span class="sb-status-text">Operational</span>
-      <span class="sb-status-time" id="sb-time">--:--</span>
     </div>
 
     <div class="sb-nav">
@@ -1813,10 +1849,20 @@
   // ── Clock ─────────────────────────────────────────────────────────────
   function updateClock() {
     const now = new Date();
-    const d = now.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
     const t = now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
     document.getElementById('current-time').textContent = t;
+  }
 
+  // ── One-time topbar setup ────────────────────────────────────────────
+  // This used to live INSIDE updateClock(), which runs every second via
+  // setInterval — so the storm-banner fetch, the weather-chip fetch, and
+  // the command-search event listeners were all re-registered every
+  // second, forever: duplicate listeners piling up on every keystroke
+  // handler, and a fresh setInterval(load, 30min) created every second
+  // that never gets cleared, hammering the weather API in ever-growing
+  // multiples the longer a tab stays open. None of that is time-related —
+  // it only needs to run once at boot.
+  function initTopbarWidgets() {
     // ══ Theme (dark-first COMMAND) ══
     window.OpsTheme = (function () {
       function get() { return localStorage.getItem('ops_theme') || 'dark'; }
@@ -1910,9 +1956,6 @@
       load();
       setInterval(load, 30 * 60 * 1000);
     })();
-
-    const sb = document.getElementById('sb-time');
-    if (sb) sb.textContent = now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
   }
 
   // ── Logout ────────────────────────────────────────────────────────────
@@ -1931,6 +1974,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     Auth.updateUserInfo();
     applyRoleNav();
+    initTopbarWidgets();
     updateClock();
     setInterval(updateClock, 1000);
     setInterval(() => { if (_activeTab) updateSyncBadge(_activeTab); }, 60000);

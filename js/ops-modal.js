@@ -404,6 +404,73 @@ const OpsModal = (function () {
     if (typeof fn === 'function') fn();
   }
 
+  // ── SHARED DATE/TIME FORMATTING ───────────────────────────────────────
+  // Most record dates already used en-GB day/month/year consistently
+  // (Joined, Submitted, Due…). But a handful of fields — Alert "Reported",
+  // Audit "Timestamp", Client "Last Login", the map popup's "Reported"/
+  // "Last ping" — called toLocaleString()/toLocaleTimeString() with no
+  // locale argument, which renders in whatever locale the *browser* is
+  // set to. Two ops staff on the same screen, one with a US-locale
+  // browser and one with en-GB, would see the same timestamp as
+  // "7/15/2026, 10:30 PM" on one machine and "15/07/2026, 22:30" on the
+  // other — for a Lagos-based team that's a real inconsistency, not just
+  // a style nit. These two helpers are the one place absolute dates and
+  // date+times get formatted; always en-GB (day before month, like every
+  // other date already in the app), always explicit.
+  function fmtDate(ds) {
+    if (!ds) return '—';
+    return new Date(ds).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  function fmtDateTime(ds) {
+    if (!ds) return '—';
+    return new Date(ds).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  // ── SHARED VITAL-SIGN COLOR THRESHOLDS ────────────────────────────────
+  // Battery % and signal % are both "lower = worse" gauges. Three separate
+  // copies of this banding used to exist (Sentinel's vitColor(), and two
+  // different inline versions on the dashboard) with different thresholds
+  // and even different "healthy" colors (green in one, neutral grey in
+  // another) — so a 47% battery read fine on one screen and unremarkably
+  // grey on another, and neither flagged it as low. One scale, applied
+  // everywhere a battery or signal percentage renders: <20% critical,
+  // 20–49% low, 50%+ healthy.
+  function vitalColor(v) {
+    if (v == null) return 'var(--ink-4)';
+    if (v < 20) return 'var(--err)';
+    if (v < 50) return 'var(--warn)';
+    return 'var(--ok)';
+  }
+
+  // ── SHARED KPI STRIP ───────────────────────────────────────────────────
+  // One card design for every module (Dashboard/Sentinel/Properties/Clients/
+  // Alerts used to each invent their own — icon+sentence-case vs uppercase+
+  // border vs uppercase+colored numerals). CSS lives once in index.html as
+  // .fg-kpis/.fg-kpi. Renders a row of stat cards from plain data so no
+  // module needs its own markup for "label, big number, optional sub-line".
+  //   opts: { icon (inner SVG path markup, optional), color (CSS color,
+  //           used for icon tint), label, value, sub (optional), subClass
+  //           ('ok'|'warn'|'err', optional), onClick (JS string, optional),
+  //           active (bool, optional — highlights as the current filter) }
+  function kpiCard(opts) {
+    const color = opts.color || 'var(--blue-hi)';
+    const ic = opts.icon
+      ? `<div class="fg-kpi-ic" style="background:${color}22;color:${color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${opts.icon}</svg></div>`
+      : '';
+    const cls = `fg-kpi${opts.onClick ? ' clickable' : ''}${opts.active ? ' active' : ''}`;
+    const attrs = opts.onClick
+      ? ` onclick="${opts.onClick}" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}"`
+      : '';
+    return `<div class="${cls}"${attrs}>${ic}<div class="fg-kpi-body">
+        <div class="fg-kpi-label">${opts.label}</div>
+        <div class="fg-kpi-val">${opts.value}</div>
+        ${opts.sub != null ? `<div class="fg-kpi-sub ${opts.subClass || ''}">${opts.sub}</div>` : ''}
+      </div></div>`;
+  }
+  function kpiStrip(cards) {
+    return `<div class="fg-kpis">${cards.map(kpiCard).join('')}</div>`;
+  }
+
   // ── PUBLIC API ─────────────────────────────────────────────────────────
 
   return {
@@ -412,6 +479,8 @@ const OpsModal = (function () {
     apiGet, apiPost, apiPut, apiDelete,
     escape, sid,
     toast, confirm, _runConfirm,
+    kpiCard, kpiStrip, vitalColor,
+    fmtDate, fmtDateTime,
   };
 
 })();

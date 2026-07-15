@@ -21,63 +21,8 @@ const OpsProperties = (function () {
   function render(container) {
     container.innerHTML = `
       <style>
-        .pr-header {
-          display: flex; align-items: flex-start;
-          justify-content: space-between; margin-bottom: 20px;
-        }
-
-        .pr-header-title {
-          font-family: var(--ff-d, 'Space Grotesk', sans-serif);
-          font-size: var(--fs-xl); font-weight: 800;
-          color: var(--ink, #0a1f2e); letter-spacing: -.02em; margin-bottom: 3px;
-        }
-
-        .pr-header-sub { font-size: var(--fs-base); color: var(--ink-3, #6b8fa3); }
-
-        /* Pipeline stage tiles */
-        .pr-pipeline {
-          display: grid;
-          grid-template-columns: repeat(5, 1fr);
-          gap: 10px; margin-bottom: 20px;
-        }
-
-        .pr-stage {
-          background: var(--surface, #fff);
-          border: 1px solid var(--border, #dae6ef);
-          border-radius: var(--r, 14px);
-          padding: 14px 16px;
-          position: relative; overflow: hidden;
-          box-shadow: var(--sh-xs);
-          cursor: pointer; transition: all .18s;
-        }
-
-        .pr-stage:hover { transform: translateY(-2px); box-shadow: var(--sh-md); border-color: var(--border-2, #b8d0de); }
-        .pr-stage.active-filter { border-color: var(--navy, #0a2a3d); box-shadow: 0 0 0 2px rgba(10,42,61,.12), var(--sh-sm); }
-
-        .pr-stage::after {
-          content: ''; position: absolute;
-          bottom: 0; left: 0; right: 0; height: 3px;
-        }
-
-        .pr-stage.s0::after { background: var(--warn, #b45309); }
-        .pr-stage.s1::after { background: var(--caut, #c2410c); }
-        .pr-stage.s2::after { background: var(--amber, #f5a623); }
-        .pr-stage.s3::after { background: #3b82f6; }
-        .pr-stage.s4::after { background: linear-gradient(90deg, var(--navy, #0a2a3d), var(--blue, #16a8d3)); }
-
-        .pr-stage-label {
-          font-size: var(--fs-2xs); font-weight: 700;
-          letter-spacing: 1.2px; text-transform: uppercase;
-          color: var(--ink-3, #6b8fa3); margin-bottom: 6px;
-        }
-
-        .pr-stage-val {
-          font-family: var(--ff-d, 'Space Grotesk', sans-serif);
-          font-size: var(--fs-2xl); font-weight: 900;
-          color: var(--ink, #0a1f2e); letter-spacing: -.03em; line-height: 1;
-        }
-
-        .pr-stage-sub { font-size: var(--fs-xs); color: var(--ink-3, #6b8fa3); margin-top: 3px; }
+        /* Page header uses the shared .fg-page-header/.fg-page-title/
+           .fg-page-sub (index.html) — was a local .pr-header* copy. */
 
         /* Table card */
         .pr-table-card {
@@ -125,60 +70,24 @@ const OpsProperties = (function () {
         }
       </style>
 
-      <div class="pr-header">
+      <div class="fg-page-header">
         <div>
-          <div class="pr-header-title">Areas & Inspections</div>
-          <div class="pr-header-sub">Submitted estates, communities, and drainage areas — full pipeline view</div>
+          <div class="fg-page-title">Properties</div>
+          <div class="fg-page-sub">Properties moving through inspection, quoting, and activation</div>
         </div>
       </div>
 
-      <!-- Pipeline stages -->
-      <div class="pr-pipeline">
-        <div class="pr-stage s0" id="prs-0" role="button" tabindex="0" aria-label="Filter: Awaiting Review"
-          onclick="OpsProperties.filterStage('submitted')"
-          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();OpsProperties.filterStage('submitted')}">
-          <div class="pr-stage-label">Awaiting Review</div>
-          <div class="pr-stage-val" id="prc-0">—</div>
-          <div class="pr-stage-sub">Submitted</div>
-        </div>
-        <div class="pr-stage s1" id="prs-1" role="button" tabindex="0" aria-label="Filter: In Inspection"
-          onclick="OpsProperties.filterStage('inspection')"
-          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();OpsProperties.filterStage('inspection')}">
-          <div class="pr-stage-label">In Inspection</div>
-          <div class="pr-stage-val" id="prc-1">—</div>
-          <div class="pr-stage-sub">Scheduled / Ongoing</div>
-        </div>
-        <div class="pr-stage s2" id="prs-2" role="button" tabindex="0" aria-label="Filter: Report Ready"
-          onclick="OpsProperties.filterStage('report')"
-          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();OpsProperties.filterStage('report')}">
-          <div class="pr-stage-label">Report Ready</div>
-          <div class="pr-stage-val" id="prc-2">—</div>
-          <div class="pr-stage-sub">Awaiting quote</div>
-        </div>
-        <div class="pr-stage s3" id="prs-3" role="button" tabindex="0" aria-label="Filter: Quote / Payment"
-          onclick="OpsProperties.filterStage('billing')"
-          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();OpsProperties.filterStage('billing')}">
-          <div class="pr-stage-label">Quote / Payment</div>
-          <div class="pr-stage-val" id="prc-3">—</div>
-          <div class="pr-stage-sub">In billing</div>
-        </div>
-        <div class="pr-stage s4" id="prs-4" role="button" tabindex="0" aria-label="Filter: Active"
-          onclick="OpsProperties.filterStage('active')"
-          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();OpsProperties.filterStage('active')}">
-          <div class="pr-stage-label">Active</div>
-          <div class="pr-stage-val" id="prc-4">—</div>
-          <div class="pr-stage-sub">Monitored</div>
-        </div>
-      </div>
+      <!-- Pipeline stages — shared KpiStrip (was a bespoke card design; see OpsModal.kpiStrip) -->
+      <div id="pr-pipeline"></div>
 
       <!-- Table -->
       <div class="pr-table-card">
         <div class="pr-table-head">
-          <div class="pr-table-title" id="pr-table-title">All Areas</div>
+          <div class="pr-table-title" id="pr-table-title">All Properties</div>
           <div class="pr-controls">
             <div class="pr-search-wrap">
               <svg class="pr-search-icon" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"/></svg>
-              <input class="pr-search" id="pr-search" placeholder="Search areas…" oninput="OpsProperties.search(this.value)">
+              <input class="pr-search" id="pr-search" placeholder="Search properties…" oninput="OpsProperties.search(this.value)">
             </div>
             <button class="btn-ghost" onclick="OpsProperties.filterStage('all')" style="font-size:var(--fs-sm);padding:6px 12px;">
               Show All
@@ -188,7 +97,7 @@ const OpsProperties = (function () {
         <div id="pr-table-body">
           <div style="padding:48px;text-align:center;color:var(--ink-3);">
             <div class="loading" style="margin:0 auto 12px;"></div>
-            <div style="font-size:var(--fs-base);">Loading areas…</div>
+            <div style="font-size:var(--fs-base);">Loading properties…</div>
           </div>
         </div>
       </div>
@@ -209,7 +118,7 @@ const OpsProperties = (function () {
     } catch (err) {
       document.getElementById('pr-table-body').innerHTML = `
         <div style="padding:48px;text-align:center;">
-          <div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load areas</div>
+          <div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load properties</div>
           <div style="color:var(--ink-3);font-size:var(--fs-sm);margin-bottom:16px;">${err.message}</div>
           <button class="btn-ghost" onclick="reloadTab('properties')">Retry</button>
         </div>`;
@@ -226,40 +135,43 @@ const OpsProperties = (function () {
     return 'other';
   }
 
+  const STAGES = [
+    { key: 'submitted',  label: 'Awaiting Review',  sub: 'Submitted' },
+    { key: 'inspection', label: 'In Inspection',    sub: 'Scheduled / ongoing' },
+    { key: 'report',     label: 'Report Ready',     sub: 'Awaiting quote' },
+    { key: 'billing',    label: 'Quote / Payment',  sub: 'In billing' },
+    { key: 'active',     label: 'Active',           sub: 'Monitored' },
+  ];
+
+  // Shared KpiStrip, doubling as the stage filter — was five bespoke
+  // ".pr-stage" tiles with their own card design (uppercase label +
+  // colored bottom border), the fourth different KPI-card look in the app.
   function renderPipeline(areas) {
     const counts = { submitted:0, inspection:0, report:0, billing:0, active:0 };
     areas.forEach(a => { const k = stageOf(a); if (counts[k] !== undefined) counts[k]++; });
-    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-    set('prc-0', counts.submitted);
-    set('prc-1', counts.inspection);
-    set('prc-2', counts.report);
-    set('prc-3', counts.billing);
-    set('prc-4', counts.active);
+    const el = document.getElementById('pr-pipeline');
+    if (!el) return;
+    el.innerHTML = OpsModal.kpiStrip(STAGES.map(s => ({
+      label: s.label,
+      value: counts[s.key],
+      sub: s.sub,
+      active: _filter === s.key,
+      onClick: `OpsProperties.filterStage('${s.key}')`,
+    })));
   }
 
   function filterStage(stage) {
     _filter = stage;
-
-    // Update active stage highlight
-    ['prs-0','prs-1','prs-2','prs-3','prs-4'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.classList.remove('active-filter');
-    });
-
-    const stageMap = { submitted:'prs-0', inspection:'prs-1', report:'prs-2', billing:'prs-3', active:'prs-4' };
-    if (stageMap[stage]) {
-      const el = document.getElementById(stageMap[stage]);
-      if (el) el.classList.add('active-filter');
-    }
+    renderPipeline(_all);
 
     const titleMap = {
-      all: 'All Areas', submitted: 'Awaiting Review',
+      all: 'All Properties', submitted: 'Awaiting Review',
       inspection: 'In Inspection', report: 'Report Ready',
-      billing: 'Quote / Payment', active: 'Active Areas',
+      billing: 'Quote / Payment', active: 'Active Properties',
     };
 
     const titleEl = document.getElementById('pr-table-title');
-    if (titleEl) titleEl.textContent = titleMap[stage] || 'All Areas';
+    if (titleEl) titleEl.textContent = titleMap[stage] || 'All Properties';
 
     const filtered = stage === 'all' ? _all : _all.filter(a => stageOf(a) === stage);
     if (_pg) _pg.update(filtered);
@@ -329,7 +241,7 @@ const OpsProperties = (function () {
       el.innerHTML = `
         <div style="padding:60px;text-align:center;color:var(--ink-3);">
           <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" style="margin:0 auto 14px;opacity:.25;display:block;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          <div style="font-size:var(--fs-md);font-weight:600;color:var(--ink-2);">No areas found</div>
+          <div style="font-size:var(--fs-md);font-weight:600;color:var(--ink-2);">No properties found</div>
         </div>`;
       return;
     }
@@ -339,7 +251,7 @@ const OpsProperties = (function () {
         <table class="ops-table">
           <thead>
             <tr>
-              <th>Area / Estate</th>
+              <th>Property</th>
               <th>Type</th>
               <th>Client</th>
               <th>Location</th>
@@ -356,9 +268,9 @@ const OpsProperties = (function () {
               const loc = [a.city, a.state].filter(Boolean).join(', ') || a.location || '—';
               const pid = a.property_id;
               return `<tr>
-                <td class="bright">${a.property_name || '—'}</td>
-                <td style="font-size:var(--fs-sm);">${(a.property_type || '').replace(/_/g, ' ')}</td>
-                <td style="font-size:var(--fs-base);">${a.client_name || a.client_email || '—'}</td>
+                <td class="bright trunc" title="${(a.property_name || '').replace(/"/g, '&quot;')}">${a.property_name || '—'}</td>
+                <td class="trunc" style="font-size:var(--fs-sm);max-width:140px;">${(a.property_type || '').replace(/_/g, ' ')}</td>
+                <td class="trunc" style="font-size:var(--fs-base);max-width:160px;" title="${(a.client_name || a.client_email || '').replace(/"/g, '&quot;')}">${a.client_name || a.client_email || '—'}</td>
                 <td style="font-size:var(--fs-sm);">${loc}</td>
                 <td>${networkCell(a)}</td>
                 <td>${healthCell(a.health_score)}</td>
@@ -387,7 +299,7 @@ const OpsProperties = (function () {
     try {
       const res  = await OpsModal.apiGet('/properties/' + propertyId);
       const a    = res.data;
-      if (!a) { OpsModal.toast('Area not found', 'warning'); return; }
+      if (!a) { OpsModal.toast('Property not found', 'warning'); return; }
 
       const inspections = a.inspections || [];
       const quotes      = a.quotes      || [];
@@ -398,7 +310,7 @@ const OpsProperties = (function () {
         actions.push({ label: 'Schedule Inspection', onclick: `OpsModal.close();OpsProperties.scheduleInspection('${a.property_id}','${(a.property_name || '').replace(/'/g, "\\'")}')`, class: 'btn-primary' });
       }
 
-      OpsModal.open(a.property_name || 'Area Details', `
+      OpsModal.open(a.property_name || 'Property Details', `
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
           <div class="ops-modal-detail"><span class="label">Type</span><span class="value">${(a.property_type || '').replace(/_/g, ' ')}</span></div>
           <div class="ops-modal-detail"><span class="label">Location</span><span class="value">${[a.city, a.state].filter(Boolean).join(', ') || '—'}</span></div>
@@ -456,7 +368,7 @@ const OpsProperties = (function () {
       `, actions);
 
     } catch (err) {
-      OpsModal.toast('Failed to load area details', 'critical');
+      OpsModal.toast('Failed to load property details', 'critical');
     }
   }
 
@@ -464,8 +376,8 @@ const OpsProperties = (function () {
     try {
       const res = await OpsModal.apiGet('/properties/' + propertyId);
       const a   = res.data;
-      OpsModal.open('Edit Area', `
-        ${OpsModal.field('Area Name', 'property_name', 'text', a.property_name || '')}
+      OpsModal.open('Edit Property', `
+        ${OpsModal.field('Property Name', 'property_name', 'text', a.property_name || '')}
         ${OpsModal.row([
           OpsModal.field('Pipeline Status', 'status', 'select', a.status || 'submitted', {
             options: [
@@ -500,7 +412,7 @@ const OpsProperties = (function () {
         { label: 'Cancel',       onclick: 'OpsModal.close()', class: 'btn-ghost' },
         { label: 'Save Changes', onclick: `OpsProperties.saveArea('${propertyId}')`, class: 'btn-primary', id: 'modal-save-btn' },
       ]);
-    } catch { OpsModal.toast('Failed to load area', 'critical'); }
+    } catch { OpsModal.toast('Failed to load property', 'critical'); }
   }
 
   async function saveArea(propertyId) {
@@ -523,7 +435,7 @@ const OpsProperties = (function () {
       }
 
       OpsModal.close();
-      OpsModal.toast('Area updated successfully', 'nominal');
+      OpsModal.toast('Property updated successfully', 'nominal');
       reloadTab('properties');
     } catch (err) {
       OpsModal.toast('Failed to update: ' + err.message, 'critical');
@@ -535,13 +447,13 @@ const OpsProperties = (function () {
 
   function deleteArea(propertyId, name) {
     OpsModal.confirm(
-      `Permanently delete area "${name}"? All inspections, quotes, and invoices linked to this area will also be removed.`,
+      `Permanently delete property "${name}"? All inspections, quotes, and invoices linked to this property will also be removed.`,
       async function () {
         OpsModal.setLoading('modal-confirm-btn', true);
         try {
           await OpsModal.apiDelete('/properties/' + propertyId);
           OpsModal.close();
-          OpsModal.toast(`Area "${name}" deleted`, 'nominal');
+          OpsModal.toast(`Property "${name}" deleted`, 'nominal');
           reloadTab('properties');
         } catch (err) {
           OpsModal.toast('Delete failed: ' + err.message, 'critical');
@@ -563,7 +475,7 @@ const OpsProperties = (function () {
       ? teams.map(t => ({ value: t.team_id || t.id, label: t.team_name || t.name }))
       : [{ value: '', label: 'No teams available' }];
 
-    OpsModal.open(`Schedule Inspection — ${propertyName || 'Area'}`, `
+    OpsModal.open(`Schedule Inspection — ${propertyName || 'Property'}`, `
       ${OpsModal.field('Scheduled Date', 'scheduled_date', 'date', '')}
       ${OpsModal.field('Assign Team', 'team_id', 'select', '', { options: teamOptions, required: false })}
       ${OpsModal.field('Inspector Notes (optional)', 'notes', 'textarea', '', { required: false, rows: 3, placeholder: 'Access instructions, key contacts, equipment needed…' })}

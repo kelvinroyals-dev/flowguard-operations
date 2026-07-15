@@ -17,57 +17,9 @@ const OpsClients = (function () {
   function render(container) {
     container.innerHTML = `
       <style>
-        .cl-header {
-          display: flex; align-items: flex-start;
-          justify-content: space-between; margin-bottom: 20px;
-        }
-
-        .cl-header-title {
-          font-family: var(--ff-d, 'Space Grotesk', sans-serif);
-          font-size: var(--fs-xl); font-weight: 800;
-          color: var(--ink, #0a1f2e); letter-spacing: -.02em;
-          margin-bottom: 3px;
-        }
-
-        .cl-header-sub { font-size: var(--fs-base); color: var(--ink-3, #6b8fa3); }
-
-        .cl-stats {
-          display: grid; grid-template-columns: repeat(4,1fr);
-          gap: 14px; margin-bottom: 20px;
-        }
-
-        .cl-stat {
-          background: var(--surface, #fff);
-          border: 1px solid var(--border, #dae6ef);
-          border-radius: var(--r, 14px);
-          padding: 16px 18px;
-          box-shadow: var(--sh-xs);
-          position: relative; overflow: hidden;
-          transition: all .2s;
-        }
-
-        .cl-stat:hover { transform: translateY(-2px); box-shadow: var(--sh-md); }
-
-        .cl-stat::after {
-          content: ''; position: absolute;
-          bottom: 0; left: 0; right: 0; height: 2.5px;
-          background: linear-gradient(90deg, var(--navy, #0a2a3d), var(--blue, #16a8d3));
-          opacity: .45;
-        }
-
-        .cl-stat.warn::after { background: var(--warn, #b45309); opacity: .7; }
-
-        .cl-stat-label {
-          font-size: var(--fs-2xs); font-weight: 700;
-          letter-spacing: 1.5px; text-transform: uppercase;
-          color: var(--ink-3, #6b8fa3); margin-bottom: 6px;
-        }
-
-        .cl-stat-val {
-          font-family: var(--ff-d, 'Space Grotesk', sans-serif);
-          font-size: var(--fs-2xl); font-weight: 900;
-          color: var(--ink, #0a1f2e); letter-spacing: -.03em; line-height: 1;
-        }
+        /* Page header uses the shared .fg-page-header/.fg-page-title/
+           .fg-page-sub (index.html) — was a local .cl-header* copy,
+           byte-for-byte identical to Properties' old .pr-header*. */
 
         .cl-table-wrap {
           background: var(--surface, #fff);
@@ -128,22 +80,18 @@ const OpsClients = (function () {
         .cl-name-wrap { display: flex; align-items: center; gap: 10px; }
 
         .cl-name { font-size: var(--fs-md); font-weight: 600; color: var(--ink, #0a1f2e); }
-        .cl-email { font-size: var(--fs-sm); color: var(--ink-3, #6b8fa3); margin-top: 1px; }
+        .cl-email { font-size: var(--fs-sm); color: var(--ink-3, #6b8fa3); margin-top: 1px; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       </style>
 
-      <div class="cl-header">
+      <div class="fg-page-header">
         <div>
-          <div class="cl-header-title">Clients</div>
-          <div class="cl-header-sub">People and organisations who submitted areas for drainage management</div>
+          <div class="fg-page-title">Clients</div>
+          <div class="fg-page-sub">People and organisations who submitted properties for drainage management</div>
         </div>
       </div>
 
-      <div class="cl-stats" id="cl-stats">
-        <div class="cl-stat"><div class="cl-stat-label">Total Clients</div><div class="cl-stat-val" id="cs-total">—</div></div>
-        <div class="cl-stat"><div class="cl-stat-label">Areas Submitted</div><div class="cl-stat-val" id="cs-areas">—</div></div>
-        <div class="cl-stat warn"><div class="cl-stat-label">Pending Review</div><div class="cl-stat-val" id="cs-pending">—</div></div>
-        <div class="cl-stat"><div class="cl-stat-label">Active Areas</div><div class="cl-stat-val" id="cs-active">—</div></div>
-      </div>
+      <!-- Shared KpiStrip — was a fourth bespoke KPI card design (uppercase label, no border) -->
+      <div id="cl-stats"></div>
 
       <div class="cl-table-wrap">
         <div class="cl-table-head">
@@ -193,11 +141,14 @@ const OpsClients = (function () {
     const pending = clients.reduce((s, c) => s + (parseInt(c.pending_areas)   || 0), 0);
     const active  = clients.reduce((s, c) => s + (parseInt(c.active_areas)    || 0), 0);
 
-    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-    set('cs-total',   total);
-    set('cs-areas',   areas);
-    set('cs-pending', pending);
-    set('cs-active',  active);
+    const el = document.getElementById('cl-stats');
+    if (!el) return;
+    el.innerHTML = OpsModal.kpiStrip([
+      { label: 'Total Clients',        value: total },
+      { label: 'Properties Submitted', value: areas },
+      { label: 'Pending Review',       value: pending, sub: pending ? 'Needs attention' : 'All clear', subClass: pending ? 'warn' : 'ok' },
+      { label: 'Active Properties',    value: active,  sub: active ? 'Monitored' : null, subClass: 'ok' },
+    ]);
   }
 
   function search(q) {
@@ -240,7 +191,7 @@ const OpsClients = (function () {
             <tr>
               <th>Client</th>
               <th>Phone</th>
-              <th style="text-align:center;">Areas</th>
+              <th style="text-align:center;">Properties</th>
               <th style="text-align:center;">Pending</th>
               <th style="text-align:center;">Active</th>
               <th>Status</th>
@@ -254,14 +205,14 @@ const OpsClients = (function () {
                 <td>
                   <div class="cl-name-wrap">
                     <div class="cl-avatar" style="background:${avatarColor(c.full_name)};">${initials(c.full_name)}</div>
-                    <div>
+                    <div style="min-width:0;">
                       <div class="cl-name">${c.full_name || '—'}</div>
-                      <div class="cl-email">${c.email || ''}</div>
+                      <div class="cl-email" title="${(c.email || '').replace(/"/g, '&quot;')}">${c.email || ''}</div>
                     </div>
                   </div>
                 </td>
-                <td style="font-family:var(--ff-m);font-size:var(--fs-base);">${c.phone || '—'}</td>
-                <td style="text-align:center;font-family:var(--ff-d);font-weight:800;">${c.submitted_areas || 0}</td>
+                <td class="num" style="font-size:var(--fs-base);">${c.phone || '—'}</td>
+                <td class="num" style="text-align:center;font-weight:700;">${c.submitted_areas || 0}</td>
                 <td style="text-align:center;">
                   ${parseInt(c.pending_areas) > 0
                     ? `<span style="color:var(--warn);font-weight:700;font-family:var(--ff-d);">${c.pending_areas}</span>`
@@ -320,14 +271,14 @@ const OpsClients = (function () {
           <div class="ops-modal-detail"><span class="label">Phone</span><span class="value">${c.phone || '—'}</span></div>
           <div class="ops-modal-detail"><span class="label">Status</span><span class="value">${statusBadge(c.status, c.is_active)}</span></div>
           <div class="ops-modal-detail"><span class="label">Joined</span><span class="value">${c.created_at ? new Date(c.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '—'}</span></div>
-          <div class="ops-modal-detail"><span class="label">Last Login</span><span class="value">${c.last_login ? new Date(c.last_login).toLocaleString() : 'Never'}</span></div>
-          <div class="ops-modal-detail"><span class="label">Total Areas</span><span class="value">${areas.length}</span></div>
+          <div class="ops-modal-detail"><span class="label">Last Login</span><span class="value">${c.last_login ? OpsModal.fmtDateTime(c.last_login) : 'Never'}</span></div>
+          <div class="ops-modal-detail"><span class="label">Total Properties</span><span class="value">${areas.length}</span></div>
         </div>
 
         ${areas.length > 0 ? `
-          <div style="margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Submitted Areas</div>
+          <div style="margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Submitted Properties</div>
           <table class="ops-table" style="margin-bottom:16px;">
-            <thead><tr><th>Area Name</th><th>Type</th><th>Location</th><th>Pipeline</th><th>Inspection</th></tr></thead>
+            <thead><tr><th>Property</th><th>Type</th><th>Location</th><th>Pipeline</th><th>Inspection</th></tr></thead>
             <tbody>
               ${areas.map(a => `<tr>
                 <td class="bright">${a.property_name || '—'}</td>
@@ -337,7 +288,7 @@ const OpsClients = (function () {
                 <td>${a.inspection_status ? inspBadge(a.inspection_status) : '<span style="color:var(--ink-4);font-size:var(--fs-sm);">Not scheduled</span>'}</td>
               </tr>`).join('')}
             </tbody>
-          </table>` : '<div style="color:var(--ink-3);font-size:var(--fs-base);padding:12px 0 16px;">No areas submitted yet</div>'}
+          </table>` : '<div style="color:var(--ink-3);font-size:var(--fs-base);padding:12px 0 16px;">No properties submitted yet</div>'}
 
         ${invoices.length > 0 ? `
           <div style="margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Invoices</div>
