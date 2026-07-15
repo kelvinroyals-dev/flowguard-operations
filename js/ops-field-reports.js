@@ -171,7 +171,39 @@ window.OpsFieldReports = (function () {
             return;
         }
 
-        list.innerHTML = filtered.map(r => _reportCard(r)).join('');
+        const statusMeta = {
+            draft: { label: 'Draft', cls: 'badge-off' }, submitted: { label: 'Awaiting Review', cls: 'badge-warn' },
+            under_review: { label: 'Under Review', cls: 'badge-watch' }, approved: { label: 'Approved', cls: 'badge-ok' },
+            sent_to_client: { label: 'Sent to Client', cls: 'badge-sent' }, rejected: { label: 'Rejected', cls: 'badge-err' },
+        };
+        const typeMeta = {
+            incident: { label: 'Incident' }, inspection: { label: 'Inspection' }, general: { label: 'General' }, backup_request: { label: 'Backup Request' },
+        };
+        const fmt = d => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+        // Columns per spec: Report ID, Engineer, Property, Visit Date, Report Type, Status
+        list.innerHTML = `
+          <style>.ops-table tbody tr.clickable{cursor:pointer;transition:background .12s;} .ops-table tbody tr.clickable:hover{background:var(--surface-2,#f2f8fb);}</style>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r,14px);overflow:hidden;box-shadow:var(--sh-xs);">
+            <div style="overflow-x:auto;">
+              <table class="ops-table">
+                <thead><tr><th>Report ID</th><th>Engineer</th><th>Property</th><th>Visit Date</th><th>Report Type</th><th>Status</th></tr></thead>
+                <tbody>
+                  ${filtered.map(r => {
+                    const sm = statusMeta[r.status] || { label: r.status, cls: 'badge-off' };
+                    const tm = typeMeta[r.report_type] || { label: r.report_type || '—' };
+                    return `<tr class="clickable" onclick="OpsFieldReports.openReport('${r.report_id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsFieldReports.openReport('${r.report_id}')}">
+                      <td style="font-family:var(--ff-m);font-size:var(--fs-sm);" class="bright">${r.report_id}</td>
+                      <td style="font-size:var(--fs-sm);">${_esc(r.submitted_by_name || '—')}</td>
+                      <td style="font-size:var(--fs-sm);">${_esc(r.property_name || r.site_name || '—')}</td>
+                      <td style="font-size:var(--fs-sm);font-family:var(--ff-m);">${fmt(r.visit_date || r.created_at)}</td>
+                      <td style="font-size:var(--fs-sm);">${tm.label}</td>
+                      <td><span class="fg-status-badge ${sm.cls}">${sm.label}</span></td>
+                    </tr>`;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>`;
     }
 
     function _reportCard(r) {
@@ -225,15 +257,12 @@ window.OpsFieldReports = (function () {
     // ── Report detail modal ───────────────────────────────────────────────
 
     async function openReport(reportId) {
-        OpsModal.open('Loading…', '<div style="padding:24px;text-align:center;color:var(--ink-3);">Loading report…</div>', []);
+        if (_container) _container.innerHTML = '<div style="padding:60px;text-align:center;color:var(--ink-3);"><div class="loading" style="margin:0 auto 12px;"></div>Loading report…</div>';
         try {
             const res = await OpsModal.apiGet(`/field-reports/${reportId}`);
-            const r   = res.data;
-            _renderReportModal(r);
+            _renderReportModal(res.data);
         } catch (e) {
-            OpsModal.open('Error', `<div class="modal-error">${e.message}</div>`, [
-                { label: 'Close', class: 'btn-ghost', onclick: 'OpsModal.close()' }
-            ]);
+            if (_container) _container.innerHTML = `<div style="padding:48px;text-align:center;"><div style="color:var(--err);font-weight:700;margin-bottom:8px;">${_esc(e.message)}</div><button class="btn-ghost" onclick="OpsFieldReports.back()">← Back to Field Reports</button></div>`;
         }
     }
 
@@ -319,8 +348,32 @@ window.OpsFieldReports = (function () {
             actions.push({ label: '✉ Send to Client', class: 'btn-success', onclick: `OpsFieldReports.sendToClient('${r.report_id}')`, id: 'rd-send-btn' });
         }
 
-        OpsModal.open(`Report: ${r.report_id}`, body, actions);
+        // Full-screen detail (no pop-up). Action buttons move to the header;
+        // Close becomes the Back button.
+        const headerBtns = actions.filter(a => a.label !== 'Close')
+            .map(a => `<button class="${a.class}" ${a.id ? `id="${a.id}"` : ''} onclick="${a.onclick}">${a.label}</button>`).join('');
+        const pend = (t, note) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r,14px);box-shadow:var(--sh-xs);margin-bottom:14px;overflow:hidden;"><div style="padding:12px 18px;border-bottom:1px solid var(--border);font-family:var(--ff-d);font-size:var(--fs-sm);font-weight:700;color:var(--ink);display:flex;justify-content:space-between;">${t}<span style="font-size:var(--fs-xs);color:var(--ink-4);font-style:italic;">pending backend data</span></div><div style="padding:16px 18px;color:var(--ink-3);font-size:var(--fs-sm);">${note}</div></div>`;
+
+        _container.innerHTML = `
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap;">
+            <button class="btn-ghost" onclick="OpsFieldReports.back()" style="display:inline-flex;align-items:center;gap:6px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Field Reports
+            </button>
+            <div>
+              <div style="font-family:var(--ff-d);font-size:var(--fs-xl);font-weight:700;color:var(--ink);line-height:1.1;">${_esc(r.title || 'Report')}</div>
+              <div style="font-size:var(--fs-sm);color:var(--ink-3);margin-top:3px;">${r.report_id} · ${_esc(r.submitted_by_name || '')}${r.property_name ? ' · ' + _esc(r.property_name) : ''}</div>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">${headerBtns}</div>
+          </div>
+          ${body}
+          ${pend('Photos', 'No photos in this response.')}
+          ${pend('Checklist', 'No checklist in this response.')}
+          ${pend('Attachments', 'No attachments.')}
+          ${pend('Signature', 'No signature captured.')}
+        `;
     }
+
+    function back() { if (_container) render(_container); }
 
     function _editableField(id, label, value, type, readonly) {
         const roAttr = readonly ? 'readonly style="opacity:.55;cursor:not-allowed;"' : '';
@@ -357,8 +410,7 @@ window.OpsFieldReports = (function () {
         try {
             await OpsModal.apiPut(`/field-reports/${reportId}`, body);
             OpsModal.toast('Changes saved', 'nominal');
-            OpsModal.close();
-            await _loadAll();
+            back();
         } catch (e) {
             OpsModal.toast(e.message, 'critical');
         }
@@ -375,8 +427,7 @@ window.OpsFieldReports = (function () {
             try {
                 await OpsModal.apiPut(`/field-reports/${reportId}`, { status: newStatus });
                 OpsModal.toast(`Report ${newStatus.replace(/_/g,' ')}`, 'nominal');
-                OpsModal.close();
-                await _loadAll();
+                back();
             } catch (e) {
                 OpsModal.toast(e.message, 'critical');
             }
@@ -389,8 +440,7 @@ window.OpsFieldReports = (function () {
             try {
                 await OpsModal.apiPost(`/field-reports/${reportId}/send-to-client`, {});
                 OpsModal.toast('Report sent to client', 'nominal');
-                OpsModal.close();
-                await _loadAll();
+                back();
             } catch (e) {
                 OpsModal.toast(e.message, 'critical');
             }
@@ -485,7 +535,7 @@ window.OpsFieldReports = (function () {
 
     // ── Public ────────────────────────────────────────────────────────────
 
-    return { render, refresh, openReport, saveEdits, updateStatus, sendToClient };
+    return { render, refresh, openReport, back, saveEdits, updateStatus, sendToClient };
 
 })();
 
