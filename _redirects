@@ -1,4 +1,0 @@
-# FlowGuard Operations Center — routing
-# Serve the Neon Center dashboard as the site root (new interface).
-# Other tabs are still hosted by index.html (reached via index.html#<tab>).
-/    /dashboard.html    200!

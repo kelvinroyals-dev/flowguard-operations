@@ -18,9 +18,6 @@
 /index.html
   Cache-Control: no-store
 
-/dashboard.html
-  Cache-Control: no-store
-
 /js/config.js
   Cache-Control: no-store
 
