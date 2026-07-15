@@ -18,7 +18,9 @@ const OpsAudit = (function () {
 
   let _logs   = [];
   let _pg     = null;
+  let _container = null;
   let _filters = { action: '', actor: '', from: '', to: '' };
+  const _dash = v => (v == null || v === '') ? '—' : v;
 
   // Action categories with colours
   const ACTION_CONFIG = {
@@ -56,6 +58,7 @@ const OpsAudit = (function () {
   }
 
   function render(container) {
+    _container = container;
     container.innerHTML = `
       <style>
         .au-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
@@ -204,77 +207,73 @@ const OpsAudit = (function () {
   function renderPage(items) {
     const el = document.getElementById('au-log-body');
     if (!el) return;
-
-    el.innerHTML = items.map(log => {
-      const ac    = getActionConfig(log.action);
-      const name  = log.actor_name || 'System';
-      const inits = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-      const avColor = avatarColor(name);
-
-      return `
-        <div class="au-row" onclick="OpsAudit.viewEntry('${log.id || ''}')">
-          <div class="au-icon" style="background:${ac.bg};">
-            <svg width="13" height="13" fill="none" stroke="${ac.color}" stroke-width="2.2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-            </svg>
-          </div>
-          <div class="au-body">
-            <div class="au-action-row">
-              <span class="au-action-badge" style="background:${ac.bg};color:${ac.color};">${ac.label}</span>
-              ${log.target_label ? `<span style="font-size:var(--fs-sm);color:var(--ink-2);font-weight:500;">${log.target_label}</span>` : ''}
-            </div>
-            <div class="au-desc">${log.description || '—'}</div>
-            <div class="au-meta">
-              ${log.ip_address ? `<span>${log.ip_address}</span>` : ''}
-              ${log.target_type ? `<span>${log.target_type}</span>` : ''}
-            </div>
-          </div>
-          <div class="au-actor">
-            <div>
-              <div class="au-actor-av" style="background:${avColor};">${inits}</div>
-            </div>
-            <div>
-              <div class="au-actor-name">${name}</div>
-              <div class="au-actor-role">${log.actor_role ? log.actor_role.replace(/_/g, ' ') : ''}</div>
-            </div>
-          </div>
-          <div class="au-time">${fmtRelTime(log.created_at)}</div>
-        </div>`;
-    }).join('');
+    const resultBadge = log => {
+      const r = (log.result || (String(log.action || '').includes('fail') ? 'failure' : 'success')).toLowerCase();
+      return `<span class="status-badge ${r.includes('fail') || r.includes('deny') ? 'critical' : 'nominal'}">${r}</span>`;
+    };
+    // Columns per spec: Date, User, Action, Module, Object, IP Address, Result
+    el.innerHTML = `
+      <style>.ops-table tbody tr.clickable{cursor:pointer;transition:background .12s;} .ops-table tbody tr.clickable:hover{background:var(--surface-2,#f2f8fb);}</style>
+      <div style="overflow-x:auto;">
+        <table class="ops-table">
+          <thead><tr><th>Date</th><th>User</th><th>Action</th><th>Module</th><th>Object</th><th>IP Address</th><th>Result</th></tr></thead>
+          <tbody>
+            ${items.map(log => {
+              const ac = getActionConfig(log.action);
+              return `<tr class="clickable" onclick="OpsAudit.viewEntry('${log.id || ''}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsAudit.viewEntry('${log.id || ''}')}">
+                <td style="font-size:var(--fs-sm);font-family:var(--ff-m);">${OpsModal.fmtDateTime(log.created_at)}</td>
+                <td style="font-size:var(--fs-sm);">${_dash(log.actor_name || 'System')}</td>
+                <td><span class="au-action-badge" style="background:${ac.bg};color:${ac.color};">${ac.label}</span></td>
+                <td style="font-size:var(--fs-sm);">${_dash(log.module || log.target_type)}</td>
+                <td style="font-size:var(--fs-sm);">${_dash(log.target_label || log.target_id)}</td>
+                <td style="font-size:var(--fs-sm);font-family:var(--ff-m);">${_dash(log.ip_address)}</td>
+                <td>${resultBadge(log)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
   }
 
   // ── VIEW ENTRY DETAIL ─────────────────────────────────────────────────
 
+  function back() { if (_container) render(_container); }
+
+  // ── FULL DETAIL SCREEN (no pop-up) ──
   function viewEntry(id) {
-    if (!id) return;
+    if (!id || !_container) return;
     const log = _logs.find(l => String(l.id) === String(id));
     if (!log) return;
-
     const ac = getActionConfig(log.action);
+    const f = (k, v) => `<div style="min-width:0;"><div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3);">${k}</div><div style="font-size:var(--fs-md);color:var(--ink);font-weight:600;margin-top:3px;word-break:break-word;">${v}</div></div>`;
+    const sec = (t, b, needs) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r,14px);box-shadow:var(--sh-xs);margin-bottom:14px;overflow:hidden;"><div style="padding:12px 18px;border-bottom:1px solid var(--border);font-family:var(--ff-d);font-size:var(--fs-sm);font-weight:700;color:var(--ink);display:flex;justify-content:space-between;">${t}${needs ? '<span style="font-size:var(--fs-xs);color:var(--ink-4);font-style:italic;">pending backend data</span>' : ''}</div><div style="padding:16px 18px;">${b}</div></div>`;
+    const md = log.metadata || {};
+    const before = md.before || md.old || md.from;
+    const after = md.after || md.new || md.to;
+    const jsonBox = obj => `<pre style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:var(--ff-m);font-size:var(--fs-sm);color:var(--ink-2);white-space:pre-wrap;overflow-x:auto;max-height:220px;overflow-y:auto;margin:0;">${JSON.stringify(obj, null, 2)}</pre>`;
 
-    OpsModal.open('Audit Entry', `
-      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:${ac.bg};border-radius:10px;margin-bottom:18px;">
-        <span style="display:inline-flex;padding:4px 12px;border-radius:12px;font-size:var(--fs-sm);font-weight:700;background:${ac.bg};color:${ac.color};border:1px solid ${ac.color}30;">${ac.label}</span>
-        <div style="font-size:var(--fs-base);color:var(--ink-2);">${log.description || '—'}</div>
+    const details = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px 22px;">
+      ${f('Date', OpsModal.fmtDateTime(log.created_at))}
+      ${f('User', log.actor_name || 'System')}
+      ${f('Role', log.actor_role ? log.actor_role.replace(/_/g, ' ') : '—')}
+      ${f('Action', `<span class="au-action-badge" style="background:${ac.bg};color:${ac.color};">${ac.label}</span>`)}
+      ${f('Module', _dash(log.module || log.target_type))}
+      ${f('Object', _dash(log.target_label || log.target_id))}
+      ${f('IP Address', _dash(log.ip_address))}
+      ${f('Result', _dash(log.result || 'success'))}
+    </div>${log.description ? `<div style="margin-top:12px;">${f('Description', log.description)}</div>` : ''}`;
+
+    _container.innerHTML = `
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap;">
+        <button class="btn-ghost" onclick="OpsAudit.back()" style="display:inline-flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Audit Log</button>
+        <div><div style="font-family:var(--ff-d);font-size:var(--fs-xl);font-weight:700;color:var(--ink);">${ac.label}</div><div style="font-size:var(--fs-sm);color:var(--ink-3);margin-top:3px;">${log.actor_name || 'System'} · ${OpsModal.fmtDateTime(log.created_at)}</div></div>
       </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
-        <div class="ops-modal-detail"><span class="label">Actor</span><span class="value">${log.actor_name || 'System'}</span></div>
-        <div class="ops-modal-detail"><span class="label">Role</span><span class="value">${log.actor_role ? log.actor_role.replace(/_/g, ' ') : '—'}</span></div>
-        <div class="ops-modal-detail"><span class="label">Timestamp</span><span class="value" style="font-family:var(--ff-m);font-size:var(--fs-sm);">${OpsModal.fmtDateTime(log.created_at)}</span></div>
-        <div class="ops-modal-detail"><span class="label">IP Address</span><span class="value" style="font-family:var(--ff-m);font-size:var(--fs-sm);">${log.ip_address || '—'}</span></div>
-        ${log.target_type ? `<div class="ops-modal-detail"><span class="label">Target Type</span><span class="value">${log.target_type}</span></div>` : ''}
-        ${log.target_id   ? `<div class="ops-modal-detail"><span class="label">Target ID</span><span class="value" style="font-family:var(--ff-m);font-size:var(--fs-sm);">${log.target_id}</span></div>` : ''}
-      </div>
-
-      ${log.metadata && Object.keys(log.metadata).length > 0 ? `
-        <div style="margin-bottom:8px;font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Metadata</div>
-        <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:var(--ff-m);font-size:var(--fs-sm);color:var(--ink-2);white-space:pre-wrap;overflow-x:auto;max-height:160px;overflow-y:auto;">
-          ${JSON.stringify(log.metadata, null, 2)}
-        </div>` : ''}
-    `, [
-      { label: 'Close', onclick: 'OpsModal.close()', class: 'btn-ghost' },
-    ]);
+      ${sec('Event Details', details)}
+      ${sec('Before', before != null ? jsonBox(before) : '<div style="color:var(--ink-3);font-size:var(--fs-sm);">No before-state recorded.</div>', before == null)}
+      ${sec('After', after != null ? jsonBox(after) : '<div style="color:var(--ink-3);font-size:var(--fs-sm);">No after-state recorded.</div>', after == null)}
+      ${sec('Metadata', Object.keys(md).length ? jsonBox(md) : '<div style="color:var(--ink-3);font-size:var(--fs-sm);">No metadata.</div>')}
+      ${sec('Related Records', log.target_id ? `<div style="color:var(--ink-2);font-size:var(--fs-sm);">${_dash(log.target_type)} · ${log.target_id}</div>` : '<div style="color:var(--ink-3);font-size:var(--fs-sm);">No related records in this response.</div>', !log.target_id)}
+    `;
   }
 
   // ── HELPERS ───────────────────────────────────────────────────────────
@@ -299,6 +298,6 @@ const OpsAudit = (function () {
     return new Date(ds).toLocaleDateString('en-GB', { day:'numeric', month:'short' });
   }
 
-  return { render, applyFilters, clearFilters, viewEntry };
+  return { render, applyFilters, clearFilters, viewEntry, back };
 
 })();
