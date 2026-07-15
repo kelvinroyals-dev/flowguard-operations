@@ -12,6 +12,8 @@ const OpsUserManagement = (function () {
   let _users = [];
   let _teams = [];
   let _pg    = null;
+  let _container = null;
+  const _dash = v => (v == null || v === '') ? '—' : v;
 
   // Only admins can permanently delete records
   const _isAdmin = (() => {
@@ -47,8 +49,24 @@ const OpsUserManagement = (function () {
   // ── RENDER ────────────────────────────────────────────────────────────
 
   function render(container) {
+    _container = container;
     container.innerHTML = `
       <style>
+        .ops-table tbody tr.clickable { cursor:pointer; transition:background .12s; }
+        .ops-table tbody tr.clickable:hover { background:var(--surface-2,#f2f8fb); }
+        .um-back { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:8px 13px; cursor:pointer; }
+        .um-detail-top { display:flex; align-items:center; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
+        .um-detail-name { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; }
+        .um-detail-meta { font-size:var(--fs-sm); color:var(--ink-3); margin-top:3px; }
+        .um-detail-actions { margin-left:auto; display:flex; gap:8px; }
+        .um-sec { background:var(--surface); border:1px solid var(--border); border-radius:var(--r,14px); box-shadow:var(--sh-xs); margin-bottom:14px; overflow:hidden; }
+        .um-sec-h { padding:12px 18px; border-bottom:1px solid var(--border); font-family:var(--ff-d); font-size:var(--fs-sm); font-weight:700; color:var(--ink); display:flex; justify-content:space-between; }
+        .um-sec-b { padding:16px 18px; }
+        .um-fgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px 22px; }
+        .um-f .k { font-size:var(--fs-2xs); font-weight:700; letter-spacing:.9px; text-transform:uppercase; color:var(--ink-3); }
+        .um-f .v { font-size:var(--fs-md); color:var(--ink); font-weight:600; margin-top:3px; }
+        .um-e { color:var(--ink-3); font-size:var(--fs-sm); padding:6px 0; }
+        .um-needs { font-size:var(--fs-xs); color:var(--ink-4); font-style:italic; }
         .um-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
         .um-header-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#0a1f2e); letter-spacing:-.02em; margin-bottom:3px; }
         .um-header-sub { font-size:var(--fs-base); color:var(--ink-3,#6b8fa3); }
@@ -243,17 +261,14 @@ const OpsUserManagement = (function () {
       return;
     }
 
+    // Columns per spec: Name, Role, Team, Phone, Email, Availability, Current Assignment, Status
     el.innerHTML = `
       <div style="overflow-x:auto;">
         <table class="ops-table">
           <thead>
             <tr>
-              <th>Member</th>
-              <th>Role</th>
-              <th>Team</th>
-              <th>Status</th>
-              <th>Last Active</th>
-              <th style="text-align:right;">Actions</th>
+              <th>Name</th><th>Role</th><th>Team</th><th>Phone</th><th>Email</th>
+              <th>Availability</th><th>Current Assignment</th><th>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -264,48 +279,89 @@ const OpsUserManagement = (function () {
               const rc       = getRoleConfig(role);
               const isActive = u.status !== 'inactive' && u.status !== 'suspended';
               const teamName = getTeamName(u) || (u.team?.name) || null;
-
-              return `<tr>
+              const avail    = u.availability || (isActive ? 'Available' : '—');
+              return `<tr class="clickable" onclick="OpsUserManagement.open('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsUserManagement.open('${id}')}">
                 <td>
                   <div class="um-user-wrap">
                     <div class="um-avatar" style="background:${avatarColor(name)};">${initials(name)}</div>
-                    <div>
-                      <div class="um-user-name">${name}</div>
-                      <div class="um-user-email">${u.email || ''}</div>
-                    </div>
+                    <div><div class="um-user-name">${name}</div><div class="um-user-email">${u.email || ''}</div></div>
                   </div>
                 </td>
-                <td>
-                  <span class="um-role-chip" style="background:${rc.bg};color:${rc.color};">${rc.label}</span>
-                </td>
-                <td>
-                  ${teamName
-                    ? `<span class="um-team-chip" onclick="switchTab('teams')" title="View in Teams tab">
-                        <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0112 0v2"/></svg>
-                        ${teamName}
-                       </span>`
-                    : `<span class="um-team-chip unassigned">Unassigned</span>`}
-                </td>
-                <td>
-                  <span class="status-badge ${isActive ? 'nominal' : 'offline'}">${u.status || 'active'}</span>
-                </td>
-                <td style="font-family:var(--ff-m);font-size:var(--fs-sm);color:var(--ink-3);">
-                  ${formatTime(u.last_login || u.last_active)}
-                </td>
-                <td style="text-align:right;">
-                  <div style="display:flex;gap:6px;justify-content:flex-end;">
-                    <button class="btn-ghost" onclick="OpsUserManagement.editUser('${id}','${name.replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:var(--fs-sm);">Edit</button>
-                    ${isActive
-                      ? `<button class="btn-ghost" onclick="OpsUserManagement.deactivateUser('${id}','${name.replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:var(--fs-sm);color:var(--warn);border-color:rgba(180,83,9,.2);">Deactivate</button>`
-                      : `<button class="btn-ghost" onclick="OpsUserManagement.reactivateUser('${id}')" style="padding:6px 12px;font-size:var(--fs-sm);color:var(--ok);">Reactivate</button>`}
-                    ${_isAdmin ? `<button class="btn-ghost" onclick="OpsUserManagement.deleteUser('${id}','${name.replace(/'/g, "\\'")}')" style="padding:6px 12px;font-size:var(--fs-sm);color:var(--err);border-color:rgba(220,38,38,.2);">Delete</button>` : ''}
-                  </div>
-                </td>
+                <td><span class="um-role-chip" style="background:${rc.bg};color:${rc.color};">${rc.label}</span></td>
+                <td>${teamName ? `<span class="um-team-chip">${teamName}</span>` : `<span class="um-team-chip unassigned">Unassigned</span>`}</td>
+                <td style="font-size:var(--fs-sm);">${_dash(u.phone)}</td>
+                <td style="font-size:var(--fs-sm);">${_dash(u.email)}</td>
+                <td style="font-size:var(--fs-sm);">${_dash(avail)}</td>
+                <td style="font-size:var(--fs-sm);">${_dash(u.current_assignment)}</td>
+                <td><span class="status-badge ${isActive ? 'nominal' : 'offline'}">${u.status || 'active'}</span></td>
               </tr>`;
             }).join('')}
           </tbody>
         </table>
       </div>`;
+  }
+
+  function back() { if (_container) render(_container); }
+
+  // ── FULL DETAIL SCREEN (no pop-up) ──
+  async function open(id) {
+    if (!_container) return;
+    _container.innerHTML = `<div style="padding:60px;text-align:center;color:var(--ink-3);"><div class="loading" style="margin:0 auto 12px;"></div>Loading member…</div>`;
+    try {
+      const res = await OpsModal.apiGet('/users/' + id);
+      renderDetail(res.data || {});
+    } catch (err) {
+      _container.innerHTML = `<div style="padding:48px;text-align:center;"><div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load member</div><button class="um-back" onclick="OpsUserManagement.back()">← Back to Team Members</button></div>`;
+    }
+  }
+
+  function renderDetail(u) {
+    const id = u.user_id || u.id;
+    const name = u.full_name || u.name || 'Member';
+    const role = u.role_id || u.role || '';
+    const rc = getRoleConfig(role);
+    const isActive = u.status !== 'inactive' && u.status !== 'suspended';
+    const teamName = getTeamName(u) || (u.team?.name) || null;
+    const f = (k, v) => `<div class="um-f"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+    const sec = (t, b, needs) => `<div class="um-sec"><div class="um-sec-h">${t}${needs ? '<span class="um-needs">pending backend data</span>' : ''}</div><div class="um-sec-b">${b}</div></div>`;
+
+    const profile = `<div class="um-fgrid">
+      ${f('Name', name)}
+      ${f('Role', `<span class="um-role-chip" style="background:${rc.bg};color:${rc.color};">${rc.label}</span>`)}
+      ${f('Team', teamName || 'Unassigned')}
+      ${f('Phone', _dash(u.phone))}
+      ${f('Email', _dash(u.email))}
+      ${f('Availability', _dash(u.availability || (isActive ? 'Available' : '—')))}
+      ${f('Current Assignment', _dash(u.current_assignment))}
+      ${f('Status', `<span class="status-badge ${isActive ? 'nominal' : 'offline'}">${u.status || 'active'}</span>`)}
+      ${f('Last Active', formatTime(u.last_login || u.last_active))}
+    </div>`;
+    const perms = rc.perms && rc.perms.length ? `<div class="um-e" style="color:var(--ink-2);">${rc.perms.map(p => '• ' + p).join('<br>')}</div>` : '<div class="um-e">No permissions listed.</div>';
+
+    const actions = [
+      `<button class="btn-ghost" onclick="OpsUserManagement.editUser('${id}','${name.replace(/'/g, "\\'")}')">Edit</button>`,
+      isActive
+        ? `<button class="btn-ghost" style="color:var(--warn);border-color:rgba(180,83,9,.2);" onclick="OpsUserManagement.deactivateUser('${id}','${name.replace(/'/g, "\\'")}')">Deactivate</button>`
+        : `<button class="btn-ghost" style="color:var(--ok);" onclick="OpsUserManagement.reactivateUser('${id}')">Reactivate</button>`,
+      _isAdmin ? `<button class="btn-ghost" style="color:var(--err);border-color:rgba(220,38,38,.2);" onclick="OpsUserManagement.deleteUser('${id}','${name.replace(/'/g, "\\'")}')">Delete</button>` : '',
+    ].filter(Boolean).join('');
+
+    _container.innerHTML = `
+      <div class="um-detail-top">
+        <button class="um-back" onclick="OpsUserManagement.back()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Team Members</button>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="um-avatar" style="width:42px;height:42px;border-radius:11px;font-size:var(--fs-md);background:${avatarColor(name)};">${initials(name)}</div>
+          <div><div class="um-detail-name">${name}</div><div class="um-detail-meta">${rc.label}${teamName ? ' · ' + teamName : ''}</div></div>
+        </div>
+        <div class="um-detail-actions">${actions}</div>
+      </div>
+      ${sec('Profile', profile)}
+      ${sec('Certifications', '<div class="um-e">No certifications in this response.</div>', true)}
+      ${sec('Assigned Jobs', '<div class="um-e">No assigned jobs in this response.</div>', true)}
+      ${sec('Performance', perms)}
+      ${sec('Attendance', '<div class="um-e">No attendance data in this response.</div>', true)}
+      ${sec('Activity Timeline', `<div class="um-e">Last active ${formatTime(u.last_login || u.last_active)}.</div>`, true)}
+    `;
   }
 
   function renderError(message) {
@@ -458,7 +514,7 @@ const OpsUserManagement = (function () {
   }
 
   return {
-    render, filterRole, filterTeam,
+    render, open, back, filterRole, filterTeam,
     openInvite, sendInvite,
     editUser, saveEdit,
     deactivateUser, reactivateUser, deleteUser,
