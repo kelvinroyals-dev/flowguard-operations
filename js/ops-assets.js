@@ -1,84 +1,74 @@
 /* ══════════════════════════════════════════════════════════════
    FlowGuard Ops — ASSETS
-   The drainage network: canals, catch basins, culverts, pump stations,
-   manholes, retention ponds. The things that flood. The things a
-   Sentinel is bolted to. Grouped under the customer property they serve.
+   Drainage infrastructure (canals, catch basins, culverts, pump
+   stations…). Stored as properties with asset_class='drainage_asset',
+   so detail reuses /properties/:id.
+   Rules: whole row opens a FULL detail screen (no pop-up), no "View"
+   button, every list column also appears in the detail.
    ══════════════════════════════════════════════════════════════ */
 const OpsAssets = (function () {
-  // identifiers embedded in inline handlers: restrict to a safe charset.
-  // HTML-escaping does NOT protect here — the browser decodes entities before
-  // parsing the JS, so a quote can still break out of the string.
   const __sid = v => String(v == null ? '' : v).replace(/[^A-Za-z0-9_\-.:]/g, '');
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+  const dash = v => (v == null || v === '') ? '—' : v;
+  const fmtDate = d => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
   let _assets = [];
   let _parents = [];
   let _filter = 'all';
+  let _pg = null;
+  let _container = null;
 
   const DRAINAGE_TYPES = [
-    { value: 'primary_canal',     label: 'Primary canal' },
-    { value: 'secondary_drain',   label: 'Secondary drain' },
-    { value: 'box_culvert',       label: 'Box culvert' },
-    { value: 'storm_drain',       label: 'Storm drain' },
-    { value: 'catch_basin',       label: 'Catch basin' },
-    { value: 'manhole',           label: 'Manhole' },
-    { value: 'retention_pond',    label: 'Retention pond' },
-    { value: 'pump_station',      label: 'Pump station' },
-    { value: 'flood_gate',        label: 'Flood gate' },
-    { value: 'overflow_chamber',  label: 'Overflow chamber' },
-    { value: 'detention_tank',    label: 'Detention tank' },
-    { value: 'outfall',           label: 'Outfall' },
+    { value: 'primary_canal', label: 'Primary canal' }, { value: 'secondary_drain', label: 'Secondary drain' },
+    { value: 'box_culvert', label: 'Box culvert' }, { value: 'storm_drain', label: 'Storm drain' },
+    { value: 'catch_basin', label: 'Catch basin' }, { value: 'manhole', label: 'Manhole' },
+    { value: 'retention_pond', label: 'Retention pond' }, { value: 'pump_station', label: 'Pump station' },
+    { value: 'flood_gate', label: 'Flood gate' }, { value: 'overflow_chamber', label: 'Overflow chamber' },
+    { value: 'detention_tank', label: 'Detention tank' }, { value: 'outfall', label: 'Outfall' },
   ];
 
-  const ICONS = {
-    primary_canal:    '<path d="M2 12h20M2 7c4 0 4 10 8 10s4-10 8-10 4 10 4 10"/>',
-    secondary_drain:  '<path d="M4 6h16M6 10h12M8 14h8M10 18h4"/>',
-    box_culvert:      '<rect x="3" y="7" width="18" height="10" rx="1"/><path d="M3 12h18"/>',
-    storm_drain:      '<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9v6M12 9v6M16 9v6"/>',
-    catch_basin:      '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M7 9h10M7 13h10M7 17h10"/>',
-    manhole:          '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>',
-    retention_pond:   '<path d="M3 14c3-4 6-4 9 0s6 4 9 0"/><path d="M3 18c3-4 6-4 9 0s6 4 9 0"/><circle cx="12" cy="6" r="2"/>',
-    pump_station:     '<rect x="4" y="9" width="16" height="11" rx="2"/><path d="M9 9V6a3 3 0 016 0v3M12 13v3"/>',
-    flood_gate:       '<path d="M4 4v16M20 4v16M4 8h16M4 14h16"/>',
-    overflow_chamber: '<path d="M5 4h14v9a7 7 0 01-14 0z"/><path d="M9 8h6"/>',
-    detention_tank:   '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/>',
-    outfall:          '<path d="M4 8h9a5 5 0 015 5v7"/><path d="M4 5v6M14 17l4 4 4-4"/>',
-  };
+  const SHARED_CSS = `
+    <style>
+      .as-table-card { background:var(--surface,#fff); border:1px solid var(--border); border-radius:var(--r,14px); overflow:hidden; box-shadow:var(--sh-xs); }
+      .as-table-head { padding:14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+      .as-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+      .as-chip { padding:6px 13px; border-radius:100px; border:1px solid var(--border-2); background:var(--surface); font-size:var(--fs-xs); font-weight:600; color:var(--ink-2); cursor:pointer; user-select:none; }
+      .as-chip.on { background:var(--neon-trace); border-color:var(--blue-dim); color:var(--blue-hi); }
+      .as-add { padding:8px 15px; border-radius:9px; border:1px solid var(--blue-dim); background:var(--neon-trace); color:var(--blue-hi); font-size:var(--fs-sm); font-weight:700; font-family:var(--ff-b); cursor:pointer; }
+      .ops-table tbody tr.clickable { cursor:pointer; transition:background .12s; }
+      .ops-table tbody tr.clickable:hover { background:var(--surface-2,#f2f8fb); }
+      .as-back { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:8px 13px; cursor:pointer; }
+      .as-detail-top { display:flex; align-items:center; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
+      .as-detail-name { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; }
+      .as-detail-meta { font-size:var(--fs-sm); color:var(--ink-3); margin-top:3px; }
+      .as-detail-actions { margin-left:auto; display:flex; gap:8px; }
+      .as-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--r,14px); box-shadow:var(--sh-xs); margin-bottom:14px; overflow:hidden; }
+      .as-section-h { padding:12px 18px; border-bottom:1px solid var(--border); font-family:var(--ff-d); font-size:var(--fs-sm); font-weight:700; letter-spacing:.4px; color:var(--ink); display:flex; align-items:center; justify-content:space-between; }
+      .as-section-b { padding:16px 18px; }
+      .as-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px 22px; }
+      .as-field .k { font-size:var(--fs-2xs); font-weight:700; letter-spacing:.9px; text-transform:uppercase; color:var(--ink-3); }
+      .as-field .v { font-size:var(--fs-md); color:var(--ink); font-weight:600; margin-top:3px; }
+      .as-empty { color:var(--ink-3); font-size:var(--fs-sm); padding:6px 0; }
+      .as-needs { font-size:var(--fs-xs); color:var(--ink-4); font-style:italic; }
+    </style>`;
 
   async function render(container) {
+    _container = container;
     container.innerHTML = `
-      <style>
-        .as-head { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
-        .as-chip { padding:6px 13px; border-radius:100px; border:1px solid var(--border-2); background:var(--surface); font-size:var(--fs-xs); font-weight:600; color:var(--ink-2); cursor:pointer; user-select:none; }
-        .as-chip.on { background:var(--neon-trace); border-color:var(--blue-dim); color:var(--blue-hi); }
-        .as-add { margin-left:auto; padding:8px 15px; border-radius:9px; border:1px solid var(--blue-dim); background:var(--neon-trace); color:var(--blue-hi); font-size:var(--fs-sm); font-weight:700; font-family:var(--ff-b); cursor:pointer; }
-        .as-add:hover { background:var(--blue-dim); color:var(--ink); }
-
-        .as-group { margin-bottom:18px; }
-        .as-group-h { display:flex; align-items:center; gap:9px; margin-bottom:9px; }
-        .as-group-h b { font-size:var(--fs-base); font-weight:700; color:var(--ink); }
-        .as-group-h span { font-size:var(--fs-xs); color:var(--ink-3); }
-        .as-group-h .line { flex:1; height:1px; background:var(--border); }
-
-        .as-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; }
-        .ast:hover { border-color:var(--blue-dim); }
-        .ast { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:13px 14px; box-shadow:var(--sh-xs); display:flex; gap:11px; align-items:flex-start; }
-        .ast-ic { width:34px; height:34px; border-radius:9px; display:grid; place-items:center; flex-shrink:0; background:var(--neon-trace); color:var(--blue-hi); }
-        .ast-ic svg { width:17px; height:17px; }
-        .ast-b { flex:1; min-width:0; }
-        .ast-n { font-size:var(--fs-base); font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .ast-t { font-size:var(--fs-2xs); color:var(--ink-3); margin-top:2px; }
-        .ast-m { display:flex; gap:8px; margin-top:7px; flex-wrap:wrap; }
-        .ast-tag { font-size:var(--fs-2xs); padding:2px 7px; border-radius:5px; background:var(--surface-3); color:var(--ink-2); white-space:nowrap; }
-        .ast-tag.nodes { background:var(--ok-bg); color:var(--ok); }
-        .ast-tag.none  { background:var(--wb); color:var(--warn); }
-        .ast-tag.risk-high, .ast-tag.risk-critical { background:var(--eb); color:var(--err); }
-        .ast-tag.risk-moderate { background:var(--wb); color:var(--warn); }
-
-        .as-empty { padding:44px; text-align:center; color:var(--ink-3); font-size:var(--fs-base); background:var(--surface); border:1px solid var(--border); border-radius:14px; line-height:1.6; }
-      </style>
-      <div class="as-head" id="as-head"></div>
-      <div id="as-body"><div class="as-empty">Loading the drainage network…</div></div>
-    `;
+      ${SHARED_CSS}
+      <div class="fg-page-header">
+        <div>
+          <div class="fg-page-title">Assets</div>
+          <div class="fg-page-sub">The drainage infrastructure your Sentinels monitor and your crews maintain</div>
+        </div>
+      </div>
+      <div class="as-table-card">
+        <div class="as-table-head">
+          <div class="as-controls" id="as-chips"></div>
+          <button class="as-add" onclick="OpsAssets.add()">+ Register asset</button>
+        </div>
+        <div id="as-body"><div style="padding:44px;text-align:center;color:var(--ink-3);"><div class="loading" style="margin:0 auto 12px;"></div>Loading assets…</div></div>
+      </div>`;
     await load();
   }
 
@@ -93,93 +83,147 @@ const OpsAssets = (function () {
       draw();
     } catch (err) {
       const el = document.getElementById('as-body');
-      if (el) el.innerHTML = `<div class="as-empty">Couldn't load assets — ${esc(err.message || 'network error')}.</div>`;
+      if (el) el.innerHTML = `<div style="padding:40px;text-align:center;color:var(--ink-3);">Couldn't load assets — ${esc(err.message || 'network error')}.</div>`;
     }
   }
 
-  function draw() {
-    const el = document.getElementById('as-body');
-    const hd = document.getElementById('as-head');
-    if (!el) return;
+  function catLabel(t) { const f = DRAINAGE_TYPES.find(d => d.value === t); return f ? f.label : (t || '').replace(/_/g, ' ') || '—'; }
+  function condBadge(r) { if (!r) return '<span style="color:var(--ink-4);">—</span>'; const m = { low: 'nominal', moderate: 'watch', high: 'warning', critical: 'critical' }; return `<span class="status-badge ${m[r] || 'offline'}">${r}</span>`; }
+  function statusOf(a) { return Number(a.node_count) > 0 ? '<span class="status-badge nominal">Monitored</span>' : '<span class="status-badge watch">No Sentinel</span>'; }
 
-    const unmonitored = _assets.filter(a => !a.node_count || a.node_count === '0').length;
+  function draw() {
+    const chipsEl = document.getElementById('as-chips');
+    const unmonitored = _assets.filter(a => !Number(a.node_count)).length;
     const chips = [
       ['all', `All assets (${_assets.length})`],
       ['monitored', `Monitored (${_assets.length - unmonitored})`],
       ['unmonitored', `No Sentinel (${unmonitored})`],
     ];
-    hd.innerHTML = chips.map(([k, l]) =>
-      `<span class="as-chip ${_filter === k ? 'on' : ''}" onclick="OpsAssets.setFilter('${__sid(k)}')">${l}</span>`).join('')
-      + `<button class="as-add" onclick="OpsAssets.add()">+ Register asset</button>`;
+    if (chipsEl) chipsEl.innerHTML = chips.map(([k, l]) => `<span class="as-chip ${_filter === k ? 'on' : ''}" onclick="OpsAssets.setFilter('${__sid(k)}')">${l}</span>`).join('');
 
     let rows = _assets;
     if (_filter === 'monitored') rows = rows.filter(a => Number(a.node_count) > 0);
     else if (_filter === 'unmonitored') rows = rows.filter(a => !Number(a.node_count));
+    _pg = FGPaginator.create(rows, { pageSize: 25, containerId: 'as-body' });
+    _pg.render(renderTable);
+  }
 
+  function renderTable(rows) {
+    const el = document.getElementById('as-body');
+    if (!el) return;
     if (!rows.length) {
-      el.innerHTML = `<div class="as-empty">
-        ${_assets.length
-          ? 'No assets match this filter.'
-          : 'No drainage assets registered yet.<br>Canals, catch basins, culverts and pump stations live here — the infrastructure your Sentinels monitor and your crews maintain.<br><br><button class="as-add" style="margin:0" onclick="OpsAssets.add()">+ Register the first asset</button>'}
-      </div>`;
+      el.innerHTML = `<div style="padding:44px;text-align:center;color:var(--ink-3);line-height:1.6;">${_assets.length ? 'No assets match this filter.' : 'No drainage assets registered yet.<br><button class="as-add" style="margin-top:12px;" onclick="OpsAssets.add()">+ Register the first asset</button>'}</div>`;
       return;
     }
-
-    // group by the customer property each asset serves
-    const groups = {};
-    rows.forEach(a => {
-      const k = a.parent_property_id || '__none__';
-      (groups[k] = groups[k] || { name: a.parent_name || 'Unassigned to a property', items: [] }).items.push(a);
-    });
-
-    el.innerHTML = Object.entries(groups).map(([k, g]) => `
-      <div class="as-group">
-        <div class="as-group-h">
-          <b>${esc(g.name)}</b>
-          <span>${g.items.length} asset${g.items.length > 1 ? 's' : ''}</span>
-          <span class="line"></span>
-        </div>
-        <div class="as-grid">${g.items.map(cardFor).join('')}</div>
-      </div>`).join('');
-  }
-
-  function cardFor(a) {
-    const icon = ICONS[a.property_type] || ICONS.catch_basin;
-    const nodes = Number(a.node_count) || 0;
-    return `
-      <div class="ast" ${a.parent_property_id ? `onclick="OpsNetwork.open('${__sid(a.parent_property_id)}')" style="cursor:pointer"` : ''}>
-        <div class="ast-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${icon}</svg></div>
-        <div class="ast-b">
-          <div class="ast-n">${esc(a.asset_code || a.property_name)}</div>
-          <div class="ast-t">${(a.property_type || '').replace(/_/g, ' ')}</div>
-          <div class="ast-m">
-            <span class="ast-tag ${nodes ? 'nodes' : 'none'}">${nodes ? `${nodes} Sentinel${nodes > 1 ? 's' : ''}` : 'No Sentinel'}</span>
-            ${a.risk_level ? `<span class="ast-tag risk-${a.risk_level}">${a.risk_level} risk</span>` : ''}
-            ${a.capacity_liters ? `<span class="ast-tag">${Number(a.capacity_liters).toLocaleString()} L</span>` : ''}
-          </div>
-        </div>
+    // Columns per spec: Asset Name, Category, Property, Serial Number, Status, Condition, Warranty, Last Maintenance, Next Maintenance
+    el.innerHTML = `
+      <div style="overflow-x:auto;">
+        <table class="ops-table">
+          <thead><tr>
+            <th>Asset Name</th><th>Category</th><th>Property</th><th>Serial Number</th>
+            <th>Status</th><th>Condition</th><th>Warranty</th><th>Last Maintenance</th><th>Next Maintenance</th>
+          </tr></thead>
+          <tbody>
+            ${rows.map(a => `
+              <tr class="clickable" onclick="OpsAssets.open('${__sid(a.property_id)}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsAssets.open('${__sid(a.property_id)}')}">
+                <td class="bright">${esc(a.asset_code || a.property_name || '—')}</td>
+                <td style="font-size:var(--fs-sm);">${esc(catLabel(a.property_type))}</td>
+                <td class="trunc" style="max-width:170px;font-size:var(--fs-sm);" title="${esc(a.parent_name || '')}">${esc(a.parent_name || '—')}</td>
+                <td class="num" style="font-size:var(--fs-sm);">${dash(a.serial_number || a.asset_code)}</td>
+                <td>${statusOf(a)}</td>
+                <td>${condBadge(a.risk_level)}</td>
+                <td style="font-size:var(--fs-sm);color:var(--ink-4);">${dash(a.warranty_until && fmtDate(a.warranty_until))}</td>
+                <td style="font-size:var(--fs-sm);color:var(--ink-4);">${dash(a.last_maintenance && fmtDate(a.last_maintenance))}</td>
+                <td style="font-size:var(--fs-sm);color:var(--ink-4);">${dash(a.next_maintenance && fmtDate(a.next_maintenance))}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
       </div>`;
   }
 
+  function setFilter(f) { _filter = f; draw(); }
+  function back() { if (_container) render(_container); }
+
+  // ─────────────────────────────────────────────── FULL DETAIL SCREEN
+  async function open(assetId) {
+    if (!_container) return;
+    _container.innerHTML = `${SHARED_CSS}<div style="padding:60px;text-align:center;color:var(--ink-3);"><div class="loading" style="margin:0 auto 12px;"></div>Loading asset…</div>`;
+    try {
+      const res = await OpsModal.apiGet('/properties/' + assetId);
+      const a = res.data;
+      if (!a) { OpsModal.toast('Asset not found', 'warning'); back(); return; }
+      renderDetail(a);
+    } catch (err) {
+      _container.innerHTML = `${SHARED_CSS}<div style="padding:48px;text-align:center;"><div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load asset</div><button class="as-back" onclick="OpsAssets.back()">← Back to Assets</button></div>`;
+    }
+  }
+
+  function section(title, body, needs) {
+    return `<div class="as-section"><div class="as-section-h">${title}${needs ? '<span class="as-needs">pending backend data</span>' : ''}</div><div class="as-section-b">${body}</div></div>`;
+  }
+
+  function renderDetail(a) {
+    const pid = __sid(a.property_id);
+    const inspections = a.inspections || [];
+    const nodes = Number(a.node_count) || 0;
+    const field = (k, v) => `<div class="as-field"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+
+    const overview = `<div class="as-grid">
+      ${field('Asset Name', esc(a.asset_code || a.property_name || '—'))}
+      ${field('Category', esc(catLabel(a.property_type)))}
+      ${field('Property', esc(a.parent_name || '—'))}
+      ${field('Serial Number', dash(a.serial_number || a.asset_code))}
+      ${field('Status', statusOf(a))}
+      ${field('Condition', condBadge(a.risk_level))}
+      ${field('Warranty', dash(a.warranty_until && fmtDate(a.warranty_until)))}
+      ${field('Last Maintenance', dash(a.last_maintenance && fmtDate(a.last_maintenance)))}
+      ${field('Next Maintenance', dash(a.next_maintenance && fmtDate(a.next_maintenance)))}
+    </div>`;
+
+    const specs = `<div class="as-grid">
+      ${field('Type', esc(catLabel(a.property_type)))}
+      ${field('Capacity', a.capacity_liters ? Number(a.capacity_liters).toLocaleString() + ' L' : '—')}
+      ${field('Risk level', condBadge(a.risk_level))}
+      ${field('Sentinels', nodes)}
+    </div>`;
+
+    const maintenance = inspections.length ? `
+      <div style="overflow-x:auto;"><table class="ops-table"><thead><tr><th>ID</th><th>Status</th><th>Date</th><th>Team</th><th>Score</th></tr></thead>
+      <tbody>${inspections.map(i => `<tr><td style="font-family:var(--ff-m);font-size:var(--fs-sm);">${i.inspection_id}</td><td><span class="status-badge ${i.status === 'completed' ? 'nominal' : 'watch'}">${i.status}</span></td><td style="font-size:var(--fs-sm);">${i.scheduled_date ? new Date(i.scheduled_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</td><td style="font-size:var(--fs-sm);">${i.assigned_team || '—'}</td><td style="font-family:var(--ff-d);font-weight:700;">${i.drainage_condition_score ? i.drainage_condition_score + '/10' : '—'}</td></tr>`).join('')}</tbody></table></div>` : '<div class="as-empty">No maintenance history yet.</div>';
+
+    const relatedDevices = `<div class="as-field"><div class="k">Sentinels monitoring this asset</div><div class="v">${nodes}</div></div><div style="margin-top:10px;"><a class="btn-ghost" style="text-decoration:none;padding:7px 12px;" onclick="OpsNetwork.open('${__sid(a.parent_property_id || a.property_id)}')">Open on network view →</a></div>`;
+
+    _container.innerHTML = `
+      ${SHARED_CSS}
+      <div class="as-detail-top">
+        <button class="as-back" onclick="OpsAssets.back()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Assets</button>
+        <div>
+          <div class="as-detail-name">${esc(a.asset_code || a.property_name || 'Asset')}</div>
+          <div class="as-detail-meta">${esc(catLabel(a.property_type))} · ${esc(a.parent_name || 'Standalone')}</div>
+        </div>
+        <div class="as-detail-actions"><button class="btn-ghost" onclick="OpsNetwork.open('${pid}')">Network</button></div>
+      </div>
+      ${section('Asset Overview', overview)}
+      ${section('Specifications', specs)}
+      ${section('Maintenance History', maintenance)}
+      ${section('Documents', '<div class="as-empty">No documents uploaded.</div>', true)}
+      ${section('Photos', '<div class="as-empty">No photos uploaded.</div>', true)}
+      ${section('Related Devices', relatedDevices)}
+      ${section('Related Work Orders', '<div class="as-empty">No work orders linked in this response.</div>', true)}
+    `;
+  }
+
+  // ─────────────────────────────────────────────── REGISTER (action)
   function add() {
     OpsModal.open('Register a drainage asset', `
-      <p style="margin:0 0 14px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">
-        Assets are the infrastructure itself — a canal, a catch basin, a pump station. They sit under
-        the customer property they serve, and a Sentinel is assigned to monitor them.
-      </p>
+      <p style="margin:0 0 14px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">Assets are the infrastructure itself — a canal, a catch basin, a pump station. They sit under the customer property they serve.</p>
       ${OpsModal.field('Asset name', 'property_name', 'text', '', { placeholder: 'e.g. Canal 7' })}
       ${OpsModal.field('Asset code', 'asset_code', 'text', '', { required: false, placeholder: 'e.g. CB-12' })}
       ${OpsModal.field('Type', 'property_type', 'select', 'catch_basin', { options: DRAINAGE_TYPES })}
-      ${OpsModal.field('Serves which property', 'parent_property_id', 'select', '', {
-        options: [{ value: '', label: '— None (standalone infrastructure) —' }].concat(
-          _parents.map(p => ({ value: p.property_id, label: p.property_name }))) })}
+      ${OpsModal.field('Serves which property', 'parent_property_id', 'select', '', { options: [{ value: '', label: '— None (standalone infrastructure) —' }].concat(_parents.map(p => ({ value: p.property_id, label: p.property_name }))) })}
       ${OpsModal.row([
         OpsModal.field('Capacity (litres)', 'capacity_liters', 'number', '', { required: false }),
-        OpsModal.field('Risk level', 'risk_level', 'select', '', { required: false, options: [
-          { value: '', label: '— Not assessed —' },
-          { value: 'low', label: 'Low' }, { value: 'moderate', label: 'Moderate' },
-          { value: 'high', label: 'High' }, { value: 'critical', label: 'Critical' },
-        ]}),
+        OpsModal.field('Risk level', 'risk_level', 'select', '', { required: false, options: [{ value: '', label: '— Not assessed —' }, { value: 'low', label: 'Low' }, { value: 'moderate', label: 'Moderate' }, { value: 'high', label: 'High' }, { value: 'critical', label: 'Critical' }] }),
       ])}
     `, [
       { label: 'Cancel', onclick: 'OpsModal.close()' },
@@ -193,9 +237,7 @@ const OpsAssets = (function () {
     OpsModal.setLoading(true);
     try {
       await OpsModal.apiPost('/properties/assets', {
-        property_name: f.property_name,
-        asset_code: f.asset_code || null,
-        property_type: f.property_type,
+        property_name: f.property_name, asset_code: f.asset_code || null, property_type: f.property_type,
         parent_property_id: f.parent_property_id || null,
         capacity_liters: f.capacity_liters ? parseInt(f.capacity_liters, 10) : null,
         risk_level: f.risk_level || null,
@@ -209,8 +251,5 @@ const OpsAssets = (function () {
     }
   }
 
-  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-  function setFilter(f) { _filter = f; draw(); }
-
-  return { render, setFilter, add, confirmAdd };
+  return { render, setFilter, add, confirmAdd, open, back };
 })();
