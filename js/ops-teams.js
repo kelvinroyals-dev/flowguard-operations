@@ -10,6 +10,8 @@ const OpsTeams = (function () {
 
   let _teams = [];
   let _pg    = null;
+  let _container = null;
+  const _dash = v => (v == null || v === '') ? '—' : v;
 
   // Only admins can permanently delete records
   const _isAdmin = (() => {
@@ -22,8 +24,24 @@ const OpsTeams = (function () {
   // ── RENDER ────────────────────────────────────────────────────────────
 
   function render(container) {
+    _container = container;
     container.innerHTML = `
       <style>
+        .ops-table tbody tr.clickable { cursor:pointer; transition:background .12s; }
+        .ops-table tbody tr.clickable:hover { background:var(--surface-2,#f2f8fb); }
+        .tmv-back { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:8px 13px; cursor:pointer; }
+        .tmv-top { display:flex; align-items:center; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
+        .tmv-name { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; }
+        .tmv-meta { font-size:var(--fs-sm); color:var(--ink-3); margin-top:3px; }
+        .tmv-actions { margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; }
+        .tmv-sec { background:var(--surface); border:1px solid var(--border); border-radius:var(--r,14px); box-shadow:var(--sh-xs); margin-bottom:14px; overflow:hidden; }
+        .tmv-sec-h { padding:12px 18px; border-bottom:1px solid var(--border); font-family:var(--ff-d); font-size:var(--fs-sm); font-weight:700; color:var(--ink); display:flex; justify-content:space-between; }
+        .tmv-sec-b { padding:16px 18px; }
+        .tmv-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px 22px; }
+        .tmv-f .k { font-size:var(--fs-2xs); font-weight:700; letter-spacing:.9px; text-transform:uppercase; color:var(--ink-3); }
+        .tmv-f .v { font-size:var(--fs-md); color:var(--ink); font-weight:600; margin-top:3px; }
+        .tmv-e { color:var(--ink-3); font-size:var(--fs-sm); padding:6px 0; }
+        .tmv-needs { font-size:var(--fs-xs); color:var(--ink-4); font-style:italic; }
         .tm-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
         .tm-header-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#0a1f2e); letter-spacing:-.02em; margin-bottom:3px; }
         .tm-header-sub { font-size:var(--fs-base); color:var(--ink-3,#6b8fa3); }
@@ -207,79 +225,37 @@ const OpsTeams = (function () {
       return;
     }
 
-    el.innerHTML = `<div class="tm-grid">${teams.map(t => {
-      const id      = t.team_id || t.id;
-      const name    = t.team_name || t.name || id || '—';
-      const sc      = statusConfig(t.status);
-      const color   = teamColor(name);
-      const members = t.members || [];
-      const visibleMembers = members.slice(0, 5);
-      const extra   = members.length > 5 ? `+${members.length - 5}` : '';
-      const isIdle  = !t.status || (t.status || '').toLowerCase() === 'idle';
-
-      return `
-        <div class="tm-card">
-          <div class="tm-card-head">
-            <div class="tm-card-avatar" style="background:${color};">${initials(name)}</div>
-            <div style="flex:1;min-width:0;">
-              <div class="tm-card-name">${name}</div>
-              <div class="tm-card-id">${id}</div>
-            </div>
-            <span class="status-badge ${sc.badge}">${sc.label}</span>
-          </div>
-
-          <!-- Members strip -->
-          <div class="tm-members-strip">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div class="tm-member-avatars">
-                ${visibleMembers.map(m => `
-                  <div class="tm-member-av" style="background:${memberColor(m.full_name || m.name || '')}"
-                    title="${m.full_name || m.name || ''}">
-                    ${initials(m.full_name || m.name || '')}
-                  </div>`).join('')}
-                ${extra ? `<div class="tm-member-av" style="background:var(--ink-3,#6b8fa3);">${extra}</div>` : ''}
-              </div>
-              <span class="tm-member-count">
-                ${members.length === 0 ? 'No members' : `${members.length} member${members.length !== 1 ? 's' : ''}`}
-              </span>
-            </div>
-            <button class="tm-member-add" onclick="OpsTeams.manageMembers('${id}','${name.replace(/'/g, "\\'")}')">
-              Manage members →
-            </button>
-          </div>
-
-          <div class="tm-card-body">
-            <div class="tm-detail-row">
-              <span class="tm-detail-label">Location</span>
-              <span class="tm-detail-val">${t.current_location || t.location || '—'}</span>
-            </div>
-            <div class="tm-detail-row">
-              <span class="tm-detail-label">Assigned To</span>
-              <span class="tm-detail-val">${t.assigned_to || '—'}</span>
-            </div>
-            ${t.eta ? `<div class="tm-detail-row"><span class="tm-detail-label">ETA</span><span class="tm-detail-val" style="color:var(--warn);">${t.eta} min</span></div>` : ''}
-            <div class="tm-detail-row">
-              <span class="tm-detail-label">Last Check-in</span>
-              <span class="tm-detail-val">${formatTime(t.last_checkin || t.last_check_in)}</span>
-            </div>
-          </div>
-
-          <div class="tm-card-foot">
-            <button class="btn-ghost" onclick="OpsTeams.editStatus('${id}','${name.replace(/'/g, "\\'")}')
-" style="flex:1;justify-content:center;font-size:var(--fs-sm);">Update Status</button>
-            ${isIdle
-              ? `<button class="btn-primary" onclick="OpsTeams.dispatch('${id}','${name.replace(/'/g, "\\'")}')
-" style="flex:1;justify-content:center;font-size:var(--fs-sm);">Dispatch</button>`
-              : `<button class="btn-ghost" onclick="OpsTeams.viewTeam('${id}')" style="flex:1;justify-content:center;font-size:var(--fs-sm);">View Details</button>`}
-            ${_isAdmin ? `<button class="btn-ghost" onclick="OpsTeams.deleteTeam('${id}','${name.replace(/'/g, "\\'")}')
-" style="padding:7px 10px;color:var(--err);border-color:rgba(220,38,38,.2);" title="Delete team">
-              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-              </svg>
-            </button>` : ''}
-          </div>
-        </div>`;
-    }).join('')}</div>`;
+    // Columns per spec: Team, Members, Supervisor, Active Jobs, Vehicle, Availability
+    el.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r,14px);overflow:hidden;box-shadow:var(--sh-xs);">
+        <div style="overflow-x:auto;">
+          <table class="ops-table">
+            <thead><tr><th>Team</th><th style="text-align:center;">Members</th><th>Supervisor</th><th style="text-align:center;">Active Jobs</th><th>Vehicle</th><th>Availability</th></tr></thead>
+            <tbody>
+              ${teams.map(t => {
+                const id = t.team_id || t.id;
+                const name = t.team_name || t.name || id || '—';
+                const sc = statusConfig(t.status);
+                const members = t.members || [];
+                const supervisor = t.supervisor || t.lead_name || (members.find(m => m.team_role === 'lead') || {}).full_name;
+                return `<tr class="clickable" onclick="OpsTeams.viewTeam('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsTeams.viewTeam('${id}')}">
+                  <td>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                      <div class="tm-card-avatar" style="width:30px;height:30px;font-size:var(--fs-sm);background:${teamColor(name)};">${initials(name)}</div>
+                      <div><div class="tm-card-name" style="font-size:var(--fs-md);">${name}</div><div class="tm-card-id" style="font-size:var(--fs-xs);color:var(--ink-3);font-family:var(--ff-m);">${id}</div></div>
+                    </div>
+                  </td>
+                  <td class="num" style="text-align:center;font-weight:700;">${members.length}</td>
+                  <td style="font-size:var(--fs-sm);">${_dash(supervisor)}</td>
+                  <td style="text-align:center;">${t.active_jobs != null ? t.active_jobs : '<span style="color:var(--ink-4);">—</span>'}</td>
+                  <td style="font-size:var(--fs-sm);">${_dash(t.vehicle)}</td>
+                  <td><span class="status-badge ${sc.badge}">${sc.label}</span></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
   }
 
   // ── MANAGE MEMBERS MODAL ──────────────────────────────────────────────
@@ -429,44 +405,75 @@ const OpsTeams = (function () {
 
   // ── VIEW TEAM ─────────────────────────────────────────────────────────
 
-  async function viewTeam(id) {
+  function back() { if (_container) render(_container); }
+
+  // ── FULL DETAIL SCREEN (no pop-up) ──
+  function viewTeam(id) {
     const t = _teams.find(x => (x.team_id || x.id) == id);
-    if (!t) { OpsModal.toast('Team not found', 'warning'); return; }
-    const name    = t.team_name || t.name || id;
-    const sc      = statusConfig(t.status);
+    if (!t || !_container) { if (!t) OpsModal.toast('Team not found', 'warning'); return; }
+    const name = t.team_name || t.name || id;
+    const sc = statusConfig(t.status);
     const members = t.members || [];
+    const supervisor = t.supervisor || t.lead_name || (members.find(m => m.team_role === 'lead') || {}).full_name;
+    const esc = s => s.replace(/'/g, "\\'");
+    const f = (k, v) => `<div class="tmv-f"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+    const sec = (tt, b, needs) => `<div class="tmv-sec"><div class="tmv-sec-h">${tt}${needs ? '<span class="tmv-needs">pending backend data</span>' : ''}</div><div class="tmv-sec-b">${b}</div></div>`;
 
-    OpsModal.open(`Team — ${name}`, `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
-        <div class="ops-modal-detail"><span class="label">Status</span><span class="value"><span class="status-badge ${sc.badge}">${sc.label}</span></span></div>
-        <div class="ops-modal-detail"><span class="label">Location</span><span class="value">${t.current_location || t.location || '—'}</span></div>
-        <div class="ops-modal-detail"><span class="label">Assigned To</span><span class="value">${t.assigned_to || 'Unassigned'}</span></div>
-        <div class="ops-modal-detail"><span class="label">Last Check-in</span><span class="value">${formatTime(t.last_checkin || t.last_check_in)}</span></div>
-        ${t.eta ? `<div class="ops-modal-detail"><span class="label">ETA</span><span class="value" style="color:var(--warn);font-weight:700;">${t.eta} min</span></div>` : ''}
-        ${t.equipment ? `<div class="ops-modal-detail" style="grid-column:1/-1;"><span class="label">Equipment</span><span class="value">${t.equipment}</span></div>` : ''}
-      </div>
+    const overview = `<div class="tmv-grid">
+      ${f('Team', name)}
+      ${f('Members', members.length)}
+      ${f('Supervisor', _dash(supervisor))}
+      ${f('Active Jobs', t.active_jobs != null ? t.active_jobs : '—')}
+      ${f('Vehicle', _dash(t.vehicle))}
+      ${f('Availability', `<span class="status-badge ${sc.badge}">${sc.label}</span>`)}
+      ${f('Location', _dash(t.current_location || t.location))}
+      ${f('Assigned To', _dash(t.assigned_to))}
+      ${t.eta ? f('ETA', `<span style="color:var(--warn);font-weight:700;">${t.eta} min</span>`) : ''}
+      ${f('Last Check-in', formatTime(t.last_checkin || t.last_check_in))}
+    </div>${t.equipment ? `<div style="margin-top:12px;">${f('Equipment', t.equipment)}</div>` : ''}`;
 
-      <div style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
-        <div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Members (${members.length})</div>
-        <button class="btn-ghost" style="font-size:var(--fs-sm);padding:5px 10px;" onclick="OpsModal.close();OpsTeams.manageMembers('${id}','${name.replace(/'/g, "\\'")}')">Manage</button>
+    const membersBody = members.length ? members.map(m => `
+      <div class="tm-modal-member-row">
+        <div class="tm-modal-member-av" style="background:${memberColor(m.full_name || m.name || '')};">${initials(m.full_name || m.name || '')}</div>
+        <div><div class="tm-modal-member-name">${m.full_name || m.name || '—'}</div><div class="tm-modal-member-role">${(CONFIG.ROLE_LABELS[m.role_id || m.role] || '').replace(/_/g, ' ')} ${m.team_role ? '· ' + m.team_role : ''}</div></div>
+      </div>`).join('') : '<div class="tmv-e">No members assigned to this team yet.</div>';
+
+    const isIdle = !t.status || (t.status || '').toLowerCase() === 'idle';
+    const actions = [
+      `<button class="btn-ghost" onclick="OpsTeams.manageMembers('${id}','${esc(name)}')">Manage Members</button>`,
+      `<button class="btn-ghost" onclick="OpsTeams.editStatus('${id}','${esc(name)}')">Update Status</button>`,
+      isIdle ? `<button class="btn-primary" onclick="OpsTeams.dispatch('${id}','${esc(name)}')">Dispatch</button>` : '',
+      _isAdmin ? `<button class="btn-ghost" style="color:var(--err);border-color:rgba(220,38,38,.2);" onclick="OpsTeams.deleteTeam('${id}','${esc(name)}')">Delete</button>` : '',
+    ].filter(Boolean).join('');
+
+    _container.innerHTML = `
+      ${styleTag()}
+      <div class="tmv-top">
+        <button class="tmv-back" onclick="OpsTeams.back()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Teams</button>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="tm-card-avatar" style="width:42px;height:42px;font-size:var(--fs-md);background:${teamColor(name)};">${initials(name)}</div>
+          <div><div class="tmv-name">${name}</div><div class="tmv-meta">${id} · <span class="status-badge ${sc.badge}">${sc.label}</span></div></div>
+        </div>
+        <div class="tmv-actions">${actions}</div>
       </div>
-      ${members.length === 0
-        ? `<div style="font-size:var(--fs-base);color:var(--ink-3);padding:12px 0;">No members assigned to this team yet.</div>`
-        : members.map(m => `
-          <div class="tm-modal-member-row">
-            <div class="tm-modal-member-av" style="background:${memberColor(m.full_name || m.name || '')};">${initials(m.full_name || m.name || '')}</div>
-            <div>
-              <div class="tm-modal-member-name">${m.full_name || m.name || '—'}</div>
-              <div class="tm-modal-member-role">${(CONFIG.ROLE_LABELS[m.role_id || m.role] || '').replace(/_/g, ' ')} ${m.team_role ? '· ' + m.team_role : ''}</div>
-            </div>
-          </div>`).join('')}
-    `, [
-      { label: 'Close',         onclick: 'OpsModal.close()',                                                     class: 'btn-ghost' },
-      { label: 'Manage Members',onclick: `OpsModal.close();OpsTeams.manageMembers('${id}','${name.replace(/'/g, "\\'")}')`, class: 'btn-ghost' },
-      ...(!t.status || (t.status || '').toLowerCase() === 'idle'
-        ? [{ label: 'Dispatch', onclick: `OpsModal.close();OpsTeams.dispatch('${id}','${name.replace(/'/g, "\\'")}')`, class: 'btn-primary' }]
-        : []),
-    ]);
+      ${sec('Team Overview', overview)}
+      ${sec('Members', membersBody)}
+      ${sec('Schedule', '<div class="tmv-e">No schedule in this response.</div>', true)}
+      ${sec('Current Jobs', t.active_jobs != null ? `<div class="tmv-e">${t.active_jobs} active job(s). <a onclick="switchTab('maintenance')" style="color:var(--blue-hi);cursor:pointer;">Open Maintenance →</a></div>` : '<div class="tmv-e">No current jobs in this response.</div>', t.active_jobs == null)}
+      ${sec('Performance', '<div class="tmv-e">No performance metrics in this response.</div>', true)}
+      ${sec('Timeline', `<div class="tmv-e">Last check-in ${formatTime(t.last_checkin || t.last_check_in)}.</div>`, true)}
+    `;
+  }
+
+  // minimal style tag so the detail view keeps its look when it replaces the list
+  function styleTag() {
+    return `<style>
+      .ops-table tbody tr.clickable{cursor:pointer;transition:background .12s;} .ops-table tbody tr.clickable:hover{background:var(--surface-2,#f2f8fb);}
+      .tmv-back{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-sm);font-weight:600;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:8px 13px;cursor:pointer;}
+      .tmv-top{display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap;} .tmv-name{font-family:var(--ff-d);font-size:var(--fs-xl);font-weight:700;color:var(--ink);line-height:1.1;} .tmv-meta{font-size:var(--fs-sm);color:var(--ink-3);margin-top:3px;} .tmv-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;}
+      .tmv-sec{background:var(--surface);border:1px solid var(--border);border-radius:var(--r,14px);box-shadow:var(--sh-xs);margin-bottom:14px;overflow:hidden;} .tmv-sec-h{padding:12px 18px;border-bottom:1px solid var(--border);font-family:var(--ff-d);font-size:var(--fs-sm);font-weight:700;color:var(--ink);display:flex;justify-content:space-between;} .tmv-sec-b{padding:16px 18px;}
+      .tmv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px 22px;} .tmv-f .k{font-size:var(--fs-2xs);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3);} .tmv-f .v{font-size:var(--fs-md);color:var(--ink);font-weight:600;margin-top:3px;} .tmv-e{color:var(--ink-3);font-size:var(--fs-sm);padding:6px 0;} .tmv-needs{font-size:var(--fs-xs);color:var(--ink-4);font-style:italic;}
+    </style>`;
   }
 
   // ── DISPATCH ──────────────────────────────────────────────────────────
@@ -608,7 +615,7 @@ const OpsTeams = (function () {
   }
 
   return {
-    render, manageMembers, addMemberToTeam, confirmAddMember,
+    render, back, manageMembers, addMemberToTeam, confirmAddMember,
     removeMember, viewTeam, dispatch, confirmDispatch,
     editStatus, confirmStatus, createTeam, confirmCreate, deleteTeam,
   };
