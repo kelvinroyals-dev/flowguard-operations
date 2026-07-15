@@ -231,7 +231,7 @@
         if (!remember) { localStorage.removeItem('token'); localStorage.removeItem('user'); }
         btxt.innerHTML = '✓ &nbsp;Access granted';
         showMsg('Authenticated. Loading your workspace…', 'success');
-        const dest = d.data.user.role === 'field_team' ? 'field.html' : 'index.html';
+        const dest = d.data.user.role === 'field_team' ? 'field.html' : 'dashboard.html';
         setTimeout(() => window.location.href = dest, 800);
       } else {
         btn.disabled = false;
