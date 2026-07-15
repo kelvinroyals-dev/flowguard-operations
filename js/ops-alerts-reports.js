@@ -136,6 +136,26 @@ const OpsAlerts = (function () {
         .al-empty svg { margin: 0 auto 14px; display: block; opacity: .25; }
         .al-empty-title { font-size: var(--fs-md); font-weight: 600; color: var(--ink-2, #2d5068); margin-bottom: 4px; }
         .al-empty-sub   { font-size: var(--fs-sm); }
+
+        /* ── Incident Intelligence — the "days flood-free" sweep already runs
+           every 15 minutes (utils/incidents.js) and raises a candidate the
+           moment a sensor holds a critical level for a sustained window.
+           That automation existed with a full confirm/dismiss API and had
+           never been surfaced anywhere in ops — this is the one place a
+           proactive "we already caught this, confirm or dismiss" signal
+           belongs, ahead of the reactive Active Incidents feed below it. ── */
+        .ic-card { background: var(--surface, #fff); border: 1px solid var(--blue-dim, #7dd3fc); border-radius: var(--r, 14px); overflow: hidden; box-shadow: var(--sh-xs, 0 1px 2px rgba(10,31,46,.06)); margin-bottom: 16px; }
+        .ic-head { padding: 14px 20px; border-bottom: 1px solid var(--border, #dae6ef); background: var(--neon-trace, rgba(22,168,211,.06)); }
+        .ic-title { font-family: var(--ff-d, 'Space Grotesk', sans-serif); font-size: var(--fs-md); font-weight: 700; color: var(--ink, #0a1f2e); display: flex; align-items: center; gap: 8px; }
+        .ic-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 100px; background: var(--wb, #fef3c7); color: var(--warn, #b45309); font-size: var(--fs-2xs); font-weight: 800; }
+        .ic-sub { font-size: var(--fs-sm); color: var(--ink-3, #6b8fa3); margin-top: 3px; line-height: 1.5; max-width: 680px; }
+        .ic-row { padding: 14px 20px; border-bottom: 1px solid var(--border, #dae6ef); display: flex; align-items: center; gap: 14px; }
+        .ic-row:last-child { border-bottom: none; }
+        .ic-row-body { flex: 1; min-width: 0; }
+        .ic-row-title { font-size: var(--fs-md); font-weight: 700; color: var(--ink, #0a1f2e); }
+        .ic-row-meta { font-size: var(--fs-xs); color: var(--ink-3, #6b8fa3); font-family: var(--ff-m, 'JetBrains Mono', monospace); margin-top: 2px; }
+        .ic-row-peak { font-family: var(--ff-m, 'JetBrains Mono', monospace); font-weight: 700; color: var(--warn, #b45309); white-space: nowrap; }
+        .ic-empty { padding: 20px; text-align: center; color: var(--ink-3, #6b8fa3); font-size: var(--fs-sm); }
       </style>
 
       <div class="fg-page-header">
@@ -147,6 +167,17 @@ const OpsAlerts = (function () {
 
       <!-- Stats/filter — matches alerts.severity CHECK constraint exactly: critical | high | moderate | minor -->
       <div id="al-stats"></div>
+
+      <!-- Incident Intelligence — pattern-detected candidates, ahead of the reactive feed -->
+      <div class="ic-card" id="ic-card">
+        <div class="ic-head">
+          <div class="ic-title">Incident Intelligence <span class="ic-badge" id="ic-badge" style="display:none;"></span></div>
+          <div class="ic-sub">Sustained-breach patterns the network already caught — a sweep checks every 15 minutes. Confirm to write the incident, or dismiss as a false positive, before either touches Active Incidents below.</div>
+        </div>
+        <div id="ic-body">
+          <div class="ic-empty">Checking for pattern-detected candidates…</div>
+        </div>
+      </div>
 
       <!-- Feed -->
       <div class="al-feed-card">
@@ -167,6 +198,96 @@ const OpsAlerts = (function () {
     `;
 
     loadAlerts();
+    loadCandidates();
+  }
+
+  // ── Incident Intelligence: pending automation-raised candidates ──
+  let _candidates = [];
+
+  async function loadCandidates() {
+    try {
+      const r = await OpsModal.apiGet('/monitoring/incident-candidates?status=pending');
+      _candidates = r.data || [];
+      renderCandidates();
+    } catch (err) {
+      const body = document.getElementById('ic-body');
+      if (body) body.innerHTML = `<div class="ic-empty">Couldn't load incident candidates — ${err.message || 'network error'}.</div>`;
+    }
+  }
+
+  function renderCandidates() {
+    const body = document.getElementById('ic-body');
+    const badge = document.getElementById('ic-badge');
+    if (!body) return;
+    if (badge) {
+      badge.textContent = _candidates.length || '';
+      badge.style.display = _candidates.length ? '' : 'none';
+    }
+    if (!_candidates.length) {
+      body.innerHTML = '<div class="ic-empty">No sustained-breach patterns awaiting review — the network is quiet.</div>';
+      return;
+    }
+    body.innerHTML = _candidates.map(c => {
+      const start = OpsModal.fmtDateTime(c.breach_start);
+      const dur = c.duration_min ? `${c.duration_min} min sustained` : 'duration unknown';
+      const site = c.property_name || c.sensor_name || c.sensor_id || 'Unknown site';
+      return `
+        <div class="ic-row">
+          <div class="ic-row-body">
+            <div class="ic-row-title">${site}</div>
+            <div class="ic-row-meta">${c.sensor_name || c.sensor_id || ''} · ${dur} · began ${start}</div>
+          </div>
+          <div class="ic-row-peak">${c.peak_level != null ? Math.round(c.peak_level) + '%' : '—'}</div>
+          <div class="al-row-actions">
+            <button class="al-action-btn" onclick="OpsAlerts.dismissCandidate(${parseInt(c.id, 10)})">Dismiss</button>
+            <button class="al-action-btn resolve" onclick="OpsAlerts.confirmCandidate(${parseInt(c.id, 10)})">Confirm incident</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function confirmCandidate(id) {
+    const c = _candidates.find(x => x.id == id);
+    const site = c ? (c.property_name || c.sensor_name || c.sensor_id) : 'this site';
+    OpsModal.open('Confirm flood incident', `
+      <p style="margin:0 0 12px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">
+        Confirms this as a real flood incident at <b>${site}</b>. This resets the client's "days flood-free" counter and writes a permanent record.
+      </p>
+      ${OpsModal.field('Note (optional)', 'note', 'textarea', '', { required: false, placeholder: 'What happened, what was observed' })}
+    `, [
+      { label: 'Cancel', onclick: 'OpsModal.close()' },
+      { label: 'Confirm incident', class: 'btn-primary', onclick: `OpsAlerts.resolveCandidate(${id}, true)` },
+    ]);
+  }
+
+  function dismissCandidate(id) {
+    const c = _candidates.find(x => x.id == id);
+    const site = c ? (c.property_name || c.sensor_name || c.sensor_id) : 'this site';
+    OpsModal.open('Dismiss candidate', `
+      <p style="margin:0 0 12px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">
+        Marks this as a false positive at <b>${site}</b>. Nothing is written to the client's record.
+      </p>
+      ${OpsModal.field('Reason (optional)', 'note', 'textarea', '', { required: false, placeholder: "Why this isn't a real incident" })}
+    `, [
+      { label: 'Cancel', onclick: 'OpsModal.close()' },
+      { label: 'Dismiss', class: 'btn-ghost', onclick: `OpsAlerts.resolveCandidate(${id}, false)` },
+    ]);
+  }
+
+  async function resolveCandidate(id, confirmed) {
+    const f = OpsModal.getFormData();
+    OpsModal.setLoading(true);
+    try {
+      await OpsModal.apiPost(`/monitoring/incident-candidates/${id}/confirm`, { confirmed, note: f.note || null });
+      OpsModal.close();
+      OpsModal.toast(confirmed ? 'Incident confirmed.' : 'Candidate dismissed.', confirmed ? 'success' : 'nominal');
+      _candidates = _candidates.filter(c => c.id != id);
+      renderCandidates();
+      if (confirmed) loadAlerts();   // a confirmed incident may also raise/affect the active feed
+    } catch (err) {
+      OpsModal.setLoading(false);
+      OpsModal.toast(err.message || 'Failed to update candidate', 'error');
+    }
   }
 
   async function loadAlerts() {
@@ -232,6 +353,7 @@ const OpsAlerts = (function () {
     const container = document.getElementById('content-alerts');
     if (container) container.removeAttribute('data-rendered');
     loadAlerts();
+    loadCandidates();
   }
 
   function severityClass(s) {
@@ -495,7 +617,10 @@ const OpsAlerts = (function () {
       </div>`;
   }
 
-  return { render, setFilter, refresh, viewAlert, assignAlert, confirmAssign, resolveAlert };
+  return {
+    render, setFilter, refresh, viewAlert, assignAlert, confirmAssign, resolveAlert,
+    confirmCandidate, dismissCandidate, resolveCandidate,
+  };
 
 })();
 
