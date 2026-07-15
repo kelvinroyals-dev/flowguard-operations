@@ -18,10 +18,15 @@ const OpsSLA = (function () {
   let _clients  = [];
   let _breaches = [];
   let _pg       = null;
+  let _container = null;
+  const _dash = v => (v == null || v === '') ? '—' : v;
 
   function render(container) {
+    _container = container;
     container.innerHTML = `
       <style>
+        .ops-table tbody tr.clickable { cursor:pointer; transition:background .12s; }
+        .ops-table tbody tr.clickable:hover { background:var(--surface-2,#f2f8fb); }
         /* KPI row */
         .sla-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
         .sla-kpi { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); padding:18px; box-shadow:var(--sh-xs); position:relative; overflow:hidden; transition:all .2s; }
@@ -179,17 +184,14 @@ const OpsSLA = (function () {
       return;
     }
 
+    // Columns per spec: Client, Property, SLA, Response Time, Resolution Time, Compliance, Status
     el.innerHTML = `
       <div style="overflow-x:auto;">
         <table class="ops-table">
           <thead>
             <tr>
-              <th>Client</th>
-              <th>SLA Target</th>
-              <th style="min-width:140px;">Compliance</th>
-              <th>Avg Response</th>
-              <th>Breaches</th>
-              <th>Status</th>
+              <th>Client</th><th>Property</th><th>SLA</th><th>Response Time</th>
+              <th>Resolution Time</th><th style="min-width:140px;">Compliance</th><th>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -198,23 +200,64 @@ const OpsSLA = (function () {
               const barColor  = pct >= 95 ? 'var(--ok)' : pct >= 80 ? 'var(--amber)' : 'var(--err)';
               const badgeType = pct >= 95 ? 'nominal' : pct >= 80 ? 'watch' : 'critical';
               const label     = pct >= 95 ? 'On Track' : pct >= 80 ? 'At Risk' : 'Breached';
-              return `<tr>
+              const cid       = c.client_id != null ? c.client_id : '';
+              return `<tr class="clickable" onclick="OpsSLA.open('${cid}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsSLA.open('${cid}')}">
                 <td class="bright">${c.client_name || '—'}</td>
+                <td style="font-size:var(--fs-sm);">${_dash(c.property_name)}</td>
                 <td style="font-family:var(--ff-m);font-size:var(--fs-sm);">${c.sla_target_min || '—'} min</td>
+                <td style="font-family:var(--ff-m);font-size:var(--fs-sm);">${c.avg_response_min != null ? c.avg_response_min + ' min' : '—'}</td>
+                <td style="font-family:var(--ff-m);font-size:var(--fs-sm);">${c.avg_resolution_min != null ? c.avg_resolution_min + ' min' : '—'}</td>
                 <td>
                   <div style="font-size:var(--fs-base);font-weight:700;color:${barColor};margin-bottom:3px;">${pct}%</div>
-                  <div class="sla-bar-track">
-                    <div class="sla-bar-fill" style="width:${pct}%;background:${barColor};"></div>
-                  </div>
+                  <div class="sla-bar-track"><div class="sla-bar-fill" style="width:${pct}%;background:${barColor};"></div></div>
                 </td>
-                <td style="font-family:var(--ff-m);font-size:var(--fs-sm);">${c.avg_response_min != null ? c.avg_response_min + ' min' : '—'}</td>
-                <td style="font-family:var(--ff-d);font-size:var(--fs-lg);font-weight:800;color:${c.breaches > 0 ? 'var(--err)' : 'var(--ok)'};">${c.breaches ?? 0}</td>
                 <td><span class="status-badge ${badgeType}">${label}</span></td>
               </tr>`;
             }).join('')}
           </tbody>
         </table>
       </div>`;
+  }
+
+  function back() { if (_container) render(_container); }
+
+  // ── FULL DETAIL SCREEN (no pop-up) ──
+  function open(clientId) {
+    const c = _clients.find(x => String(x.client_id) === String(clientId));
+    if (!c || !_container) return;
+    const pct = c.compliance_pct ?? 0;
+    const label = pct >= 95 ? 'On Track' : pct >= 80 ? 'At Risk' : 'Breached';
+    const badgeType = pct >= 95 ? 'nominal' : pct >= 80 ? 'watch' : 'critical';
+    const clientBreaches = _breaches.filter(b => String(b.client_id) === String(clientId));
+    const f = (k, v) => `<div><div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3);">${k}</div><div style="font-size:var(--fs-md);color:var(--ink);font-weight:600;margin-top:3px;">${v}</div></div>`;
+    const sec = (t, b, needs) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r,14px);box-shadow:var(--sh-xs);margin-bottom:14px;overflow:hidden;"><div style="padding:12px 18px;border-bottom:1px solid var(--border);font-family:var(--ff-d);font-size:var(--fs-sm);font-weight:700;color:var(--ink);display:flex;justify-content:space-between;">${t}${needs ? '<span style="font-size:var(--fs-xs);color:var(--ink-4);font-style:italic;">pending backend data</span>' : ''}</div><div style="padding:16px 18px;">${b}</div></div>`;
+
+    const details = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px 22px;">
+      ${f('Client', c.client_name || '—')}
+      ${f('Property', _dash(c.property_name))}
+      ${f('SLA Target', (c.sla_target_min || '—') + ' min')}
+      ${f('Response Time', c.avg_response_min != null ? c.avg_response_min + ' min' : '—')}
+      ${f('Resolution Time', c.avg_resolution_min != null ? c.avg_resolution_min + ' min' : '—')}
+      ${f('Compliance', pct + '%')}
+      ${f('Breaches', c.breaches ?? 0)}
+      ${f('Status', `<span class="status-badge ${badgeType}">${label}</span>`)}
+    </div>`;
+
+    const breachTable = clientBreaches.length ? `
+      <div style="overflow-x:auto;"><table class="ops-table"><thead><tr><th>Month</th><th>Breaches</th><th>Acknowledged</th></tr></thead>
+      <tbody>${clientBreaches.map(b => `<tr><td style="font-size:var(--fs-sm);">${_dash(b.month)}</td><td>${b.breaches ?? b.breach_count ?? '—'}</td><td style="font-size:var(--fs-sm);">${b.acknowledged_at ? OpsModal.fmtDateTime(b.acknowledged_at) : '<span style="color:var(--warn);">Pending</span>'}</td></tr>`).join('')}</tbody></table></div>` : '<div style="color:var(--ink-3);font-size:var(--fs-sm);">No breaches on record for this client.</div>';
+
+    _container.innerHTML = `
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap;">
+        <button class="btn-ghost" onclick="OpsSLA.back()" style="display:inline-flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>SLA Tracker</button>
+        <div><div style="font-family:var(--ff-d);font-size:var(--fs-xl);font-weight:700;color:var(--ink);">${c.client_name || 'Client'}</div><div style="font-size:var(--fs-sm);color:var(--ink-3);margin-top:3px;">Compliance ${pct}% · <span class="status-badge ${badgeType}">${label}</span></div></div>
+      </div>
+      ${sec('SLA Details', details)}
+      ${sec('Incident History', '<div style="color:var(--ink-3);font-size:var(--fs-sm);">No incident history in this response.</div>', true)}
+      ${sec('Performance Charts', '<div style="color:var(--ink-3);font-size:var(--fs-sm);">Compliance ' + pct + '% over the current period.</div>', true)}
+      ${sec('Breaches', breachTable)}
+      ${sec('Timeline', '<div style="color:var(--ink-3);font-size:var(--fs-sm);">No timeline in this response.</div>', true)}
+    `;
   }
 
   // ── ACTIVE BREACHES ───────────────────────────────────────────────────
@@ -332,6 +375,6 @@ const OpsSLA = (function () {
     return new Date(ds).toLocaleDateString('en-GB', { day:'numeric', month:'short' });
   }
 
-  return { render, acknowledge };
+  return { render, acknowledge, open, back };
 
 })();
