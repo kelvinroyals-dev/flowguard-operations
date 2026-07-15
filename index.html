@@ -1168,8 +1168,8 @@
       background-image:radial-gradient(900px 500px at 12% -8%,rgba(28,184,232,.10),transparent),radial-gradient(700px 420px at 100% 0%,rgba(31,157,91,.06),transparent);
     }
     html[data-theme="dark"] .app-neon{ background:#08161d; }
-    .app-neon > .tnav{ width:100%; max-width:1480px; margin:0 auto 16px; }
-    .app-neon > .content{ width:100%; max-width:1480px; margin:0 auto; padding:0 !important; background:transparent !important; }
+    .app-neon > .tnav{ width:100%; max-width:1480px; margin:0 auto 16px; position:relative; z-index:60; }
+    .app-neon > .content{ width:100%; max-width:1480px; margin:0 auto; padding:0 !important; background:transparent !important; position:relative; z-index:1; }
 
     /* topbar — scoped tokens (prefixed) so nothing leaks to other tabs' content */
     .tnav{
@@ -1344,7 +1344,7 @@
 <script src="js/auth.js?v=sec2"></script>
 <script src="js/ops-modal.js?v=sec2"></script>
 <script src="js/fg-paginator.js?v=sec2"></script>
-<script src="js/ops-dashboard.js?v=sec3"></script>
+<script src="js/ops-dashboard.js?v=sec4"></script>
 <script src="js/ops-user-management.js?v=sec2"></script>
 <script src="js/ops-clients.js?v=sec2"></script>
 <script src="js/ops-properties.js?v=sec2"></script>

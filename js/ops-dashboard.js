@@ -226,6 +226,12 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
 .neon-dash .leaflet-popup-content-wrapper{background:var(--panel-solid);color:var(--text-1);border-radius:12px;box-shadow:var(--shadow-2);}
 .neon-dash .leaflet-popup-tip{background:var(--panel-solid);}
 .neon-dash .leaflet-container{background:var(--bg-2);font-family:'Plus Jakarta Sans',sans-serif;}
+/* Incident queue: contained + scrolls internally (lists all incidents without growing the page) */
+.neon-dash .incident-scroll{max-height:288px;overflow-y:auto;margin:0 -4px;padding:0 4px;}
+.neon-dash .incident-scroll::-webkit-scrollbar{width:6px;}
+.neon-dash .incident-scroll::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:3px;}
+.neon-dash .incident-scroll::-webkit-scrollbar-track{background:transparent;}
+.neon-dash .incident-empty{padding:8px 0;font-size:11.5px;color:var(--text-3);}
 `;
   const NEON_HTML = `<div class="neon-dash">
 <div class="wrap">
@@ -689,16 +695,18 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
 
   function renderIncidents(alerts) {
     const card = cardByHeading('Incident queue'); if (!card) return;
-    card.querySelectorAll('.incident-row').forEach(n => n.remove());
+    card.querySelectorAll('.incident-row, .incident-scroll, .incident-empty').forEach(n => n.remove());
     const rank = { critical: 0, high: 1, moderate: 2, minor: 3 };
+    // list ALL open incidents — the widget is height-capped and scrolls internally
     const open = (alerts || []).filter(a => !['resolved', 'closed'].includes(a.status || 'active'))
-      .sort((x, y) => (rank[x.severity] ?? 4) - (rank[y.severity] ?? 4) || new Date(y.created_at) - new Date(x.created_at)).slice(0, 3);
-    if (!open.length) { card.insertAdjacentHTML('beforeend', '<div class="incident-meta" style="padding:6px 0">No open incidents — network is clear.</div>'); return; }
-    card.insertAdjacentHTML('beforeend', open.map(a => {
+      .sort((x, y) => (rank[x.severity] ?? 4) - (rank[y.severity] ?? 4) || new Date(y.created_at) - new Date(x.created_at));
+    if (!open.length) { card.insertAdjacentHTML('beforeend', '<div class="incident-empty">No open incidents — network is clear.</div>'); return; }
+    const rows = open.map(a => {
       const c = sevColor(a.severity);
       const meta = [a.sensor_name || a.site_name, rel(a.created_at) + ' ago'].filter(Boolean).join(' · ');
       return `<div class="incident-row"><span class="isev" style="background:${c};"></span><div><div class="incident-title">${esc(a.alert_type || 'Alert')} &middot; ${esc(a.severity || '')}</div><div class="incident-meta">${esc(meta)}</div></div></div>`;
-    }).join(''));
+    }).join('');
+    card.insertAdjacentHTML('beforeend', `<div class="incident-scroll">${rows}</div>`);
   }
 
   function renderCrew(teams) {
@@ -755,6 +763,20 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
     const av = q('.avatar'); if (av && initials) av.textContent = initials;
   }
 
+  // ── Live weather → mockup "Weather conditions" card (Open-Meteo, Lagos) ──
+  async function renderWeather() {
+    const t = q('.weather-temp'), d = q('.weather-desc');
+    if (!t && !d) return;
+    try {
+      const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=6.45&longitude=3.47&current=temperature_2m,precipitation,relative_humidity_2m,weather_code&timezone=Africa%2FLagos');
+      const c = (await r.json()).current || {};
+      const code = c.weather_code || 0;
+      const desc = code >= 95 ? 'Storm' : code >= 80 ? 'Showers' : code >= 61 ? 'Rain' : code >= 51 ? 'Drizzle' : code >= 45 ? 'Fog' : code >= 2 ? 'Cloudy' : 'Clear';
+      if (t) t.textContent = `${Math.round(c.temperature_2m)}°C`;
+      if (d) d.textContent = `${desc} · ${(c.precipitation ?? 0).toFixed(1)} mm rain (1h)` + (c.relative_humidity_2m != null ? ` · ${c.relative_humidity_2m}% humidity` : '');
+    } catch (_) { /* keep the card's default copy on failure */ }
+  }
+
   async function load() {
     if (!Auth.isAuthenticated()) return;
     try {
@@ -775,6 +797,7 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
       renderDeviceFleet(fleet);
       renderPortfolio(md);
       renderSyncPill(fleet);
+      renderWeather();
       const firstSensor = (md.sensors || []).find(s => s.status === 'active') || (md.sensors || [])[0] || (fleet || [])[0];
       if (firstSensor) setInspector(firstSensor);
       if (typeof updateAlertCount === 'function') updateAlertCount(kpis.activeAlerts || 0);
