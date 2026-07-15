@@ -1,13 +1,15 @@
 /* ══════════════════════════════════════════════════════════════
-   FlowGuard Ops — SENTINEL
-   The devices themselves, not the infrastructure they watch.
-   Online state, battery, signal, firmware, heartbeat, capabilities,
-   calibration, and the assets each node covers (many-to-many).
+   FlowGuard Ops — SENTINEL DEVICES
+   Rebuilt to match the Figma "Sentinel Devices" screen exactly:
+   4-card fleet header (Total/Online/Degraded/Offline), a dense
+   NODE ID/ESTATE/FIRMWARE/BATTERY/SIGNAL/TEMP/LAST SEEN/HEALTH/
+   ACTIONS table, and a right-side slide-over detail drawer (not a
+   full-page swap) with a metric list and an action list.
+   Colors use the app's existing theme tokens (var(--ok)/--warn/
+   --err/--blue-hi/--surface/--border/...) so light/dark theming
+   still works — the Figma file is dark-only, this app isn't.
    ══════════════════════════════════════════════════════════════ */
 const OpsSensors = (function () {
-  // identifiers embedded in inline handlers: restrict to a safe charset.
-  // HTML-escaping does NOT protect here — the browser decodes entities before
-  // parsing the JS, so a quote can still break out of the string.
   const __sid = v => String(v == null ? '' : v).replace(/[^A-Za-z0-9_\-.:]/g, '');
 
   let _all = [];
@@ -15,72 +17,99 @@ const OpsSensors = (function () {
   let _q = '';
   let _pg = null;
   let _container = null;
-  let _view = 'list';       // 'list' | 'detail'
-  let _detailId = null;
-  let _selected = new Set();  // sensor_ids picked for bulk remote commands
-  let _filteredRows = [];     // full filtered set (not just current page) — for "select all"
+  let _selected = new Set();
+  let _filteredRows = [];
+  let _drawerId = null;
+
+  const ICON = {
+    cpu:  '<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/>',
+    wifi: '<path d="M5 13a10 10 0 0114 0"/><path d="M8.5 16.5a5 5 0 017 0"/><path d="M12 20h.01"/>',
+    pulse:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+    wifiOff: '<path d="M1 1l22 22"/><path d="M16.72 11.06A10.94 10.94 0 0119 12.55"/><path d="M5 12.55a10.94 10.94 0 015.17-2.39"/><path d="M10.71 5.05A16 16 0 0122.58 9"/><path d="M1.42 9a15.91 15.91 0 014.7-2.88"/><path d="M8.53 16.11a6 6 0 016.95 0"/><path d="M12 20h.01"/>',
+  };
 
   const STYLES = `
     <style>
-      /* KPI strip is now the shared .fg-kpis/.fg-kpi component (index.html,
-         built via OpsModal.kpiStrip) — this used to be a local .sn-kpis .ck
-         override, close to but not the same component the dashboard used. */
-
       .sn-toolbar { display:flex; gap:9px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
       .sn-chip { padding:6px 13px; border-radius:100px; border:1px solid var(--border-2); background:var(--surface); font-size:var(--fs-xs); font-weight:600; color:var(--ink-2); cursor:pointer; user-select:none; }
       .sn-chip.on { background:var(--neon-trace); border-color:var(--blue-dim); color:var(--blue-hi); }
       .sn-search { display:flex; align-items:center; gap:7px; background:var(--surface); border:1px solid var(--border-2); border-radius:9px; padding:7px 12px; width:220px; color:var(--ink-3); margin-left:auto; }
       .sn-search input { flex:1; min-width:0; background:transparent; border:none; outline:none; color:var(--ink); font-size:var(--fs-sm); font-family:var(--ff-b); }
+      .sn-add-btn { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:9px; border:none; background:var(--blue-hi); color:#04202b; font-size:var(--fs-sm); font-weight:700; font-family:var(--ff-b); cursor:pointer; }
 
-      /* Dense fleet table — built to stay scannable at hundreds/thousands of rows */
       .sn-table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; box-shadow:var(--sh-xs); }
+      .sn-fleet-head { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--border); }
+      .sn-fleet-title { font-family:var(--ff-d); font-size:var(--fs-md); font-weight:700; color:var(--ink); }
       .sn-row { cursor:pointer; }
       .sn-row:hover td { background:var(--surface-3); }
-      .sn-dev-name { font-size:var(--fs-md); font-weight:700; color:var(--ink); }
-      .sn-dev-code { font-family:var(--ff-m); font-size:var(--fs-2xs); color:var(--ink-3); margin-top:2px; }
-      .sn-vit { font-family:var(--ff-m); font-size:var(--fs-base); font-weight:600; white-space:nowrap; }
-      .sn-cov-count { font-size:var(--fs-base); color:var(--ink-2); }
-      .sn-cov-count.warn { color:var(--warn); font-weight:600; }
+      .sn-node-id { font-family:var(--ff-m); font-weight:700; color:var(--blue-hi); white-space:nowrap; }
+      .sn-fw { font-family:var(--ff-m); font-size:var(--fs-sm); }
+      .sn-fw.outdated { color:var(--warn); font-weight:600; }
+      .sn-fw.current { color:var(--ink-3); }
+      .sn-vitcell { display:flex; align-items:center; gap:8px; white-space:nowrap; }
+      .sn-bar { display:inline-block; width:46px; height:3px; border-radius:2px; background:var(--surface-3); overflow:hidden; flex-shrink:0; }
+      .sn-bar i { display:block; height:100%; border-radius:2px; }
+      .sn-vit-v { font-family:var(--ff-m); font-size:var(--fs-sm); font-weight:600; min-width:32px; text-align:right; }
+      .sn-temp { font-family:var(--ff-m); font-size:var(--fs-sm); color:var(--ink-2); }
+      .sn-last { font-family:var(--ff-m); font-size:var(--fs-sm); }
+      .hbadge { display:inline-block; padding:3px 10px; border-radius:100px; font-size:var(--fs-2xs); font-weight:700; font-family:var(--ff-m); text-transform:lowercase; }
+      .hbadge.healthy { background:var(--ok-bg); color:var(--ok); }
+      .hbadge.degraded { background:var(--wb); color:var(--warn); }
+      .hbadge.offline { background:var(--eb); color:var(--err); }
+      .sn-acts { display:flex; align-items:center; gap:6px; }
+      .sn-ota-btn { padding:4px 12px; border-radius:100px; border:none; background:var(--blue-hi); color:#04202b; font-size:var(--fs-2xs); font-weight:800; letter-spacing:.4px; font-family:var(--ff-m); cursor:pointer; }
+      .sn-icon-btn { width:26px; height:26px; border-radius:8px; border:1px solid var(--border-2); background:var(--surface); color:var(--ink-3); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
+      .sn-icon-btn:hover { border-color:var(--blue-dim); color:var(--blue-hi); }
+      .sn-cmd-badge { display:inline-flex; align-items:center; justify-content:center; min-width:15px; height:15px; padding:0 4px; border-radius:100px; background:var(--wb); color:var(--warn); font-size:9px; font-weight:800; margin-left:5px; vertical-align:middle; }
 
-      /* Detail page — a real screen, not a popup. Swaps in place of the list. */
-      .snd-back { display:inline-flex; align-items:center; gap:6px; background:none; border:none; color:var(--ink-3); font-size:var(--fs-sm); font-weight:600; font-family:var(--ff-b); cursor:pointer; padding:0; margin-bottom:14px; }
-      .snd-back:hover { color:var(--blue-hi); }
-      .snd-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:18px; flex-wrap:wrap; }
-      .snd-title { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:800; color:var(--ink); letter-spacing:-.02em; margin-bottom:4px; }
-      .snd-code { font-family:var(--ff-m); font-size:var(--fs-sm); color:var(--ink-3); }
-      .snd-acts { display:flex; gap:8px; flex-shrink:0; }
-      .snd-section-title { font-size:var(--fs-xs); font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--ink-3); margin:18px 0 8px; }
-      .snd-section-title:first-child { margin-top:0; }
-      .snd-read { display:flex; flex-wrap:wrap; gap:6px; }
-      .rd { display:flex; align-items:center; gap:5px; padding:4px 9px; border-radius:7px; background:var(--surface-2); border:1px solid var(--border); font-size:var(--fs-2xs); color:var(--ink-2); white-space:nowrap; }
-      .rd b { font-family:var(--ff-m); color:var(--ink); font-weight:600; }
-      .rd.off { opacity:.45; }
-      .cov-list { display:flex; flex-wrap:wrap; gap:5px; }
-      .cov-tag { cursor:pointer; font-family:var(--ff-b); display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:100px; background:var(--neon-trace); border:1px solid var(--blue-dim); font-size:var(--fs-2xs); color:var(--blue-hi); white-space:nowrap; }
-      .cov-tag:hover { border-color:var(--ink-2); }
-      .cov-tag.pri { background:var(--ok-bg); border-color:var(--ok); color:var(--ok); font-weight:700; }
-      .cov-none { font-size:var(--fs-xs); color:var(--warn); }
-
-      .sn-empty { padding:40px; text-align:center; color:var(--ink-3); font-size:var(--fs-base); background:var(--surface); border:1px solid var(--border); border-radius:14px; }
-      .sn-note { padding:11px 14px; border-radius:10px; background:var(--wb); color:var(--warn); font-size:var(--fs-sm); margin-bottom:12px; line-height:1.5; }
-
-      /* Bulk selection + remote command actions */
       .sn-bulkbar { display:none; align-items:center; gap:9px; padding:9px 13px; margin-bottom:10px; background:var(--neon-trace); border:1px solid var(--blue-dim); border-radius:11px; flex-wrap:wrap; }
       .sn-bulk-count { font-size:var(--fs-sm); font-weight:700; color:var(--blue-hi); margin-right:4px; }
       .sn-bulk-clear { margin-left:auto; background:none; border:none; color:var(--ink-3); font-size:var(--fs-xs); font-weight:600; cursor:pointer; padding:4px 6px; }
       .sn-bulk-clear:hover { color:var(--ink); }
-      .sn-cmd-badge { display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 5px; border-radius:100px; background:var(--wb); color:var(--warn); font-size:9px; font-weight:800; vertical-align:middle; }
-      .snd-acts { flex-wrap:wrap; }
+
+      .sn-empty { padding:40px; text-align:center; color:var(--ink-3); font-size:var(--fs-base); background:var(--surface); border:1px solid var(--border); border-radius:14px; }
+      .sn-note { padding:11px 14px; border-radius:10px; background:var(--wb); color:var(--warn); font-size:var(--fs-sm); margin-bottom:12px; line-height:1.5; }
+
+      /* ── Right-side detail drawer (matches Figma: slide-over, not a
+         full-page swap) — appended to <body> so it isn't clipped by the
+         table's horizontal scroll container. ── */
+      .sn-drawer-overlay { position:fixed; inset:0; z-index:2000; background:rgba(4,12,18,0); pointer-events:none; transition:background .22s; }
+      .sn-drawer-overlay.open { background:rgba(4,12,18,.45); pointer-events:auto; }
+      .sn-drawer { position:absolute; top:0; right:0; bottom:0; width:380px; max-width:92vw; background:var(--surface); border-left:1px solid var(--border); box-shadow:-8px 0 30px rgba(0,0,0,.25); transform:translateX(100%); transition:transform .24s cubic-bezier(.22,1,.36,1); display:flex; flex-direction:column; }
+      .sn-drawer-overlay.open .sn-drawer { transform:translateX(0); }
+      .sn-drawer-head { padding:18px 20px 14px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+      .sn-drawer-title { font-family:var(--ff-d); font-size:var(--fs-lg); font-weight:800; color:var(--ink); }
+      .sn-drawer-sub { font-size:var(--fs-xs); color:var(--ink-3); margin-top:2px; }
+      .sn-drawer-close { background:none; border:none; color:var(--ink-3); cursor:pointer; padding:4px; flex-shrink:0; }
+      .sn-drawer-close:hover { color:var(--ink); }
+      .sn-drawer-body { flex:1; overflow-y:auto; padding:16px 20px 20px; }
+      .sn-drawer-status { margin-bottom:14px; }
+      .sn-metric-row { display:flex; align-items:center; justify-content:space-between; padding:9px 12px; background:var(--surface-2); border-radius:9px; margin-bottom:6px; }
+      .sn-metric-k { font-size:var(--fs-xs); color:var(--ink-3); }
+      .sn-metric-v { font-family:var(--ff-m); font-size:var(--fs-sm); font-weight:700; }
+      .sn-fw-row { display:flex; align-items:center; justify-content:space-between; padding:9px 12px; background:var(--surface-2); border-radius:9px; margin:12px 0 4px; }
+      .sn-fw-badge { padding:2px 9px; border-radius:100px; background:var(--wb); color:var(--warn); font-size:var(--fs-2xs); font-weight:700; }
+      .sn-acts-h { font-size:var(--fs-2xs); font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--ink-3); margin:18px 0 8px; }
+      .sn-act-row { display:flex; align-items:center; gap:10px; width:100%; padding:9px 4px; background:none; border:none; text-align:left; font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); cursor:pointer; font-family:var(--ff-b); border-radius:8px; }
+      .sn-act-row:hover { background:var(--surface-2); color:var(--blue-hi); }
+      .sn-act-row.danger { color:var(--err); }
+      .sn-act-row.danger:hover { background:var(--eb); }
+      .sn-act-row svg { flex-shrink:0; }
     </style>`;
 
   async function render(container) {
     _container = container;
-    _view = 'list';
-    _container.innerHTML = STYLES + `
+    _drawerId = null;
+    _container.innerHTML = STYLES + shellHTML();
+    await load();
+  }
+
+  function shellHTML() {
+    return `
       <div class="fg-page-header">
         <div>
-          <div class="fg-page-title">Sentinel</div>
-          <div class="fg-page-sub">The devices themselves — online state, battery, signal, and the assets each node covers</div>
+          <div class="fg-page-title">Sentinel Devices</div>
+          <div class="fg-page-sub" id="sn-page-sub">Fleet management</div>
         </div>
       </div>
       <div id="sn-kpis"></div>
@@ -89,7 +118,6 @@ const OpsSensors = (function () {
       <div class="sn-bulkbar" id="sn-bulkbar"></div>
       <div id="sn-body"><div class="sn-empty">Loading the Sentinel fleet…</div></div>
     `;
-    await load();
   }
 
   async function load() {
@@ -105,61 +133,84 @@ const OpsSensors = (function () {
   function rel(ts) {
     if (!ts) return null;
     const m = Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
-    if (m < 1) return 'just now';
+    if (m < 1) return 'now';
     if (m < 60) return m + 'm ago';
     if (m < 1440) return Math.floor(m / 60) + 'h ago';
     return Math.floor(m / 1440) + 'd ago';
   }
 
-  function draw() {
-    if (_view === 'detail') { drawDetail(); return; }
-    drawList();
+  // "online" = active status AND telemetry within 6h — the same freshness
+  // window already established elsewhere in this app, not a new number.
+  function healthTier(x) {
+    const beat = x.reading_time || x.last_ping;
+    const stale = !beat || (Date.now() - new Date(beat).getTime()) > 6 * 3600 * 1000;
+    if (x.status !== 'active' || stale) return 'offline';
+    const lowBatt = x.battery_percent != null && x.battery_percent < 50;
+    const lowSig = x.signal_strength != null && x.signal_strength < 70;
+    if (lowBatt || lowSig) return 'degraded';
+    return 'healthy';
   }
+
+  // water level is the inverse polarity of battery/signal — HIGH is the
+  // danger direction, so this can't reuse OpsModal.vitalColor().
+  function levelColor(v) {
+    if (v == null) return 'var(--ink-4)';
+    if (v >= 70) return 'var(--err)';
+    if (v >= 50) return 'var(--warn)';
+    return 'var(--ok)';
+  }
+
+  function estateOf(x) {
+    return (x.primary_asset && x.primary_asset.name) || x.zone || x.client_name || '—';
+  }
+
+  // "outdated" firmware = doesn't match the fleet's most common version —
+  // derived from real data, not a fabricated "latest release" reference.
+  function fleetFirmware(rows) {
+    const counts = {};
+    rows.forEach(x => { if (x.firmware_version) counts[x.firmware_version] = (counts[x.firmware_version] || 0) + 1; });
+    let best = null, bestN = 0;
+    Object.entries(counts).forEach(([v, n]) => { if (n > bestN) { best = v; bestN = n; } });
+    return best;
+  }
+
+  function draw() { drawList(); }
 
   function drawList() {
     if (!_container) return;
-    // coming back from the detail page replaced the whole container —
-    // rebuild the list shell if it's not there, otherwise just refresh it in place
-    if (!document.getElementById('sn-kpis')) {
-      _container.innerHTML = STYLES + `
-        <div class="fg-page-header">
-          <div>
-            <div class="fg-page-title">Sentinel</div>
-            <div class="fg-page-sub">The devices themselves — online state, battery, signal, and the assets each node covers</div>
-          </div>
-        </div>
-        <div id="sn-kpis"></div>
-        <div class="sn-toolbar" id="sn-toolbar"></div>
-        <div id="sn-note-slot"></div>
-        <div class="sn-bulkbar" id="sn-bulkbar"></div>
-        <div id="sn-body"></div>
-      `;
-    }
+    if (!document.getElementById('sn-kpis')) _container.innerHTML = STYLES + shellHTML();
+
     const el = document.getElementById('sn-body');
     const kp = document.getElementById('sn-kpis');
     const tb = document.getElementById('sn-toolbar');
+    const sub = document.getElementById('sn-page-sub');
     if (!el) return;
 
     const total = _all.length;
-    const online = _all.filter(x => x.status === 'active').length;
-    const maint = _all.filter(x => x.status === 'maintenance').length;
-    const offline = total - online - maint;
+    const tiers = _all.map(healthTier);
+    const healthy = tiers.filter(t => t === 'healthy').length;
+    const degraded = tiers.filter(t => t === 'degraded').length;
+    const offline = tiers.filter(t => t === 'offline').length;
+    const online = healthy + degraded;
+    const estates = new Set(_all.map(estateOf).filter(e => e && e !== '—')).size;
+    const uptime = total ? Math.round(online / total * 100 * 10) / 10 : 0;
+    const commonFw = fleetFirmware(_all);
     const battKnown = _all.some(x => x.battery_percent != null);
     const lowBatt = _all.filter(x => x.battery_percent != null && x.battery_percent < 20).length;
     const unassigned = _all.filter(x => !x.assets || !x.assets.length).length;
-    const silent = _all.filter(x => !x.reading_time && !x.last_ping).length;
+
+    if (sub) sub.textContent = `${total} nodes · ${commonFw ? 'firmware ' + commonFw + ' · ' : ''}fleet management`;
 
     kp.innerHTML = OpsModal.kpiStrip([
-      { label: 'Fleet size', value: total, sub: 'Deployed Sentinels' },
-      { label: 'Online', value: online, sub: total ? Math.round(online / total * 100) + '% reporting' : '—', subClass: online === total && total ? 'ok' : '' },
-      { label: 'Offline / maintenance', value: offline + maint, sub: `${offline} offline · ${maint} maintenance`, subClass: offline ? 'err' : '' },
-      { label: 'Low battery', value: battKnown ? lowBatt : '—', sub: battKnown ? 'Below 20%' : 'Not reported', subClass: lowBatt ? 'warn' : '' },
-      { label: 'Unassigned', value: unassigned, sub: unassigned ? 'Covering no asset' : 'All assigned', subClass: unassigned ? 'warn' : 'ok' },
+      { icon: ICON.cpu,     color: 'var(--blue-hi)', label: 'Total Nodes', value: total, sub: `Across ${estates} estate${estates === 1 ? '' : 's'}` },
+      { icon: ICON.wifi,    color: 'var(--ok)',      label: 'Online',      value: online, sub: `${uptime}% fleet uptime`, subClass: 'ok' },
+      { icon: ICON.pulse,   color: 'var(--warn)',    label: 'Degraded',    value: degraded, sub: 'Needs attention', subClass: degraded ? 'warn' : '' },
+      { icon: ICON.wifiOff, color: 'var(--err)',     label: 'Offline',     value: offline, sub: 'Requires dispatch', subClass: offline ? 'err' : '' },
     ]);
 
     const chips = [
-      ['all', `All (${total})`], ['active', `Online (${online})`],
-      ['offline', `Offline (${offline})`], ['maintenance', `Maintenance (${maint})`],
+      ['all', `All (${total})`], ['healthy', `Healthy (${healthy})`],
+      ['degraded', `Degraded (${degraded})`], ['offline', `Offline (${offline})`],
       ['lowbatt', `Low battery (${battKnown ? lowBatt : 0})`],
       ['unassigned', `Unassigned (${unassigned})`],
     ];
@@ -170,19 +221,20 @@ const OpsSensors = (function () {
         <input placeholder="Search Sentinels…" value="${_q.replace(/"/g, '&quot;')}" oninput="OpsSensors.setQuery(this.value)">
       </span>`;
 
-    let rows = _all;
-    if (_filter === 'active') rows = rows.filter(x => x.status === 'active');
-    else if (_filter === 'offline') rows = rows.filter(x => x.status !== 'active' && x.status !== 'maintenance');
-    else if (_filter === 'maintenance') rows = rows.filter(x => x.status === 'maintenance');
-    else if (_filter === 'lowbatt') rows = rows.filter(x => x.battery_percent != null && x.battery_percent < 20);
-    else if (_filter === 'unassigned') rows = rows.filter(x => !x.assets || !x.assets.length);
+    let rows = _all.map((x, i) => ({ x, tier: tiers[i] }));
+    if (_filter === 'healthy') rows = rows.filter(r => r.tier === 'healthy');
+    else if (_filter === 'degraded') rows = rows.filter(r => r.tier === 'degraded');
+    else if (_filter === 'offline') rows = rows.filter(r => r.tier === 'offline');
+    else if (_filter === 'lowbatt') rows = rows.filter(r => r.x.battery_percent != null && r.x.battery_percent < 20);
+    else if (_filter === 'unassigned') rows = rows.filter(r => !r.x.assets || !r.x.assets.length);
     if (_q) {
       const q = _q.toLowerCase();
-      rows = rows.filter(x => `${x.name || ''} ${x.sensor_id || ''} ${x.client_name || ''} ${(x.assets || []).map(a => a.name).join(' ')}`.toLowerCase().includes(q));
+      rows = rows.filter(r => `${r.x.name || ''} ${r.x.sensor_id || ''} ${estateOf(r.x)}`.toLowerCase().includes(q));
     }
+    rows = rows.map(r => r.x);
 
-    document.getElementById('sn-note-slot').innerHTML = (silent === total && total)
-      ? '<div class="sn-note"><b>No Sentinel is reporting telemetry.</b> Devices are registered and their vitals are on record, but no readings have reached the platform — level, flow and silt stay empty until the nodes start posting.</div>'
+    document.getElementById('sn-note-slot').innerHTML = (offline === total && total)
+      ? '<div class="sn-note"><b>No Sentinel is reporting telemetry.</b> Devices are registered but no readings have reached the platform yet.</div>'
       : '';
 
     _filteredRows = rows;
@@ -195,7 +247,7 @@ const OpsSensors = (function () {
     }
 
     _pg = FGPaginator.create(rows, { pageSize: 25, containerId: 'sn-body' });
-    _pg.render(renderTable);
+    _pg.render(rs => renderTable(rs, commonFw));
   }
 
   // ── Bulk selection + remote command dispatch ──
@@ -216,19 +268,17 @@ const OpsSensors = (function () {
   function toggleSelect(id, checked) {
     if (checked) _selected.add(id); else _selected.delete(id);
     renderBulkBar();
-    const all = document.getElementById('sn-selall');
-    if (all) all.indeterminate = _selected.size > 0 && !_filteredRows.every(x => _selected.has(x.sensor_id));
   }
 
   function toggleSelectAll(checked) {
     _filteredRows.forEach(x => { if (checked) _selected.add(x.sensor_id); else _selected.delete(x.sensor_id); });
-    if (_pg) _pg.render(renderTable);
+    if (_pg) _pg.render(rs => renderTable(rs, fleetFirmware(_all)));
     renderBulkBar();
   }
 
   function clearSelection() {
     _selected.clear();
-    if (_pg) _pg.render(renderTable);
+    if (_pg) _pg.render(rs => renderTable(rs, fleetFirmware(_all)));
     renderBulkBar();
   }
 
@@ -272,137 +322,193 @@ const OpsSensors = (function () {
     }
   }
 
-  function statusBadge(status) {
-    const m = { active: 'nominal', maintenance: 'watch' };
-    const lbl = { active: 'Online', maintenance: 'Maintenance' };
-    return `<span class="status-badge ${m[status] || 'critical'}">${lbl[status] || 'Offline'}</span>`;
-  }
-
-  // Battery/signal color banding lives once in OpsModal.vitalColor() —
-  // used to be a local copy here with a too-lenient <=20/<=40 band that
-  // let a 47% battery render green.
-
-  function renderTable(rows) {
+  function renderTable(rows, commonFw) {
     const el = document.getElementById('sn-body');
     if (!el) return;
     const allChecked = rows.length > 0 && _filteredRows.every(x => _selected.has(x.sensor_id));
     el.innerHTML = `
       <div class="sn-table-wrap">
+        <div class="sn-fleet-head">
+          <div class="sn-fleet-title">Sentinel Fleet</div>
+        </div>
         <div style="overflow-x:auto;">
           <table class="ops-table">
             <thead>
               <tr>
-                <th style="width:30px;"><input type="checkbox" id="sn-selall" ${allChecked ? 'checked' : ''} onclick="OpsSensors.toggleSelectAll(this.checked)" title="Select all matching this filter"></th>
-                <th>Sentinel</th>
-                <th>Status</th>
-                <th style="text-align:right;">Battery</th>
-                <th style="text-align:right;">Signal</th>
-                <th>Last reading</th>
-                <th>Coverage</th>
+                <th style="width:26px;"><input type="checkbox" ${allChecked ? 'checked' : ''} onclick="OpsSensors.toggleSelectAll(this.checked)" title="Select all matching this filter"></th>
+                <th>Node ID</th>
+                <th>Estate</th>
+                <th>Firmware</th>
+                <th>Battery</th>
+                <th>Signal</th>
+                <th>Temp</th>
+                <th>Last seen</th>
+                <th>Health</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              ${rows.map(x => {
-                const beat = rel(x.reading_time || x.last_ping);
-                const assets = x.assets || [];
-                return `
-                <tr class="sn-row" onclick="OpsSensors.viewSensor('${__sid(x.sensor_id)}')">
-                  <td onclick="event.stopPropagation()"><input type="checkbox" ${_selected.has(x.sensor_id) ? 'checked' : ''} onclick="OpsSensors.toggleSelect('${__sid(x.sensor_id)}', this.checked); event.stopPropagation()"></td>
-                  <td>
-                    <div class="sn-dev-name">${esc(x.name || x.sensor_id)}${x.pending_commands ? ` <span class="sn-cmd-badge" title="${x.pending_commands} command(s) queued, delivered on next check-in">${x.pending_commands}</span>` : ''}</div>
-                    <div class="sn-dev-code">${esc(x.sensor_id)}</div>
-                  </td>
-                  <td>${statusBadge(x.status)}</td>
-                  <td class="sn-vit" style="text-align:right;color:${OpsModal.vitalColor(x.battery_percent)};">${x.battery_percent != null ? x.battery_percent + '%' : '—'}</td>
-                  <td class="sn-vit" style="text-align:right;color:${OpsModal.vitalColor(x.signal_strength)};">${x.signal_strength != null ? x.signal_strength + '%' : '—'}</td>
-                  <td class="sn-vit" style="color:${beat ? 'var(--ink-2)' : 'var(--err)'};">${beat || 'never'}</td>
-                  <td class="sn-cov-count ${assets.length ? '' : 'warn'}">${assets.length ? `${assets.length} asset${assets.length > 1 ? 's' : ''}` : 'Unassigned'}</td>
-                </tr>`;
-              }).join('')}
+              ${rows.map(x => rowHTML(x, commonFw)).join('')}
             </tbody>
           </table>
         </div>
       </div>`;
   }
 
-  // ── Detail page — every field, on its own screen, not a popup.
-  // Matches the drill-down pattern OpsNetwork already uses for properties:
-  // the row click swaps the tab's content in place, with a real Back
-  // action, instead of layering an overlay on top of the list. ──
-  function viewSensor(sensorId) {
-    _detailId = sensorId;
-    _view = 'detail';
-    draw();
+  function vitBar(v) {
+    const color = OpsModal.vitalColor(v);
+    const pct = v == null ? 0 : Math.max(2, v);
+    return `<span class="sn-vitcell"><span class="sn-bar"><i style="width:${pct}%;background:${color}"></i></span><span class="sn-vit-v" style="color:${color}">${v != null ? v + '%' : '—'}</span></span>`;
   }
 
-  function backToList() {
-    _view = 'list';
-    _detailId = null;
-    draw();
-  }
-
-  function drawDetail() {
-    if (!_container) return;
-    const x = _all.find(s => s.sensor_id === _detailId);
-    if (!x) { backToList(); return; }
-
-    const cap = x.capabilities || {};
-    const reading = (on, label, val, unit) => {
-      if (!on) return '';
-      const has = val != null;
-      return `<span class="rd ${has ? '' : 'off'}">${label} <b>${has ? val + unit : '—'}</b></span>`;
-    };
+  function rowHTML(x, commonFw) {
+    const tier = healthTier(x);
     const beat = rel(x.reading_time || x.last_ping);
-    const assets = x.assets || [];
-    const cov = assets.length
-      ? assets.map(a => `<button class="cov-tag ${a.is_primary ? 'pri' : ''}" onclick="OpsSensors.openAsset('${__sid(a.property_id)}')" title="${a.type ? a.type.replace(/_/g, ' ') : ''} — open its property network">${a.is_primary ? '★ ' : ''}${esc(a.name)}</button>`).join('')
-      : '<span class="cov-none">Covering no asset — assign one</span>';
+    const outdated = commonFw && x.firmware_version && x.firmware_version !== commonFw;
+    return `
+      <tr class="sn-row" onclick="OpsSensors.viewSensor('${__sid(x.sensor_id)}')">
+        <td onclick="event.stopPropagation()"><input type="checkbox" ${_selected.has(x.sensor_id) ? 'checked' : ''} onclick="OpsSensors.toggleSelect('${__sid(x.sensor_id)}', this.checked); event.stopPropagation()"></td>
+        <td class="sn-node-id">${esc(x.name || x.sensor_id)}${x.pending_commands ? `<span class="sn-cmd-badge" title="${x.pending_commands} command(s) queued">${x.pending_commands}</span>` : ''}</td>
+        <td>${esc(estateOf(x))}</td>
+        <td class="sn-fw ${outdated ? 'outdated' : 'current'}">${x.firmware_version ? esc(x.firmware_version) : '—'}</td>
+        <td>${vitBar(x.battery_percent)}</td>
+        <td>${vitBar(x.signal_strength)}</td>
+        <td class="sn-temp">${x.temperature != null ? Math.round(x.temperature) + '°C' : '—'}</td>
+        <td class="sn-last" style="color:${beat ? 'var(--ink-2)' : 'var(--err)'}">${beat || 'never'}</td>
+        <td><span class="hbadge ${tier}">${tier}</span></td>
+        <td class="sn-acts" onclick="event.stopPropagation()">
+          <button class="sn-ota-btn" onclick="OpsSensors.sendCommand('${__sid(x.sensor_id)}', 'firmware_update')" title="Push firmware OTA">OTA</button>
+          <button class="sn-icon-btn" onclick="OpsSensors.sendCommand('${__sid(x.sensor_id)}', 'reset')" title="Restart node">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </button>
+        </td>
+      </tr>`;
+  }
 
-    _container.innerHTML = STYLES + `
-      <button class="snd-back" onclick="OpsSensors.backToList()">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-        Back to Sentinels
-      </button>
+  function setFilter(f) { _filter = f; draw(); }
+  function setQuery(q) { _q = q; draw(); }
 
-      <div class="snd-head">
-        <div>
-          <div class="snd-title">${esc(x.name || x.sensor_id)}${x.pending_commands ? ` <span class="sn-cmd-badge" title="${x.pending_commands} command(s) queued, delivered on next check-in">${x.pending_commands}</span>` : ''}</div>
-          <div class="snd-code">${esc(x.sensor_id)}</div>
+  // ══════════════════════════════════════════════════════════════
+  //  RIGHT-SIDE DETAIL DRAWER — matches the Figma slide-over exactly:
+  //  header (name + estate), status badge, metric rows, firmware +
+  //  update badge, then an ACTIONS list (not buttons in a row).
+  // ══════════════════════════════════════════════════════════════
+  function viewSensor(sensorId, defaultCommand) {
+    _drawerId = sensorId;
+    renderDrawer();
+    if (defaultCommand) sendCommand(sensorId, defaultCommand);
+  }
+
+  function closeDrawer() {
+    _drawerId = null;
+    const el = document.getElementById('sn-drawer-overlay');
+    if (el) { el.classList.remove('open'); setTimeout(() => el.remove(), 220); }
+  }
+
+  function renderDrawer() {
+    const x = _all.find(s => s.sensor_id === _drawerId);
+    if (!x) return;
+    let overlay = document.getElementById('sn-drawer-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'sn-drawer-overlay';
+      overlay.className = 'sn-drawer-overlay';
+      overlay.addEventListener('click', e => { if (e.target === overlay) closeDrawer(); });
+      document.body.appendChild(overlay);
+    }
+    const tier = healthTier(x);
+    const commonFw = fleetFirmware(_all);
+    const outdated = commonFw && x.firmware_version && x.firmware_version !== commonFw;
+    const cap = x.capabilities || {};
+
+    const metric = (on, label, val, unit, color) => {
+      if (on === false) return '';
+      const has = val != null;
+      return `<div class="sn-metric-row"><span class="sn-metric-k">${label}</span><span class="sn-metric-v" style="color:${has ? (color || 'var(--ink)') : 'var(--ink-4)'}">${has ? val + unit : '—'}</span></div>`;
+    };
+
+    overlay.innerHTML = `
+      <div class="sn-drawer" onclick="event.stopPropagation()">
+        <div class="sn-drawer-head">
+          <div>
+            <div class="sn-drawer-title">${esc(x.name || x.sensor_id)}</div>
+            <div class="sn-drawer-sub">${esc(estateOf(x))}${x.sensor_id !== (x.name || x.sensor_id) ? ' · ' + esc(x.sensor_id) : ''}</div>
+          </div>
+          <button class="sn-drawer-close" onclick="OpsSensors.closeDrawer()" aria-label="Close">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
         </div>
-        <div class="snd-acts">
-          <button class="btn-ghost" onclick="OpsSensors.coverage('${__sid(x.sensor_id)}')">Coverage</button>
-          <button class="btn-ghost" onclick="OpsSensors.history('${__sid(x.sensor_id)}')">History</button>
-          <button class="btn-ghost" onclick="OpsSensors.commandHistory('${__sid(x.sensor_id)}')">Commands</button>
-          <button class="btn-ghost" onclick="OpsSensors.calibrate('${__sid(x.sensor_id)}')">Calibrate</button>
-          <button class="btn-primary" onclick="OpsSensors.sendCommand('${__sid(x.sensor_id)}')">Send remote command</button>
+        <div class="sn-drawer-body">
+          <div class="sn-drawer-status"><span class="hbadge ${tier}">${tier}</span></div>
+
+          ${metric(cap.water_level !== false, 'Water Level', x.level != null ? Math.round(x.level) : null, '%', levelColor(x.level))}
+          ${metric(cap.flow_rate !== false, 'Flow Rate', x.flow_rate != null ? x.flow_rate.toFixed(1) : null, ' L/s')}
+          <div class="sn-metric-row"><span class="sn-metric-k">Battery</span><span class="sn-metric-v" style="color:${OpsModal.vitalColor(x.battery_percent)}">${x.battery_percent != null ? x.battery_percent + '%' : '—'}</span></div>
+          <div class="sn-metric-row"><span class="sn-metric-k">Signal</span><span class="sn-metric-v" style="color:${OpsModal.vitalColor(x.signal_strength)}">${x.signal_strength != null ? x.signal_strength + '%' : '—'}</span></div>
+          <div class="sn-metric-row"><span class="sn-metric-k">Temperature</span><span class="sn-metric-v" style="color:${x.temperature != null && x.temperature >= 40 ? 'var(--err)' : 'var(--ink)'}">${x.temperature != null ? Math.round(x.temperature) + '°C' : '—'}</span></div>
+          ${metric(!!cap.silt, 'Silt depth', x.silt_depth_mm, ' mm')}
+
+          <div class="sn-fw-row">
+            <span class="sn-metric-k">Firmware</span>
+            <span style="display:flex;align-items:center;gap:8px;">
+              <span class="sn-metric-v">${x.firmware_version ? esc(x.firmware_version) : '—'}</span>
+              ${outdated ? `<span class="sn-fw-badge">Update available</span>` : ''}
+            </span>
+          </div>
+
+          <div class="sn-acts-h">Actions</div>
+          <button class="sn-act-row" onclick="OpsSensors.sendCommand('${__sid(x.sensor_id)}', 'firmware_update')">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 0l-6 6m6-6l6 6"/></svg>
+            Push Firmware OTA
+          </button>
+          <button class="sn-act-row" onclick="OpsSensors.sendCommand('${__sid(x.sensor_id)}', 'reset')">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Restart Node
+          </button>
+          <button class="sn-act-row" onclick="OpsSensors.calibrate('${__sid(x.sensor_id)}')">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            Run Calibration
+          </button>
+          <button class="sn-act-row" onclick="OpsSensors.commandHistory('${__sid(x.sensor_id)}')">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Command History
+          </button>
+          <button class="sn-act-row" onclick="OpsSensors.history('${__sid(x.sensor_id)}')">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2"/></svg>
+            View Diagnostics Log
+          </button>
+          <button class="sn-act-row" onclick="OpsSensors.coverage('${__sid(x.sensor_id)}')">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            Manage Coverage
+          </button>
+          <button class="sn-act-row danger" onclick="OpsSensors.decommission('${__sid(x.sensor_id)}')">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9.5 4L10 3h4l.5 1M4 7h16"/></svg>
+            Decommission Node
+          </button>
         </div>
-      </div>
+      </div>`;
 
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;">
-        <div class="ops-modal-detail"><span class="label">Status</span><span class="value">${statusBadge(x.status)}</span></div>
-        <div class="ops-modal-detail"><span class="label">Battery</span><span class="value" style="color:${OpsModal.vitalColor(x.battery_percent)};">${x.battery_percent != null ? x.battery_percent + '%' : '—'}</span></div>
-        <div class="ops-modal-detail"><span class="label">Signal</span><span class="value" style="color:${OpsModal.vitalColor(x.signal_strength)};">${x.signal_strength != null ? x.signal_strength + '%' : '—'}</span></div>
-        <div class="ops-modal-detail"><span class="label">Last reading</span><span class="value" style="color:${beat ? 'var(--ink)' : 'var(--err)'};">${beat || 'never'}</span></div>
-        <div class="ops-modal-detail"><span class="label">Device variant</span><span class="value">${x.device_variant ? esc(x.device_variant.replace(/_/g, ' ')) : '—'}</span></div>
-        <div class="ops-modal-detail"><span class="label">Firmware</span><span class="value">${x.firmware_version ? esc(x.firmware_version) : '—'}</span></div>
-        <div class="ops-modal-detail"><span class="label">Link type</span><span class="value">${x.link_type ? esc(x.link_type) : '—'}</span></div>
-        <div class="ops-modal-detail"><span class="label">Client</span><span class="value">${x.client_name ? esc(x.client_name) : '—'}</span></div>
-      </div>
+    requestAnimationFrame(() => overlay.classList.add('open'));
+  }
 
-      <div class="snd-section-title">Readings</div>
-      <div class="snd-read">
-        ${reading(cap.water_level !== false, 'Level', x.level != null ? Math.round(x.level) : null, '%')}
-        ${reading(cap.flow_rate !== false, 'Flow', x.flow_rate != null ? x.flow_rate.toFixed(1) : null, ' L/s')}
-        ${reading(!!cap.silt, 'Silt', x.silt_depth_mm, ' mm')}
-        ${reading(!!cap.rain_gauge, 'Rain', x.rainfall_mm, ' mm')}
-        ${reading(!!cap.water_quality, 'pH', x.water_quality_ph, '')}
-        ${reading(!!cap.enzyme_dispenser, 'Enzyme', x.enzyme_level_percent != null ? Math.round(x.enzyme_level_percent) : null, '%')}
-        ${x.debris_detected ? '<span class="rd" style="color:var(--caut);border-color:var(--caut)">Debris</span>' : ''}
-      </div>
-
-      <div class="snd-section-title">Monitors${assets.length ? ` · ${assets.length} asset${assets.length > 1 ? 's' : ''}` : ''}</div>
-      <div class="cov-list">${cov}</div>
-    `;
+  // decommission logs a real device_events entry (event_type already
+  // supports 'decommission' — nothing fabricated) and marks intent clearly
+  // since it's destructive.
+  function decommission(sensorId) {
+    const x = _all.find(s => s.sensor_id === sensorId);
+    OpsModal.confirm(`Decommission ${esc(x ? (x.name || sensorId) : sensorId)}? This logs the node as retired.`, async () => {
+      OpsModal.setLoading(true);
+      try {
+        await OpsModal.apiPost(`/monitoring/sensors/${sensorId}/events`, { event_type: 'decommission', detail: 'Decommissioned from Sentinel Devices' });
+        OpsModal.close();
+        OpsModal.toast('Node marked as decommissioned.', 'success');
+        closeDrawer();
+        await load();
+      } catch (err) {
+        OpsModal.setLoading(false);
+        OpsModal.toast(err.message || 'Failed to decommission node', 'error');
+      }
+    });
   }
 
   // ── Coverage: one Sentinel, several nearby assets ──
@@ -468,7 +574,7 @@ const OpsSensors = (function () {
 
   async function history(sensorId) {
     const node = _all.find(x => x.sensor_id === sensorId);
-    OpsModal.open(`History — ${esc(node ? (node.name || sensorId) : sensorId)}`,
+    OpsModal.open(`Diagnostics log — ${esc(node ? (node.name || sensorId) : sensorId)}`,
       '<div style="padding:20px;color:var(--ink-3);font-size:var(--fs-base)">Loading…</div>',
       [{ label: 'Close', onclick: 'OpsModal.close()' }]);
     try {
@@ -490,12 +596,13 @@ const OpsSensors = (function () {
   function calibrate(sensorId) {
     OpsModal.open('Record calibration', `
       <p style="margin:0 0 12px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">
-        Logs a calibration against this Sentinel and resets its calibration due date.
+        Logs a calibration against this Sentinel and resets its calibration due date. To remotely request the device recalibrate itself, use "Run Calibration" via a queued command instead.
       </p>
       ${OpsModal.field('Notes', 'detail', 'textarea', '', { required: false, placeholder: 'What was calibrated, and against what reference' })}
     `, [
       { label: 'Cancel', onclick: 'OpsModal.close()' },
-      { label: 'Record', class: 'btn-primary', onclick: `OpsSensors.confirmCalibrate('${sensorId}')` },
+      { label: 'Record', class: 'btn-ghost', onclick: `OpsSensors.confirmCalibrate('${sensorId}')` },
+      { label: 'Queue remote recalibration', class: 'btn-primary', onclick: `OpsModal.close();OpsSensors.sendCommand('${sensorId}','recalibrate')` },
     ]);
   }
 
@@ -515,21 +622,21 @@ const OpsSensors = (function () {
     }
   }
 
-  // ── Single-device remote command: OTA push, reset, recalibrate ──
-  // Store-and-forward, same as bulk — queued here, delivered on the node's
-  // next check-in (POST /monitoring/readings), not instantly.
-  function sendCommand(sensorId) {
+  // ── Remote command: OTA push, reset, recalibrate — queued, delivered
+  // on the device's next check-in (store-and-forward, no open socket). ──
+  function sendCommand(sensorId, presetType) {
     const node = _all.find(x => x.sensor_id === sensorId);
+    const type = presetType || 'firmware_update';
     OpsModal.open(`Send command — ${esc(node ? (node.name || sensorId) : sensorId)}`, `
       <p style="margin:0 0 12px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">
         This Sentinel is store-and-forward — the command is queued here and delivered on its next check-in, not instantly.
       </p>
       <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
-        <label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--ink-2);"><input type="radio" name="cmdtype" value="firmware_update" checked onchange="OpsSensors._toggleFwField()"> Push firmware update</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--ink-2);"><input type="radio" name="cmdtype" value="reset" onchange="OpsSensors._toggleFwField()"> Remote reset</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--ink-2);"><input type="radio" name="cmdtype" value="recalibrate" onchange="OpsSensors._toggleFwField()"> Request recalibration</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--ink-2);"><input type="radio" name="cmdtype" value="firmware_update" ${type === 'firmware_update' ? 'checked' : ''} onchange="OpsSensors._toggleFwField()"> Push firmware update</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--ink-2);"><input type="radio" name="cmdtype" value="reset" ${type === 'reset' ? 'checked' : ''} onchange="OpsSensors._toggleFwField()"> Remote reset</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--ink-2);"><input type="radio" name="cmdtype" value="recalibrate" ${type === 'recalibrate' ? 'checked' : ''} onchange="OpsSensors._toggleFwField()"> Request recalibration</label>
       </div>
-      <div id="sn-fw-field">${OpsModal.field('Firmware version', 'firmware_version', 'text', '', { required: true, placeholder: 'e.g. 2.4.1' })}</div>
+      <div id="sn-fw-field" style="${type === 'firmware_update' ? '' : 'display:none;'}">${OpsModal.field('Firmware version', 'firmware_version', 'text', '', { required: true, placeholder: 'e.g. 2.4.1' })}</div>
       ${OpsModal.field('Note (optional)', 'note', 'textarea', '', { required: false, placeholder: 'Reason for this command' })}
     `, [
       { label: 'Cancel', onclick: 'OpsModal.close()' },
@@ -562,6 +669,7 @@ const OpsSensors = (function () {
       OpsModal.close();
       OpsModal.toast("Command queued — delivered on the device's next check-in.", 'success');
       await load();
+      if (_drawerId === sensorId) renderDrawer();
     } catch (err) {
       OpsModal.setLoading(false);
       OpsModal.toast(err.message || 'Failed to queue command', 'error');
@@ -613,11 +721,11 @@ const OpsSensors = (function () {
   }
 
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-  function setFilter(f) { _filter = f; draw(); }
-  function setQuery(q) { _q = q; draw(); }
 
   return {
-    render, setFilter, setQuery, viewSensor, backToList, coverage, saveCoverage, history, calibrate, confirmCalibrate, openAsset,
+    render, setFilter, setQuery,
+    viewSensor, closeDrawer, decommission,
+    coverage, saveCoverage, history, calibrate, confirmCalibrate, openAsset,
     toggleSelect, toggleSelectAll, clearSelection, bulkCommand, confirmBulkCommand,
     sendCommand, _toggleFwField, confirmSendCommand, commandHistory, cancelCommand,
   };
