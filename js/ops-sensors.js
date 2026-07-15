@@ -17,6 +17,8 @@ const OpsSensors = (function () {
   let _container = null;
   let _view = 'list';       // 'list' | 'detail'
   let _detailId = null;
+  let _selected = new Set();  // sensor_ids picked for bulk remote commands
+  let _filteredRows = [];     // full filtered set (not just current page) — for "select all"
 
   const STYLES = `
     <style>
@@ -61,6 +63,14 @@ const OpsSensors = (function () {
 
       .sn-empty { padding:40px; text-align:center; color:var(--ink-3); font-size:var(--fs-base); background:var(--surface); border:1px solid var(--border); border-radius:14px; }
       .sn-note { padding:11px 14px; border-radius:10px; background:var(--wb); color:var(--warn); font-size:var(--fs-sm); margin-bottom:12px; line-height:1.5; }
+
+      /* Bulk selection + remote command actions */
+      .sn-bulkbar { display:none; align-items:center; gap:9px; padding:9px 13px; margin-bottom:10px; background:var(--neon-trace); border:1px solid var(--blue-dim); border-radius:11px; flex-wrap:wrap; }
+      .sn-bulk-count { font-size:var(--fs-sm); font-weight:700; color:var(--blue-hi); margin-right:4px; }
+      .sn-bulk-clear { margin-left:auto; background:none; border:none; color:var(--ink-3); font-size:var(--fs-xs); font-weight:600; cursor:pointer; padding:4px 6px; }
+      .sn-bulk-clear:hover { color:var(--ink); }
+      .sn-cmd-badge { display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 5px; border-radius:100px; background:var(--wb); color:var(--warn); font-size:9px; font-weight:800; vertical-align:middle; }
+      .snd-acts { flex-wrap:wrap; }
     </style>`;
 
   async function render(container) {
@@ -76,6 +86,7 @@ const OpsSensors = (function () {
       <div id="sn-kpis"></div>
       <div class="sn-toolbar" id="sn-toolbar"></div>
       <div id="sn-note-slot"></div>
+      <div class="sn-bulkbar" id="sn-bulkbar"></div>
       <div id="sn-body"><div class="sn-empty">Loading the Sentinel fleet…</div></div>
     `;
     await load();
@@ -120,6 +131,7 @@ const OpsSensors = (function () {
         <div id="sn-kpis"></div>
         <div class="sn-toolbar" id="sn-toolbar"></div>
         <div id="sn-note-slot"></div>
+        <div class="sn-bulkbar" id="sn-bulkbar"></div>
         <div id="sn-body"></div>
       `;
     }
@@ -173,6 +185,9 @@ const OpsSensors = (function () {
       ? '<div class="sn-note"><b>No Sentinel is reporting telemetry.</b> Devices are registered and their vitals are on record, but no readings have reached the platform — level, flow and silt stay empty until the nodes start posting.</div>'
       : '';
 
+    _filteredRows = rows;
+    renderBulkBar();
+
     if (!rows.length) {
       el.innerHTML = `<div class="sn-empty">${total ? 'No Sentinels match this filter.' : 'No Sentinels deployed yet.'}</div>`;
       _pg = null;
@@ -181,6 +196,80 @@ const OpsSensors = (function () {
 
     _pg = FGPaginator.create(rows, { pageSize: 25, containerId: 'sn-body' });
     _pg.render(renderTable);
+  }
+
+  // ── Bulk selection + remote command dispatch ──
+  function renderBulkBar() {
+    const bar = document.getElementById('sn-bulkbar');
+    if (!bar) return;
+    if (!_selected.size) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+    bar.style.display = 'flex';
+    bar.innerHTML = `
+      <span class="sn-bulk-count">${_selected.size} selected</span>
+      <button class="btn-ghost" onclick="OpsSensors.bulkCommand('firmware_update')">Push firmware</button>
+      <button class="btn-ghost" onclick="OpsSensors.bulkCommand('reset')">Remote reset</button>
+      <button class="btn-ghost" onclick="OpsSensors.bulkCommand('recalibrate')">Request recalibration</button>
+      <button class="sn-bulk-clear" onclick="OpsSensors.clearSelection()">Clear</button>
+    `;
+  }
+
+  function toggleSelect(id, checked) {
+    if (checked) _selected.add(id); else _selected.delete(id);
+    renderBulkBar();
+    const all = document.getElementById('sn-selall');
+    if (all) all.indeterminate = _selected.size > 0 && !_filteredRows.every(x => _selected.has(x.sensor_id));
+  }
+
+  function toggleSelectAll(checked) {
+    _filteredRows.forEach(x => { if (checked) _selected.add(x.sensor_id); else _selected.delete(x.sensor_id); });
+    if (_pg) _pg.render(renderTable);
+    renderBulkBar();
+  }
+
+  function clearSelection() {
+    _selected.clear();
+    if (_pg) _pg.render(renderTable);
+    renderBulkBar();
+  }
+
+  function bulkCommand(type) {
+    if (!_selected.size) return;
+    const ids = Array.from(_selected);
+    const verb = { firmware_update: 'Push a firmware update to', reset: 'Send a remote reset to', recalibrate: 'Request recalibration on' }[type];
+    const needsVersion = type === 'firmware_update';
+    OpsModal.open(`${type === 'firmware_update' ? 'Push firmware' : type === 'reset' ? 'Remote reset' : 'Request recalibration'} — ${ids.length} Sentinel${ids.length > 1 ? 's' : ''}`, `
+      <p style="margin:0 0 12px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">
+        ${verb} <b>${ids.length}</b> selected Sentinel${ids.length > 1 ? 's' : ''}. These nodes are store-and-forward — each picks this up on its next check-in, not instantly.
+      </p>
+      ${needsVersion ? OpsModal.field('Firmware version', 'firmware_version', 'text', '', { required: true, placeholder: 'e.g. 2.4.1' }) : ''}
+      ${OpsModal.field('Note (optional)', 'note', 'textarea', '', { required: false, placeholder: 'Reason for this command' })}
+    `, [
+      { label: 'Cancel', onclick: 'OpsModal.close()' },
+      { label: `Queue for ${ids.length}`, class: 'btn-primary', onclick: `OpsSensors.confirmBulkCommand('${type}')` },
+    ]);
+  }
+
+  async function confirmBulkCommand(type) {
+    const f = OpsModal.getFormData();
+    if (type === 'firmware_update' && !f.firmware_version) {
+      OpsModal.toast('Firmware version is required.', 'error');
+      return;
+    }
+    OpsModal.setLoading(true);
+    try {
+      const payload = type === 'firmware_update' ? { firmware_version: f.firmware_version } : null;
+      const r = await OpsModal.apiPost('/monitoring/sensors/commands/bulk', {
+        sensor_ids: Array.from(_selected), command_type: type, payload, note: f.note || null,
+      });
+      OpsModal.close();
+      const n = (r.data && r.data.queued) || _selected.size;
+      OpsModal.toast(`Queued for ${n} Sentinel${n > 1 ? 's' : ''} — delivered on each device's next check-in.`, 'success');
+      _selected.clear();
+      await load();
+    } catch (err) {
+      OpsModal.setLoading(false);
+      OpsModal.toast(err.message || 'Failed to queue command', 'error');
+    }
   }
 
   function statusBadge(status) {
@@ -196,12 +285,14 @@ const OpsSensors = (function () {
   function renderTable(rows) {
     const el = document.getElementById('sn-body');
     if (!el) return;
+    const allChecked = rows.length > 0 && _filteredRows.every(x => _selected.has(x.sensor_id));
     el.innerHTML = `
       <div class="sn-table-wrap">
         <div style="overflow-x:auto;">
           <table class="ops-table">
             <thead>
               <tr>
+                <th style="width:30px;"><input type="checkbox" id="sn-selall" ${allChecked ? 'checked' : ''} onclick="OpsSensors.toggleSelectAll(this.checked)" title="Select all matching this filter"></th>
                 <th>Sentinel</th>
                 <th>Status</th>
                 <th style="text-align:right;">Battery</th>
@@ -216,8 +307,9 @@ const OpsSensors = (function () {
                 const assets = x.assets || [];
                 return `
                 <tr class="sn-row" onclick="OpsSensors.viewSensor('${__sid(x.sensor_id)}')">
+                  <td onclick="event.stopPropagation()"><input type="checkbox" ${_selected.has(x.sensor_id) ? 'checked' : ''} onclick="OpsSensors.toggleSelect('${__sid(x.sensor_id)}', this.checked); event.stopPropagation()"></td>
                   <td>
-                    <div class="sn-dev-name">${esc(x.name || x.sensor_id)}</div>
+                    <div class="sn-dev-name">${esc(x.name || x.sensor_id)}${x.pending_commands ? ` <span class="sn-cmd-badge" title="${x.pending_commands} command(s) queued, delivered on next check-in">${x.pending_commands}</span>` : ''}</div>
                     <div class="sn-dev-code">${esc(x.sensor_id)}</div>
                   </td>
                   <td>${statusBadge(x.status)}</td>
@@ -274,13 +366,15 @@ const OpsSensors = (function () {
 
       <div class="snd-head">
         <div>
-          <div class="snd-title">${esc(x.name || x.sensor_id)}</div>
+          <div class="snd-title">${esc(x.name || x.sensor_id)}${x.pending_commands ? ` <span class="sn-cmd-badge" title="${x.pending_commands} command(s) queued, delivered on next check-in">${x.pending_commands}</span>` : ''}</div>
           <div class="snd-code">${esc(x.sensor_id)}</div>
         </div>
         <div class="snd-acts">
           <button class="btn-ghost" onclick="OpsSensors.coverage('${__sid(x.sensor_id)}')">Coverage</button>
           <button class="btn-ghost" onclick="OpsSensors.history('${__sid(x.sensor_id)}')">History</button>
-          <button class="btn-primary" onclick="OpsSensors.calibrate('${__sid(x.sensor_id)}')">Calibrate</button>
+          <button class="btn-ghost" onclick="OpsSensors.commandHistory('${__sid(x.sensor_id)}')">Commands</button>
+          <button class="btn-ghost" onclick="OpsSensors.calibrate('${__sid(x.sensor_id)}')">Calibrate</button>
+          <button class="btn-primary" onclick="OpsSensors.sendCommand('${__sid(x.sensor_id)}')">Send remote command</button>
         </div>
       </div>
 
@@ -421,6 +515,93 @@ const OpsSensors = (function () {
     }
   }
 
+  // ── Single-device remote command: OTA push, reset, recalibrate ──
+  // Store-and-forward, same as bulk — queued here, delivered on the node's
+  // next check-in (POST /monitoring/readings), not instantly.
+  function sendCommand(sensorId) {
+    const node = _all.find(x => x.sensor_id === sensorId);
+    OpsModal.open(`Send command — ${esc(node ? (node.name || sensorId) : sensorId)}`, `
+      <p style="margin:0 0 12px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">
+        This Sentinel is store-and-forward — the command is queued here and delivered on its next check-in, not instantly.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--ink-2);"><input type="radio" name="cmdtype" value="firmware_update" checked onchange="OpsSensors._toggleFwField()"> Push firmware update</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--ink-2);"><input type="radio" name="cmdtype" value="reset" onchange="OpsSensors._toggleFwField()"> Remote reset</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--ink-2);"><input type="radio" name="cmdtype" value="recalibrate" onchange="OpsSensors._toggleFwField()"> Request recalibration</label>
+      </div>
+      <div id="sn-fw-field">${OpsModal.field('Firmware version', 'firmware_version', 'text', '', { required: true, placeholder: 'e.g. 2.4.1' })}</div>
+      ${OpsModal.field('Note (optional)', 'note', 'textarea', '', { required: false, placeholder: 'Reason for this command' })}
+    `, [
+      { label: 'Cancel', onclick: 'OpsModal.close()' },
+      { label: 'Queue command', class: 'btn-primary', onclick: `OpsSensors.confirmSendCommand('${sensorId}')` },
+    ]);
+  }
+
+  function _toggleFwField() {
+    const checked = document.querySelector('input[name="cmdtype"]:checked');
+    const slot = document.getElementById('sn-fw-field');
+    if (!slot) return;
+    slot.style.display = checked && checked.value === 'firmware_update' ? '' : 'none';
+  }
+
+  async function confirmSendCommand(sensorId) {
+    const checked = document.querySelector('input[name="cmdtype"]:checked');
+    const type = checked ? checked.value : 'reset';
+    const f = OpsModal.getFormData();
+    if (type === 'firmware_update' && !f.firmware_version) {
+      OpsModal.toast('Firmware version is required.', 'error');
+      return;
+    }
+    OpsModal.setLoading(true);
+    try {
+      await OpsModal.apiPost(`/monitoring/sensors/${sensorId}/commands`, {
+        command_type: type,
+        payload: type === 'firmware_update' ? { firmware_version: f.firmware_version } : null,
+        note: f.note || null,
+      });
+      OpsModal.close();
+      OpsModal.toast("Command queued — delivered on the device's next check-in.", 'success');
+      await load();
+    } catch (err) {
+      OpsModal.setLoading(false);
+      OpsModal.toast(err.message || 'Failed to queue command', 'error');
+    }
+  }
+
+  async function commandHistory(sensorId) {
+    const node = _all.find(x => x.sensor_id === sensorId);
+    OpsModal.open(`Commands — ${esc(node ? (node.name || sensorId) : sensorId)}`,
+      '<div style="padding:20px;color:var(--ink-3);font-size:var(--fs-base)">Loading…</div>',
+      [{ label: 'Close', onclick: 'OpsModal.close()' }]);
+    try {
+      const r = await OpsModal.apiGet(`/monitoring/sensors/${sensorId}/commands`);
+      const cmds = r.data || [];
+      const body = document.querySelector('.ops-modal-body');
+      if (!body) return;
+      const statusColor = { queued: 'var(--warn)', delivered: 'var(--blue-hi)', acknowledged: 'var(--ok)', failed: 'var(--err)', cancelled: 'var(--ink-3)' };
+      body.innerHTML = cmds.length
+        ? `<div>${cmds.map(c => `
+            <div style="display:flex;gap:10px;align-items:center;padding:10px 2px;border-bottom:1px solid var(--border)">
+              <span style="font-size:var(--fs-2xs);font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:${statusColor[c.status] || 'var(--ink-3)'};min-width:96px">${esc(c.status)}</span>
+              <span style="flex:1;min-width:0;font-size:var(--fs-sm);color:var(--ink-2)">${esc((c.command_type || '').replace(/_/g, ' '))}${c.payload && c.payload.firmware_version ? ` → v${esc(c.payload.firmware_version)}` : ''}${c.note ? ' — ' + esc(c.note) : ''}</span>
+              <span style="font-family:var(--ff-m);font-size:var(--fs-2xs);color:var(--ink-3);white-space:nowrap">${OpsModal.fmtDate(c.created_at)}</span>
+              ${c.status === 'queued' ? `<button class="btn-ghost" style="padding:3px 9px;font-size:var(--fs-2xs);" onclick="OpsSensors.cancelCommand('${sensorId}', ${parseInt(c.id, 10)})">Cancel</button>` : ''}
+            </div>`).join('')}</div>`
+        : '<div style="padding:22px;text-align:center;color:var(--ink-3);font-size:var(--fs-base)">No commands sent to this device yet.</div>';
+    } catch (_) {}
+  }
+
+  async function cancelCommand(sensorId, commandId) {
+    try {
+      await OpsModal.apiPost(`/monitoring/sensors/${sensorId}/commands/${commandId}/cancel`, {});
+      OpsModal.toast('Command cancelled.', 'success');
+      await load();
+      commandHistory(sensorId);
+    } catch (err) {
+      OpsModal.toast(err.message || 'Failed to cancel', 'error');
+    }
+  }
+
   // a coverage tag drills through to the asset's parent property network
   async function openAsset(assetId) {
     try {
@@ -435,5 +616,9 @@ const OpsSensors = (function () {
   function setFilter(f) { _filter = f; draw(); }
   function setQuery(q) { _q = q; draw(); }
 
-  return { render, setFilter, setQuery, viewSensor, backToList, coverage, saveCoverage, history, calibrate, confirmCalibrate, openAsset };
+  return {
+    render, setFilter, setQuery, viewSensor, backToList, coverage, saveCoverage, history, calibrate, confirmCalibrate, openAsset,
+    toggleSelect, toggleSelectAll, clearSelection, bulkCommand, confirmBulkCommand,
+    sendCommand, _toggleFwField, confirmSendCommand, commandHistory, cancelCommand,
+  };
 })();
