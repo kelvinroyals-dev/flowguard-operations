@@ -14,11 +14,15 @@
 const OpsForecast = (function () {
   let _horizon = 'tomorrow';
   let _data = null;
+  let _container = null;
+  const _dash = v => (v == null || v === '') ? '—' : v;
 
   async function render(container) {
+    _container = container;
     container.innerHTML = styles() + shell();
     await load();
   }
+  function back() { if (_container) render(_container); }
 
   async function load() {
     const body = document.getElementById('fc-body');
@@ -83,30 +87,66 @@ const OpsForecast = (function () {
 
       <div class="fc-table-card">
         <div class="fc-card-h">Estate-Level Forecast</div>
+        <style>.fc-table tbody tr.clickable{cursor:pointer;} .fc-table tbody tr.clickable:hover{background:var(--surface-2,#f2f8fb);}</style>
         <table class="fc-table">
           <thead><tr>
-            <th>Estate</th><th>Current</th><th>Predicted</th><th>Δ</th><th>Coverage</th><th>Recommendation</th>
+            <th>Property</th><th>Current Risk</th><th>Forecast Risk</th><th>Rainfall</th><th>Confidence</th><th>Recommendation</th>
           </tr></thead>
           <tbody>
-            ${estates.length ? estates.map(estateRow).join('') : `<tr><td colspan="6" class="fc-table-empty">No estates have recent sensor readings to project from.</td></tr>`}
+            ${estates.length ? estates.map((e, i) => estateRow(e, i)).join('') : `<tr><td colspan="6" class="fc-table-empty">No estates have recent sensor readings to project from.</td></tr>`}
           </tbody>
         </table>
       </div>`;
   }
 
-  function estateRow(e) {
+  // Columns per spec: Property, Current Risk, Forecast Risk, Rainfall, Confidence, Recommendation.
+  // NOTE: "Confidence" here is honest data coverage (Sentinels reporting), not a
+  // statistical confidence — this module deliberately never fabricates confidence.
+  function estateRow(e, i) {
     const rc = e.predicted_risk >= 70 ? 'var(--err)' : e.predicted_risk >= 50 ? 'var(--warn)' : 'var(--ok)';
-    const deltaCol = e.delta > 5 ? 'var(--err)' : e.delta < -5 ? 'var(--ok)' : 'var(--ink-3)';
     const recCol = e.recommendation_level === 'critical' ? 'var(--err)' : e.recommendation_level === 'warning' ? 'var(--warn)' : 'var(--ink-3)';
+    const rain = _data && _data.has_rainfall_data ? `${_data.cumulative_rain_mm} mm` : '—';
     return `
-      <tr>
+      <tr class="clickable" onclick="OpsForecast.open(${i})" tabindex="0" onkeydown="if(event.key==='Enter'){OpsForecast.open(${i})}">
         <td><b>${esc(e.name)}</b></td>
         <td class="fc-num">${e.current_risk}</td>
         <td class="fc-num"><span class="fc-risk-pill" style="color:${rc};background:${rc}18;">${e.predicted_risk}</span></td>
-        <td class="fc-num" style="color:${deltaCol};">${e.delta > 0 ? '+' : ''}${e.delta}</td>
+        <td class="fc-num">${rain}</td>
         <td class="fc-num">${e.data_coverage}%</td>
         <td style="color:${recCol};font-weight:600;">${esc(e.recommendation)}</td>
       </tr>`;
+  }
+
+  // ── FULL DETAIL SCREEN (no pop-up) ──
+  function open(i) {
+    const e = _data && (_data.estates || [])[i];
+    if (!e || !_container) return;
+    const rc = e.predicted_risk >= 70 ? 'var(--err)' : e.predicted_risk >= 50 ? 'var(--warn)' : 'var(--ok)';
+    const rain = _data.has_rainfall_data ? `${_data.cumulative_rain_mm} mm` : '—';
+    const f = (k, v) => `<div><div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3);">${k}</div><div style="font-size:var(--fs-md);color:var(--ink);font-weight:600;margin-top:3px;">${v}</div></div>`;
+    const sec = (t, b, needs) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r,14px);box-shadow:var(--sh-xs);margin-bottom:14px;overflow:hidden;"><div style="padding:12px 18px;border-bottom:1px solid var(--border);font-family:var(--ff-d);font-size:var(--fs-sm);font-weight:700;color:var(--ink);display:flex;justify-content:space-between;">${t}${needs ? '<span style="font-size:var(--fs-xs);color:var(--ink-4);font-style:italic;">pending backend data</span>' : ''}</div><div style="padding:16px 18px;">${b}</div></div>`;
+
+    const overview = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px 22px;">
+      ${f('Property', esc(e.name))}
+      ${f('Current Risk', e.current_risk)}
+      ${f('Forecast Risk', `<span style="color:${rc};font-weight:800;">${e.predicted_risk}</span>`)}
+      ${f('Change (Δ)', (e.delta > 0 ? '+' : '') + e.delta)}
+      ${f('Rainfall', rain)}
+      ${f('Confidence (data coverage)', e.data_coverage + '%')}
+    </div><div style="margin-top:12px;">${f('Recommendation', esc(e.recommendation))}</div>`;
+
+    _container.innerHTML = `
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap;">
+        <button class="btn-ghost" onclick="OpsForecast.back()" style="display:inline-flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>AI Risk Forecast</button>
+        <div><div style="font-family:var(--ff-d);font-size:var(--fs-xl);font-weight:700;color:var(--ink);">${esc(e.name)}</div><div style="font-size:var(--fs-sm);color:var(--ink-3);margin-top:3px;">Forecast risk <span style="color:${rc};font-weight:700;">${e.predicted_risk}/100</span> · ${_horizon === 'today' ? 'today' : 'tomorrow'}</div></div>
+      </div>
+      ${sec('Forecast Timeline', _data.series && _data.series.length ? seriesChart(_data.series) : '<div style="color:var(--ink-3);font-size:var(--fs-sm);">No hourly series available for this window.</div>', !(_data.series && _data.series.length))}
+      ${sec('Weather', `<div style="color:var(--ink-2);font-size:var(--fs-sm);">${_data.has_rainfall_data ? 'Forecast rainfall: ' + _data.cumulative_rain_mm + ' mm (Lagos, ' + (_horizon === 'today' ? 'next 24h' : '24–48h') + ').' : 'Rainfall forecast unavailable right now.'}</div>`)}
+      ${sec('Drain Capacity', '<div style="color:var(--ink-3);font-size:var(--fs-sm);">No drain-capacity data in this response.</div>', true)}
+      ${sec('Historical Trends', '<div style="color:var(--ink-3);font-size:var(--fs-sm);">No historical trend data in this response.</div>', true)}
+      ${sec('Recommendations', `<div style="color:var(--ink-2);font-size:var(--fs-sm);font-weight:600;">${esc(e.recommendation)}</div>`)}
+      ${sec('Impact Analysis', '<div style="color:var(--ink-3);font-size:var(--fs-sm);">No impact analysis in this response.</div>', true)}
+    `;
   }
 
   function seriesChart(series) {
@@ -196,5 +236,5 @@ const OpsForecast = (function () {
     </style>`;
   }
 
-  return { render, setHorizon };
+  return { render, setHorizon, open, back };
 })();
