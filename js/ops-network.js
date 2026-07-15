@@ -37,10 +37,16 @@ const OpsNetwork = (function () {
     await load();
   }
 
+  let _outcomes = null;
+
   async function load() {
     try {
-      const r = await OpsModal.apiGet(`/properties/${_propertyId}/network`);
-      _data = r.data;
+      const [netRes, outRes] = await Promise.all([
+        OpsModal.apiGet(`/properties/${_propertyId}/network`),
+        OpsModal.apiGet(`/properties/${_propertyId}/outcomes`).catch(() => ({ data: null })),
+      ]);
+      _data = netRes.data;
+      _outcomes = outRes.data;
       draw();
     } catch (err) {
       const el = document.getElementById('nw-body');
@@ -82,12 +88,13 @@ const OpsNetwork = (function () {
     const el = document.getElementById('nw-body');
     if (!el || !_data) return;
     const p = _data.property;
+    const billing = _data.billing;
     const s = _data.summary;
     const assets = _data.assets || [];
     const orphans = _data.unassigned_sentinels || [];
+    const oc = _outcomes;
 
     const health = p.health_score != null ? Number(p.health_score) : null;
-    const hCol = health == null ? 'var(--ink-3)' : health >= 75 ? 'var(--ok)' : health >= 50 ? 'var(--warn)' : 'var(--err)';
 
     el.innerHTML = `
       <div class="nw-head">
@@ -96,17 +103,9 @@ const OpsNetwork = (function () {
           <h2>${esc(p.property_name)}</h2>
           <span>${(p.property_type || '').replace(/_/g, ' ')}${p.city ? ' · ' + esc(p.city) : ''}${p.state ? ', ' + esc(p.state) : ''}</span>
         </div>
-        <div class="nw-health">
-          <div class="nwh-v" style="color:${hCol}">${health != null ? health : '—'}</div>
-          <div class="nwh-k">health</div>
-        </div>
       </div>
 
-      <div class="nw-stats">
-        <div class="nws"><b>${s.asset_count}</b><span>drainage assets</span></div>
-        <div class="nws"><b>${s.sentinel_count}</b><span>Sentinels deployed</span></div>
-        <div class="nws ${s.unmonitored ? 'warn' : ''}"><b>${s.unmonitored}</b><span>assets with no Sentinel</span></div>
-      </div>
+      <div id="nw-kpis"></div>
 
       ${!assets.length ? `
         <div class="nw-empty">
@@ -127,7 +126,58 @@ const OpsNetwork = (function () {
             ${orphans.map(o => `<button class="nw-orph" onclick="switchTab('sensors')">${esc(o.name || o.sensor_id)} · ${o.status}</button>`).join('')}
           </div>
         </div>` : ''}
+
+      ${oc ? `
+        <div class="nw-activity">
+          <div class="nw-activity-h">Recent activity</div>
+          ${oc.recent_events && oc.recent_events.length
+            ? oc.recent_events.map(e => `
+                <div class="nw-act-row">
+                  <span class="nw-act-type">${esc((e.event_type || '').replace(/_/g, ' '))}</span>
+                  <span class="nw-act-desc">${esc(e.description || '—')}</span>
+                  <span class="nw-act-time">${OpsModal.fmtDate(e.occurred_at)}</span>
+                </div>`).join('')
+            : '<div class="nw-act-empty">No recorded work against this property yet.</div>'}
+        </div>` : ''}
     `;
+
+    renderMissionKpis(p, s, billing, health, oc);
+  }
+
+  // ── Mission-control KPI header: what's true about this property right
+  // now, in one strip — health, days flood-free, prevention track record,
+  // Sentinel coverage, and MRR where a billing account resolves. ──
+  function renderMissionKpis(p, s, billing, health, oc) {
+    const kp = document.getElementById('nw-kpis');
+    if (!kp) return;
+    const cards = [
+      {
+        label: 'Health score', value: health != null ? health : '—',
+        sub: health != null ? (health >= 75 ? 'Healthy' : health >= 50 ? 'Needs attention' : 'At risk') : 'No score yet',
+        subClass: health == null ? '' : health >= 75 ? 'ok' : health >= 50 ? 'warn' : 'err',
+      },
+      {
+        label: 'Days flood-free', value: oc ? oc.days_since_flood : '—',
+        sub: oc ? (oc.flood_free_basis === 'last_incident' ? 'Since last incident' : 'Since monitoring began') : 'No data yet',
+      },
+      {
+        label: 'Incidents prevented', value: oc ? oc.incidents_prevented : '—',
+        sub: oc && oc.incidents_prevented ? 'Confirmed saves' : 'None recorded',
+        subClass: oc && oc.incidents_prevented ? 'ok' : '',
+      },
+      {
+        label: 'Sentinels', value: s.sentinel_count ? `${s.sentinels_active ?? 0}/${s.sentinel_count}` : '—',
+        sub: s.unmonitored ? `${s.unmonitored} asset${s.unmonitored > 1 ? 's' : ''} unmonitored` : (s.asset_count ? 'All assets covered' : 'No assets yet'),
+        subClass: s.unmonitored ? 'warn' : (s.sentinel_count ? 'ok' : ''),
+      },
+    ];
+    if (billing) {
+      cards.push({
+        label: 'MRR', value: billing.mrr != null ? '₦' + Number(billing.mrr).toLocaleString() : '—',
+        sub: billing.tier ? `${billing.tier} tier` : 'Billing account',
+      });
+    }
+    kp.innerHTML = OpsModal.kpiStrip(cards);
   }
 
   function assetRow(a) {
@@ -187,15 +237,8 @@ const OpsNetwork = (function () {
       .nw-title { flex:1; min-width:0; }
       .nw-title h2 { margin:0; font-size:var(--fs-xl); font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
       .nw-title span { font-size:var(--fs-xs); color:var(--ink-3); }
-      .nw-health { text-align:center; flex-shrink:0; padding:8px 16px; border:1px solid var(--border); border-radius:11px; background:var(--surface); }
-      .nwh-v { font-family:var(--ff-m); font-size:var(--fs-2xl); font-weight:700; line-height:1; }
-      .nwh-k { font-size:var(--fs-2xs); letter-spacing:1px; text-transform:uppercase; color:var(--ink-3); margin-top:3px; }
 
-      .nw-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
-      .nws { background:var(--surface); border:1px solid var(--border); border-radius:11px; padding:12px 14px; }
-      .nws b { display:block; font-family:var(--ff-m); font-size:var(--fs-xl); font-weight:700; color:var(--ink); }
-      .nws span { font-size:var(--fs-xs); color:var(--ink-3); }
-      .nws.warn b { color:var(--warn); }
+      #nw-kpis { margin-bottom:16px; }
 
       .nw-tree { display:flex; flex-direction:column; gap:10px; }
       .ast-row { display:flex; gap:12px; background:var(--surface); border:1px solid var(--border); border-radius:13px; padding:14px 15px; box-shadow:var(--sh-xs); }
@@ -231,6 +274,15 @@ const OpsNetwork = (function () {
       .nw-empty { padding:40px; text-align:center; color:var(--ink-3); font-size:var(--fs-base); line-height:1.7; background:var(--surface); border:1px solid var(--border); border-radius:14px; }
       .nw-empty b { color:var(--ink); }
       .nw-add { margin-top:4px; padding:8px 15px; border-radius:9px; border:1px solid var(--blue-dim); background:var(--neon-trace); color:var(--blue-hi); font-size:var(--fs-sm); font-weight:700; font-family:var(--ff-b); cursor:pointer; }
+
+      .nw-activity { margin-top:16px; background:var(--surface); border:1px solid var(--border); border-radius:13px; overflow:hidden; }
+      .nw-activity-h { padding:12px 15px; border-bottom:1px solid var(--border); font-size:var(--fs-xs); font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--ink-3); }
+      .nw-act-row { display:flex; align-items:center; gap:12px; padding:10px 15px; border-bottom:1px solid var(--border); }
+      .nw-act-row:last-child { border-bottom:none; }
+      .nw-act-type { font-size:var(--fs-2xs); font-weight:800; letter-spacing:.5px; text-transform:uppercase; color:var(--blue-hi); min-width:110px; flex-shrink:0; }
+      .nw-act-desc { flex:1; min-width:0; font-size:var(--fs-sm); color:var(--ink-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .nw-act-time { font-family:var(--ff-m); font-size:var(--fs-2xs); color:var(--ink-3); white-space:nowrap; flex-shrink:0; }
+      .nw-act-empty { padding:20px; text-align:center; color:var(--ink-3); font-size:var(--fs-sm); }
     </style>`;
   }
 
