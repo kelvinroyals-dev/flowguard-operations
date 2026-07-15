@@ -18,10 +18,28 @@ const OpsBilling = (function () {
   let _invoices = [];
   let _pg       = null;
   let _filter   = 'all'; // all | overdue | pending | paid
+  let _container = null;
+  const dash = v => (v == null || v === '') ? '—' : v;
 
   function render(container) {
+    _container = container;
     container.innerHTML = `
       <style>
+        .ops-table tbody tr.clickable { cursor:pointer; transition:background .12s; }
+        .ops-table tbody tr.clickable:hover { background:var(--surface-2,#f2f8fb); }
+        .bl-back { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:8px 13px; cursor:pointer; }
+        .bl-detail-top { display:flex; align-items:center; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
+        .bl-detail-name { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; }
+        .bl-detail-meta { font-size:var(--fs-sm); color:var(--ink-3); margin-top:3px; }
+        .bl-detail-actions { margin-left:auto; display:flex; gap:8px; }
+        .bl-section { background:var(--surface,#fff); border:1px solid var(--border); border-radius:var(--r,14px); box-shadow:var(--sh-xs); margin-bottom:14px; overflow:hidden; }
+        .bl-section-h { padding:12px 18px; border-bottom:1px solid var(--border); font-family:var(--ff-d); font-size:var(--fs-sm); font-weight:700; letter-spacing:.4px; color:var(--ink); display:flex; align-items:center; justify-content:space-between; }
+        .bl-section-b { padding:16px 18px; }
+        .bl-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px 22px; }
+        .bl-field .k { font-size:var(--fs-2xs); font-weight:700; letter-spacing:.9px; text-transform:uppercase; color:var(--ink-3); }
+        .bl-field .v { font-size:var(--fs-md); color:var(--ink); font-weight:600; margin-top:3px; }
+        .bl-empty { color:var(--ink-3); font-size:var(--fs-sm); padding:6px 0; }
+        .bl-needs { font-size:var(--fs-xs); color:var(--ink-4); font-style:italic; }
         /* ── KPI row ── */
         .bl-kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:20px; }
 
@@ -297,18 +315,19 @@ const OpsBilling = (function () {
       return;
     }
 
+    // Columns per spec: Invoice, Client, Property, Amount, Due Date, Status, Payment Method
     el.innerHTML = `
       <div style="overflow-x:auto;">
         <table class="ops-table">
           <thead>
             <tr>
-              <th>Invoice ID</th>
+              <th>Invoice</th>
               <th>Client</th>
-              <th>Amount</th>
-              <th>Status</th>
-              <th>Issue Date</th>
+              <th>Property</th>
+              <th style="text-align:right;">Amount</th>
               <th>Due Date</th>
-              <th style="text-align:right;">Actions</th>
+              <th>Status</th>
+              <th>Payment Method</th>
             </tr>
           </thead>
           <tbody>
@@ -317,20 +336,14 @@ const OpsBilling = (function () {
               const status = (inv.payment_status || 'pending').toLowerCase();
               const badge  = { paid:'nominal', overdue:'critical', pending:'watch', cancelled:'offline' }[status] || 'watch';
               const isOverdue = status === 'overdue';
-              return `<tr>
+              return `<tr class="clickable" onclick="OpsBilling.open('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsBilling.open('${id}')}">
                 <td style="font-family:var(--ff-m);font-size:var(--fs-sm);" class="bright">${id}</td>
-                <td>${inv.client_name || '—'}</td>
-                <td style="font-family:var(--ff-d);font-weight:800;color:${isOverdue ? 'var(--err)' : 'var(--ink)'};">₦${Number(inv.total_amount || 0).toLocaleString()}</td>
-                <td><span class="status-badge ${badge}">${status}</span></td>
-                <td style="font-size:var(--fs-sm);font-family:var(--ff-m);">${fmtDate(inv.issue_date || inv.created_at)}</td>
+                <td>${dash(inv.client_name)}</td>
+                <td style="font-size:var(--fs-sm);">${dash(inv.property_name)}</td>
+                <td style="text-align:right;font-family:var(--ff-d);font-weight:800;color:${isOverdue ? 'var(--err)' : 'var(--ink)'};">₦${Number(inv.total_amount || 0).toLocaleString()}</td>
                 <td style="font-size:var(--fs-sm);font-family:var(--ff-m);${isOverdue ? 'color:var(--err);font-weight:700;' : ''}">${fmtDate(inv.due_date)}</td>
-                <td style="text-align:right;">
-                  <div style="display:flex;gap:5px;justify-content:flex-end;">
-                    <button class="btn-ghost" onclick="OpsBilling.viewInvoice('${id}')" style="padding:5px 10px;font-size:var(--fs-sm);">View</button>
-                    ${status !== 'paid' ? `<button class="btn-ghost" onclick="OpsBilling.sendReminder('${id}')" style="padding:5px 10px;font-size:var(--fs-sm);">Remind</button>` : ''}
-                    ${status !== 'paid' ? `<button class="btn-ghost" onclick="OpsBilling.markPaid('${id}')" style="padding:5px 10px;font-size:var(--fs-sm);color:var(--ok);border-color:rgba(10,138,106,.25);">Mark Paid</button>` : ''}
-                  </div>
-                </td>
+                <td><span class="status-badge ${badge}">${status}</span></td>
+                <td style="font-size:var(--fs-sm);">${dash(inv.payment_method)}</td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -338,47 +351,74 @@ const OpsBilling = (function () {
       </div>`;
   }
 
+  function back() { if (_container) render(_container); }
+
   // ── ACTIONS ───────────────────────────────────────────────────────────
 
-  async function viewInvoice(id) {
+  // ── FULL DETAIL SCREEN (no pop-up) ──
+  async function open(id) {
+    if (!_container) return;
+    _container.innerHTML = `<div style="padding:60px;text-align:center;color:var(--ink-3);"><div class="loading" style="margin:0 auto 12px;"></div>Loading invoice…</div>`;
     try {
       const res = await OpsModal.apiGet(`/billing/invoices/${id}`);
-      const inv = res.data || {};
-      const status = (inv.payment_status || 'pending').toLowerCase();
-      const badge  = { paid:'nominal', overdue:'critical', pending:'watch' }[status] || 'watch';
-
-      OpsModal.open(`Invoice — ${id}`, `
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
-          <div class="ops-modal-detail"><span class="label">Client</span><span class="value">${inv.client_name || '—'}</span></div>
-          <div class="ops-modal-detail"><span class="label">Amount</span><span class="value" style="font-family:var(--ff-d);font-size:var(--fs-lg);font-weight:800;">₦${Number(inv.total_amount || 0).toLocaleString()}</span></div>
-          <div class="ops-modal-detail"><span class="label">Status</span><span class="value"><span class="status-badge ${badge}">${status}</span></span></div>
-          <div class="ops-modal-detail"><span class="label">Due Date</span><span class="value">${fmtDate(inv.due_date)}</span></div>
-          <div class="ops-modal-detail"><span class="label">Issue Date</span><span class="value">${fmtDate(inv.issue_date || inv.created_at)}</span></div>
-          ${inv.paid_at ? `<div class="ops-modal-detail"><span class="label">Paid On</span><span class="value">${fmtDate(inv.paid_at)}</span></div>` : ''}
-          ${inv.description ? `<div class="ops-modal-detail" style="grid-column:1/-1;"><span class="label">Description</span><span class="value">${inv.description}</span></div>` : ''}
-        </div>
-
-        ${inv.line_items?.length ? `
-          <div style="margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Line Items</div>
-          <table class="ops-table" style="margin-bottom:0;">
-            <thead><tr><th>Description</th><th style="text-align:right;">Amount</th></tr></thead>
-            <tbody>${inv.line_items.map(l => `
-              <tr>
-                <td>${l.description}</td>
-                <td style="text-align:right;font-family:var(--ff-d);font-weight:700;">₦${Number(l.amount || 0).toLocaleString()}</td>
-              </tr>`).join('')}
-            </tbody>
-          </table>` : ''}
-      `, [
-        { label: 'Close', onclick: 'OpsModal.close()', class: 'btn-ghost' },
-        ...(status !== 'paid' ? [
-          { label: 'Send Reminder', onclick: `OpsModal.close();OpsBilling.sendReminder('${id}')`, class: 'btn-ghost' },
-          { label: 'Mark as Paid',  onclick: `OpsModal.close();OpsBilling.markPaid('${id}')`,    class: 'btn-primary' },
-        ] : []),
-      ]);
+      renderDetail(res.data || {});
     } catch (err) {
-      OpsModal.toast('Failed to load invoice: ' + err.message, 'critical');
+      _container.innerHTML = `<div style="padding:48px;text-align:center;"><div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load invoice</div><button class="bl-back" onclick="OpsBilling.back()">← Back to Billing</button></div>`;
     }
+  }
+
+  function section(title, body, needs) {
+    return `<div class="bl-section"><div class="bl-section-h">${title}${needs ? '<span class="bl-needs">pending backend data</span>' : ''}</div><div class="bl-section-b">${body}</div></div>`;
+  }
+
+  function renderDetail(inv) {
+    const id = inv.invoice_id || inv.id;
+    const status = (inv.payment_status || 'pending').toLowerCase();
+    const badge = { paid: 'nominal', overdue: 'critical', pending: 'watch', cancelled: 'offline' }[status] || 'watch';
+    const items = inv.line_items || inv.services || [];
+    const payments = inv.payments || [];
+    const field = (k, v) => `<div class="bl-field"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+
+    const details = `<div class="bl-grid">
+      ${field('Invoice', id)}
+      ${field('Client', dash(inv.client_name))}
+      ${field('Property', dash(inv.property_name))}
+      ${field('Amount', '₦' + Number(inv.total_amount || 0).toLocaleString())}
+      ${field('Due Date', fmtDate(inv.due_date))}
+      ${field('Status', `<span class="status-badge ${badge}">${status}</span>`)}
+      ${field('Payment Method', dash(inv.payment_method))}
+      ${field('Issue Date', fmtDate(inv.issue_date || inv.created_at))}
+      ${inv.paid_at ? field('Paid On', fmtDate(inv.paid_at)) : ''}
+    </div>${inv.description ? `<div style="margin-top:12px;">${field('Description', inv.description)}</div>` : ''}`;
+
+    const services = items.length ? `
+      <div style="overflow-x:auto;"><table class="ops-table"><thead><tr><th>Description</th><th style="text-align:right;">Amount</th></tr></thead>
+      <tbody>${items.map(l => `<tr><td>${l.description || '—'}</td><td style="text-align:right;font-family:var(--ff-d);font-weight:700;">₦${Number(l.amount || 0).toLocaleString()}</td></tr>`).join('')}</tbody></table></div>` : '<div class="bl-empty">No line items on this invoice.</div>';
+
+    const paymentsBody = payments.length ? `
+      <div style="overflow-x:auto;"><table class="ops-table"><thead><tr><th>Date</th><th>Method</th><th style="text-align:right;">Amount</th></tr></thead>
+      <tbody>${payments.map(p => `<tr><td style="font-size:var(--fs-sm);">${fmtDate(p.paid_at || p.date)}</td><td style="font-size:var(--fs-sm);">${dash(p.method)}</td><td style="text-align:right;font-family:var(--ff-d);font-weight:700;">₦${Number(p.amount || 0).toLocaleString()}</td></tr>`).join('')}</tbody></table></div>` : (status === 'paid' ? `<div class="bl-empty">Paid ${fmtDate(inv.paid_at)}${inv.payment_method ? ' · ' + inv.payment_method : ''}.</div>` : '<div class="bl-empty">No payments recorded.</div>');
+
+    const actions = status !== 'paid'
+      ? `<button class="btn-ghost" onclick="OpsBilling.sendReminder('${id}')">Send Reminder</button><button class="btn-primary" onclick="OpsBilling.markPaid('${id}')">Mark as Paid</button>`
+      : '';
+
+    _container.innerHTML = `
+      <div class="bl-detail-top">
+        <button class="bl-back" onclick="OpsBilling.back()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Billing</button>
+        <div>
+          <div class="bl-detail-name">Invoice ${id}</div>
+          <div class="bl-detail-meta">${dash(inv.client_name)} · ₦${Number(inv.total_amount || 0).toLocaleString()} · <span class="status-badge ${badge}">${status}</span></div>
+        </div>
+        <div class="bl-detail-actions">${actions}</div>
+      </div>
+      ${section('Invoice Details', details)}
+      ${section('Services', services)}
+      ${section('Contract', '<div class="bl-empty">No contract linked in this response.</div>', true)}
+      ${section('Payments', paymentsBody)}
+      ${section('Credit Notes', '<div class="bl-empty">No credit notes.</div>', true)}
+      ${section('Attachments', '<div class="bl-empty">No attachments.</div>', true)}
+    `;
   }
 
   async function sendReminder(id) {
@@ -423,6 +463,6 @@ const OpsBilling = (function () {
     return Math.floor((Date.now() - new Date(ds).getTime()) / 86400000);
   }
 
-  return { render, setFilter, viewInvoice, sendReminder, markPaid };
+  return { render, setFilter, open, back, sendReminder, markPaid };
 
 })();
