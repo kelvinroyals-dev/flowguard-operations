@@ -1221,7 +1221,15 @@
         <span class="nav-label">Field Reports</span>
         <span class="nav-badge" id="nav-badge-field-reports" style="display:none;">0</span>
       </button>
+      <button class="nav-item" id="nav-maintenance" onclick="switchTab('maintenance')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="18" height="4" rx="1"/></svg>
+        <span class="nav-label">Maintenance Planner</span>
+      </button>
       <div class="nav-sect">Intelligence</div>
+      <button class="nav-item" id="nav-forecast" onclick="switchTab('forecast')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 15l4-6 4 3 5-8"/></svg>
+        <span class="nav-label">AI Risk Forecast</span>
+      </button>
       <button class="nav-item" id="nav-reports" onclick="switchTab('reports')">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         <span class="nav-label">Reports</span>
@@ -1320,6 +1328,8 @@
       <div id="content-teams"        class="tab-content"></div>
       <div id="content-team-members" class="tab-content"></div>
       <div id="content-field-reports" class="tab-content"></div>
+      <div id="content-maintenance"   class="tab-content"></div>
+      <div id="content-forecast"     class="tab-content"></div>
       <div id="content-reports"      class="tab-content"></div>
       <div id="content-billing"      class="tab-content"></div>
       <div id="content-sla"          class="tab-content"></div>
@@ -1364,6 +1374,8 @@
 <script src="js/ops-teams.js?v=sec2"></script>
 <script src="js/ops-alerts-reports.js?v=sec2"></script>
 <script src="js/ops-field-reports.js?v=sec2"></script>
+<script src="js/ops-maintenance.js?v=sec2"></script>
+<script src="js/ops-forecast.js?v=sec2"></script>
 <script src="js/ops-billing.js?v=sec2"></script>
 <script src="js/ops-sla.js?v=sec2"></script>
 <script src="js/ops-audit.js?v=sec2"></script>
@@ -1384,6 +1396,8 @@
     teams:            { module:'Field',        title:'Team Dispatch'               },
     'team-members':   { module:'Field',        title:'Team Members'                },
     'field-reports':  { module:'Field',        title:'Field Reports'               },
+    maintenance:      { module:'Field',        title:'Maintenance Planner'         },
+    forecast:         { module:'Intelligence', title:'AI Risk Forecast'            },
     reports:          { module:'Intelligence', title:'Reports & Analytics'         },
     billing:          { module:'Intelligence', title:'Billing & Revenue'           },
     sla:              { module:'Intelligence', title:'SLA Tracker'                 },
@@ -1732,6 +1746,8 @@
       teams:            () => typeof OpsTeams          !== 'undefined' ? OpsTeams          : null,
       'team-members':   () => typeof OpsUserManagement !== 'undefined' ? OpsUserManagement : null,
       'field-reports':  () => typeof OpsFieldReports   !== 'undefined' ? OpsFieldReports   : null,
+      maintenance:      () => typeof OpsMaintenance     !== 'undefined' ? OpsMaintenance    : null,
+      forecast:         () => typeof OpsForecast        !== 'undefined' ? OpsForecast       : null,
       reports:          () => typeof OpsReports        !== 'undefined' ? OpsReports        : null,
       billing:          () => typeof OpsBilling        !== 'undefined' ? OpsBilling        : null,
       sla:              () => typeof OpsSLA            !== 'undefined' ? OpsSLA            : null,
