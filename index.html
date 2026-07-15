@@ -1159,29 +1159,73 @@
   </style>
 
   <style>
-    /* ══ Neon top-nav shell (replaces sidebar) ══ */
-    .app-neon { flex:1; display:flex; flex-direction:column; overflow:hidden; min-height:0; }
-    .tnav { display:flex; align-items:center; gap:16px; padding:9px 20px; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; position:relative; z-index:1000; box-shadow:var(--sh-xs); }
-    .app-neon > .content { flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; }
-    .tnav-brand { display:flex; align-items:center; gap:10px; flex-shrink:0; }
-    .tnav-mark { width:30px; height:30px; object-fit:contain; }
-    .tnav-name { font-size:14px; font-weight:800; color:var(--ink); line-height:1; letter-spacing:.2px; }
-    .tnav-sub { font-size:9.5px; letter-spacing:1.3px; text-transform:uppercase; color:var(--ink-3); margin-top:3px; }
-    .tnav-menu { display:flex; align-items:center; gap:3px; flex-wrap:wrap; }
-    .tnav-grp { position:relative; }
-    .tnav-item { display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:600; color:var(--ink-2); padding:8px 13px; border-radius:9px; cursor:pointer; background:transparent; border:none; font-family:var(--ff-b); white-space:nowrap; }
-    .tnav-item:hover { background:var(--surface-2); color:var(--ink); }
-    .tnav-item.active, .tnav-grp.active > .tnav-item { background:var(--surface-3); color:var(--ink); box-shadow:inset 0 0 0 1px var(--border-2); }
-    .tnav-caret::after { content:'▾'; font-size:9px; opacity:.55; margin-left:1px; }
-    .tnav-drop { position:absolute; top:calc(100% + 6px); left:0; min-width:194px; background:var(--surface); border:1px solid var(--border-2); border-radius:12px; box-shadow:var(--sh-md); padding:6px; display:none; z-index:1200; }
-    .tnav-grp:hover .tnav-drop, .tnav-grp:focus-within .tnav-drop { display:block; }
-    .tnav-link { display:flex; align-items:center; gap:8px; width:100%; text-align:left; font-size:12.5px; font-weight:500; color:var(--ink-2); padding:8px 11px; border-radius:8px; cursor:pointer; background:transparent; border:none; font-family:var(--ff-b); white-space:nowrap; }
-    .tnav-link:hover { background:var(--surface-2); color:var(--ink); }
-    .tnav-link.active { background:var(--neon-glow); color:var(--ink); font-weight:600; }
-    .tnav-right { display:flex; align-items:center; gap:10px; flex-shrink:0; margin-left:auto; position:relative; }
-    .tnav-status { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:600; color:var(--ok); background:var(--ok-bg); border:1px solid var(--ok); border-radius:20px; padding:5px 11px; white-space:nowrap; }
-    .tnav-status-dot { width:6px; height:6px; border-radius:50%; background:var(--ok); box-shadow:0 0 6px var(--ok); }
-    @media (max-width:900px){ .tnav-sub{display:none;} .tnav-status{display:none;} .tnav{gap:10px;padding:8px 12px;} }
+    /* ══ Neon Center shell — the mockup top bar is the whole-portal chrome ══ */
+    .app-neon{
+      flex:1; min-height:0; display:flex; flex-direction:column;
+      overflow:hidden;
+      padding:20px 24px 24px;
+      background:#eef3f6;
+      background-image:radial-gradient(900px 500px at 12% -8%,rgba(28,184,232,.10),transparent),radial-gradient(700px 420px at 100% 0%,rgba(31,157,91,.06),transparent);
+    }
+    html[data-theme="dark"] .app-neon{ background:#08161d; }
+    .app-neon > .tnav{ width:100%; max-width:1480px; margin:0 auto 16px; }
+    .app-neon > .content{ width:100%; max-width:1480px; margin:0 auto; padding:0 !important; background:transparent !important; }
+
+    /* topbar — scoped tokens (prefixed) so nothing leaks to other tabs' content */
+    .tnav{
+      --pa:rgba(255,255,255,0.72); --pb:rgba(255,255,255,0.46); --ps:#ffffff;
+      --bd:rgba(10,42,61,0.09); --t1:#0e2c3d; --t2:#4d6d7d; --t3:#8aa2ae;
+      --cy:#16a8d3; --tl:#0d7fa0; --gr:#1f9d5b;
+      --sh:0 1px 2px rgba(10,42,61,.05),0 8px 24px rgba(10,42,61,.07);
+      display:flex; align-items:center; gap:16px; flex-shrink:0;
+      padding:11px 20px; border-radius:20px;
+      background:var(--pa); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+      border:1px solid var(--bd); box-shadow:var(--sh);
+      font-family:'Plus Jakarta Sans','Inter',system-ui,sans-serif;
+    }
+    html[data-theme="dark"] .tnav{
+      --pa:rgba(18,45,58,0.55); --pb:rgba(18,45,58,0.4); --ps:#0e2733;
+      --bd:rgba(160,210,225,0.10); --t1:#e7f4f9; --t2:#9ec1cf; --t3:#5f818e;
+      --sh:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+    }
+    .tnav-brand{ display:flex; align-items:center; gap:11px; flex-shrink:0; }
+    .tnav-mark{ width:34px; height:34px; object-fit:contain; flex-shrink:0; }
+    .tnav-mark-dark{ display:none; }
+    html[data-theme="dark"] .tnav-mark-light{ display:none; }
+    html[data-theme="dark"] .tnav-mark-dark{ display:block; }
+    .tnav-name{ font-size:15px; font-weight:700; color:var(--t1); line-height:1; letter-spacing:.1px; }
+    .tnav-sub{ font-size:10px; letter-spacing:1.3px; text-transform:uppercase; color:var(--t3); margin-top:3px; }
+
+    .tnav-menu{ display:flex; align-items:center; gap:2px; background:var(--pb); border:1px solid var(--bd); border-radius:12px; padding:4px; }
+    .tnav-grp{ position:relative; }
+    .tnav-item{ display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:600; color:var(--t2); padding:7px 14px; border-radius:9px; cursor:pointer; background:transparent; border:none; font-family:inherit; white-space:nowrap; }
+    .tnav-item:hover{ color:var(--t1); }
+    .tnav-item.active, .tnav-grp.active > .tnav-item{ background:var(--ps); color:var(--t1); box-shadow:var(--sh); }
+    .tnav-drop{ position:absolute; top:calc(100% + 8px); left:0; min-width:188px; background:var(--ps); border:1px solid var(--bd); border-radius:14px; box-shadow:var(--sh); padding:6px; display:none; z-index:1200; }
+    .tnav-grp:hover .tnav-drop, .tnav-grp:focus-within .tnav-drop{ display:block; }
+    .tnav-link{ display:flex; align-items:center; gap:8px; width:100%; text-align:left; font-size:12.5px; font-weight:600; color:var(--t2); padding:8px 11px; border-radius:9px; cursor:pointer; background:transparent; border:none; font-family:inherit; white-space:nowrap; }
+    .tnav-link:hover{ background:var(--pb); color:var(--t1); }
+    .tnav-link.active{ background:var(--pb); color:var(--t1); }
+
+    .tnav-right{ display:flex; align-items:center; gap:12px; flex-shrink:0; margin-left:auto; position:relative; }
+    .fg-sync{ display:flex; align-items:center; gap:7px; font-size:11.5px; font-weight:600; color:var(--gr); background:rgba(31,157,91,.10); border:1px solid rgba(31,157,91,.22); padding:6px 12px; border-radius:20px; white-space:nowrap; }
+    .fg-heart{ width:6px; height:6px; border-radius:50%; background:var(--gr); animation:fgbeat 2s ease-in-out infinite; }
+    @keyframes fgbeat{ 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:.4;transform:scale(.7);} }
+    .fg-toggle{ width:42px; height:24px; border-radius:20px; background:var(--pb); border:1px solid var(--bd); position:relative; cursor:pointer; flex-shrink:0; }
+    .fg-knob{ position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:linear-gradient(135deg,var(--cy),var(--tl)); transition:left .2s ease; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+    html[data-theme="dark"] .fg-toggle .fg-knob{ left:20px; }
+    .fg-iconbtn{ width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:var(--t2); cursor:pointer; background:transparent; border:none; position:relative; }
+    .fg-iconbtn:hover{ background:var(--pb); }
+    .fg-iconbtn svg{ width:17px; height:17px; }
+    .fg-av{ width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,var(--cy),var(--tl)); display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700; color:#fff; cursor:pointer; border:none; }
+    .tnav .tb-badge{ position:absolute; top:-2px; right:-2px; }
+    .tnav .tb-user-menu{ right:0; left:auto; }
+
+    /* dashboard aligns flush under the top bar: no double padding, full width, bg shows through */
+    .app-neon .content .neon-dash{ padding:0 !important; background:transparent !important; }
+    .app-neon .content .neon-dash > .wrap{ max-width:none !important; margin:0 !important; }
+
+    @media (max-width:920px){ .tnav-sub{display:none;} .fg-sync{display:none;} .tnav{gap:10px;padding:9px 12px;} .tnav-menu{flex-wrap:wrap;} }
   </style>
 </head>
 <body data-build="cmd8">
@@ -1189,81 +1233,67 @@
 <div class="app-neon">
   <header class="tnav">
     <div class="tnav-brand">
-      <img class="tnav-mark" src="flowguard_mark_B_brand_colours.svg" alt="FlowGuard">
-      <div><div class="tnav-name">FlowGuard</div><div class="tnav-sub">Ops Center</div></div>
+      <img class="tnav-mark tnav-mark-light" src="fg-logo-light.png" alt="FlowGuard" onerror="this.style.display='none'">
+      <img class="tnav-mark tnav-mark-dark" src="fg-logo-dark.png" alt="FlowGuard">
+      <div><div class="tnav-name">FlowGuard</div><div class="tnav-sub">Neon Center</div></div>
     </div>
     <nav class="tnav-menu">
       <button class="tnav-item" id="nav-dashboard" onclick="switchTab('dashboard')">Situation</button>
-      <button class="tnav-item" id="nav-alerts" onclick="switchTab('alerts')">Alerts<span class="nav-badge" id="nav-badge-alerts" style="display:none;">0</span></button>
       <div class="tnav-grp">
-        <span class="tnav-item tnav-caret" tabindex="0">Network</span>
+        <span class="tnav-item" tabindex="0">Network</span>
         <div class="tnav-drop">
           <button class="tnav-link" id="nav-network" onclick="switchTab('network')">Network Map</button>
-          <button class="tnav-link" id="nav-sensors" onclick="switchTab('sensors')">Sentinel Devices</button>
-          <button class="tnav-link" id="nav-assets" onclick="switchTab('assets')">Assets</button>
           <button class="tnav-link" id="nav-maintenance" onclick="switchTab('maintenance')">Maintenance Planner</button>
+          <button class="tnav-link" id="nav-alerts" onclick="switchTab('alerts')">Alerts<span class="nav-badge" id="nav-badge-alerts" style="display:none;">0</span></button>
         </div>
       </div>
       <div class="tnav-grp">
-        <span class="tnav-item tnav-caret" tabindex="0">Clients</span>
+        <span class="tnav-item" tabindex="0">Assets</span>
         <div class="tnav-drop">
-          <button class="tnav-link" id="nav-clients" onclick="switchTab('clients')">Clients</button>
+          <button class="tnav-link" id="nav-assets" onclick="switchTab('assets')">Assets</button>
           <button class="tnav-link" id="nav-properties" onclick="switchTab('properties')">Properties</button>
+          <button class="tnav-link" id="nav-clients" onclick="switchTab('clients')">Clients</button>
           <button class="tnav-link" id="nav-billing" onclick="switchTab('billing')">Billing</button>
         </div>
       </div>
       <div class="tnav-grp">
-        <span class="tnav-item tnav-caret" tabindex="0">Field ops</span>
+        <span class="tnav-item" tabindex="0">Field ops</span>
         <div class="tnav-drop">
           <button class="tnav-link" id="nav-field-reports" onclick="switchTab('field-reports')">Field Reports<span class="nav-badge" id="nav-badge-field-reports" style="display:none;">0</span></button>
           <button class="tnav-link" id="nav-teams" onclick="switchTab('teams')">Teams</button>
           <button class="tnav-link" id="nav-team-members" onclick="switchTab('team-members')">Team Members</button>
         </div>
       </div>
+      <button class="tnav-item" id="nav-sensors" onclick="switchTab('sensors')">Devices</button>
       <div class="tnav-grp">
-        <span class="tnav-item tnav-caret" tabindex="0">Insights</span>
+        <span class="tnav-item" tabindex="0">Reports</span>
         <div class="tnav-drop">
-          <button class="tnav-link" id="nav-forecast" onclick="switchTab('forecast')">AI Risk Forecast</button>
           <button class="tnav-link" id="nav-reports" onclick="switchTab('reports')">Reports</button>
+          <button class="tnav-link" id="nav-forecast" onclick="switchTab('forecast')">AI Risk Forecast</button>
           <button class="tnav-link" id="nav-sla" onclick="switchTab('sla')">SLA Tracker</button>
           <button class="tnav-link" id="nav-audit" onclick="switchTab('audit')">Audit Log</button>
         </div>
       </div>
     </nav>
     <div class="tnav-right">
-      <div class="tb-storm" id="tb-storm" style="display:none">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
-        <span class="tb-storm-txt"><b id="tb-storm-t">Active Storm Warning</b><i id="tb-storm-s"></i></span>
-        <button class="tb-storm-btn" onclick="switchTab('alerts')">View Details</button>
-      </div>
-      <div class="tnav-status"><span class="tnav-status-dot"></span>Operational</div>
-      <button class="tb-btn" id="theme-toggle" onclick="OpsTheme.toggle()" aria-label="Toggle theme">
-        <svg id="theme-icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-        <svg id="theme-icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-      </button>
-      <button class="tb-btn" onclick="toggleAlertPanel()" aria-label="Alerts">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+      <div class="fg-sync"><span class="fg-heart"></span>Telemetry feed &middot; last ping 1m ago</div>
+      <div class="fg-toggle" onclick="OpsTheme.toggle()" role="button" tabindex="0" aria-label="Toggle theme"><div class="fg-knob"></div></div>
+      <button class="fg-iconbtn" onclick="toggleAlertPanel()" aria-label="Alerts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
         <span class="tb-badge" id="alert-badge" style="display:none">0</span>
       </button>
       <div class="tb-user" id="tb-user">
-        <button class="tb-user-btn" onclick="toggleUserMenu(event)">
-          <span class="tb-av" id="user-avatar">--</span>
-          <span class="tb-user-txt"><b id="user-name">Loading&#8230;</b><i id="user-role">&#8212;</i></span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
+        <button class="fg-av" id="user-avatar" onclick="toggleUserMenu(event)">--</button>
         <div class="tb-user-menu" id="tb-user-menu">
           <button id="nav-settings" onclick="switchTab('settings');closeUserMenu()">Settings</button>
           <button class="danger" onclick="handleLogout()">Sign out</button>
         </div>
       </div>
       <div style="display:none" aria-hidden="true">
-        <div class="tb-search" id="tb-search-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-          <input id="tb-search" type="text" placeholder="Search..." autocomplete="off">
-          <kbd>&#8984;K</kbd>
-          <div class="tb-search-drop" id="tb-search-drop"></div>
-        </div>
-        <span id="tb-temp">&#8212;</span><span id="tb-cond">&#8212;</span><span id="tb-rain">0.0 mm</span><span id="current-time">--:--:--</span>
+        <div id="tb-storm" style="display:none"><b id="tb-storm-t"></b><i id="tb-storm-s"></i></div>
+        <div class="tb-search" id="tb-search-wrap"><input id="tb-search" type="text" autocomplete="off"><div class="tb-search-drop" id="tb-search-drop"></div></div>
+        <span id="user-name"></span><span id="user-role"></span>
+        <span id="tb-temp"></span><span id="tb-cond"></span><span id="tb-rain"></span><span id="current-time"></span>
         <span id="topbar-module"></span><span id="topbar-title"></span>
       </div>
     </div>
