@@ -801,7 +801,7 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
         OpsModal.apiGet('/analytics/map-data'),
         OpsModal.apiGet('/analytics/kpis'),
         OpsModal.apiGet('/teams').catch(() => ({ data: [] })),
-        OpsModal.apiGet('/tickets?limit=8').catch(() => ({ data: [] })),
+        OpsModal.apiGet('/tickets/planner').catch(() => OpsModal.apiGet('/tickets?limit=8').catch(() => ({ data: [] }))),
         OpsModal.apiGet('/monitoring/sensors/all').catch(() => ({ data: [] })),
       ]);
       const md = mapRes.data || {}, kpis = kpiRes.data || {};
