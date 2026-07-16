@@ -596,10 +596,12 @@ const OpsAlerts = (function () {
       : emptyBox(iCheck, 'No timeline yet', 'Events appear here as the alert is assigned and resolved.');
 
     const resolutionBody = isResolved
-      ? `${fact('Outcome', _dash(a.outcome))}
+      ? `${a.ticket_id ? fact('Linked ticket', L('maintenance', a.ticket_id, a.ticket_id)) : ''}
+         ${fact('Outcome', _dash(a.outcome))}
          ${fact('Resolved at', `<span class="ald-mono">${dt(a.resolved_at || created)}</span>`)}
          ${a.notes ? `<div class="ald-desc"><div class="dk">Resolution notes</div><div class="dv">${a.notes}</div></div>` : ''}`
-      : emptyBox(iCheck, 'Still open', 'This incident has not been resolved yet. Resolve it to record the outcome.') + (a.notes ? `<div class="ald-desc"><div class="dk">Field notes</div><div class="dv">${a.notes}</div></div>` : '');
+      : `${a.ticket_id ? fact('Linked ticket', L('maintenance', a.ticket_id, a.ticket_id)) : ''}`
+        + emptyBox(iCheck, 'Still open', 'This incident has not been resolved yet. Resolve it to record the outcome.') + (a.notes ? `<div class="ald-desc"><div class="dk">Field notes</div><div class="dv">${a.notes}</div></div>` : '');
 
     const SECTIONS = [
       ['info', 'Alert information', 'alerts', infoBody],
@@ -637,10 +639,14 @@ const OpsAlerts = (function () {
         ${a.assigned_team ? fact('Team', L('teams', a.assigned_team_id || a.assigned_team, a.assigned_team)) : ''}
       </div>`;
 
-    const actions = [
-      !isResolved ? `<button class="ald-btn primary" onclick="OpsAlerts.assignAlert('${id}')">Assign team</button>` : '',
-      !isResolved ? `<button class="ald-btn" onclick="OpsAlerts.resolveAlert('${id}')">Resolve</button>` : '',
-    ].filter(Boolean).join('');
+    const ticketBtn = a.ticket_id
+      ? `<button class="ald-btn" onclick="fgOpen('maintenance','${String(a.ticket_id).replace(/'/g, "\\'")}')">View ticket</button>`
+      : '';
+    const actions = (isResolved
+      ? [ticketBtn, `<button class="ald-btn primary" onclick="OpsAlerts.reopenAlert('${id}')">Reopen</button>`]
+      : [`<button class="ald-btn primary" onclick="OpsAlerts.assignAlert('${id}')">Assign team</button>`,
+         `<button class="ald-btn" onclick="OpsAlerts.resolveAlert('${id}')">Resolve</button>`, ticketBtn]
+    ).filter(Boolean).join('');
 
     _container.innerHTML = `
       ${ALD_CSS}
@@ -750,17 +756,46 @@ const OpsAlerts = (function () {
         await OpsModal.apiPost(`/alerts/${id}/resolve`, {});
         OpsModal.close();
         OpsModal.toast('Alert resolved', 'nominal');
-
-        // Remove from local list
-        _allAlerts = _allAlerts.filter(x => (x.alert_id || x.id) != id);
-        updateStats(_allAlerts);
-        renderFeed(_filter === 'all' ? _allAlerts : _allAlerts.filter(a => severityClass(a.severity) === _filter), _filter);
-        if (typeof updateAlertCount === 'function') updateAlertCount(_allAlerts.length);
+        if (a) { a.status = 'resolved'; a.resolved_at = new Date().toISOString(); }
+        _afterAlertMutation(id);
       } catch (err) {
         OpsModal.toast('Failed to resolve: ' + err.message, 'critical');
         OpsModal.setLoading('modal-confirm-btn', false);
       }
     });
+  }
+
+  function reopenAlert(id) {
+    const a = _allAlerts.find(x => (x.alert_id || x.id) == id);
+    const label = a ? (a.alert_type || 'Alert') : 'Alert';
+
+    OpsModal.confirm(`Reopen "${label}"? This puts the alert back into active state.`, async function () {
+      OpsModal.setLoading('modal-confirm-btn', true);
+      try {
+        await OpsModal.apiPut(`/alerts/${id}/reopen`, {});
+        OpsModal.close();
+        OpsModal.toast('Alert reopened', 'nominal');
+        if (a) { a.status = 'active'; a.resolved_at = null; }
+        _afterAlertMutation(id);
+      } catch (err) {
+        OpsModal.toast('Failed to reopen: ' + err.message, 'critical');
+        OpsModal.setLoading('modal-confirm-btn', false);
+      }
+    });
+  }
+
+  // After resolve/reopen: refresh stats + badge, then re-render whichever view
+  // is on screen (the detail screen if open, otherwise the alert feed).
+  function _afterAlertMutation(id) {
+    updateStats(_allAlerts);
+    if (typeof updateAlertCount === 'function') {
+      updateAlertCount(_allAlerts.filter(x => (x.status || 'active') !== 'resolved' && (x.status || 'active') !== 'closed').length);
+    }
+    if (_container && _container.querySelector('#ald-info')) {
+      open(id);
+    } else {
+      renderFeed(_filter === 'all' ? _allAlerts : _allAlerts.filter(a => severityClass(a.severity) === _filter), _filter);
+    }
   }
 
   function renderError(message) {
@@ -775,7 +810,7 @@ const OpsAlerts = (function () {
   }
 
   return {
-    render, setFilter, refresh, open, back, assignAlert, confirmAssign, resolveAlert,
+    render, setFilter, refresh, open, back, assignAlert, confirmAssign, resolveAlert, reopenAlert,
     confirmCandidate, dismissCandidate, resolveCandidate,
   };
 
