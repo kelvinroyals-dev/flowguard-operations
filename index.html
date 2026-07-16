@@ -2037,14 +2037,20 @@
     const spec = FG_OPEN[tab];
     if (!spec) return;
     const [g, m] = spec;
-    let tries = 12;
+    const content = document.getElementById('content-' + tab);
+    // A detail/drawer is on screen once one of these markers exists. Some
+    // modules render detail from an in-memory list that loads asynchronously,
+    // so we re-invoke open() until the record's detail actually appears.
+    const shown = () => !!(content && content.querySelector(
+      '[class*="detail-top"], [class*="detail-screen"], .sn-drawer, .report-detail, .tmv-back'));
+    let tries = 15;
     (function attempt() {
+      if (shown()) return;
       const mod = window[g];
       if (mod && typeof mod[m] === 'function') {
         try { mod[m](id); } catch (e) { console.error('[FlowGuard] fgOpen', tab, id, e); }
-      } else if (tries-- > 0) {
-        setTimeout(attempt, 60);
       }
+      if (tries-- > 0) setTimeout(attempt, 180);
     })();
   }
 
