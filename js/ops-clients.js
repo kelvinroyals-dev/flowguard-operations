@@ -58,6 +58,78 @@ const OpsClients = (function () {
       @media (max-width:640px){ .cl-detail-actions{ margin-left:0; width:100%; } }
     </style>`;
 
+  // ── Client detail v2 — two-column glass layout (from mockup) ──────────
+  const CLD_CSS = `
+    <style>
+      .cld { display:flex; flex-direction:column; gap:16px; }
+      .cld-crumb { display:flex; align-items:center; gap:6px; font-size:var(--fs-2xs); color:var(--ink-3); padding:2px 2px; }
+      .cld-crumb .lnk { color:var(--ink-2); font-weight:600; cursor:pointer; }
+      .cld-crumb .lnk:hover { color:var(--ink); }
+      .cld-crumb .sep { opacity:.5; }
+      .cld-crumb .cur { color:var(--ink); font-weight:700; }
+      .cld-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--sh-xs); padding:20px 22px; scroll-margin-top:72px; }
+      .cld-header { display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; }
+      .cld-avatar { width:44px; height:44px; border-radius:12px; color:#fff; font-size:var(--fs-md); font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:var(--ff-m); }
+      .cld-header-main { flex:1; min-width:0; }
+      .cld-header-top { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+      .cld-title { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; }
+      .cld-chip { font-size:var(--fs-2xs); font-weight:700; padding:4px 11px; border-radius:20px; display:inline-flex; align-items:center; gap:6px; }
+      .cld-chip .dot { width:6px; height:6px; border-radius:50%; background:currentColor; }
+      .cld-chip.ok { background:rgba(31,157,91,.12); color:var(--ok); }
+      .cld-chip.warn { background:rgba(224,142,18,.12); color:var(--warn); }
+      .cld-chip.neutral { background:var(--surface-2); color:var(--ink-3); }
+      .cld-chip.primary { background:rgba(28,184,232,.12); color:var(--blue-hi); }
+      .cld-meta { display:flex; gap:16px; flex-wrap:wrap; margin-top:8px; font-size:var(--fs-sm); color:var(--ink-2); }
+      .cld-meta b { color:var(--ink); font-weight:600; margin-right:5px; }
+      .cld-actions { display:flex; gap:8px; flex-shrink:0; flex-wrap:wrap; }
+      .cld-btn { font-size:var(--fs-sm); font-weight:600; padding:9px 16px; border-radius:10px; cursor:pointer; border:1px solid var(--border-2); color:var(--ink-2); background:var(--surface); }
+      .cld-btn:hover { border-color:var(--ink-4); color:var(--ink); }
+      .cld-btn.primary { background:var(--blue-hi); color:#fff; border:none; }
+      .cld-btn.danger { color:var(--err); border-color:rgba(217,70,60,.25); }
+      .cld-note { font-size:var(--fs-2xs); color:var(--warn); background:rgba(224,142,18,.08); border:1px solid rgba(224,142,18,.22); padding:8px 12px; border-radius:10px; display:flex; gap:8px; align-items:flex-start; }
+      .cld-note svg { flex-shrink:0; margin-top:1px; }
+      .cld-secnav { display:flex; gap:4px; padding:6px; flex-wrap:wrap; position:sticky; top:6px; z-index:6; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:var(--sh-xs); }
+      .cld-secnav a { font-size:var(--fs-xs); font-weight:600; color:var(--ink-2); padding:8px 13px; border-radius:9px; cursor:pointer; white-space:nowrap; }
+      .cld-secnav a:hover { background:var(--surface-2); }
+      .cld-secnav a.active { background:var(--surface-2); color:var(--ink); }
+      .cld-grid { display:grid; grid-template-columns:1fr 300px; gap:16px; align-items:start; }
+      .cld-main { display:flex; flex-direction:column; gap:16px; min-width:0; }
+      .cld-side { display:flex; flex-direction:column; gap:14px; position:sticky; top:72px; }
+      @media (max-width:900px){ .cld-grid{ grid-template-columns:1fr; } .cld-side{ position:static; } }
+      .cld-card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
+      .cld-card-head h2 { font-family:var(--ff-d); font-size:var(--fs-md); font-weight:700; color:var(--ink); }
+      .cld-card-head .cmeta { font-size:var(--fs-2xs); color:var(--ink-3); font-family:var(--ff-m); }
+      .cld-block { margin-top:14px; padding-top:14px; border-top:1px dashed var(--border-2); }
+      .cld-block:first-child { margin-top:0; padding-top:0; border-top:none; }
+      .cld-block-label { font-size:var(--fs-xs); font-weight:700; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+      .cld-fact { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); font-size:var(--fs-sm); }
+      .cld-fact:last-child { border-bottom:none; }
+      .cld-fact .k { color:var(--ink-3); }
+      .cld-fact .v { font-weight:600; color:var(--ink); text-align:right; }
+      .cld-mono { font-family:var(--ff-m); }
+      .cld-table { width:100%; border-collapse:collapse; font-size:var(--fs-sm); }
+      .cld-table th { text-align:left; font-size:var(--fs-2xs); text-transform:uppercase; letter-spacing:.4px; color:var(--ink-3); font-weight:600; padding:0 8px 10px; border-bottom:1px solid var(--border); }
+      .cld-table td { padding:11px 8px; border-bottom:1px solid var(--border); color:var(--ink-2); }
+      .cld-table tr:last-child td { border-bottom:none; }
+      .cld-table td.strong { color:var(--ink); font-weight:600; }
+      .cld-pill { font-size:var(--fs-2xs); font-weight:700; padding:2px 8px; border-radius:20px; }
+      .cld-pill.ok { background:rgba(31,157,91,.12); color:var(--ok); }
+      .cld-pill.warn { background:rgba(224,142,18,.12); color:var(--warn); }
+      .cld-pill.danger { background:rgba(217,70,60,.12); color:var(--err); }
+      .cld-pill.secondary { background:var(--surface-2); color:var(--ink-3); }
+      .cld-tl-row { display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); align-items:flex-start; }
+      .cld-tl-row:last-child { border-bottom:none; }
+      .cld-tl-icon { width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+      .cld-tl-icon svg { width:15px; height:15px; }
+      .cld-tl-title { font-size:var(--fs-sm); font-weight:600; color:var(--ink); }
+      .cld-tl-meta { font-size:var(--fs-xs); color:var(--ink-3); margin-top:2px; }
+      .cld-tl-time { margin-left:auto; font-size:var(--fs-2xs); color:var(--ink-3); font-family:var(--ff-m); white-space:nowrap; }
+      .cld-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:28px 20px; text-align:center; gap:8px; }
+      .cld-empty svg { width:28px; height:28px; color:var(--ink-3); opacity:.6; }
+      .cld-empty .t { font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); }
+      .cld-empty .s { font-size:var(--fs-xs); color:var(--ink-3); max-width:340px; line-height:1.5; }
+    </style>`;
+
   // ────────────────────────────────────────────────────────── LIST VIEW
   function render(container) {
     _container = container;
@@ -70,13 +142,28 @@ const OpsClients = (function () {
         </div>
       </div>
       <div id="cl-stats"></div>
-      <div class="cl-table-wrap">
-        <div class="cl-table-head">
-          <div class="cl-table-title">All Clients</div>
-          <div class="cl-search-wrap">
-            <svg class="cl-search-icon" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"/></svg>
-            <input class="cl-search-input" id="cl-search" placeholder="Search clients…" oninput="OpsClients.search(this.value)">
+      <div class="lv-wrap">
+        <div class="lv-toolbar">
+          <div class="lv-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="cl-search" placeholder="Search clients…" oninput="OpsClients.search(this.value)">
           </div>
+          <div class="lv-filters">
+            <div class="lv-filter active" id="clf-all" onclick="OpsClients.setFilter('all')">All</div>
+            <div class="lv-filter" id="clf-active" onclick="OpsClients.setFilter('active')">Active</div>
+            <div class="lv-filter" id="clf-billing" onclick="OpsClients.setFilter('billing')">Has billing</div>
+            <div class="lv-filter" id="clf-inactive" onclick="OpsClients.setFilter('inactive')">Inactive</div>
+          </div>
+          <div class="lv-toolbar-right">
+            <div class="lv-icon-btn" title="Reload" onclick="reloadTab('clients')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0114.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0020.5 15"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="lv-legend">
+          <span><span class="sw" style="background:var(--ok);"></span>Active portal login</span>
+          <span><span class="sw" style="background:var(--warn);"></span>Billing data present</span>
+          <span><span class="sw" style="background:var(--ink-3);"></span>No billing record</span>
         </div>
         <div id="cl-table-body">
           <div style="padding:48px;text-align:center;color:var(--ink-3);">
@@ -121,13 +208,34 @@ const OpsClients = (function () {
     ]);
   }
 
+  let _filter = 'all';
+  let _term = '';
+
+  function _hasBilling(c) { return c.mrr != null || c.sla || c.tier; }
+  function _matchesFilter(c) {
+    if (_filter === 'active') return c.is_active !== false;
+    if (_filter === 'inactive') return c.is_active === false;
+    if (_filter === 'billing') return _hasBilling(c);
+    return true;
+  }
+  function applyFilters() {
+    const rows = _all.filter(c =>
+      _matchesFilter(c) &&
+      (!_term || (c.full_name || '').toLowerCase().includes(_term) || (c.email || '').toLowerCase().includes(_term)));
+    if (_pg) _pg.update(rows);
+    else renderTable(rows);
+  }
   function search(q) {
-    const term = q.trim().toLowerCase();
-    const filtered = term
-      ? _all.filter(c => (c.full_name || '').toLowerCase().includes(term) || (c.email || '').toLowerCase().includes(term))
-      : _all;
-    if (_pg) _pg.update(filtered);
-    else renderTable(filtered);
+    _term = q.trim().toLowerCase();
+    applyFilters();
+  }
+  function setFilter(f) {
+    _filter = f;
+    ['all', 'active', 'billing', 'inactive'].forEach(k => {
+      const el = document.getElementById('clf-' + k);
+      if (el) el.classList.toggle('active', k === f);
+    });
+    applyFilters();
   }
 
   function avatarColor(name) {
@@ -151,45 +259,59 @@ const OpsClients = (function () {
         </div>`;
       return;
     }
-    // Columns per spec: Client, Contact, Industry, Properties, Active Contracts, MRR, SLA, Status
+    const dashCell = '<span class="lv-dash">—</span>';
     el.innerHTML = `
-      <div style="overflow-x:auto;">
-        <table class="ops-table">
+      <div class="lv-scroll">
+        <table class="lv-table">
           <thead>
             <tr>
               <th>Client</th>
               <th>Contact</th>
-              <th>Industry</th>
-              <th style="text-align:center;">Properties</th>
-              <th style="text-align:center;">Active Contracts</th>
-              <th style="text-align:right;">MRR</th>
+              <th>Industry<span class="flag" title="No industry column in schema">⚠</span></th>
+              <th>Properties</th>
+              <th>Active contracts<span class="flag" title="No contracts table exists">⚠</span></th>
+              <th>MRR</th>
               <th>SLA</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody>
-            ${clients.map(c => `
+            ${clients.map(c => {
+              const src = c.is_active === false
+                ? '<span class="lv-source">portal login inactive</span>'
+                : _hasBilling(c)
+                  ? '<span class="lv-source ok"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>billing linked</span>'
+                  : '<span class="lv-source">portal login · no billing record</span>';
+              const st = clientStatus(c);
+              return `
               <tr class="clickable" onclick="OpsClients.open(${c.client_id})" tabindex="0" onkeydown="if(event.key==='Enter'){OpsClients.open(${c.client_id})}">
                 <td>
-                  <div class="cl-name-wrap">
-                    <div class="cl-avatar" style="background:${avatarColor(c.full_name)};">${initials(c.full_name)}</div>
+                  <div class="lv-name-cell">
+                    <div class="lv-avatar" style="background:${avatarColor(c.full_name)};">${initials(c.full_name)}</div>
                     <div style="min-width:0;">
-                      <div class="cl-name">${c.full_name || '—'}</div>
-                      <div class="cl-email" title="${(c.email || '').replace(/"/g, '&quot;')}">${c.email || ''}</div>
+                      <div class="lv-name">${c.full_name || '—'}</div>
+                      ${src}
                     </div>
                   </div>
                 </td>
-                <td class="num" style="font-size:var(--fs-base);">${dash(c.phone)}</td>
-                <td>${dash(c.industry)}</td>
-                <td class="num" style="text-align:center;font-weight:700;">${c.submitted_areas || 0}</td>
-                <td style="text-align:center;">${parseInt(c.active_areas) > 0 ? `<span style="color:var(--ok);font-weight:700;font-family:var(--ff-d);">${c.active_areas}</span>` : '<span style="color:var(--ink-4);">0</span>'}</td>
-                <td class="num" style="text-align:right;font-family:var(--ff-d);font-weight:700;">${money(c.mrr)}</td>
-                <td>${c.sla ? `<span class="status-badge nominal">${c.sla}</span>` : '<span style="color:var(--ink-4);">—</span>'}</td>
-                <td>${statusBadge(c.status, c.is_active)}</td>
-              </tr>`).join('')}
+                <td>${c.email ? `<span class="lv-mono" style="font-size:var(--fs-xs);">${c.email}</span>` : dashCell}</td>
+                <td>${c.industry || dashCell}</td>
+                <td class="lv-mono">${c.submitted_areas != null ? c.submitted_areas : dashCell}</td>
+                <td>${parseInt(c.active_areas) > 0 ? `<span class="lv-mono" style="color:var(--ok);font-weight:700;">${c.active_areas}</span>` : dashCell}</td>
+                <td class="lv-mono">${c.mrr != null ? money(c.mrr) : dashCell}</td>
+                <td class="lv-mono">${c.sla || dashCell}</td>
+                <td><span class="lv-status ${st.cls}">${st.label}</span></td>
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>
       </div>`;
+  }
+
+  function clientStatus(c) {
+    if (c.is_active === false) return { cls: 'neutral', label: 'Inactive' };
+    if (_hasBilling(c)) return { cls: 'ok', label: 'Active' };
+    return { cls: 'warn', label: 'No billing account' };
   }
 
   function statusBadge(status, isActive) {
@@ -233,92 +355,158 @@ const OpsClients = (function () {
     const areas = c.areas || [];
     const invoices = c.invoices || [];
     const activeAreas = areas.filter(a => a.status === 'active');
-
-    const field = (k, v) => `<div class="cl-field"><div class="k">${k}</div><div class="v">${v}</div></div>`;
     const L = OpsModal.link;
+    const hasBilling = _hasBilling(c);
+    const dt = v => v ? OpsModal.fmtDateTime(v) : '—';
+    const dS = v => v ? new Date(v).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—';
+    const linkState = c.is_active === false ? { cls: 'neutral', label: 'Portal login inactive' }
+      : hasBilling ? { cls: 'ok', label: 'Fully linked' }
+      : { cls: 'warn', label: 'No billing record' };
 
-    // Company Information — includes every list-view field + more
-    const companyInfo = `<div class="cl-grid">
-      ${field('Client', c.full_name || '—')}
-      ${field('Email', c.email || '—')}
-      ${field('Phone (contact)', dash(c.phone))}
-      ${field('Industry', dash(c.industry))}
-      ${field('Properties', areas.length)}
-      ${field('Active Contracts', activeAreas.length)}
-      ${field('MRR', money(c.mrr))}
-      ${field('SLA', c.sla ? `<span class="status-badge nominal">${c.sla}</span>` : '—')}
-      ${field('Status', statusBadge(c.status, c.is_active))}
-      ${field('Joined', fmtDate(c.created_at))}
-      ${field('Last Login', c.last_login ? OpsModal.fmtDateTime(c.last_login) : 'Never')}
-    </div>`;
+    const fact = (k, v) => `<div class="cld-fact"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+    const emptyBox = (icon, t, s) => `<div class="cld-empty">${icon}<div class="t">${t}</div><div class="s">${s}</div></div>`;
+    const note = txt => `<div class="cld-note"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span>${txt}</span></div>`;
+    const iDoc  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>';
+    const iFile = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/></svg>';
+    const iCard = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>';
+    const iUser = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>';
+    const iCheck = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>';
+    const payPill = s => { const v = String(s || '').toLowerCase(); const cl = v === 'paid' ? 'ok' : v === 'overdue' ? 'danger' : 'warn'; return `<span class="cld-pill ${cl}">${s || '—'}</span>`; };
 
-    const contacts = `<div class="cl-grid">
-      ${field('Primary Contact', c.full_name || '—')}
-      ${field('Email', c.email || '—')}
-      ${field('Phone', dash(c.phone))}
-    </div>`;
+    // Company information — two source blocks (billing table + portal login)
+    const companyBody = `
+      <div class="cld-block">
+        <div class="cld-block-label" style="color:var(--ok);">${iCard} Billing account · clients table</div>
+        ${fact('Name', c.full_name || '—')}
+        ${fact('Tier', c.tier || '<span style="color:var(--ink-3);">— not set</span>')}
+        ${fact('MRR', c.mrr != null ? money(c.mrr) : '<span style="color:var(--ink-3);">— unlinked</span>')}
+        ${fact('SLA', c.sla || '<span style="color:var(--ink-3);">—</span>')}
+        ${fact('Industry', c.industry || '<span style="color:var(--ink-3);">— no column</span>')}
+      </div>
+      <div class="cld-block">
+        <div class="cld-block-label" style="color:var(--blue-hi);">${iUser} Portal login · users table</div>
+        ${fact('Full name', c.full_name || '—')}
+        ${fact('Email', c.email || '—')}
+        ${fact('Phone', dash(c.phone))}
+        ${fact('Role / user_type', '<span class="cld-mono">client</span>')}
+        ${fact('Active', c.is_active === false ? '<span style="color:var(--err);">No</span>' : '<span style="color:var(--ok);">Yes</span>')}
+        ${fact('Last login', c.last_login ? dt(c.last_login) : 'Never')}
+      </div>`;
 
-    const properties = areas.length ? `
-      <div style="overflow-x:auto;"><table class="ops-table">
-        <thead><tr><th>Property</th><th>Type</th><th>Location</th><th>Pipeline</th><th>Inspection</th></tr></thead>
-        <tbody>${areas.map(a => `<tr>
-          <td>${a.property_id ? L('properties', a.property_id, a.property_name || a.property_id) : (a.property_name || '—')}</td>
-          <td style="font-size:var(--fs-sm);">${(a.property_type || '').replace(/_/g, ' ') || '—'}</td>
-          <td style="font-size:var(--fs-sm);">${[a.city, a.state].filter(Boolean).join(', ') || '—'}</td>
-          <td>${pipelineBadge(a.status)}</td>
-          <td>${a.inspection_status ? inspBadge(a.inspection_status) : '<span style="color:var(--ink-4);font-size:var(--fs-sm);">Not scheduled</span>'}</td>
-        </tr>`).join('')}</tbody></table></div>` : '<div class="cl-empty">No properties submitted yet.</div>';
+    const contactsBody = `
+      ${note('Two contact points exist because two source rows exist — there is no dedicated multi-contact table. A client with several site managers has nowhere to store more than one contact today.')}
+      <div style="margin-top:12px;">
+        ${c.email ? `<div class="cld-tl-row"><div class="cld-tl-icon" style="background:rgba(28,184,232,.12);color:var(--blue-hi);">${iUser}</div><div><div class="cld-tl-title">${c.full_name || 'Portal user'}</div><div class="cld-tl-meta">${c.email}${c.phone ? ' · ' + c.phone : ''}</div></div></div>` : ''}
+      </div>`;
 
-    const contracts = activeAreas.length ? `
-      <div style="overflow-x:auto;"><table class="ops-table">
-        <thead><tr><th>Property</th><th>Type</th><th>Location</th><th>Status</th></tr></thead>
-        <tbody>${activeAreas.map(a => `<tr>
-          <td>${a.property_id ? L('properties', a.property_id, a.property_name || a.property_id) : (a.property_name || '—')}</td>
-          <td style="font-size:var(--fs-sm);">${(a.property_type || '').replace(/_/g, ' ') || '—'}</td>
-          <td style="font-size:var(--fs-sm);">${[a.city, a.state].filter(Boolean).join(', ') || '—'}</td>
-          <td>${pipelineBadge(a.status)}</td>
-        </tr>`).join('')}</tbody></table></div>` : '<div class="cl-empty">No active contracts.</div>';
+    const propertiesBody = areas.length
+      ? `<table class="cld-table"><thead><tr><th>Property</th><th>Type</th><th>Location</th><th>Status</th></tr></thead>
+         <tbody>${areas.map(a => `<tr>
+           <td class="strong">${a.property_id ? L('properties', a.property_id, a.property_name || a.property_id) : (a.property_name || '—')}</td>
+           <td>${(a.property_type || '').replace(/_/g, ' ') || '—'}</td>
+           <td>${[a.city, a.state].filter(Boolean).join(', ') || '—'}</td>
+           <td>${pipelineBadge(a.status)}</td>
+         </tr>`).join('')}</tbody></table>`
+      : emptyBox(iDoc, 'No properties', 'No properties are linked to this client yet.');
 
-    const billing = invoices.length ? `
-      <div style="overflow-x:auto;"><table class="ops-table">
-        <thead><tr><th>Invoice</th><th>Amount</th><th>Status</th><th>Due</th></tr></thead>
-        <tbody>${invoices.map(inv => `<tr>
-          <td>${L('billing', inv.invoice_id, inv.invoice_id)}</td>
-          <td style="font-family:var(--ff-d);font-weight:700;">₦${Number(inv.total_amount || 0).toLocaleString()}</td>
-          <td><span class="status-badge ${inv.payment_status === 'paid' ? 'nominal' : inv.payment_status === 'overdue' ? 'critical' : 'watch'}">${inv.payment_status}</span></td>
-          <td style="font-size:var(--fs-sm);">${inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</td>
-        </tr>`).join('')}</tbody></table></div>` : '<div class="cl-empty">No invoices.</div>';
+    const contractsBody = emptyBox(iFile, 'No contracts table exists',
+      'Nothing in the schema stores contract dates, terms, or signed documents. The nearest real data is service_quotes and invoices, shown under Billing below — neither is a contract record.');
 
-    const timeline = `<div class="cl-empty">Joined ${fmtDate(c.created_at)}${c.last_login ? ' · Last login ' + OpsModal.fmtDateTime(c.last_login) : ''}.</div>`;
+    const billingBody = invoices.length
+      ? `<table class="cld-table"><thead><tr><th>Invoice</th><th>Amount</th><th>Status</th><th>Due</th></tr></thead>
+         <tbody>${invoices.map(inv => `<tr>
+           <td class="strong">${L('billing', inv.invoice_id, inv.invoice_id)}</td>
+           <td class="cld-mono">₦${Number(inv.total_amount || 0).toLocaleString()}</td>
+           <td>${payPill(inv.payment_status)}</td>
+           <td class="cld-mono">${dS(inv.due_date)}</td>
+         </tr>`).join('')}</tbody></table>
+         ${c.sla ? `<div style="margin-top:16px;"><div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px;">SLA · current</div>${fact('Uptime', c.sla)}</div>` : ''}`
+      : emptyBox(iCard, 'No billing', 'No invoices exist for this client\'s properties yet.');
+
+    const timelineEvents = [];
+    if (c.created_at) timelineEvents.push({ t: 'Client account created', m: c.full_name || '', d: c.created_at, bg: 'rgba(28,184,232,.12)', c: 'var(--blue-hi)', ic: iUser });
+    invoices.filter(i => i.payment_status === 'paid').forEach(i => timelineEvents.push({ t: 'Invoice ' + i.invoice_id + ' paid', m: '₦' + Number(i.total_amount || 0).toLocaleString(), d: i.created_at, bg: 'rgba(31,157,91,.12)', c: 'var(--ok)', ic: iCard }));
+    if (c.last_login) timelineEvents.push({ t: 'Portal login', m: c.full_name || '', d: c.last_login, bg: 'var(--surface-2)', c: 'var(--ink-3)', ic: iUser });
+    timelineEvents.sort((x, y) => new Date(y.d || 0) - new Date(x.d || 0));
+    const timelineBody = timelineEvents.length
+      ? timelineEvents.slice(0, 10).map(e => `<div class="cld-tl-row"><div class="cld-tl-icon" style="background:${e.bg};color:${e.c};">${e.ic}</div><div><div class="cld-tl-title">${e.t}</div><div class="cld-tl-meta">${e.m || '—'}</div></div><div class="cld-tl-time">${dS(e.d)}</div></div>`).join('')
+      : emptyBox(iCheck, 'No activity yet', 'Events appear here as invoices are paid and the client logs in.');
+
+    const SECTIONS = [
+      ['company', 'Company information', 'two source tables', companyBody],
+      ['contacts', 'Contacts', 'no dedicated table', contactsBody],
+      ['properties', 'Properties', 'properties.user_id', propertiesBody],
+      ['contracts', 'Contracts', '', contractsBody],
+      ['billing', 'Billing', 'invoices · sla', billingBody],
+      ['documents', 'Documents', '', emptyBox(iDoc, 'No documents attached', 'Signed agreements or handover documents can be attached once a documents table exists.')],
+      ['timeline', 'Timeline', 'derived events', timelineBody],
+    ];
+    const navHTML = SECTIONS.map((s, idx) =>
+      `<a class="${idx === 0 ? 'active' : ''}" onclick="this.parentNode.querySelectorAll('a').forEach(function(x){x.classList.remove('active')});this.classList.add('active');var el=document.getElementById('cld-${s[0]}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'})">${s[1]}</a>`
+    ).join('');
+    const cardsHTML = SECTIONS.map(s =>
+      `<div class="cld-card" id="cld-${s[0]}"><div class="cld-card-head"><h2>${s[1]}</h2>${s[2] ? `<span class="cmeta">${s[2]}</span>` : ''}</div>${s[3]}</div>`
+    ).join('');
+
+    const openInvoices = invoices.filter(i => String(i.payment_status || '').toLowerCase() !== 'paid').length;
+    const sidebar = `
+      <div class="cld-card">
+        <div class="cld-card-head"><h2 style="font-size:var(--fs-sm);">Quick facts</h2></div>
+        ${fact('Client ID', `<span class="cld-mono">${c.client_id != null ? c.client_id : c.id}</span>`)}
+        ${fact('Tier', c.tier || '—')}
+        ${fact('MRR', c.mrr != null ? money(c.mrr) : '—')}
+        ${fact('Properties', areas.length)}
+        ${fact('Portal login', c.is_active === false ? '<span style="color:var(--err);">Inactive</span>' : '<span style="color:var(--ok);">Linked</span>')}
+        ${fact('Joined', `<span class="cld-mono">${dS(c.created_at)}</span>`)}
+      </div>
+      <div class="cld-card">
+        <div class="cld-card-head"><h2 style="font-size:var(--fs-sm);">Related</h2></div>
+        ${fact('Properties', areas.length)}
+        ${fact('Open invoices', openInvoices)}
+        ${fact('SLA this month', c.sla || '—')}
+      </div>`;
+
+    const actions = [
+      `<button class="cld-btn" onclick="OpsClients.editClient(${c.client_id})">Edit</button>`,
+      _isAdmin ? `<button class="cld-btn danger" onclick="OpsClients.deleteClient(${c.client_id},'${(c.full_name || '').replace(/'/g, "\\'")}')">Delete</button>` : '',
+    ].filter(Boolean).join('');
 
     _container.innerHTML = `
-      ${SHARED_CSS}
-      <div class="cl-detail-top">
-        <button class="cl-back" onclick="OpsClients.back()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-          Clients
-        </button>
-        <div class="cl-detail-id">
-          <div class="cl-avatar" style="width:42px;height:42px;border-radius:11px;font-size:var(--fs-md);background:${avatarColor(c.full_name)};">${initials(c.full_name)}</div>
-          <div>
-            <div class="cl-detail-name">${c.full_name || 'Client'}</div>
-            <div class="cl-detail-meta">${c.email || '—'} · ${dash(c.phone)}</div>
-          </div>
+      ${CLD_CSS}
+      <div class="cld">
+        <div class="cld-crumb">
+          <span class="lnk" onclick="OpsClients.back()">Clients</span>
+          <span class="sep">/</span>
+          <span class="cur">${c.full_name || 'Client'}</span>
         </div>
-        <div class="cl-detail-actions">
-          <button class="btn-ghost" onclick="OpsClients.editClient(${c.client_id})">Edit</button>
-          ${_isAdmin ? `<button class="btn-ghost" style="color:var(--err);border-color:rgba(220,38,38,.2);" onclick="OpsClients.deleteClient(${c.client_id},'${(c.full_name || '').replace(/'/g, "\\'")}')">Delete</button>` : ''}
+
+        <div class="cld-card cld-header">
+          <div class="cld-avatar" style="background:${avatarColor(c.full_name)};">${initials(c.full_name)}</div>
+          <div class="cld-header-main">
+            <div class="cld-header-top">
+              <span class="cld-title">${c.full_name || 'Client'}</span>
+              ${c.tier ? `<span class="cld-chip primary">Tier ${c.tier}</span>` : ''}
+              <span class="cld-chip ${linkState.cls}">${linkState.label}</span>
+            </div>
+            <div class="cld-meta">
+              <span><b>Email</b>${c.email || '—'}</span>
+              <span><b>Phone</b>${dash(c.phone)}</span>
+              ${c.mrr != null ? `<span><b>MRR</b>${money(c.mrr)}</span>` : ''}
+              <span><b>Portal</b>${c.is_active === false ? 'inactive' : (c.last_login ? 'active · last seen ' + dt(c.last_login) : 'active')}</span>
+            </div>
+          </div>
+          <div class="cld-actions">${actions}</div>
+        </div>
+
+        ${note('This page merges two unrelated rows: a clients billing account and a users portal login. There is no foreign key joining them — they are matched by name/email. If either side is renamed independently, this page can mismatch until re-linked.')}
+
+        <div class="cld-secnav">${navHTML}</div>
+
+        <div class="cld-grid">
+          <div class="cld-main">${cardsHTML}</div>
+          <div class="cld-side">${sidebar}</div>
         </div>
       </div>
-
-      ${section('Company Information', companyInfo)}
-      ${section('Contacts', contacts)}
-      ${section('Properties', properties)}
-      ${section('Contracts', contracts)}
-      ${section('Billing', billing)}
-      ${section('Reports', '<div class="cl-empty">No reports linked to this client yet.</div>', true)}
-      ${section('Documents', '<div class="cl-empty">No documents uploaded.</div>', true)}
-      ${section('Timeline', timeline, true)}
     `;
   }
 
@@ -376,6 +564,6 @@ const OpsClients = (function () {
     );
   }
 
-  return { render, search, open, back, editClient, saveClient, deleteClient };
+  return { render, search, setFilter, open, back, editClient, saveClient, deleteClient };
 
 })();
