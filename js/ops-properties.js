@@ -53,6 +53,87 @@ const OpsProperties = (function () {
       @media (max-width:640px){ .pr-detail-actions{ margin-left:0; width:100%; } }
     </style>`;
 
+  // ── Property detail v2 — two-column glass layout (from mockup) ─────────
+  const PRD_CSS = `
+    <style>
+      .prd { display:flex; flex-direction:column; gap:16px; }
+      .prd-crumb { display:flex; align-items:center; gap:6px; font-size:var(--fs-2xs); color:var(--ink-3); padding:2px 2px; }
+      .prd-crumb .lnk { color:var(--ink-2); font-weight:600; cursor:pointer; }
+      .prd-crumb .lnk:hover { color:var(--ink); }
+      .prd-crumb .sep { opacity:.5; }
+      .prd-crumb .cur { color:var(--ink); font-weight:700; }
+      .prd-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--sh-xs); padding:20px 22px; scroll-margin-top:72px; }
+      .prd-header { display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; }
+      .prd-header-main { flex:1; min-width:0; }
+      .prd-header-top { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+      .prd-title { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; }
+      .prd-chip { font-size:var(--fs-2xs); font-weight:700; padding:4px 11px; border-radius:20px; display:inline-flex; align-items:center; gap:6px; }
+      .prd-chip .dot { width:6px; height:6px; border-radius:50%; background:currentColor; }
+      .prd-chip.ok { background:rgba(31,157,91,.12); color:var(--ok); }
+      .prd-chip.warn { background:rgba(224,142,18,.12); color:var(--warn); }
+      .prd-chip.danger { background:rgba(217,70,60,.12); color:var(--err); }
+      .prd-chip.neutral { background:var(--surface-2); color:var(--ink-3); }
+      .prd-meta { display:flex; gap:16px; flex-wrap:wrap; margin-top:8px; font-size:var(--fs-sm); color:var(--ink-2); }
+      .prd-meta b { color:var(--ink); font-weight:600; margin-right:5px; }
+      .prd-actions { display:flex; gap:8px; flex-shrink:0; flex-wrap:wrap; }
+      .prd-btn { font-size:var(--fs-sm); font-weight:600; padding:9px 16px; border-radius:10px; cursor:pointer; border:1px solid var(--border-2); color:var(--ink-2); background:var(--surface); }
+      .prd-btn:hover { border-color:var(--ink-4); color:var(--ink); }
+      .prd-btn.primary { background:var(--blue-hi); color:#fff; border:none; }
+      .prd-btn.danger { color:var(--err); border-color:rgba(217,70,60,.25); }
+      .prd-secnav { display:flex; gap:4px; padding:6px; flex-wrap:wrap; position:sticky; top:6px; z-index:6; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:var(--sh-xs); }
+      .prd-secnav a { font-size:var(--fs-xs); font-weight:600; color:var(--ink-2); padding:8px 13px; border-radius:9px; cursor:pointer; white-space:nowrap; }
+      .prd-secnav a:hover { background:var(--surface-2); }
+      .prd-secnav a.active { background:var(--surface-2); color:var(--ink); }
+      .prd-grid { display:grid; grid-template-columns:1fr 300px; gap:16px; align-items:start; }
+      .prd-main { display:flex; flex-direction:column; gap:16px; min-width:0; }
+      .prd-side { display:flex; flex-direction:column; gap:14px; position:sticky; top:72px; }
+      @media (max-width:900px){ .prd-grid{ grid-template-columns:1fr; } .prd-side{ position:static; } }
+      .prd-card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; }
+      .prd-card-head h2 { font-family:var(--ff-d); font-size:var(--fs-md); font-weight:700; color:var(--ink); }
+      .prd-card-head .cmeta { font-size:var(--fs-2xs); color:var(--ink-3); font-family:var(--ff-m); }
+      .prd-ring-box { display:flex; align-items:center; gap:14px; margin-bottom:16px; }
+      .prd-ring-num { font-family:var(--ff-d); font-size:24px; font-weight:700; color:var(--ink); }
+      .prd-ring-sub { font-size:var(--fs-2xs); color:var(--ink-3); margin-top:2px; line-height:1.4; }
+      .prd-stats { display:flex; gap:10px; flex-wrap:wrap; }
+      .prd-stat { background:var(--surface-2); border:1px solid var(--border); border-radius:11px; padding:12px 16px; flex:1; min-width:104px; }
+      .prd-stat .n { font-family:var(--ff-m); font-size:20px; font-weight:700; color:var(--ink); }
+      .prd-stat .l { font-size:var(--fs-2xs); color:var(--ink-3); margin-top:3px; }
+      .prd-desc { margin-top:14px; font-size:var(--fs-sm); color:var(--ink-2); white-space:pre-wrap; line-height:1.5; }
+      .prd-table { width:100%; border-collapse:collapse; font-size:var(--fs-sm); }
+      .prd-table th { text-align:left; font-size:var(--fs-2xs); text-transform:uppercase; letter-spacing:.4px; color:var(--ink-3); font-weight:600; padding:0 8px 10px; border-bottom:1px solid var(--border); }
+      .prd-table td { padding:11px 8px; border-bottom:1px solid var(--border); color:var(--ink-2); }
+      .prd-table tr:last-child td { border-bottom:none; }
+      .prd-table td.strong { color:var(--ink); font-weight:600; }
+      .prd-mono { font-family:var(--ff-m); }
+      .prd-pill { font-size:var(--fs-2xs); font-weight:700; padding:2px 8px; border-radius:20px; }
+      .prd-pill.primary { background:rgba(28,184,232,.12); color:var(--blue-hi); }
+      .prd-pill.secondary { background:var(--surface-2); color:var(--ink-3); }
+      .prd-pill.ok { background:rgba(31,157,91,.12); color:var(--ok); }
+      .prd-pill.warn { background:rgba(224,142,18,.12); color:var(--warn); }
+      .prd-pill.danger { background:rgba(217,70,60,.12); color:var(--err); }
+      .prd-tl-row { display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); align-items:flex-start; }
+      .prd-tl-row:last-child { border-bottom:none; }
+      .prd-tl-icon { width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+      .prd-tl-icon svg { width:15px; height:15px; }
+      .prd-tl-title { font-size:var(--fs-sm); font-weight:600; color:var(--ink); }
+      .prd-tl-meta { font-size:var(--fs-xs); color:var(--ink-3); margin-top:2px; }
+      .prd-tl-time { margin-left:auto; font-size:var(--fs-2xs); color:var(--ink-3); font-family:var(--ff-m); white-space:nowrap; }
+      .prd-inc { display:flex; gap:12px; align-items:flex-start; padding:11px 0; border-bottom:1px solid var(--border); }
+      .prd-inc:last-child { border-bottom:none; }
+      .prd-inc .sev { width:8px; height:8px; border-radius:50%; margin-top:5px; flex-shrink:0; }
+      .prd-inc .it { font-size:var(--fs-sm); font-weight:600; color:var(--ink); }
+      .prd-inc .im { font-size:var(--fs-xs); color:var(--ink-3); margin-top:2px; }
+      .prd-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:28px 20px; text-align:center; gap:8px; }
+      .prd-empty svg { width:28px; height:28px; color:var(--ink-3); opacity:.6; }
+      .prd-empty .t { font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); }
+      .prd-empty .s { font-size:var(--fs-xs); color:var(--ink-3); max-width:340px; line-height:1.5; }
+      .prd-fact { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); font-size:var(--fs-sm); }
+      .prd-fact:last-child { border-bottom:none; }
+      .prd-fact .k { color:var(--ink-3); }
+      .prd-fact .v { font-weight:600; color:var(--ink); text-align:right; }
+      .prd-mapbox { height:200px; border-radius:12px; overflow:hidden; position:relative; background:var(--surface-2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; }
+    </style>`;
+
   // ────────────────────────────────────────────────────────── LIST VIEW
   function render(container) {
     _container = container;
@@ -250,160 +331,262 @@ const OpsProperties = (function () {
     const inspections = a.inspections || [];
     const quotes = a.quotes || [];
     const invoices = a.invoices || [];
-    const loc = [a.city, a.state].filter(Boolean).join(', ') || a.location || '—';
-    const field = (k, v) => `<div class="pr-field"><div class="k">${k}</div><div class="v">${v}</div></div>`;
-    const L = OpsModal.link;
-
-    // ── related records (all cross-module linked) ──────────────────────
     const assetsArr    = a.assets     || [];
     const devicesArr   = a.devices    || [];
     const incidentsArr = a.incidents  || [];
     const ticketsArr   = a.tickets    || [];
+    const L = OpsModal.link;
+    const loc = [a.city, a.state].filter(Boolean).join(', ') || a.location || '—';
+    const typeLabel = (a.property_type || '').replace(/_/g, ' ') || '—';
+    const d1 = v => v ? new Date(v).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+    const dS = v => v ? new Date(v).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—';
+    const clientLink = a.user_id ? L('clients', a.user_id, a.client_name || a.client_email || 'Client') : (a.client_name || a.client_email || 'Unlinked');
 
-    const statusDot = s => {
-      const on = ['active', 'online', 'operational'].includes(String(s || '').toLowerCase());
-      const warn = ['maintenance', 'degraded', 'warning'].includes(String(s || '').toLowerCase());
-      const c = on ? 'var(--ok)' : warn ? 'var(--warn)' : 'var(--ink-3)';
-      return `<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:7px;height:7px;border-radius:50%;background:${c};"></span>${(s || '—')}</span>`;
-    };
-    const sevBadge = s => {
+    // ── chips & helpers ────────────────────────────────────────────────
+    const st = (a.status || '').toLowerCase();
+    const statusCls = st === 'active' ? 'ok' : (st === 'suspended' || st === 'cancelled') ? 'danger' : 'warn';
+    const statusLabel = st === 'active' ? 'Monitored' : (a.status || 'Pending').replace(/_/g, ' ');
+    const rl = String(a.risk_level || a.urgency_level || '').toLowerCase();
+    const riskCls = (rl === 'high' || rl === 'critical') ? 'danger' : (rl === 'moderate' || rl === 'medium') ? 'warn' : rl ? 'ok' : 'neutral';
+    const riskLabel = rl ? rl.charAt(0).toUpperCase() + rl.slice(1) + ' risk' : 'Risk n/a';
+
+    const statPill = s => {
       const v = String(s || '').toLowerCase();
-      const cls = v === 'critical' ? 'critical' : v === 'high' ? 'critical' : v === 'moderate' || v === 'medium' ? 'watch' : 'nominal';
-      return `<span class="status-badge ${cls}">${s || '—'}</span>`;
+      const c = v === 'active' ? 'ok' : (v === 'suspended' || v === 'cancelled' || v === 'critical') ? 'danger' : v ? 'secondary' : 'secondary';
+      return `<span class="prd-pill ${c}">${(s || '—').replace(/_/g, ' ')}</span>`;
     };
+    const sevPill = s => {
+      const v = String(s || '').toLowerCase();
+      const c = (v === 'critical' || v === 'high') ? 'danger' : (v === 'moderate' || v === 'medium') ? 'warn' : 'ok';
+      return `<span class="prd-pill ${c}">${s || '—'}</span>`;
+    };
+    const payPill = s => {
+      const v = String(s || '').toLowerCase();
+      const c = v === 'paid' ? 'ok' : v === 'overdue' ? 'danger' : 'warn';
+      return `<span class="prd-pill ${c}">${s || '—'}</span>`;
+    };
+    const sevColor = s => {
+      const v = String(s || '').toLowerCase();
+      return (v === 'critical' || v === 'high') ? 'var(--err)' : (v === 'moderate' || v === 'medium') ? 'var(--warn)' : 'var(--ok)';
+    };
+    const emptyBox = (icon, t, s) => `<div class="prd-empty">${icon}<div class="t">${t}</div><div class="s">${s}</div></div>`;
+    const iBox   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>';
+    const iDoc   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>';
+    const iUser  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="7" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0113 0"/></svg>';
+    const iAlert = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2.6 17.5a1.5 1.5 0 001.3 2.3h16.2a1.5 1.5 0 001.3-2.3L13.7 3.9a1.5 1.5 0 00-2.6 0z"/></svg>';
+    const iWrench= '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6l9-4 9 4M3 6l9 4 9-4M3 6v12l9 4 9-4V6"/></svg>';
+    const iCheck = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>';
 
-    const assetsBody = assetsArr.length
-      ? `<div style="overflow-x:auto;"><table class="ops-table">
-          <thead><tr><th>Asset</th><th>Type</th><th>Health</th><th style="text-align:center;">Status</th></tr></thead>
-          <tbody>${assetsArr.map(x => `<tr>
-            <td>${L('assets', x.property_id, x.name || x.property_id)}</td>
-            <td style="font-size:var(--fs-sm);">${(x.type || '').replace(/_/g, ' ') || '—'}</td>
-            <td>${healthCell(x.health_score)}</td>
-            <td style="text-align:center;">${pipelineBadge(x.status)}</td>
-          </tr>`).join('')}</tbody></table></div>`
-      : '<div class="pr-empty">No drainage assets recorded for this property yet.</div>';
+    // ── health ring ────────────────────────────────────────────────────
+    const scoreRaw = a.health_score != null && a.health_score !== '' ? parseInt(a.health_score) : null;
+    const score = scoreRaw != null && !isNaN(scoreRaw) ? Math.max(0, Math.min(100, scoreRaw)) : null;
+    const C = 175.9;
+    const off = (score != null ? C * (1 - score / 100) : C).toFixed(1);
+    const ringColor = score == null ? 'var(--ink-3)' : score >= 80 ? 'var(--ok)' : score >= 60 ? 'var(--warn)' : 'var(--err)';
+    const daysMonitored = a.created_at ? Math.max(0, Math.floor((Date.now() - new Date(a.created_at).getTime()) / 864e5)) : null;
+
+    // ── card bodies ────────────────────────────────────────────────────
+    const overviewBody = `
+      <div class="prd-ring-box">
+        <svg width="66" height="66" viewBox="0 0 66 66">
+          <circle cx="33" cy="33" r="28" fill="none" stroke="var(--border-2)" stroke-width="6"/>
+          <circle cx="33" cy="33" r="28" fill="none" stroke="${ringColor}" stroke-width="6" stroke-linecap="round"
+            stroke-dasharray="${C}" stroke-dashoffset="${off}" transform="rotate(-90 33 33)"/>
+        </svg>
+        <div>
+          <div class="prd-ring-num">${score != null ? score : '—'}</div>
+          <div class="prd-ring-sub">Health score${a.created_at ? ' · as of ' + d1(a.created_at) : ''}</div>
+        </div>
+      </div>
+      <div class="prd-stats">
+        <div class="prd-stat"><div class="n">${assetsArr.length}</div><div class="l">Drainage assets</div></div>
+        <div class="prd-stat"><div class="n">${devicesArr.length}</div><div class="l">Sentinel devices</div></div>
+        <div class="prd-stat"><div class="n">${incidentsArr.filter(x => x.status === 'active').length}</div><div class="l">Open incidents</div></div>
+        <div class="prd-stat"><div class="n">${daysMonitored != null ? daysMonitored : '—'}</div><div class="l">Days monitored</div></div>
+      </div>
+      ${a.issue_description ? `<div class="prd-desc">${a.issue_description}</div>` : ''}`;
+
+    const mapBody = (a.latitude && a.longitude)
+      ? `<div class="prd-mapbox"><div style="text-align:center;">
+           <div class="prd-mono" style="font-size:var(--fs-md);color:var(--ink);font-weight:700;">${a.latitude}, ${a.longitude}</div>
+           <div style="font-size:var(--fs-xs);color:var(--ink-3);margin-top:4px;">Estate coordinates</div>
+         </div></div>
+         <div style="margin-top:12px;"><button class="prd-btn" onclick="OpsNetwork.open('${pid}')">Open on network map →</button></div>`
+      : emptyBox(iDoc, 'No coordinates on file', 'Add a latitude/longitude to plot this estate and its coverage on the network map.');
+
+    const networkBody = assetsArr.length
+      ? `<table class="prd-table"><thead><tr><th>Asset</th><th>Type</th><th>Health</th><th>Status</th></tr></thead>
+         <tbody>${assetsArr.map(x => `<tr>
+           <td class="strong">${L('assets', x.property_id, x.name || x.property_id)}</td>
+           <td>${(x.type || '').replace(/_/g, ' ') || '—'}</td>
+           <td class="prd-mono">${x.health_score != null ? x.health_score : '—'}</td>
+           <td>${statPill(x.status)}</td>
+         </tr>`).join('')}</tbody></table>`
+      : emptyBox(iBox, 'No drainage assets', 'No child drainage_asset rows are linked to this property yet.');
 
     const devicesBody = devicesArr.length
-      ? `<div style="overflow-x:auto;"><table class="ops-table">
-          <thead><tr><th>Device</th><th>Sentinel ID</th><th>Status</th></tr></thead>
-          <tbody>${devicesArr.map(d => `<tr>
-            <td>${L('sensors', d.sensor_id, d.name || d.sensor_id)}</td>
-            <td style="font-family:var(--ff-m);font-size:var(--fs-sm);">${d.sensor_id}</td>
-            <td style="font-size:var(--fs-sm);">${statusDot(d.status)}</td>
-          </tr>`).join('')}</tbody></table></div>`
-      : '<div class="pr-empty">No Sentinel devices linked to this property yet.</div>';
+      ? `<table class="prd-table"><thead><tr><th>Device</th><th>Sentinel ID</th><th>Status</th></tr></thead>
+         <tbody>${devicesArr.map(d => `<tr>
+           <td class="strong">${L('sensors', d.sensor_id, d.name || d.sensor_id)}</td>
+           <td class="prd-mono">${d.sensor_id}</td>
+           <td>${statPill(d.status)}</td>
+         </tr>`).join('')}</tbody></table>`
+      : emptyBox(iBox, 'No devices', 'No Sentinel devices cover this property via sentinel_coverage yet.');
+
+    const maintenanceBody = ticketsArr.length
+      ? ticketsArr.map(t => `<div class="prd-tl-row">
+          <div class="prd-tl-icon" style="background:rgba(28,184,232,.12);color:var(--blue-hi);">${iWrench}</div>
+          <div><div class="prd-tl-title">${L('maintenance', t.ticket_id, t.title || (t.work_type || 'Work order').replace(/_/g, ' '))}</div>
+          <div class="prd-tl-meta">${t.assigned_team ? 'Team ' + t.assigned_team + ' · ' : ''}${(t.status || '').replace(/_/g, ' ') || '—'}</div></div>
+          <div class="prd-tl-time">${dS(t.scheduled_date || t.created_at)}</div>
+        </div>`).join('')
+      : emptyBox(iWrench, 'No work orders', 'No maintenance work orders (tickets) scheduled for this property.');
 
     const incidentsBody = incidentsArr.length
-      ? `<div style="overflow-x:auto;"><table class="ops-table">
-          <thead><tr><th>Incident</th><th>Type</th><th>Severity</th><th>Status</th><th>Date</th></tr></thead>
-          <tbody>${incidentsArr.map(al => `<tr>
-            <td>${L('alerts', al.alert_id, al.alert_id)}</td>
-            <td style="font-size:var(--fs-sm);">${(al.alert_type || '').replace(/_/g, ' ') || '—'}</td>
-            <td>${sevBadge(al.severity)}</td>
-            <td style="font-size:var(--fs-sm);">${al.status || '—'}</td>
-            <td style="font-size:var(--fs-sm);">${al.created_at ? new Date(al.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</td>
-          </tr>`).join('')}</tbody></table></div>`
-      : '<div class="pr-empty">No incidents recorded for this property.</div>';
+      ? incidentsArr.map(al => `<div class="prd-inc">
+          <span class="sev" style="background:${sevColor(al.severity)};"></span>
+          <div><div class="it">${L('alerts', al.alert_id, (al.alert_type || 'Alert').replace(/_/g, ' '))} · ${al.severity || ''}</div>
+          <div class="im">${al.alert_id} · ${(al.status || '')} · ${dS(al.created_at)}</div></div>
+        </div>`).join('')
+      : emptyBox(iAlert, 'No incidents', 'No alerts recorded against this property.');
 
-    const ticketsBody = ticketsArr.length
-      ? `<div style="overflow-x:auto;"><table class="ops-table">
-          <thead><tr><th>Work Order</th><th>Type</th><th>Team</th><th>Status</th><th>Scheduled</th></tr></thead>
-          <tbody>${ticketsArr.map(t => `<tr>
-            <td>${L('maintenance', t.ticket_id, t.title || t.ticket_id)}</td>
-            <td style="font-size:var(--fs-sm);">${(t.work_type || '').replace(/_/g, ' ') || '—'}</td>
-            <td>${t.assigned_team ? L('teams', t.assigned_team, t.assigned_team) : '—'}</td>
-            <td style="font-size:var(--fs-sm);">${(t.status || '').replace(/_/g, ' ') || '—'}</td>
-            <td style="font-size:var(--fs-sm);">${t.scheduled_date ? new Date(t.scheduled_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</td>
-          </tr>`).join('')}</tbody></table></div>`
-      : '<div class="pr-empty">No work orders scheduled for this property.</div>';
+    const reportsBody = inspections.length
+      ? `<table class="prd-table"><thead><tr><th>Inspection</th><th>Status</th><th>Team</th><th>Score</th><th>Date</th></tr></thead>
+         <tbody>${inspections.map(i => `<tr>
+           <td class="strong prd-mono">${i.inspection_id}</td>
+           <td>${statPill(i.status)}</td>
+           <td>${i.assigned_team ? L('teams', i.assigned_team, i.assigned_team) : '—'}</td>
+           <td class="prd-mono">${i.drainage_condition_score ? i.drainage_condition_score + '/10' : '—'}</td>
+           <td class="prd-mono">${dS(i.scheduled_date)}</td>
+         </tr>`).join('')}</tbody></table>`
+      : emptyBox(iDoc, 'No reports', 'No inspection reports carry this property_id yet.');
 
-    // Overview — includes every list column + more
-    const overview = `<div class="pr-grid">
-      ${field('Property Name', a.property_name || '—')}
-      ${field('Type', (a.property_type || '').replace(/_/g, ' ') || '—')}
-      ${field('Client', a.user_id ? L('clients', a.user_id, a.client_name || a.client_email || 'Client') : (a.client_name || a.client_email || '—'))}
-      ${a.parent_property_id ? field('Parent Estate', L('properties', a.parent_property_id, a.parent_name || a.parent_property_id)) : ''}
-      ${field('Location', loc)}
-      ${field('Risk Level', riskBadge(a.risk_level || a.urgency_level))}
-      ${field('Drain Health', healthCell(a.health_score))}
-      ${field('Devices', devicesArr.length)}
-      ${field('Open Incidents', incidentsArr.filter(x => x.status === 'active').length)}
-      ${field('SLA', a.sla ? `<span class="status-badge nominal">${a.sla}</span>` : '—')}
-      ${field('Status', pipelineBadge(a.status))}
-      ${field('Submitted', fmtDate(a.created_at))}
-    </div>${a.issue_description ? `<div style="margin-top:14px;"><div class="pr-field"><div class="k">Description</div><div class="v" style="font-weight:400;white-space:pre-wrap;line-height:1.5;">${a.issue_description}</div></div></div>` : ''}`;
+    const contactsBody = (a.client_name || a.client_email || a.client_phone)
+      ? `<div class="prd-fact"><span class="k">Client</span><span class="v">${clientLink}</span></div>
+         <div class="prd-fact"><span class="k">Email</span><span class="v">${a.client_email || '—'}</span></div>
+         <div class="prd-fact"><span class="k">Phone</span><span class="v">${a.client_phone || '—'}</span></div>`
+      : emptyBox(iUser, 'No contact on file', 'This property has no linked client account holding a contact email or phone.');
 
-    const estateMap = (a.latitude && a.longitude)
-      ? `<div class="pr-grid">${field('Latitude', a.latitude)}${field('Longitude', a.longitude)}</div><div style="margin-top:10px;"><a class="btn-ghost" style="text-decoration:none;padding:7px 12px;" onclick="switchTab('network')">Open on network map →</a></div>`
-      : '<div class="pr-empty">No coordinates on file for this property yet.</div>';
+    const billingBody = (invoices.length || quotes.length)
+      ? `<table class="prd-table"><thead><tr><th>Ref</th><th>Amount</th><th>Status</th><th>Due</th></tr></thead>
+         <tbody>${invoices.map(inv => `<tr>
+           <td class="strong">${L('billing', inv.invoice_id, inv.invoice_id)}</td>
+           <td class="prd-mono">₦${Number(inv.total_amount || 0).toLocaleString()}</td>
+           <td>${payPill(inv.payment_status)}</td>
+           <td class="prd-mono">${dS(inv.due_date)}</td>
+         </tr>`).join('')}${quotes.map(q => `<tr>
+           <td class="strong prd-mono">${q.quote_id}</td>
+           <td class="prd-mono">₦${Number(q.total_monthly || 0).toLocaleString()}/mo</td>
+           <td>${statPill(q.status)}</td>
+           <td>—</td>
+         </tr>`).join('')}</tbody></table>`
+      : emptyBox(iDoc, 'No billing', 'No invoices or service quotes exist for this property yet.');
 
-    const drainNetwork = `<div class="pr-grid">
-      ${field('Assets', isNaN(parseInt(a.asset_count)) ? '—' : parseInt(a.asset_count))}
-      ${field('Sentinel devices', isNaN(parseInt(a.sentinel_count)) ? '—' : parseInt(a.sentinel_count))}
-      ${field('Monitored', isNaN(parseInt(a.monitored_assets)) ? '—' : parseInt(a.monitored_assets))}
-    </div><div style="margin-top:10px;"><a class="btn-ghost" style="text-decoration:none;padding:7px 12px;" onclick="OpsNetwork.open('${pid}')">Open drainage network →</a></div>`;
+    // Timeline — derived from real records, newest first
+    const events = [];
+    if (a.created_at) events.push({ t: 'Property created', m: a.property_name || '', d: a.created_at, bg: 'rgba(28,184,232,.12)', c: 'var(--blue-hi)', ic: iCheck });
+    inspections.forEach(i => events.push({ t: 'Inspection ' + (i.status || ''), m: i.drainage_condition_score ? 'Score ' + i.drainage_condition_score + '/10' : '', d: i.scheduled_date, bg: 'rgba(31,157,91,.12)', c: 'var(--ok)', ic: iCheck }));
+    ticketsArr.forEach(t => events.push({ t: t.title || (t.work_type || 'Work order').replace(/_/g, ' '), m: (t.status || '').replace(/_/g, ' '), d: t.scheduled_date || t.created_at, bg: 'rgba(28,184,232,.12)', c: 'var(--blue-hi)', ic: iWrench }));
+    incidentsArr.forEach(al => events.push({ t: (al.alert_type || 'Alert').replace(/_/g, ' '), m: al.severity || '', d: al.created_at, bg: 'rgba(217,70,60,.12)', c: 'var(--err)', ic: iAlert }));
+    events.sort((x, y) => new Date(y.d || 0) - new Date(x.d || 0));
+    const timelineBody = events.length
+      ? events.slice(0, 10).map(e => `<div class="prd-tl-row">
+          <div class="prd-tl-icon" style="background:${e.bg};color:${e.c};">${e.ic}</div>
+          <div><div class="prd-tl-title">${e.t}</div><div class="prd-tl-meta">${e.m || '—'}</div></div>
+          <div class="prd-tl-time">${dS(e.d)}</div>
+        </div>`).join('')
+      : emptyBox(iCheck, 'No timeline yet', 'Events appear here as inspections, work orders and incidents are recorded.');
 
-    const maintenance = inspections.length ? `
-      <div style="overflow-x:auto;"><table class="ops-table">
-        <thead><tr><th>ID</th><th>Status</th><th>Date</th><th>Team</th><th>Risk</th><th>Score</th></tr></thead>
-        <tbody>${inspections.map(i => `<tr>
-          <td style="font-family:var(--ff-m);font-size:var(--fs-sm);">${i.inspection_id}</td>
-          <td>${inspBadge(i.status)}</td>
-          <td style="font-size:var(--fs-sm);">${i.scheduled_date ? new Date(i.scheduled_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</td>
-          <td style="font-size:var(--fs-sm);">${i.assigned_team || '—'}</td>
-          <td>${i.flood_risk_level ? riskBadge(i.flood_risk_level) : '—'}</td>
-          <td style="font-family:var(--ff-d);font-weight:700;">${i.drainage_condition_score ? i.drainage_condition_score + '/10' : '—'}</td>
-        </tr>`).join('')}</tbody></table></div>` : '<div class="pr-empty">No inspections or work orders yet.</div>';
+    // ── section nav + cards ────────────────────────────────────────────
+    const SECTIONS = [
+      ['overview', 'Overview', 'properties · asset_class: ' + (a.asset_class || 'customer_property'), overviewBody],
+      ['map', 'Estate map', 'lat/long + coverage', mapBody],
+      ['network', 'Drain network', 'child rows · drainage_asset', networkBody],
+      ['devices', 'Devices', 'via sentinel_coverage', devicesBody],
+      ['maintenance', 'Maintenance', 'tickets · work_type', maintenanceBody],
+      ['incidents', 'Incidents', 'alerts', incidentsBody],
+      ['reports', 'Reports', 'inspection_reports', reportsBody],
+      ['contacts', 'Contacts', 'client account', contactsBody],
+      ['billing', 'Billing', 'invoices · service_quotes', billingBody],
+      ['timeline', 'Timeline', 'derived events', timelineBody],
+    ];
+    const navHTML = SECTIONS.map((s, idx) =>
+      `<a class="${idx === 0 ? 'active' : ''}" onclick="this.parentNode.querySelectorAll('a').forEach(function(x){x.classList.remove('active')});this.classList.add('active');var el=document.getElementById('prd-${s[0]}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'})">${s[1]}</a>`
+    ).join('');
+    const cardsHTML = SECTIONS.map(s =>
+      `<div class="prd-card" id="prd-${s[0]}">
+         <div class="prd-card-head"><h2>${s[1]}</h2><span class="cmeta">${s[2]}</span></div>
+         ${s[3]}
+       </div>`
+    ).join('');
 
-    const contacts = `<div class="pr-grid">
-      ${field('Client', a.user_id ? L('clients', a.user_id, a.client_name || 'Client') : (a.client_name || '—'))}
-      ${field('Contact Person', dash(a.contact_person_name))}
-      ${field('Phone', dash(a.client_phone))}
-      ${field('Email', dash(a.client_email))}
-    </div>`;
-
-    const billing = (quotes.length || invoices.length) ? `
-      ${quotes.length ? `<div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;">Quotes</div>
-      <div style="overflow-x:auto;margin-bottom:14px;"><table class="ops-table"><thead><tr><th>Quote ID</th><th>Monthly</th><th>Status</th></tr></thead>
-      <tbody>${quotes.map(q => `<tr><td style="font-family:var(--ff-m);font-size:var(--fs-sm);">${q.quote_id}</td><td style="font-family:var(--ff-d);font-weight:700;">₦${Number(q.total_monthly || 0).toLocaleString()}</td><td>${pipelineBadge(q.status)}</td></tr>`).join('')}</tbody></table></div>` : ''}
-      ${invoices.length ? `<div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;">Invoices</div>
-      <div style="overflow-x:auto;"><table class="ops-table"><thead><tr><th>Invoice</th><th>Amount</th><th>Status</th><th>Due</th></tr></thead>
-      <tbody>${invoices.map(inv => `<tr><td>${L('billing', inv.invoice_id, inv.invoice_id)}</td><td style="font-family:var(--ff-d);font-weight:700;">₦${Number(inv.total_amount || 0).toLocaleString()}</td><td><span class="status-badge ${inv.payment_status === 'paid' ? 'nominal' : inv.payment_status === 'overdue' ? 'critical' : 'watch'}">${inv.payment_status}</span></td><td style="font-size:var(--fs-sm);">${inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</td></tr>`).join('')}</tbody></table></div>` : ''}
-    ` : '<div class="pr-empty">No quotes or invoices yet.</div>';
-
-    const timeline = `<div class="pr-empty">Submitted ${fmtDate(a.created_at)}${inspections.length ? ' · ' + inspections.length + ' inspection(s)' : ''}.</div>`;
+    // ── sidebar ────────────────────────────────────────────────────────
+    const openTickets = ticketsArr.filter(t => !['resolved', 'closed', 'completed'].includes(String(t.status || '').toLowerCase())).length;
+    const openAlerts = incidentsArr.filter(x => x.status === 'active').length;
+    const fact = (k, v) => `<div class="prd-fact"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+    const sidebar = `
+      <div class="prd-card">
+        <div class="prd-card-head"><h2 style="font-size:var(--fs-sm);">Quick facts</h2></div>
+        ${fact('Asset code', `<span class="prd-mono">${a.asset_code || '—'}</span>`)}
+        ${fact('Property type', typeLabel)}
+        ${fact('Asset class', `<span class="prd-mono">${a.asset_class || 'customer_property'}</span>`)}
+        ${fact('City / state', loc)}
+        ${fact('Urgency', a.urgency_level || 'Standard')}
+        ${fact('Status', `<span style="color:var(--${statusCls === 'ok' ? 'ok' : statusCls === 'danger' ? 'err' : 'warn'});">${statusLabel}</span>`)}
+        ${fact('Client account', a.user_id ? clientLink : '<span style="color:var(--ink-3);">Not linked</span>')}
+        ${a.parent_property_id ? fact('Parent estate', L('properties', a.parent_property_id, a.parent_name || a.parent_property_id)) : ''}
+        ${fact('Created', `<span class="prd-mono">${d1(a.created_at)}</span>`)}
+      </div>
+      <div class="prd-card">
+        <div class="prd-card-head"><h2 style="font-size:var(--fs-sm);">Related</h2></div>
+        ${fact('Drainage assets', assetsArr.length)}
+        ${fact('Sentinel devices', devicesArr.length)}
+        ${fact('Open alerts', openAlerts ? `<span style="color:var(--warn);">${openAlerts}</span>` : '0')}
+        ${fact('Open tickets', openTickets)}
+        ${fact('SLA', a.sla || '—')}
+      </div>`;
 
     const actions = [
-      `<button class="btn-ghost" onclick="OpsProperties.editArea('${pid}')">Edit</button>`,
-      `<button class="btn-ghost" style="color:var(--blue-hi);border-color:var(--blue-dim);" onclick="OpsNetwork.open('${pid}')">Network</button>`,
-      a.status === 'submitted' ? `<button class="btn-primary" onclick="OpsProperties.scheduleInspection('${pid}','${(a.property_name || '').replace(/'/g, "\\'")}')">Schedule</button>` : '',
-      _isAdmin ? `<button class="btn-ghost" style="color:var(--err);border-color:rgba(220,38,38,.2);" onclick="OpsProperties.deleteArea('${pid}','${(a.property_name || '').replace(/'/g, "\\'")}')">Delete</button>` : '',
+      `<button class="prd-btn" onclick="OpsProperties.editArea('${pid}')">Edit</button>`,
+      `<button class="prd-btn" onclick="OpsNetwork.open('${pid}')">Network</button>`,
+      a.status === 'submitted' ? `<button class="prd-btn primary" onclick="OpsProperties.scheduleInspection('${pid}','${(a.property_name || '').replace(/'/g, "\\'")}')">Schedule inspection</button>` : '',
+      _isAdmin ? `<button class="prd-btn danger" onclick="OpsProperties.deleteArea('${pid}','${(a.property_name || '').replace(/'/g, "\\'")}')">Delete</button>` : '',
     ].filter(Boolean).join('');
 
     _container.innerHTML = `
-      ${SHARED_CSS}
-      <div class="pr-detail-top">
-        <button class="pr-back" onclick="OpsProperties.back()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-          Properties
-        </button>
-        <div>
-          <div class="pr-detail-name">${a.property_name || 'Property'}</div>
-          <div class="pr-detail-meta">${(a.property_type || '').replace(/_/g, ' ') || '—'} · ${loc} · ${a.client_name || a.client_email || '—'}</div>
+      ${SHARED_CSS}${PRD_CSS}
+      <div class="prd">
+        <div class="prd-crumb">
+          <span class="lnk" onclick="OpsProperties.back()">Properties</span>
+          <span class="sep">/</span>
+          <span class="cur">${a.property_name || 'Property'}</span>
         </div>
-        <div class="pr-detail-actions">${actions}</div>
-      </div>
 
-      ${section('Overview', overview)}
-      ${section('Estate Map', estateMap, '', !(a.latitude && a.longitude))}
-      ${section('Assets', assetsBody)}
-      ${section('Devices', devicesBody)}
-      ${section('Incidents', incidentsBody)}
-      ${section('Work Orders', ticketsBody)}
-      ${section('Maintenance', maintenance)}
-      ${section('Contacts', contacts)}
-      ${section('Billing', billing)}
-      ${section('Timeline', timeline, '', true)}
+        <div class="prd-card prd-header">
+          <div class="prd-header-main">
+            <div class="prd-header-top">
+              <span class="prd-title">${a.property_name || 'Property'}</span>
+              <span class="prd-chip ${statusCls}"><span class="dot"></span>${statusLabel}</span>
+              <span class="prd-chip ${riskCls}">${riskLabel}</span>
+            </div>
+            <div class="prd-meta">
+              <span><b>Type</b>${typeLabel}</span>
+              <span><b>Asset code</b>${a.asset_code || '—'}</span>
+              <span><b>Location</b>${loc}</span>
+              <span><b>Client</b>${clientLink}</span>
+              <span><b>Submitted</b>${d1(a.created_at)}</span>
+            </div>
+          </div>
+          <div class="prd-actions">${actions}</div>
+        </div>
+
+        <div class="prd-secnav">${navHTML}</div>
+
+        <div class="prd-grid">
+          <div class="prd-main">${cardsHTML}</div>
+          <div class="prd-side">${sidebar}</div>
+        </div>
+      </div>
     `;
   }
 
