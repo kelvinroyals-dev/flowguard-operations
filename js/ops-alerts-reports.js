@@ -820,6 +820,7 @@ const OpsReports = (function () {
   function open(i) {
     const r = _reports[i];
     if (!_rc || !r) return;
+    const typeConfig = { daily: { label: 'Daily Operations' }, weekly: { label: 'Weekly Performance' }, financial: { label: 'Financial Report' }, monthly: { label: 'Monthly Report' } };
     const date = r.generated_at ? new Date(r.generated_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
     const field = (k, v) => `<div style="margin-bottom:2px;"><div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3);">${k}</div><div style="font-size:var(--fs-md);color:var(--ink);font-weight:600;margin-top:3px;">${v}</div></div>`;
     const sec = (t, b, needs) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r,14px);box-shadow:var(--sh-xs);margin-bottom:14px;overflow:hidden;"><div style="padding:12px 18px;border-bottom:1px solid var(--border);font-family:var(--ff-d);font-size:var(--fs-sm);font-weight:700;color:var(--ink);display:flex;justify-content:space-between;">${t}${needs ? '<span style="font-size:var(--fs-xs);color:var(--ink-4);font-style:italic;">pending backend data</span>' : ''}</div><div style="padding:16px 18px;">${b}</div></div>`;
