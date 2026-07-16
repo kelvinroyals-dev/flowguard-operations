@@ -102,6 +102,7 @@ const OpsClients = (function () {
       .cld-block { margin-top:14px; padding-top:14px; border-top:1px dashed var(--border-2); }
       .cld-block:first-child { margin-top:0; padding-top:0; border-top:none; }
       .cld-block-label { font-size:var(--fs-xs); font-weight:700; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+      .cld-block-label svg { width:14px; height:14px; flex-shrink:0; }
       .cld-fact { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); font-size:var(--fs-sm); }
       .cld-fact:last-child { border-bottom:none; }
       .cld-fact .k { color:var(--ink-3); }
@@ -161,9 +162,8 @@ const OpsClients = (function () {
           </div>
         </div>
         <div class="lv-legend">
-          <span><span class="sw" style="background:var(--ok);"></span>Active portal login</span>
-          <span><span class="sw" style="background:var(--warn);"></span>Billing data present</span>
-          <span><span class="sw" style="background:var(--ink-3);"></span>No billing record</span>
+          <span><span class="sw" style="background:var(--ok);"></span>Billing account linked</span>
+          <span><span class="sw" style="background:var(--ink-3);"></span>Portal login only</span>
         </div>
         <div id="cl-table-body">
           <div style="padding:48px;text-align:center;color:var(--ink-3);">
@@ -278,10 +278,10 @@ const OpsClients = (function () {
           <tbody>
             ${clients.map(c => {
               const src = c.is_active === false
-                ? '<span class="lv-source">portal login inactive</span>'
+                ? '<span class="lv-source">portal login · inactive</span>'
                 : _hasBilling(c)
-                  ? '<span class="lv-source ok"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>billing linked</span>'
-                  : '<span class="lv-source">portal login · no billing record</span>';
+                  ? '<span class="lv-source ok"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>billing account linked</span>'
+                  : '<span class="lv-source">portal login</span>';
               const st = clientStatus(c);
               return `
               <tr class="clickable" onclick="OpsClients.open(${c.client_id})" tabindex="0" onkeydown="if(event.key==='Enter'){OpsClients.open(${c.client_id})}">
@@ -310,8 +310,7 @@ const OpsClients = (function () {
 
   function clientStatus(c) {
     if (c.is_active === false) return { cls: 'neutral', label: 'Inactive' };
-    if (_hasBilling(c)) return { cls: 'ok', label: 'Active' };
-    return { cls: 'warn', label: 'No billing account' };
+    return { cls: 'ok', label: 'Active' };
   }
 
   function statusBadge(status, isActive) {
@@ -359,9 +358,9 @@ const OpsClients = (function () {
     const hasBilling = _hasBilling(c);
     const dt = v => v ? OpsModal.fmtDateTime(v) : '—';
     const dS = v => v ? new Date(v).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—';
-    const linkState = c.is_active === false ? { cls: 'neutral', label: 'Portal login inactive' }
+    const linkState = c.is_active === false ? { cls: 'neutral', label: 'Inactive' }
       : hasBilling ? { cls: 'ok', label: 'Fully linked' }
-      : { cls: 'warn', label: 'No billing record' };
+      : { cls: 'neutral', label: 'Portal account' };
 
     const fact = (k, v) => `<div class="cld-fact"><span class="k">${k}</span><span class="v">${v}</span></div>`;
     const emptyBox = (icon, t, s) => `<div class="cld-empty">${icon}<div class="t">${t}</div><div class="s">${s}</div></div>`;
@@ -373,16 +372,10 @@ const OpsClients = (function () {
     const iCheck = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>';
     const payPill = s => { const v = String(s || '').toLowerCase(); const cl = v === 'paid' ? 'ok' : v === 'overdue' ? 'danger' : 'warn'; return `<span class="cld-pill ${cl}">${s || '—'}</span>`; };
 
-    // Company information — two source blocks (billing table + portal login)
+    // Company information — the portal login (users) is the record we hold.
+    // The billing block (clients table) only appears when a match actually
+    // exists, so we never render a phantom empty "second record".
     const companyBody = `
-      <div class="cld-block">
-        <div class="cld-block-label" style="color:var(--ok);">${iCard} Billing account · clients table</div>
-        ${fact('Name', c.full_name || '—')}
-        ${fact('Tier', c.tier || '<span style="color:var(--ink-3);">— not set</span>')}
-        ${fact('MRR', c.mrr != null ? money(c.mrr) : '<span style="color:var(--ink-3);">— unlinked</span>')}
-        ${fact('SLA', c.sla || '<span style="color:var(--ink-3);">—</span>')}
-        ${fact('Industry', c.industry || '<span style="color:var(--ink-3);">— no column</span>')}
-      </div>
       <div class="cld-block">
         <div class="cld-block-label" style="color:var(--blue-hi);">${iUser} Portal login · users table</div>
         ${fact('Full name', c.full_name || '—')}
@@ -391,7 +384,16 @@ const OpsClients = (function () {
         ${fact('Role / user_type', '<span class="cld-mono">client</span>')}
         ${fact('Active', c.is_active === false ? '<span style="color:var(--err);">No</span>' : '<span style="color:var(--ok);">Yes</span>')}
         ${fact('Last login', c.last_login ? dt(c.last_login) : 'Never')}
-      </div>`;
+      </div>
+      ${hasBilling ? `
+      <div class="cld-block">
+        <div class="cld-block-label" style="color:var(--ok);">${iCard} Billing account · clients table</div>
+        ${fact('Name', c.full_name || '—')}
+        ${c.tier ? fact('Tier', c.tier) : ''}
+        ${c.mrr != null ? fact('MRR', money(c.mrr)) : ''}
+        ${c.sla ? fact('SLA', c.sla) : ''}
+        ${c.industry ? fact('Industry', c.industry) : ''}
+      </div>` : `<div class="cld-block">${note('No billing account (clients table) is linked to this portal login. Tier, MRR and coverage live in a separate clients table that has no foreign key to users — it only appears here when a match exists.')}</div>`}`;
 
     const contactsBody = `
       ${note('Two contact points exist because two source rows exist — there is no dedicated multi-contact table. A client with several site managers has nowhere to store more than one contact today.')}

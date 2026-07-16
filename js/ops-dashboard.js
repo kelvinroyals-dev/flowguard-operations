@@ -261,8 +261,8 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10l9-7 9 7"/><path d="M5 9v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V9"/></svg>
         </div>
       </div>
-      <div class="story-value">41</div>
-      <div class="story-sub">Plus 87 drainage assets tracked</div>
+      <div class="story-value">—</div>
+      <div class="story-sub">Loading…</div>
     </div>
 
     <div class="glass story-card">
@@ -272,8 +272,8 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h4l2-7 4 14 2-7h8"/></svg>
         </div>
       </div>
-      <div class="story-value">96<span style="font-size:13px;color:var(--text-3);">/100</span></div>
-      <div class="story-sub">312 of 324 nodes reporting</div>
+      <div class="story-value">—</div>
+      <div class="story-sub">Loading…</div>
     </div>
 
     <div class="glass story-card">
@@ -283,8 +283,8 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M8 8V6a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
         </div>
       </div>
-      <div class="story-value">6<span style="font-size:13px;color:var(--text-3);"> open</span></div>
-      <div class="story-sub">4 field teams en route or on site</div>
+      <div class="story-value">—</div>
+      <div class="story-sub">Loading…</div>
     </div>
 
     <div class="glass story-card">
@@ -294,8 +294,8 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2.6 17.5a1.5 1.5 0 001.3 2.3h16.2a1.5 1.5 0 001.3-2.3L13.7 3.9a1.5 1.5 0 00-2.6 0z"/></svg>
         </div>
       </div>
-      <div class="story-value">5<span style="font-size:13px;color:var(--text-3);"> open</span></div>
-      <div class="story-sub">2 critical &middot; 2 high &middot; 1 moderate</div>
+      <div class="story-value">—</div>
+      <div class="story-sub">Loading…</div>
     </div>
   </div>
 

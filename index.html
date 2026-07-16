@@ -208,46 +208,8 @@
     .fg-link:hover, .fg-link:focus { border-bottom-color: var(--blue-hi); opacity: .9; outline: none; }
     .fg-link-block { display: inline-flex; align-items: center; gap: 6px; }
     .fg-link-none { color: var(--ink-3); font-weight: 600; }
-
-    /* ═══ GLOBAL LIST-VIEW PATTERN (lv-*) — shared template for all module lists ═══ */
-    .lv-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--sh-xs); overflow: hidden; }
-    .lv-toolbar { display: flex; align-items: center; gap: 10px; padding: 16px 20px; flex-wrap: wrap; }
-    .lv-search { flex: 1; min-width: 200px; display: flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 9px 13px; color: var(--ink-3); }
-    .lv-search svg { flex-shrink: 0; }
-    .lv-search input { border: none; background: none; outline: none; font-size: var(--fs-sm); color: var(--ink); width: 100%; font-family: var(--ff-b); }
-    .lv-filters { display: flex; gap: 6px; flex-wrap: wrap; }
-    .lv-filter { font-size: var(--fs-xs); font-weight: 600; padding: 7px 13px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); color: var(--ink-2); cursor: pointer; white-space: nowrap; }
-    .lv-filter:hover { border-color: var(--border-2); }
-    .lv-filter.active { background: var(--ink); color: var(--surface); border-color: var(--ink); }
-    .lv-toolbar-right { display: flex; gap: 8px; align-items: center; margin-left: auto; }
-    .lv-icon-btn { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; color: var(--ink-2); border: 1px solid var(--border); background: var(--surface); cursor: pointer; flex-shrink: 0; }
-    .lv-icon-btn:hover { border-color: var(--border-2); color: var(--ink); }
-    .lv-icon-btn svg { width: 15px; height: 15px; }
-    .lv-legend { display: flex; gap: 16px; flex-wrap: wrap; padding: 0 20px 14px; font-size: var(--fs-xs); color: var(--ink-3); }
-    .lv-legend span { display: inline-flex; align-items: center; gap: 5px; }
-    .lv-legend .sw { width: 8px; height: 8px; border-radius: 50%; }
-    .lv-scroll { overflow-x: auto; padding: 0 20px 4px; }
-    .lv-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
-    .lv-table thead th { text-align: left; font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: .4px; color: var(--ink-3); font-weight: 600; padding: 0 10px 12px; border-bottom: 1px solid var(--border-2); white-space: nowrap; }
-    .lv-table thead th .sort { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
-    .lv-table thead th .flag { color: var(--warn); cursor: default; font-weight: 700; margin-left: 3px; }
-    .lv-table td { padding: 14px 10px; border-bottom: 1px solid var(--border); color: var(--ink-2); vertical-align: middle; }
-    .lv-table tbody tr:last-child td { border-bottom: none; }
-    .lv-table tbody tr.clickable { cursor: pointer; transition: background .12s; }
-    .lv-table tbody tr.clickable:hover td { background: var(--surface-2); }
-    .lv-name-cell { display: flex; align-items: center; gap: 10px; }
-    .lv-avatar { width: 30px; height: 30px; border-radius: 9px; color: #fff; font-size: var(--fs-xs); font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: var(--ff-m); }
-    .lv-name { font-weight: 700; color: var(--ink); }
-    .lv-source { font-size: var(--fs-2xs); margin-top: 2px; display: flex; align-items: center; gap: 4px; color: var(--ink-3); }
-    .lv-source.ok { color: var(--ok); }
-    .lv-source.warn { color: var(--warn); }
-    .lv-mono { font-family: var(--ff-m); }
-    .lv-dash { color: var(--ink-3); opacity: .6; }
-    .lv-status { font-size: var(--fs-2xs); font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; display: inline-block; }
-    .lv-status.ok { background: rgba(31,157,91,.12); color: var(--ok); }
-    .lv-status.warn { background: rgba(224,142,18,.12); color: var(--warn); }
-    .lv-status.danger { background: rgba(217,70,60,.12); color: var(--err); }
-    .lv-status.neutral { background: var(--surface-2); color: var(--ink-3); }
+    /* Global list-view (lv-*) styles are injected by ops-modal.js so they stay
+       cache-busted; index.html itself has no ?v and would otherwise go stale. */
 
     /* storm banner — two-line, with action, like the sample */
     .tb-storm { display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 12px; border-radius: 9px; background: var(--eb); border: 1px solid rgba(248,113,113,.4); color: var(--err); flex-shrink: 1; min-width: 0; }
@@ -1400,11 +1362,11 @@
   </script>
   <script src="js/config.js?v=sec2"></script>
 <script src="js/auth.js?v=sec2"></script>
-<script src="js/ops-modal.js?v=sec8"></script>
+<script src="js/ops-modal.js?v=sec9"></script>
 <script src="js/fg-paginator.js?v=sec2"></script>
-<script src="js/ops-dashboard.js?v=sec7"></script>
+<script src="js/ops-dashboard.js?v=sec8"></script>
 <script src="js/ops-user-management.js?v=sec6"></script>
-<script src="js/ops-clients.js?v=sec9"></script>
+<script src="js/ops-clients.js?v=sec10"></script>
 <script src="js/ops-properties.js?v=sec10"></script>
   <script src="js/ops-assets.js?v=sec8"></script>
   <script src="js/ops-network.js?v=sec2"></script>
