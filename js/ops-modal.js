@@ -61,7 +61,81 @@ const OpsModal = (function () {
       .lv-status.ok { background:rgba(31,157,91,.12); color:var(--ok); }
       .lv-status.warn { background:rgba(224,142,18,.12); color:var(--warn); }
       .lv-status.danger { background:rgba(217,70,60,.12); color:var(--err); }
-      .lv-status.neutral { background:var(--surface-2); color:var(--ink-3); }`;
+      .lv-status.neutral { background:var(--surface-2); color:var(--ink-3); }
+
+      /* ── Shared DETAIL layout (fgd-*) — two-column glass, used by every detail screen ── */
+      .fgd { display:flex; flex-direction:column; gap:16px; }
+      .fgd-crumb { display:flex; align-items:center; gap:6px; font-size:var(--fs-2xs); color:var(--ink-3); padding:2px 2px; }
+      .fgd-crumb .lnk { color:var(--ink-2); font-weight:600; cursor:pointer; }
+      .fgd-crumb .lnk:hover { color:var(--ink); }
+      .fgd-crumb .sep { opacity:.5; }
+      .fgd-crumb .cur { color:var(--ink); font-weight:700; }
+      .fgd-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--sh-xs); padding:20px 22px; scroll-margin-top:72px; }
+      .fgd-header { display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; }
+      .fgd-avatar { width:44px; height:44px; border-radius:12px; color:#fff; font-size:var(--fs-md); font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:var(--ff-m); }
+      .fgd-header-main { flex:1; min-width:0; }
+      .fgd-header-top { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+      .fgd-title { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; }
+      .fgd-chip { font-size:var(--fs-2xs); font-weight:700; padding:4px 11px; border-radius:20px; display:inline-flex; align-items:center; gap:6px; }
+      .fgd-chip .dot { width:6px; height:6px; border-radius:50%; background:currentColor; }
+      .fgd-chip.ok { background:rgba(31,157,91,.12); color:var(--ok); }
+      .fgd-chip.warn { background:rgba(224,142,18,.12); color:var(--warn); }
+      .fgd-chip.danger { background:rgba(217,70,60,.12); color:var(--err); }
+      .fgd-chip.neutral { background:var(--surface-2); color:var(--ink-3); }
+      .fgd-chip.primary { background:rgba(28,184,232,.12); color:var(--blue-hi); }
+      .fgd-meta { display:flex; gap:16px; flex-wrap:wrap; margin-top:8px; font-size:var(--fs-sm); color:var(--ink-2); }
+      .fgd-meta b { color:var(--ink); font-weight:600; margin-right:5px; }
+      .fgd-actions { display:flex; gap:8px; flex-shrink:0; flex-wrap:wrap; }
+      .fgd-btn { font-size:var(--fs-sm); font-weight:600; padding:9px 16px; border-radius:10px; cursor:pointer; border:1px solid var(--border-2); color:var(--ink-2); background:var(--surface); }
+      .fgd-btn:hover { border-color:var(--ink-4); color:var(--ink); }
+      .fgd-btn.primary { background:var(--blue-hi); color:#fff; border:none; }
+      .fgd-btn.danger { color:var(--err); border-color:rgba(217,70,60,.25); }
+      .fgd-note { font-size:var(--fs-2xs); color:var(--warn); background:rgba(224,142,18,.08); border:1px solid rgba(224,142,18,.22); padding:8px 12px; border-radius:10px; display:flex; gap:8px; align-items:flex-start; }
+      .fgd-note svg { flex-shrink:0; margin-top:1px; width:13px; height:13px; }
+      .fgd-secnav { display:flex; gap:4px; padding:6px; flex-wrap:wrap; position:sticky; top:6px; z-index:6; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:var(--sh-xs); }
+      .fgd-secnav a { font-size:var(--fs-xs); font-weight:600; color:var(--ink-2); padding:8px 13px; border-radius:9px; cursor:pointer; white-space:nowrap; }
+      .fgd-secnav a:hover { background:var(--surface-2); }
+      .fgd-secnav a.active { background:var(--surface-2); color:var(--ink); }
+      .fgd-grid { display:grid; grid-template-columns:1fr 300px; gap:16px; align-items:start; }
+      .fgd-main { display:flex; flex-direction:column; gap:16px; min-width:0; }
+      .fgd-side { display:flex; flex-direction:column; gap:14px; position:sticky; top:72px; }
+      @media (max-width:900px){ .fgd-grid{ grid-template-columns:1fr; } .fgd-side{ position:static; } }
+      .fgd-card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
+      .fgd-card-head h2 { font-family:var(--ff-d); font-size:var(--fs-md); font-weight:700; color:var(--ink); }
+      .fgd-card-head .cmeta { font-size:var(--fs-2xs); color:var(--ink-3); font-family:var(--ff-m); }
+      .fgd-fact { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); font-size:var(--fs-sm); }
+      .fgd-fact:last-child { border-bottom:none; }
+      .fgd-fact .k { color:var(--ink-3); }
+      .fgd-fact .v { font-weight:600; color:var(--ink); text-align:right; }
+      .fgd-mono { font-family:var(--ff-m); }
+      .fgd-desc { margin-top:14px; }
+      .fgd-desc .dk { font-size:var(--fs-2xs); font-weight:700; letter-spacing:.9px; text-transform:uppercase; color:var(--ink-3); margin-bottom:6px; }
+      .fgd-desc .dv { font-size:var(--fs-sm); color:var(--ink-2); line-height:1.6; white-space:pre-wrap; }
+      .fgd-block { margin-top:14px; padding-top:14px; border-top:1px dashed var(--border-2); }
+      .fgd-block:first-child { margin-top:0; padding-top:0; border-top:none; }
+      .fgd-block-label { font-size:var(--fs-xs); font-weight:700; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+      .fgd-block-label svg { width:14px; height:14px; flex-shrink:0; }
+      .fgd-table { width:100%; border-collapse:collapse; font-size:var(--fs-sm); }
+      .fgd-table th { text-align:left; font-size:var(--fs-2xs); text-transform:uppercase; letter-spacing:.4px; color:var(--ink-3); font-weight:600; padding:0 8px 10px; border-bottom:1px solid var(--border); }
+      .fgd-table td { padding:11px 8px; border-bottom:1px solid var(--border); color:var(--ink-2); }
+      .fgd-table tr:last-child td { border-bottom:none; }
+      .fgd-table td.strong { color:var(--ink); font-weight:600; }
+      .fgd-pill { font-size:var(--fs-2xs); font-weight:700; padding:2px 8px; border-radius:20px; }
+      .fgd-pill.ok { background:rgba(31,157,91,.12); color:var(--ok); }
+      .fgd-pill.warn { background:rgba(224,142,18,.12); color:var(--warn); }
+      .fgd-pill.danger { background:rgba(217,70,60,.12); color:var(--err); }
+      .fgd-pill.secondary { background:var(--surface-2); color:var(--ink-3); }
+      .fgd-tl-row { display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); align-items:flex-start; }
+      .fgd-tl-row:last-child { border-bottom:none; }
+      .fgd-tl-icon { width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+      .fgd-tl-icon svg { width:15px; height:15px; }
+      .fgd-tl-title { font-size:var(--fs-sm); font-weight:600; color:var(--ink); }
+      .fgd-tl-meta { font-size:var(--fs-xs); color:var(--ink-3); margin-top:2px; }
+      .fgd-tl-time { margin-left:auto; font-size:var(--fs-2xs); color:var(--ink-3); font-family:var(--ff-m); white-space:nowrap; }
+      .fgd-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:28px 20px; text-align:center; gap:8px; }
+      .fgd-empty svg { width:28px; height:28px; color:var(--ink-3); opacity:.6; }
+      .fgd-empty .t { font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); }
+      .fgd-empty .s { font-size:var(--fs-xs); color:var(--ink-3); max-width:340px; line-height:1.5; }`;
     const st = document.createElement('style');
     st.id = 'fg-lv-css';
     st.textContent = css;
@@ -496,6 +570,48 @@ const OpsModal = (function () {
     return new Date(ds).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
+  // ── SHARED DETAIL-SCREEN SHELL (fgd-*) ────────────────────────────────
+  // Every module's detail page renders the same two-column glass layout via
+  // this one builder, so Properties / Clients / Assets / Reports / Teams /
+  // Members / Field-reports all match. Styling is injected above (fgd-*).
+  //   opts: { back (JS onclick string), crumbRoot, title, avatar {text,bg},
+  //           chips [{cls,label,dot}], meta [[k,v],…], actions (html),
+  //           note (html), sections [{id,title,meta,body}], sidebar (html) }
+  function detailShell(o) {
+    const chips = (o.chips || []).filter(Boolean).map(c =>
+      `<span class="fgd-chip ${c.cls || 'neutral'}">${c.dot ? '<span class="dot"></span>' : ''}${c.label}</span>`).join('');
+    const meta = (o.meta || []).filter(m => m && m[1] != null && m[1] !== '').map(m =>
+      `<span><b>${m[0]}</b>${m[1]}</span>`).join('');
+    const avatar = o.avatar
+      ? `<div class="fgd-avatar" style="background:${o.avatar.bg || 'var(--blue-hi)'};">${o.avatar.text || ''}</div>` : '';
+    const sections = o.sections || [];
+    const nav = sections.map((s, i) =>
+      `<a class="${i === 0 ? 'active' : ''}" onclick="this.parentNode.querySelectorAll('a').forEach(function(x){x.classList.remove('active')});this.classList.add('active');var el=document.getElementById('fgd-${s.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'})">${s.title}</a>`).join('');
+    const cards = sections.map(s =>
+      `<div class="fgd-card" id="fgd-${s.id}"><div class="fgd-card-head"><h2>${s.title}</h2>${s.meta ? `<span class="cmeta">${s.meta}</span>` : ''}</div>${s.body}</div>`).join('');
+    return `
+      <div class="fgd">
+        <div class="fgd-crumb"><span class="lnk" onclick="${o.back || ''}">${o.crumbRoot || 'Back'}</span><span class="sep">/</span><span class="cur">${o.title || ''}</span></div>
+        <div class="fgd-card fgd-header">
+          ${avatar}
+          <div class="fgd-header-main">
+            <div class="fgd-header-top"><span class="fgd-title">${o.title || ''}</span>${chips}</div>
+            ${meta ? `<div class="fgd-meta">${meta}</div>` : ''}
+          </div>
+          ${o.actions ? `<div class="fgd-actions">${o.actions}</div>` : ''}
+        </div>
+        ${o.note ? `<div class="fgd-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span>${o.note}</span></div>` : ''}
+        ${sections.length > 1 ? `<div class="fgd-secnav">${nav}</div>` : ''}
+        <div class="fgd-grid">
+          <div class="fgd-main">${cards}</div>
+          ${o.sidebar ? `<div class="fgd-side">${o.sidebar}</div>` : ''}
+        </div>
+      </div>`;
+  }
+  function fact(k, v) { return `<div class="fgd-fact"><span class="k">${k}</span><span class="v">${v == null || v === '' ? '—' : v}</span></div>`; }
+  function detailPill(label, cls) { return `<span class="fgd-pill ${cls || 'secondary'}">${label}</span>`; }
+  function emptyState(icon, title, sub) { return `<div class="fgd-empty">${icon || ''}<div class="t">${title}</div>${sub ? `<div class="s">${sub}</div>` : ''}</div>`; }
+
   // ── SHARED VITAL-SIGN COLOR THRESHOLDS ────────────────────────────────
   // Battery % and signal % are both "lower = worse" gauges. Three separate
   // copies of this banding used to exist (Sentinel's vitColor(), and two
@@ -546,6 +662,7 @@ const OpsModal = (function () {
   return {
     open, close, setLoading,
     field, row, link, getFormData,
+    detailShell, fact, detailPill, emptyState,
     apiGet, apiPost, apiPut, apiDelete,
     escape, sid,
     toast, confirm, _runConfirm,

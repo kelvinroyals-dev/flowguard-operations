@@ -200,61 +200,67 @@ const OpsAssets = (function () {
     const devicesArr = a.devices || [];
     const ticketsArr = a.tickets || [];
     const nodes = devicesArr.length || Number(a.node_count) || 0;
-    const field = (k, v) => `<div class="as-field"><div class="k">${k}</div><div class="v">${v}</div></div>`;
-    const L = OpsModal.link;
+    const L = OpsModal.link, F = OpsModal.fact, E = OpsModal.emptyState;
+    const monitored = nodes > 0;
+    const rl = String(a.risk_level || '').toLowerCase();
+    const condCls = (rl === 'high' || rl === 'critical') ? 'danger' : rl === 'moderate' ? 'warn' : rl ? 'ok' : 'neutral';
+    const condPillD = r => r ? OpsModal.detailPill(r, condCls) : '—';
+    const propLink = a.parent_property_id ? L('properties', a.parent_property_id, a.parent_name || a.parent_property_id) : esc(a.parent_name || '—');
+    const clientLink = a.user_id ? L('clients', a.user_id, a.client_name || a.client_email || 'Client') : esc(a.client_name || '—');
+    const initials = n => (n || '?').replace(/[^A-Za-z0-9 ]/g, '').split(/[\s-]+/).filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    const iBox = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>';
+    const iDoc = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>';
 
-    const overview = `<div class="as-grid">
-      ${field('Asset Name', esc(a.asset_code || a.property_name || '—'))}
-      ${field('Category', esc(catLabel(a.property_type)))}
-      ${field('Property', a.parent_property_id ? L('properties', a.parent_property_id, a.parent_name || a.parent_property_id) : esc(a.parent_name || '—'))}
-      ${field('Client', a.user_id ? L('clients', a.user_id, a.client_name || a.client_email || 'Client') : esc(a.client_name || '—'))}
-      ${field('Serial Number', dash(a.serial_number || a.asset_code))}
-      ${field('Status', statusOf(a))}
-      ${field('Condition', condBadge(a.risk_level))}
-      ${field('Warranty', dash(a.warranty_until && fmtDate(a.warranty_until)))}
-      ${field('Last Maintenance', dash(a.last_maintenance && fmtDate(a.last_maintenance)))}
-      ${field('Next Maintenance', dash(a.next_maintenance && fmtDate(a.next_maintenance)))}
-    </div>`;
+    const overview = `${F('Asset name', esc(a.asset_code || a.property_name || '—'))}${F('Category', esc(catLabel(a.property_type)))}${F('Property', propLink)}${F('Client', clientLink)}${F('Serial number', esc(a.serial_number || a.asset_code || '—'))}${F('Warranty', a.warranty_until ? fmtDate(a.warranty_until) : '—')}${F('Last maintenance', a.last_maintenance ? fmtDate(a.last_maintenance) : '—')}${F('Next maintenance', a.next_maintenance ? fmtDate(a.next_maintenance) : '—')}`;
+    const specs = `${F('Type', esc(catLabel(a.property_type)))}${F('Capacity', a.capacity_liters ? Number(a.capacity_liters).toLocaleString() + ' L' : '—')}${F('Condition', condPillD(a.risk_level))}${F('Sentinels', nodes)}`;
 
-    const specs = `<div class="as-grid">
-      ${field('Type', esc(catLabel(a.property_type)))}
-      ${field('Capacity', a.capacity_liters ? Number(a.capacity_liters).toLocaleString() + ' L' : '—')}
-      ${field('Risk level', condBadge(a.risk_level))}
-      ${field('Sentinels', nodes)}
-    </div>`;
+    const devicesBody = devicesArr.length
+      ? `<table class="fgd-table"><thead><tr><th>Device</th><th>Sentinel ID</th><th>Status</th></tr></thead><tbody>${devicesArr.map(d => `<tr><td class="strong">${L('sensors', d.sensor_id, d.name || d.sensor_id)}</td><td class="fgd-mono">${d.sensor_id}</td><td>${d.status || '—'}</td></tr>`).join('')}</tbody></table>`
+      : E(iBox, 'No devices', 'No Sentinel devices monitor this asset yet.');
+    const workBody = ticketsArr.length
+      ? `<table class="fgd-table"><thead><tr><th>Work order</th><th>Type</th><th>Team</th><th>Status</th></tr></thead><tbody>${ticketsArr.map(t => `<tr><td class="strong">${L('maintenance', t.ticket_id, t.title || t.ticket_id)}</td><td>${(t.work_type || '').replace(/_/g, ' ') || '—'}</td><td>${t.assigned_team ? L('teams', t.assigned_team, t.assigned_team) : '—'}</td><td>${(t.status || '').replace(/_/g, ' ') || '—'}</td></tr>`).join('')}</tbody></table>`
+      : E(iBox, 'No work orders', 'No work orders are linked to this asset.');
+    const maintBody = inspections.length
+      ? `<table class="fgd-table"><thead><tr><th>Inspection</th><th>Status</th><th>Team</th><th>Score</th><th>Date</th></tr></thead><tbody>${inspections.map(i => `<tr><td class="strong fgd-mono">${i.inspection_id}</td><td>${OpsModal.detailPill(i.status, i.status === 'completed' ? 'ok' : 'warn')}</td><td>${i.assigned_team ? L('teams', i.assigned_team, i.assigned_team) : '—'}</td><td class="fgd-mono">${i.drainage_condition_score ? i.drainage_condition_score + '/10' : '—'}</td><td class="fgd-mono">${i.scheduled_date ? new Date(i.scheduled_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</td></tr>`).join('')}</tbody></table>`
+      : E(iDoc, 'No maintenance history', 'No inspections recorded for this asset yet.');
 
-    const maintenance = inspections.length ? `
-      <div style="overflow-x:auto;"><table class="ops-table"><thead><tr><th>ID</th><th>Status</th><th>Date</th><th>Team</th><th>Score</th></tr></thead>
-      <tbody>${inspections.map(i => `<tr><td style="font-family:var(--ff-m);font-size:var(--fs-sm);">${i.inspection_id}</td><td><span class="status-badge ${i.status === 'completed' ? 'nominal' : 'watch'}">${i.status}</span></td><td style="font-size:var(--fs-sm);">${i.scheduled_date ? new Date(i.scheduled_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</td><td style="font-size:var(--fs-sm);">${i.assigned_team || '—'}</td><td style="font-family:var(--ff-d);font-weight:700;">${i.drainage_condition_score ? i.drainage_condition_score + '/10' : '—'}</td></tr>`).join('')}</tbody></table></div>` : '<div class="as-empty">No maintenance history yet.</div>';
-
-    const relatedDevices = devicesArr.length
-      ? `<div style="overflow-x:auto;"><table class="ops-table"><thead><tr><th>Device</th><th>Sentinel ID</th><th>Status</th></tr></thead>
-         <tbody>${devicesArr.map(d => `<tr><td>${L('sensors', d.sensor_id, d.name || d.sensor_id)}</td><td style="font-family:var(--ff-m);font-size:var(--fs-sm);">${d.sensor_id}</td><td style="font-size:var(--fs-sm);">${d.status || '—'}</td></tr>`).join('')}</tbody></table></div>`
-      : '<div class="as-empty">No Sentinel devices monitoring this asset yet.</div>';
-
-    const relatedWork = ticketsArr.length
-      ? `<div style="overflow-x:auto;"><table class="ops-table"><thead><tr><th>Work Order</th><th>Type</th><th>Team</th><th>Status</th></tr></thead>
-         <tbody>${ticketsArr.map(t => `<tr><td>${L('maintenance', t.ticket_id, t.title || t.ticket_id)}</td><td style="font-size:var(--fs-sm);">${(t.work_type || '').replace(/_/g, ' ') || '—'}</td><td>${t.assigned_team ? L('teams', t.assigned_team, t.assigned_team) : '—'}</td><td style="font-size:var(--fs-sm);">${(t.status || '').replace(/_/g, ' ') || '—'}</td></tr>`).join('')}</tbody></table></div>`
-      : '<div class="as-empty">No work orders linked to this asset.</div>';
-
-    _container.innerHTML = `
-      ${SHARED_CSS}
-      <div class="as-detail-top">
-        <button class="as-back" onclick="OpsAssets.back()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Assets</button>
-        <div>
-          <div class="as-detail-name">${esc(a.asset_code || a.property_name || 'Asset')}</div>
-          <div class="as-detail-meta">${esc(catLabel(a.property_type))} · ${esc(a.parent_name || 'Standalone')}</div>
-        </div>
-        <div class="as-detail-actions"><button class="btn-ghost" onclick="OpsNetwork.open('${pid}')">Network</button></div>
+    const sidebar = `
+      <div class="fgd-card">
+        <div class="fgd-card-head"><h2 style="font-size:var(--fs-sm);">Quick facts</h2></div>
+        ${F('Asset code', `<span class="fgd-mono">${esc(a.asset_code || '—')}</span>`)}
+        ${F('Category', esc(catLabel(a.property_type)))}
+        ${F('Status', monitored ? '<span style="color:var(--ok);">Monitored</span>' : '<span style="color:var(--warn);">No Sentinel</span>')}
+        ${F('Condition', condPillD(a.risk_level))}
+        ${F('Sentinels', nodes)}
       </div>
-      ${section('Asset Overview', overview)}
-      ${section('Specifications', specs)}
-      ${section('Maintenance History', maintenance)}
-      ${section('Documents', '<div class="as-empty">No documents uploaded.</div>', true)}
-      ${section('Photos', '<div class="as-empty">No photos uploaded.</div>', true)}
-      ${section('Related Devices', relatedDevices)}
-      ${section('Related Work Orders', relatedWork)}
-    `;
+      <div class="fgd-card">
+        <div class="fgd-card-head"><h2 style="font-size:var(--fs-sm);">Related</h2></div>
+        ${F('Devices', devicesArr.length)}
+        ${F('Work orders', ticketsArr.length)}
+        ${F('Parent property', propLink)}
+      </div>`;
+
+    _container.innerHTML = OpsModal.detailShell({
+      back: 'OpsAssets.back()',
+      crumbRoot: 'Assets',
+      title: esc(a.asset_code || a.property_name || 'Asset'),
+      avatar: { text: initials(a.asset_code || a.property_name), bg: 'linear-gradient(135deg,#0d7fa0,#1f9d5b)' },
+      chips: [
+        { cls: monitored ? 'ok' : 'neutral', label: monitored ? 'Monitored' : 'No Sentinel', dot: true },
+        a.risk_level ? { cls: condCls, label: a.risk_level + ' condition' } : null,
+      ].filter(Boolean),
+      meta: [['Category', esc(catLabel(a.property_type))], ['Property', propLink], ['Serial', esc(a.serial_number || a.asset_code || '—')]],
+      actions: `<button class="fgd-btn" onclick="OpsNetwork.open('${pid}')">Network</button>`,
+      sections: [
+        { id: 'overview', title: 'Overview', meta: 'drainage_asset', body: overview },
+        { id: 'specs', title: 'Specifications', body: specs },
+        { id: 'devices', title: 'Devices', meta: 'sentinel_coverage', body: devicesBody },
+        { id: 'work', title: 'Work orders', meta: 'tickets', body: workBody },
+        { id: 'maintenance', title: 'Maintenance history', meta: 'inspections', body: maintBody },
+        { id: 'documents', title: 'Documents', body: E(iDoc, 'No documents attached', 'Warranty and spec sheets can be attached once a documents table exists.') },
+      ],
+      sidebar,
+    });
   }
 
   // ─────────────────────────────────────────────── REGISTER (action)
