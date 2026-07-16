@@ -1365,16 +1365,16 @@
 <script src="js/ops-dashboard.js?v=sec7"></script>
 <script src="js/ops-user-management.js?v=sec6"></script>
 <script src="js/ops-clients.js?v=sec8"></script>
-<script src="js/ops-properties.js?v=sec8"></script>
+<script src="js/ops-properties.js?v=sec9"></script>
   <script src="js/ops-assets.js?v=sec8"></script>
   <script src="js/ops-network.js?v=sec2"></script>
   <script src="js/ops-sensors.js?v=sec2"></script>
 <script src="js/ops-teams.js?v=sec6"></script>
-<script src="js/ops-alerts-reports.js?v=sec8"></script>
+<script src="js/ops-alerts-reports.js?v=sec9"></script>
 <script src="js/ops-field-reports.js?v=sec6"></script>
 <script src="js/ops-maintenance.js?v=sec8"></script>
 <script src="js/ops-forecast.js?v=sec6"></script>
-<script src="js/ops-billing.js?v=sec8"></script>
+<script src="js/ops-billing.js?v=sec9"></script>
 <script src="js/ops-sla.js?v=sec6"></script>
 <script src="js/ops-audit.js?v=sec6"></script>
 <script src="js/ops-settings.js?v=sec2"></script>
@@ -2044,14 +2044,18 @@
     const shown = () => !!(content && content.querySelector(
       '[class*="detail-top"], [class*="detail-screen"], .sn-drawer, .report-detail, .tmv-back'));
     let tries = 15;
-    (function attempt() {
-      if (shown()) return;
+    // Always invoke open() on the first tick (so same-module links re-navigate
+    // even when a detail is already on screen); after that, only keep retrying
+    // while no detail has rendered yet — this covers modules whose detail reads
+    // from an in-memory list that is still loading.
+    (function attempt(first) {
+      if (!first && shown()) return;
       const mod = window[g];
       if (mod && typeof mod[m] === 'function') {
         try { mod[m](id); } catch (e) { console.error('[FlowGuard] fgOpen', tab, id, e); }
       }
-      if (tries-- > 0) setTimeout(attempt, 180);
-    })();
+      if (tries-- > 0) setTimeout(() => attempt(false), 180);
+    })(true);
   }
 
   window.switchTab        = switchTab;

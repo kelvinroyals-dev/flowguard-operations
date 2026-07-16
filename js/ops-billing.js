@@ -371,6 +371,27 @@ const OpsBilling = (function () {
     return `<div class="bl-section"><div class="bl-section-h">${title}${needs ? '<span class="bl-needs">pending backend data</span>' : ''}</div><div class="bl-section-b">${body}</div></div>`;
   }
 
+  // Re-injected on the detail screen because renderDetail replaces the whole
+  // container (removing the list render's <style>), else the invoice detail
+  // renders unstyled.
+  const BL_DETAIL_CSS = `<style>
+    .bl-back { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:8px 13px; cursor:pointer; }
+    .bl-back:hover { color:var(--ink); border-color:var(--border-2); }
+    .bl-detail-top { display:flex; align-items:center; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
+    .bl-detail-name { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; }
+    .bl-detail-meta { font-size:var(--fs-sm); color:var(--ink-3); margin-top:3px; }
+    .bl-detail-actions { margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; }
+    .bl-section { background:var(--surface,#fff); border:1px solid var(--border); border-radius:var(--r,14px); box-shadow:var(--sh-xs); margin-bottom:14px; overflow:hidden; }
+    .bl-section-h { padding:12px 18px; border-bottom:1px solid var(--border); font-family:var(--ff-d); font-size:var(--fs-sm); font-weight:700; letter-spacing:.4px; color:var(--ink); display:flex; align-items:center; justify-content:space-between; }
+    .bl-section-b { padding:16px 18px; }
+    .bl-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px 22px; }
+    .bl-field .k { font-size:var(--fs-2xs); font-weight:700; letter-spacing:.9px; text-transform:uppercase; color:var(--ink-3); }
+    .bl-field .v { font-size:var(--fs-md); color:var(--ink); font-weight:600; margin-top:3px; }
+    .bl-empty { color:var(--ink-3); font-size:var(--fs-sm); padding:6px 0; }
+    .bl-needs { font-size:var(--fs-xs); color:var(--ink-4); font-style:italic; }
+    @media (max-width:640px){ .bl-detail-actions{ margin-left:0; width:100%; } }
+  </style>`;
+
   function renderDetail(inv) {
     const id = inv.invoice_id || inv.id;
     const status = (inv.payment_status || 'pending').toLowerCase();
@@ -404,6 +425,7 @@ const OpsBilling = (function () {
       : '';
 
     _container.innerHTML = `
+      ${BL_DETAIL_CSS}
       <div class="bl-detail-top">
         <button class="bl-back" onclick="OpsBilling.back()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Billing</button>
         <div>

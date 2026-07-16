@@ -326,8 +326,8 @@ const OpsProperties = (function () {
       ${field('Location', loc)}
       ${field('Risk Level', riskBadge(a.risk_level || a.urgency_level))}
       ${field('Drain Health', healthCell(a.health_score))}
-      ${field('Devices', devicesArr.length || (isNaN(parseInt(a.sentinel_count)) ? '—' : parseInt(a.sentinel_count)))}
-      ${field('Open Incidents', incidentsArr.filter(x => x.status === 'active').length || (a.open_incidents == null ? '—' : a.open_incidents))}
+      ${field('Devices', devicesArr.length)}
+      ${field('Open Incidents', incidentsArr.filter(x => x.status === 'active').length)}
       ${field('SLA', a.sla ? `<span class="status-badge nominal">${a.sla}</span>` : '—')}
       ${field('Status', pipelineBadge(a.status))}
       ${field('Submitted', fmtDate(a.created_at))}
