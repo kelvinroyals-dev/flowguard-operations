@@ -290,25 +290,7 @@ window.OpsFieldReports = (function () {
             ).join('')
             : '<div class="audit-empty">No edits made yet.</div>';
 
-        const body = `
-        <div class="report-detail">
-
-          <!-- Status bar -->
-          <div class="rd-status-bar">
-            <span class="fg-type-badge type-${r.report_type||'general'}">${r.report_type || 'general'}</span>
-            <span class="fg-status-badge badge-${_statusBadgeCls(r.status)}">${_statusLabel(r.status)}</span>
-            <span class="rd-meta">${_esc(r.submitted_by_name || '')} · ${_esc(r.team_name || '')} · ${_ageStr(r.created_at)}</span>
-          </div>
-
-          <!-- Context -->
-          ${r.property_name || r.site_name || r.alert_type ? `
-          <div class="rd-context-bar">
-            ${r.property_name ? `<span>🏘 ${_esc(r.property_name)}</span>` : ''}
-            ${r.site_name     ? `<span>📍 ${_esc(r.site_name)}</span>` : ''}
-            ${r.alert_type    ? `<span>⚠ ${_esc(r.alert_type)} · ${_esc(r.alert_severity||'')}</span>` : ''}
-          </div>` : ''}
-
-          <!-- Editable fields -->
+        const fieldsBody = `
           <div id="rd-fields">
             ${_editableField('rd-title',           'Title',           r.title,           'input',    !canEdit)}
             ${_editableField('rd-summary',         'Summary',         r.summary,         'textarea', !canEdit)}
@@ -317,60 +299,51 @@ window.OpsFieldReports = (function () {
             ${_editableField('rd-materials',       'Materials Used',  r.materials_used,  'input',    !canEdit)}
             ${_editableField('rd-internal-notes',  'Internal Notes (not shown to client)', r.internal_notes, 'textarea', false)}
           </div>
-
           ${canEdit ? `
-          <div id="rd-save-row" style="display:flex;gap:8px;margin-top:4px;margin-bottom:20px;">
+          <div id="rd-save-row" style="display:flex;gap:8px;margin-top:4px;">
             <input type="text" id="rd-edit-note" class="ops-input" placeholder="Reason for edit (optional)" style="flex:1;">
-            <button class="btn-primary" onclick="OpsFieldReports.saveEdits('${r.report_id}')">Save Changes</button>
-          </div>` : ''}
+            <button class="fgd-btn primary" onclick="OpsFieldReports.saveEdits('${r.report_id}')">Save changes</button>
+          </div>` : ''}`;
 
-          <!-- Audit trail -->
-          <div class="rd-audit-section">
-            <div class="rd-section-title">Edit History</div>
-            <div class="audit-list" id="rd-audit-list">${auditHtml}</div>
-          </div>
+        const actions = [];
+        if (canReview)  actions.push({ label: 'Mark under review', cls: 'fgd-btn', onclick: `OpsFieldReports.updateStatus('${r.report_id}','under_review')` });
+        if (canApprove) actions.push({ label: 'Approve report', cls: 'fgd-btn primary', onclick: `OpsFieldReports.updateStatus('${r.report_id}','approved')` });
+        if (canEdit)    actions.push({ label: 'Reject', cls: 'fgd-btn danger', onclick: `OpsFieldReports.updateStatus('${r.report_id}','rejected')` });
+        if (canSend)    actions.push({ label: 'Send to client', cls: 'fgd-btn primary', onclick: `OpsFieldReports.sendToClient('${r.report_id}')`, id: 'rd-send-btn' });
+        const headerBtns = actions.map(a => `<button class="${a.cls}" ${a.id ? `id="${a.id}"` : ''} onclick="${a.onclick}">${a.label}</button>`).join('');
 
-        </div>`;
+        const statusCls = { approved: 'ok', sent_to_client: 'ok', submitted: 'warn', under_review: 'warn', draft: 'neutral', rejected: 'danger' }[r.status] || 'neutral';
+        const F = OpsModal.fact, E = OpsModal.emptyState;
+        const iImg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>';
+        const iClip = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21.4 11.5l-9.2 9.2a5 5 0 01-7.1-7.1l9.2-9.2a3.5 3.5 0 015 5l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5"/></svg>';
+        const propCell = r.property_id ? OpsModal.link('properties', r.property_id, r.property_name || r.property_id) : (r.property_name ? _esc(r.property_name) : null);
 
-        const actions = [
-            { label: 'Close', class: 'btn-ghost', onclick: 'OpsModal.close()' },
-        ];
-        if (canReview) {
-            actions.push({ label: 'Mark Under Review', class: 'btn-ghost', onclick: `OpsFieldReports.updateStatus('${r.report_id}','under_review')` });
-        }
-        if (canApprove) {
-            actions.push({ label: 'Approve Report', class: 'btn-primary', onclick: `OpsFieldReports.updateStatus('${r.report_id}','approved')` });
-        }
-        if (canEdit) {
-            actions.push({ label: 'Reject', class: 'btn-danger', onclick: `OpsFieldReports.updateStatus('${r.report_id}','rejected')` });
-        }
-        if (canSend) {
-            actions.push({ label: '✉ Send to Client', class: 'btn-success', onclick: `OpsFieldReports.sendToClient('${r.report_id}')`, id: 'rd-send-btn' });
-        }
+        const sidebar = `
+          <div class="fgd-card">
+            <div class="fgd-card-head"><h2 style="font-size:var(--fs-sm);">Quick facts</h2></div>
+            ${F('Report', `<span class="fgd-mono">${r.report_id || '—'}</span>`)}
+            ${F('Type', r.report_type || 'general')}
+            ${F('Status', _statusLabel(r.status))}
+            ${F('Submitted by', _esc(r.submitted_by_name || '—'))}
+            ${F('Team', _esc(r.team_name || '—'))}
+            ${F('Created', _ageStr(r.created_at))}
+          </div>`;
 
-        // Full-screen detail (no pop-up). Action buttons move to the header;
-        // Close becomes the Back button.
-        const headerBtns = actions.filter(a => a.label !== 'Close')
-            .map(a => `<button class="${a.class}" ${a.id ? `id="${a.id}"` : ''} onclick="${a.onclick}">${a.label}</button>`).join('');
-        const pend = (t, note) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r,14px);box-shadow:var(--sh-xs);margin-bottom:14px;overflow:hidden;"><div style="padding:12px 18px;border-bottom:1px solid var(--border);font-family:var(--ff-d);font-size:var(--fs-sm);font-weight:700;color:var(--ink);display:flex;justify-content:space-between;">${t}<span style="font-size:var(--fs-xs);color:var(--ink-4);font-style:italic;">pending backend data</span></div><div style="padding:16px 18px;color:var(--ink-3);font-size:var(--fs-sm);">${note}</div></div>`;
-
-        _container.innerHTML = `
-          <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap;">
-            <button class="btn-ghost" onclick="OpsFieldReports.back()" style="display:inline-flex;align-items:center;gap:6px;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Field Reports
-            </button>
-            <div>
-              <div style="font-family:var(--ff-d);font-size:var(--fs-xl);font-weight:700;color:var(--ink);line-height:1.1;">${_esc(r.title || 'Report')}</div>
-              <div style="font-size:var(--fs-sm);color:var(--ink-3);margin-top:3px;">${r.report_id} · ${_esc(r.submitted_by_name || '')}${r.property_name ? ' · ' + _esc(r.property_name) : ''}</div>
-            </div>
-            <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">${headerBtns}</div>
-          </div>
-          ${body}
-          ${pend('Photos', 'No photos in this response.')}
-          ${pend('Checklist', 'No checklist in this response.')}
-          ${pend('Attachments', 'No attachments.')}
-          ${pend('Signature', 'No signature captured.')}
-        `;
+        _container.innerHTML = OpsModal.detailShell({
+            back: 'OpsFieldReports.back()',
+            crumbRoot: 'Field Reports',
+            title: _esc(r.title || 'Report'),
+            chips: [{ cls: 'primary', label: r.report_type || 'general' }, { cls: statusCls, label: _statusLabel(r.status), dot: true }],
+            meta: [['Report', r.report_id], ['By', _esc(r.submitted_by_name || '')], propCell ? ['Property', propCell] : null, r.team_name ? ['Team', _esc(r.team_name)] : null],
+            actions: headerBtns,
+            sections: [
+                { id: 'report', title: 'Report', meta: 'inspection_reports', body: fieldsBody },
+                { id: 'audit', title: 'Edit history', body: `<div class="audit-list" id="rd-audit-list">${auditHtml}</div>` },
+                { id: 'photos', title: 'Photos', body: E(iImg, 'No photos', 'No photos were attached to this report.') },
+                { id: 'attachments', title: 'Attachments', body: E(iClip, 'No attachments', 'No files are attached to this report.') },
+            ],
+            sidebar,
+        });
     }
 
     function back() { if (_container) render(_container); }

@@ -134,25 +134,6 @@ const OpsUserManagement = (function () {
         </div>
       </div>
 
-      <!-- Role permissions reference -->
-      <div style="margin-bottom:12px;">
-        <div style="font-family:var(--ff-d);font-size:var(--fs-md);font-weight:700;color:var(--ink);margin-bottom:4px;">Role Permissions</div>
-        <div style="font-size:var(--fs-sm);color:var(--ink-3);">What each role can access within the operations center</div>
-      </div>
-      <div class="um-perms-grid">
-        ${Object.entries(ROLE_CONFIG)
-          .filter(([k]) => k !== 'admin')
-          .map(([key, rc]) => `
-            <div class="um-perm-card" style="border-color:${rc.color}20;">
-              <div style="position:absolute;top:0;left:0;bottom:0;width:3px;background:${rc.color};"></div>
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-                <span style="display:inline-flex;padding:3px 10px;border-radius:20px;font-size:var(--fs-xs);font-weight:700;background:${rc.bg};color:${rc.color};">${rc.label}</span>
-              </div>
-              <ul class="um-perm-list">
-                ${rc.perms.map(p => `<li class="um-perm-item"><span style="color:${rc.color};margin-top:1px;">✓</span><span>${p}</span></li>`).join('')}
-              </ul>
-            </div>`).join('')}
-      </div>
     `;
 
     loadData();
@@ -326,46 +307,59 @@ const OpsUserManagement = (function () {
     const rc = getRoleConfig(role);
     const isActive = u.status !== 'inactive' && u.status !== 'suspended';
     const teamName = getTeamName(u) || (u.team?.name) || null;
-    const f = (k, v) => `<div class="um-f"><div class="k">${k}</div><div class="v">${v}</div></div>`;
-    const sec = (t, b, needs) => `<div class="um-sec"><div class="um-sec-h">${t}${needs ? '<span class="um-needs">pending backend data</span>' : ''}</div><div class="um-sec-b">${b}</div></div>`;
+    const teamId = u.team_id || u.team?.team_id || u.team?.id;
+    const F = OpsModal.fact, E = OpsModal.emptyState;
+    const roleChip = `<span class="um-role-chip" style="background:${rc.bg};color:${rc.color};">${rc.label}</span>`;
+    const teamCell = teamId ? OpsModal.link('teams', teamId, teamName || teamId) : (teamName || 'Unassigned');
+    const iUser = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>';
+    const iShield = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>';
 
-    const profile = `<div class="um-fgrid">
-      ${f('Name', name)}
-      ${f('Role', `<span class="um-role-chip" style="background:${rc.bg};color:${rc.color};">${rc.label}</span>`)}
-      ${f('Team', teamName || 'Unassigned')}
-      ${f('Phone', _dash(u.phone))}
-      ${f('Email', _dash(u.email))}
-      ${f('Availability', _dash(u.availability || (isActive ? 'Available' : '—')))}
-      ${f('Current Assignment', _dash(u.current_assignment))}
-      ${f('Status', `<span class="status-badge ${isActive ? 'nominal' : 'offline'}">${u.status || 'active'}</span>`)}
-      ${f('Last Active', formatTime(u.last_login || u.last_active))}
-    </div>`;
-    const perms = rc.perms && rc.perms.length ? `<div class="um-e" style="color:var(--ink-2);">${rc.perms.map(p => '• ' + p).join('<br>')}</div>` : '<div class="um-e">No permissions listed.</div>';
+    const profile = `
+      ${F('Name', name)}
+      ${F('Role', roleChip)}
+      ${F('Team', teamCell)}
+      ${F('Phone', _dash(u.phone))}
+      ${F('Email', _dash(u.email))}
+      ${F('Availability', _dash(u.availability || (isActive ? 'Available' : '—')))}
+      ${F('Current assignment', _dash(u.current_assignment))}
+      ${F('Last active', formatTime(u.last_login || u.last_active))}`;
+
+    const accessBody = rc.perms && rc.perms.length
+      ? `<div style="font-size:var(--fs-sm);color:var(--ink-2);line-height:1.5;">${rc.desc ? `<div style="margin-bottom:10px;color:var(--ink-3);">${rc.desc}</div>` : ''}${rc.perms.map(p => `<div style="display:flex;gap:8px;padding:5px 0;"><span style="color:var(--ok);">✓</span><span>${p}</span></div>`).join('')}</div>`
+      : E(iShield, 'No permissions listed', 'This role has no explicit permission list configured.');
 
     const actions = [
-      `<button class="btn-ghost" onclick="OpsUserManagement.editUser('${id}','${name.replace(/'/g, "\\'")}')">Edit</button>`,
+      `<button class="fgd-btn" onclick="OpsUserManagement.editUser('${id}','${name.replace(/'/g, "\\'")}')">Edit</button>`,
       isActive
-        ? `<button class="btn-ghost" style="color:var(--warn);border-color:rgba(180,83,9,.2);" onclick="OpsUserManagement.deactivateUser('${id}','${name.replace(/'/g, "\\'")}')">Deactivate</button>`
-        : `<button class="btn-ghost" style="color:var(--ok);" onclick="OpsUserManagement.reactivateUser('${id}')">Reactivate</button>`,
-      _isAdmin ? `<button class="btn-ghost" style="color:var(--err);border-color:rgba(220,38,38,.2);" onclick="OpsUserManagement.deleteUser('${id}','${name.replace(/'/g, "\\'")}')">Delete</button>` : '',
+        ? `<button class="fgd-btn" style="color:var(--warn);border-color:rgba(180,83,9,.25);" onclick="OpsUserManagement.deactivateUser('${id}','${name.replace(/'/g, "\\'")}')">Deactivate</button>`
+        : `<button class="fgd-btn" style="color:var(--ok);border-color:rgba(31,157,91,.25);" onclick="OpsUserManagement.reactivateUser('${id}')">Reactivate</button>`,
+      _isAdmin ? `<button class="fgd-btn danger" onclick="OpsUserManagement.deleteUser('${id}','${name.replace(/'/g, "\\'")}')">Delete</button>` : '',
     ].filter(Boolean).join('');
 
-    _container.innerHTML = `
-      <div class="um-detail-top">
-        <button class="um-back" onclick="OpsUserManagement.back()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Team Members</button>
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div class="um-avatar" style="width:42px;height:42px;border-radius:11px;font-size:var(--fs-md);background:${avatarColor(name)};">${initials(name)}</div>
-          <div><div class="um-detail-name">${name}</div><div class="um-detail-meta">${rc.label}${teamName ? ' · ' + teamName : ''}</div></div>
-        </div>
-        <div class="um-detail-actions">${actions}</div>
-      </div>
-      ${sec('Profile', profile)}
-      ${sec('Certifications', '<div class="um-e">No certifications in this response.</div>', true)}
-      ${sec('Assigned Jobs', '<div class="um-e">No assigned jobs in this response.</div>', true)}
-      ${sec('Performance', perms)}
-      ${sec('Attendance', '<div class="um-e">No attendance data in this response.</div>', true)}
-      ${sec('Activity Timeline', `<div class="um-e">Last active ${formatTime(u.last_login || u.last_active)}.</div>`, true)}
-    `;
+    const sidebar = `
+      <div class="fgd-card">
+        <div class="fgd-card-head"><h2 style="font-size:var(--fs-sm);">Quick facts</h2></div>
+        ${F('Role', rc.label)}
+        ${F('Team', teamCell)}
+        ${F('Status', isActive ? '<span style="color:var(--ok);">Active</span>' : `<span style="color:var(--ink-3);">${u.status || 'inactive'}</span>`)}
+        ${F('Last active', formatTime(u.last_login || u.last_active))}
+      </div>`;
+
+    _container.innerHTML = OpsModal.detailShell({
+      back: 'OpsUserManagement.back()',
+      crumbRoot: 'Team Members',
+      title: name,
+      avatar: { text: initials(name), bg: avatarColor(name) },
+      chips: [{ cls: isActive ? 'ok' : 'neutral', label: u.status || 'active', dot: true }],
+      meta: [['Role', roleChip], ['Team', teamCell], ['Email', _dash(u.email)]],
+      actions,
+      sections: [
+        { id: 'profile', title: 'Profile', meta: 'users', body: profile },
+        { id: 'access', title: 'Access', meta: 'role permissions', body: accessBody },
+        { id: 'jobs', title: 'Assigned jobs', body: E(iUser, 'No assigned jobs', 'Jobs assigned to this member will appear here.') },
+      ],
+      sidebar,
+    });
   }
 
   function renderError(message) {
@@ -397,6 +391,7 @@ const OpsUserManagement = (function () {
         OpsModal.field('Assign to Team', 'team_id', 'select', '', { options: teamOptions, required: false }),
         OpsModal.field('Phone (optional)', 'phone', 'text', '', { placeholder: '+234…', required: false }),
       ])}
+      <div id="um-role-desc"></div>
       <div style="padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--rs);font-size:var(--fs-sm);color:var(--ink-3);margin-top:4px;">
         An invitation email will be sent. The member will appear in their team's roster immediately.
       </div>
@@ -404,6 +399,32 @@ const OpsUserManagement = (function () {
       { label: 'Cancel',      onclick: 'OpsModal.close()', class: 'btn-ghost' },
       { label: 'Send Invite', onclick: 'OpsUserManagement.sendInvite()', class: 'btn-primary', id: 'modal-save-btn' },
     ]);
+    wireRoleDesc('dispatcher');
+  }
+
+  // Show a plain-language description of the selected role right where the
+  // role is being chosen — replaces the always-on "Role Permissions" board
+  // that used to sit on the list page.
+  function roleDescHTML(rc) {
+    if (!rc) return '';
+    return `<div style="padding:11px 13px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--rs);margin-top:2px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:${rc.desc || (rc.perms && rc.perms.length) ? '8px' : '0'};">
+        <span style="padding:3px 10px;border-radius:20px;font-size:var(--fs-xs);font-weight:700;background:${rc.bg};color:${rc.color};">${rc.label}</span>
+        <span style="font-size:var(--fs-2xs);color:var(--ink-3);text-transform:uppercase;letter-spacing:.6px;font-weight:700;">What this role can do</span>
+      </div>
+      ${rc.desc ? `<div style="font-size:var(--fs-sm);color:var(--ink-2);margin-bottom:6px;line-height:1.5;">${rc.desc}</div>` : ''}
+      ${rc.perms && rc.perms.length ? `<div style="font-size:var(--fs-xs);color:var(--ink-3);line-height:1.8;">${rc.perms.map(p => `<span style="color:${rc.color};">✓</span> ${p}`).join('<br>')}</div>` : ''}
+    </div>`;
+  }
+  function wireRoleDesc(initialRole) {
+    setTimeout(() => {
+      const sel = document.querySelector('[name="role_id"]');
+      const box = document.getElementById('um-role-desc');
+      if (!box) return;
+      const upd = () => { box.innerHTML = roleDescHTML(getRoleConfig(sel ? sel.value : initialRole)); };
+      if (sel) sel.addEventListener('change', upd);
+      upd();
+    }, 0);
   }
 
   async function sendInvite() {
@@ -451,11 +472,13 @@ const OpsUserManagement = (function () {
         }),
       ])}
       ${OpsModal.field('Assign to Team', 'team_id', 'select', String(currentTeam), { options: teamOptions, required: false })}
+      <div id="um-role-desc"></div>
       ${OpsModal.field('Email', 'email', 'email', userData.email || '', { readonly: true })}
     `, [
       { label: 'Cancel',       onclick: 'OpsModal.close()', class: 'btn-ghost' },
       { label: 'Save Changes', onclick: `OpsUserManagement.saveEdit('${id}')`, class: 'btn-primary', id: 'modal-save-btn' },
     ]);
+    wireRoleDesc(userData.role_id || userData.role || '');
   }
 
   async function saveEdit(id) {

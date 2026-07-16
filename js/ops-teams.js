@@ -445,50 +445,63 @@ const OpsTeams = (function () {
     const f = (k, v) => `<div class="tmv-f"><div class="k">${k}</div><div class="v">${v}</div></div>`;
     const sec = (tt, b, needs) => `<div class="tmv-sec"><div class="tmv-sec-h">${tt}${needs ? '<span class="tmv-needs">pending backend data</span>' : ''}</div><div class="tmv-sec-b">${b}</div></div>`;
 
-    const overview = `<div class="tmv-grid">
-      ${f('Team', name)}
-      ${f('Members', members.length)}
-      ${f('Supervisor', _dash(supervisor))}
-      ${f('Active Jobs', t.active_jobs != null ? t.active_jobs : '—')}
-      ${f('Vehicle', _dash(t.vehicle))}
-      ${f('Availability', `<span class="status-badge ${sc.badge}">${sc.label}</span>`)}
-      ${f('Location', _dash(t.current_location || t.location))}
-      ${f('Assigned To', _dash(t.assigned_to))}
-      ${t.eta ? f('ETA', `<span style="color:var(--warn);font-weight:700;">${t.eta} min</span>`) : ''}
-      ${f('Last Check-in', formatTime(t.last_checkin || t.last_check_in))}
-    </div>${t.equipment ? `<div style="margin-top:12px;">${f('Equipment', t.equipment)}</div>` : ''}`;
+    const F = OpsModal.fact, E = OpsModal.emptyState, L = OpsModal.link;
+    const statusCls = { on_site: 'ok', en_route: 'warn' }[(t.status || '').toLowerCase()] || 'neutral';
+    const iUser = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="8" r="4"/><path d="M3 21v-2a5 5 0 015-5h2a5 5 0 015 5v2"/></svg>';
 
-    const membersBody = members.length ? members.map(m => `
-      <div class="tm-modal-member-row">
-        <div class="tm-modal-member-av" style="background:${memberColor(m.full_name || m.name || '')};">${initials(m.full_name || m.name || '')}</div>
-        <div><div class="tm-modal-member-name">${m.full_name || m.name || '—'}</div><div class="tm-modal-member-role">${(CONFIG.ROLE_LABELS[m.role_id || m.role] || '').replace(/_/g, ' ')} ${m.team_role ? '· ' + m.team_role : ''}</div></div>
-      </div>`).join('') : '<div class="tmv-e">No members assigned to this team yet.</div>';
+    const overview = `
+      ${F('Team', name)}
+      ${F('Members', members.length)}
+      ${F('Supervisor', _dash(supervisor))}
+      ${F('Active jobs', t.active_jobs != null ? t.active_jobs : '—')}
+      ${F('Vehicle', _dash(t.vehicle))}
+      ${F('Availability', OpsModal.detailPill(sc.label, statusCls))}
+      ${F('Location', _dash(t.current_location || t.location))}
+      ${t.eta ? F('ETA', `<span style="color:var(--warn);font-weight:700;">${t.eta} min</span>`) : ''}
+      ${F('Last check-in', formatTime(t.last_checkin || t.last_check_in))}
+      ${t.equipment ? F('Equipment', t.equipment) : ''}`;
+
+    const membersBody = members.length
+      ? `<table class="fgd-table"><thead><tr><th>Member</th><th>Role</th></tr></thead><tbody>${members.map(m => {
+          const mid = m.user_id || m.id;
+          const mn = m.full_name || m.name || '—';
+          return `<tr><td class="strong">${mid ? L('team-members', mid, mn) : mn}</td><td>${(CONFIG.ROLE_LABELS[m.role_id || m.role] || '').replace(/_/g, ' ')}${m.team_role ? ' · ' + m.team_role : ''}</td></tr>`;
+        }).join('')}</tbody></table>`
+      : E(iUser, 'No members', 'No members are assigned to this team yet.');
 
     const isIdle = !t.status || (t.status || '').toLowerCase() === 'idle';
     const actions = [
-      `<button class="btn-ghost" onclick="OpsTeams.manageMembers('${id}','${esc(name)}')">Manage Members</button>`,
-      `<button class="btn-ghost" onclick="OpsTeams.editStatus('${id}','${esc(name)}')">Update Status</button>`,
-      isIdle ? `<button class="btn-primary" onclick="OpsTeams.dispatch('${id}','${esc(name)}')">Dispatch</button>` : '',
-      _isAdmin ? `<button class="btn-ghost" style="color:var(--err);border-color:rgba(220,38,38,.2);" onclick="OpsTeams.deleteTeam('${id}','${esc(name)}')">Delete</button>` : '',
+      `<button class="fgd-btn" onclick="OpsTeams.manageMembers('${id}','${esc(name)}')">Manage members</button>`,
+      `<button class="fgd-btn" onclick="OpsTeams.editStatus('${id}','${esc(name)}')">Update status</button>`,
+      isIdle ? `<button class="fgd-btn primary" onclick="OpsTeams.dispatch('${id}','${esc(name)}')">Dispatch</button>` : '',
+      _isAdmin ? `<button class="fgd-btn danger" onclick="OpsTeams.deleteTeam('${id}','${esc(name)}')">Delete</button>` : '',
     ].filter(Boolean).join('');
 
-    _container.innerHTML = `
-      ${styleTag()}
-      <div class="tmv-top">
-        <button class="tmv-back" onclick="OpsTeams.back()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Teams</button>
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div class="tm-card-avatar" style="width:42px;height:42px;font-size:var(--fs-md);background:${teamColor(name)};">${initials(name)}</div>
-          <div><div class="tmv-name">${name}</div><div class="tmv-meta">${id} · <span class="status-badge ${sc.badge}">${sc.label}</span></div></div>
-        </div>
-        <div class="tmv-actions">${actions}</div>
-      </div>
-      ${sec('Team Overview', overview)}
-      ${sec('Members', membersBody)}
-      ${sec('Schedule', '<div class="tmv-e">No schedule in this response.</div>', true)}
-      ${sec('Current Jobs', t.active_jobs != null ? `<div class="tmv-e">${t.active_jobs} active job(s). <a onclick="switchTab('maintenance')" style="color:var(--blue-hi);cursor:pointer;">Open Maintenance →</a></div>` : '<div class="tmv-e">No current jobs in this response.</div>', t.active_jobs == null)}
-      ${sec('Performance', '<div class="tmv-e">No performance metrics in this response.</div>', true)}
-      ${sec('Timeline', `<div class="tmv-e">Last check-in ${formatTime(t.last_checkin || t.last_check_in)}.</div>`, true)}
-    `;
+    const sidebar = `
+      <div class="fgd-card">
+        <div class="fgd-card-head"><h2 style="font-size:var(--fs-sm);">Quick facts</h2></div>
+        ${F('Team ID', `<span class="fgd-mono">${id}</span>`)}
+        ${F('Status', OpsModal.detailPill(sc.label, statusCls))}
+        ${F('Members', members.length)}
+        ${F('Supervisor', _dash(supervisor))}
+        ${F('Last check-in', formatTime(t.last_checkin || t.last_check_in))}
+      </div>`;
+
+    _container.innerHTML = OpsModal.detailShell({
+      back: 'OpsTeams.back()',
+      crumbRoot: 'Teams',
+      title: name,
+      avatar: { text: initials(name), bg: teamColor(name) },
+      chips: [{ cls: statusCls, label: sc.label, dot: true }],
+      meta: [['ID', id], ['Members', members.length], ['Supervisor', _dash(supervisor)]],
+      actions,
+      sections: [
+        { id: 'overview', title: 'Team overview', meta: 'field_teams', body: overview },
+        { id: 'members', title: 'Members', meta: 'team_members', body: membersBody },
+        { id: 'jobs', title: 'Current jobs', body: t.active_jobs ? `<div style="font-size:var(--fs-sm);color:var(--ink-2);">${t.active_jobs} active job(s). <a onclick="switchTab('maintenance')" style="color:var(--blue-hi);cursor:pointer;font-weight:700;">Open Maintenance →</a></div>` : E(iUser, 'No current jobs', 'This team has no active work orders.') },
+      ],
+      sidebar,
+    });
   }
 
   // minimal style tag so the detail view keeps its look when it replaces the list
