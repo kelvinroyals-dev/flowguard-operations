@@ -113,10 +113,12 @@ const OpsSensors = (function () {
         </div>
       </div>
       <div id="sn-kpis"></div>
-      <div class="sn-toolbar" id="sn-toolbar"></div>
       <div id="sn-note-slot"></div>
-      <div class="sn-bulkbar" id="sn-bulkbar"></div>
-      <div id="sn-body"><div class="sn-empty">Loading the Sentinel fleet…</div></div>
+      <div class="lv-wrap">
+        <div class="lv-toolbar" id="sn-toolbar"></div>
+        <div class="sn-bulkbar" id="sn-bulkbar" style="margin:0 20px 10px;"></div>
+        <div id="sn-body"><div class="sn-empty">Loading the Sentinel fleet…</div></div>
+      </div>
     `;
   }
 
@@ -214,12 +216,13 @@ const OpsSensors = (function () {
       ['lowbatt', `Low battery (${battKnown ? lowBatt : 0})`],
       ['unassigned', `Unassigned (${unassigned})`],
     ];
-    tb.innerHTML = chips.map(([k, l]) =>
-      `<span class="sn-chip ${_filter === k ? 'on' : ''}" onclick="OpsSensors.setFilter('${__sid(k)}')">${l}</span>`).join('') + `
-      <span class="sn-search">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+    tb.innerHTML = `
+      <div class="lv-search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
         <input placeholder="Search Sentinels…" value="${_q.replace(/"/g, '&quot;')}" oninput="OpsSensors.setQuery(this.value)">
-      </span>`;
+      </div>
+      <div class="lv-filters">${chips.map(([k, l]) =>
+        `<div class="lv-filter ${_filter === k ? 'active' : ''}" onclick="OpsSensors.setFilter('${__sid(k)}')">${l}</div>`).join('')}</div>`;
 
     let rows = _all.map((x, i) => ({ x, tier: tiers[i] }));
     if (_filter === 'healthy') rows = rows.filter(r => r.tier === 'healthy');
@@ -327,31 +330,26 @@ const OpsSensors = (function () {
     if (!el) return;
     const allChecked = rows.length > 0 && _filteredRows.every(x => _selected.has(x.sensor_id));
     el.innerHTML = `
-      <div class="sn-table-wrap">
-        <div class="sn-fleet-head">
-          <div class="sn-fleet-title">Sentinel Fleet</div>
-        </div>
-        <div style="overflow-x:auto;">
-          <table class="ops-table">
-            <thead>
-              <tr>
-                <th style="width:26px;"><input type="checkbox" ${allChecked ? 'checked' : ''} onclick="OpsSensors.toggleSelectAll(this.checked)" title="Select all matching this filter"></th>
-                <th>Node ID</th>
-                <th>Estate</th>
-                <th>Firmware</th>
-                <th>Battery</th>
-                <th>Signal</th>
-                <th>Temp</th>
-                <th>Last seen</th>
-                <th>Health</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rows.map(x => rowHTML(x, commonFw)).join('')}
-            </tbody>
-          </table>
-        </div>
+      <div class="lv-scroll">
+        <table class="lv-table">
+          <thead>
+            <tr>
+              <th style="width:26px;"><input type="checkbox" ${allChecked ? 'checked' : ''} onclick="OpsSensors.toggleSelectAll(this.checked)" title="Select all matching this filter"></th>
+              <th>Node ID</th>
+              <th>Estate</th>
+              <th>Firmware</th>
+              <th>Battery</th>
+              <th>Signal</th>
+              <th>Temp</th>
+              <th>Last seen</th>
+              <th>Health</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(x => rowHTML(x, commonFw)).join('')}
+          </tbody>
+        </table>
       </div>`;
   }
 
@@ -366,7 +364,7 @@ const OpsSensors = (function () {
     const beat = rel(x.reading_time || x.last_ping);
     const outdated = commonFw && x.firmware_version && x.firmware_version !== commonFw;
     return `
-      <tr class="sn-row" onclick="OpsSensors.viewSensor('${__sid(x.sensor_id)}')">
+      <tr class="sn-row clickable" onclick="OpsSensors.viewSensor('${__sid(x.sensor_id)}')">
         <td onclick="event.stopPropagation()"><input type="checkbox" ${_selected.has(x.sensor_id) ? 'checked' : ''} onclick="OpsSensors.toggleSelect('${__sid(x.sensor_id)}', this.checked); event.stopPropagation()"></td>
         <td class="sn-node-id">${esc(x.name || x.sensor_id)}${x.pending_commands ? `<span class="sn-cmd-badge" title="${x.pending_commands} command(s) queued">${x.pending_commands}</span>` : ''}</td>
         <td>${esc(estateOf(x))}</td>

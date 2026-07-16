@@ -62,10 +62,16 @@ const OpsAssets = (function () {
           <div class="fg-page-sub">The drainage infrastructure your Sentinels monitor and your crews maintain</div>
         </div>
       </div>
-      <div class="as-table-card">
-        <div class="as-table-head">
-          <div class="as-controls" id="as-chips"></div>
-          <button class="as-add" onclick="OpsAssets.add()">+ Register asset</button>
+      <div class="lv-wrap">
+        <div class="lv-toolbar">
+          <div class="lv-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="as-search" placeholder="Search assets…" oninput="OpsAssets.search(this.value)">
+          </div>
+          <div class="lv-filters" id="as-chips"></div>
+          <div class="lv-toolbar-right">
+            <button class="as-add" onclick="OpsAssets.add()">+ Register asset</button>
+          </div>
         </div>
         <div id="as-body"><div style="padding:44px;text-align:center;color:var(--ink-3);"><div class="loading" style="margin:0 auto 12px;"></div>Loading assets…</div></div>
       </div>`;
@@ -99,14 +105,17 @@ const OpsAssets = (function () {
       ['monitored', `Monitored (${_assets.length - unmonitored})`],
       ['unmonitored', `No Sentinel (${unmonitored})`],
     ];
-    if (chipsEl) chipsEl.innerHTML = chips.map(([k, l]) => `<span class="as-chip ${_filter === k ? 'on' : ''}" onclick="OpsAssets.setFilter('${__sid(k)}')">${l}</span>`).join('');
+    if (chipsEl) chipsEl.innerHTML = chips.map(([k, l]) => `<div class="lv-filter ${_filter === k ? 'active' : ''}" onclick="OpsAssets.setFilter('${__sid(k)}')">${l}</div>`).join('');
 
     let rows = _assets;
     if (_filter === 'monitored') rows = rows.filter(a => Number(a.node_count) > 0);
     else if (_filter === 'unmonitored') rows = rows.filter(a => !Number(a.node_count));
+    if (_term) rows = rows.filter(a => (a.asset_code || a.property_name || '').toLowerCase().includes(_term) || (a.parent_name || '').toLowerCase().includes(_term));
     _pg = FGPaginator.create(rows, { pageSize: 25, containerId: 'as-body' });
     _pg.render(renderTable);
   }
+  let _term = '';
+  function search(q) { _term = q.trim().toLowerCase(); draw(); }
 
   function renderTable(rows) {
     const el = document.getElementById('as-body');
@@ -115,30 +124,53 @@ const OpsAssets = (function () {
       el.innerHTML = `<div style="padding:44px;text-align:center;color:var(--ink-3);line-height:1.6;">${_assets.length ? 'No assets match this filter.' : 'No drainage assets registered yet.<br><button class="as-add" style="margin-top:12px;" onclick="OpsAssets.add()">+ Register the first asset</button>'}</div>`;
       return;
     }
-    // Columns per spec: Asset Name, Category, Property, Serial Number, Status, Condition, Warranty, Last Maintenance, Next Maintenance
+    const initials = n => (n || '?').replace(/[^A-Za-z0-9 ]/g, '').split(/[\s-]+/).filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    const dc = '<span class="lv-dash">—</span>';
     el.innerHTML = `
-      <div style="overflow-x:auto;">
-        <table class="ops-table">
+      <div class="lv-scroll">
+        <table class="lv-table">
           <thead><tr>
-            <th>Asset Name</th><th>Category</th><th>Property</th><th>Serial Number</th>
-            <th>Status</th><th>Condition</th><th>Warranty</th><th>Last Maintenance</th><th>Next Maintenance</th>
+            <th>Asset</th><th>Property</th><th>Serial</th>
+            <th>Status</th><th>Condition</th><th>Warranty</th><th>Last maint.</th><th>Next maint.</th>
           </tr></thead>
           <tbody>
-            ${rows.map(a => `
+            ${rows.map(a => {
+              const propCell = a.parent_property_id ? OpsModal.link('properties', a.parent_property_id, a.parent_name || a.parent_property_id) : esc(a.parent_name || '—');
+              return `
               <tr class="clickable" onclick="OpsAssets.open('${__sid(a.property_id)}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsAssets.open('${__sid(a.property_id)}')}">
-                <td class="bright">${esc(a.asset_code || a.property_name || '—')}</td>
-                <td style="font-size:var(--fs-sm);">${esc(catLabel(a.property_type))}</td>
-                <td class="trunc" style="max-width:170px;font-size:var(--fs-sm);" title="${esc(a.parent_name || '')}">${esc(a.parent_name || '—')}</td>
-                <td class="num" style="font-size:var(--fs-sm);">${dash(a.serial_number || a.asset_code)}</td>
-                <td>${statusOf(a)}</td>
-                <td>${condBadge(a.risk_level)}</td>
-                <td style="font-size:var(--fs-sm);color:var(--ink-4);">${dash(a.warranty_until && fmtDate(a.warranty_until))}</td>
-                <td style="font-size:var(--fs-sm);color:var(--ink-4);">${dash(a.last_maintenance && fmtDate(a.last_maintenance))}</td>
-                <td style="font-size:var(--fs-sm);color:var(--ink-4);">${dash(a.next_maintenance && fmtDate(a.next_maintenance))}</td>
-              </tr>`).join('')}
+                <td>
+                  <div class="lv-name-cell">
+                    <div class="lv-avatar" style="background:linear-gradient(135deg,#0d7fa0,#1f9d5b);">${initials(a.asset_code || a.property_name)}</div>
+                    <div style="min-width:0;">
+                      <div class="lv-name">${esc(a.asset_code || a.property_name || '—')}</div>
+                      <span class="lv-source">${esc(catLabel(a.property_type))}</span>
+                    </div>
+                  </div>
+                </td>
+                <td>${propCell}</td>
+                <td class="lv-mono">${dash(a.serial_number || a.asset_code)}</td>
+                <td>${assetStatusPill(a)}</td>
+                <td>${condPill(a.risk_level)}</td>
+                <td class="lv-mono">${a.warranty_until ? fmtDate(a.warranty_until) : dc}</td>
+                <td class="lv-mono">${a.last_maintenance ? fmtDate(a.last_maintenance) : dc}</td>
+                <td class="lv-mono">${a.next_maintenance ? fmtDate(a.next_maintenance) : dc}</td>
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>
       </div>`;
+  }
+
+  function assetStatusPill(a) {
+    return Number(a.node_count) > 0
+      ? '<span class="lv-status ok">Monitored</span>'
+      : '<span class="lv-status warn">No Sentinel</span>';
+  }
+  function condPill(r) {
+    if (!r) return '<span class="lv-dash">—</span>';
+    const v = String(r).toLowerCase();
+    const c = (v === 'high' || v === 'critical') ? 'danger' : v === 'moderate' ? 'warn' : 'ok';
+    return `<span class="lv-status ${c}">${r}</span>`;
   }
 
   function setFilter(f) { _filter = f; draw(); }
@@ -263,5 +295,5 @@ const OpsAssets = (function () {
     }
   }
 
-  return { render, setFilter, add, confirmAdd, open, back };
+  return { render, setFilter, search, add, confirmAdd, open, back };
 })();

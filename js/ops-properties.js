@@ -146,12 +146,23 @@ const OpsProperties = (function () {
         </div>
       </div>
       <div id="pr-pipeline"></div>
-      <div class="pr-table-card">
-        <div class="pr-table-head">
-          <div class="pr-table-title" id="pr-table-title">All Properties</div>
-          <div class="pr-search-wrap">
-            <svg class="pr-search-icon" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"/></svg>
-            <input class="pr-search" id="pr-search" placeholder="Search properties…" oninput="OpsProperties.search(this.value)">
+      <div class="lv-wrap">
+        <div class="lv-toolbar">
+          <div class="lv-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="pr-search" placeholder="Search properties…" oninput="OpsProperties.search(this.value)">
+          </div>
+          <div class="lv-filters">
+            <div class="lv-filter active" id="prf-all" onclick="OpsProperties.filterStage('all')">All</div>
+            <div class="lv-filter" id="prf-submitted" onclick="OpsProperties.filterStage('submitted')">Awaiting review</div>
+            <div class="lv-filter" id="prf-inspection" onclick="OpsProperties.filterStage('inspection')">In inspection</div>
+            <div class="lv-filter" id="prf-billing" onclick="OpsProperties.filterStage('billing')">Quote / payment</div>
+            <div class="lv-filter" id="prf-active" onclick="OpsProperties.filterStage('active')">Active</div>
+          </div>
+          <div class="lv-toolbar-right">
+            <div class="lv-icon-btn" title="Reload" onclick="reloadTab('properties')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0114.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0020.5 15"/></svg>
+            </div>
           </div>
         </div>
         <div id="pr-table-body">
@@ -214,9 +225,10 @@ const OpsProperties = (function () {
   function filterStage(stage) {
     _filter = stage;
     renderPipeline(_all);
-    const titleMap = { all: 'All Properties', submitted: 'Awaiting Review', inspection: 'In Inspection', report: 'Report Ready', billing: 'Quote / Payment', active: 'Active Properties' };
-    const titleEl = document.getElementById('pr-table-title');
-    if (titleEl) titleEl.textContent = titleMap[stage] || 'All Properties';
+    ['all', 'submitted', 'inspection', 'billing', 'active'].forEach(k => {
+      const el = document.getElementById('prf-' + k);
+      if (el) el.classList.toggle('active', k === stage);
+    });
     const filtered = stage === 'all' ? _all : _all.filter(a => stageOf(a) === stage);
     if (_pg) _pg.update(filtered);
     else renderTable(filtered);
@@ -263,44 +275,66 @@ const OpsProperties = (function () {
         </div>`;
       return;
     }
-    // Columns per spec: Property Name, Client, Location, Risk Level, Drain Health, Devices, Open Incidents, SLA, Status
+    const initials = n => (n || '?').split(' ').filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2);
     el.innerHTML = `
-      <div style="overflow-x:auto;">
-        <table class="ops-table">
+      <div class="lv-scroll">
+        <table class="lv-table">
           <thead>
             <tr>
-              <th>Property Name</th>
+              <th>Property</th>
               <th>Client</th>
-              <th>Location</th>
-              <th>Risk Level</th>
-              <th style="text-align:center;">Drain Health</th>
-              <th style="text-align:center;">Devices</th>
-              <th style="text-align:center;">Open Incidents</th>
+              <th>Risk</th>
+              <th>Drain health</th>
+              <th>Devices</th>
+              <th>Open incidents</th>
               <th>SLA</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody>
             ${areas.map(a => {
-              const loc = [a.city, a.state].filter(Boolean).join(', ') || a.location || '—';
+              const loc = [a.city, a.state].filter(Boolean).join(', ') || a.location || '';
               const pid = sid(a.property_id);
               const devices = parseInt(a.sentinel_count);
               const inc = a.open_incidents;
+              const clientCell = a.user_id ? OpsModal.link('clients', a.user_id, a.client_name || a.client_email || 'Client') : (a.client_name || a.client_email || '<span class="lv-dash">—</span>');
               return `<tr class="clickable" onclick="OpsProperties.open('${pid}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsProperties.open('${pid}')}">
-                <td class="bright trunc" title="${(a.property_name || '').replace(/"/g, '&quot;')}">${a.property_name || '—'}</td>
-                <td class="trunc" style="font-size:var(--fs-base);max-width:160px;" title="${(a.client_name || a.client_email || '').replace(/"/g, '&quot;')}">${a.client_name || a.client_email || '—'}</td>
-                <td style="font-size:var(--fs-sm);">${loc}</td>
-                <td>${riskBadge(a.risk_level || a.urgency_level)}</td>
-                <td style="text-align:center;">${healthCell(a.health_score)}</td>
-                <td class="num" style="text-align:center;font-weight:700;">${isNaN(devices) ? '—' : devices}</td>
-                <td style="text-align:center;">${inc == null ? '<span style="color:var(--ink-4);">—</span>' : (parseInt(inc) > 0 ? `<span style="color:var(--err);font-weight:700;font-family:var(--ff-d);">${inc}</span>` : '<span style="color:var(--ink-4);">0</span>')}</td>
-                <td>${a.sla ? `<span class="status-badge nominal">${a.sla}</span>` : '<span style="color:var(--ink-4);">—</span>'}</td>
-                <td>${pipelineBadge(a.status)}</td>
+                <td>
+                  <div class="lv-name-cell">
+                    <div class="lv-avatar" style="background:linear-gradient(135deg,#16a8d3,#0d7fa0);">${initials(a.property_name)}</div>
+                    <div style="min-width:0;">
+                      <div class="lv-name">${a.property_name || '—'}</div>
+                      ${loc ? `<span class="lv-source">${loc}</span>` : ''}
+                    </div>
+                  </div>
+                </td>
+                <td>${clientCell}</td>
+                <td>${riskPill(a.risk_level || a.urgency_level)}</td>
+                <td>${healthCell(a.health_score)}</td>
+                <td class="lv-mono">${isNaN(devices) ? '<span class="lv-dash">—</span>' : devices}</td>
+                <td>${inc == null ? '<span class="lv-dash">—</span>' : (parseInt(inc) > 0 ? `<span class="lv-mono" style="color:var(--err);font-weight:700;">${inc}</span>` : '<span class="lv-mono">0</span>')}</td>
+                <td>${a.sla ? `<span class="lv-mono">${a.sla}</span>` : '<span class="lv-dash">—</span>'}</td>
+                <td>${statusPill(a.status)}</td>
               </tr>`;
             }).join('')}
           </tbody>
         </table>
       </div>`;
+  }
+
+  function riskPill(u) {
+    if (!u) return '<span class="lv-dash">—</span>';
+    const v = String(u).toLowerCase();
+    const c = (v === 'high' || v === 'critical') ? 'danger' : (v === 'moderate' || v === 'medium') ? 'warn' : 'ok';
+    return `<span class="lv-status ${c}">${u}</span>`;
+  }
+  function statusPill(s) {
+    const v = String(s || '').toLowerCase();
+    let c = 'neutral';
+    if (v === 'active' || v === 'report_ready' || v === 'payment_completed') c = 'ok';
+    else if (v === 'suspended' || v === 'cancelled') c = 'danger';
+    else if (v.includes('inspection') || v.includes('quote') || v.includes('payment') || v === 'submitted') c = 'warn';
+    return `<span class="lv-status ${c}">${(s || 'unknown').replace(/_/g, ' ')}</span>`;
   }
 
   function back() { if (_container) render(_container); }
