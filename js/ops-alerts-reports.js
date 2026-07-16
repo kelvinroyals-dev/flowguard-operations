@@ -467,75 +467,215 @@ const OpsAlerts = (function () {
   function back() { if (_container) render(_container); }
 
   // ── FULL DETAIL SCREEN (no pop-up) ──
-  // Detail-screen styles — re-injected here because open() replaces the whole
-  // container (removing the <style> the list render put in), which otherwise
-  // left the alert detail unstyled.
-  const AL_DETAIL_CSS = `<style>
-    .al-back { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:8px 13px; cursor:pointer; }
-    .al-back:hover { color:var(--ink); border-color:var(--border-2); }
-    .al-detail-top { display:flex; align-items:center; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
-    .al-detail-name { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; }
-    .al-detail-meta { font-size:var(--fs-sm); color:var(--ink-3); margin-top:3px; }
-    .al-detail-actions { margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; }
-    .al-section { background:var(--surface,#fff); border:1px solid var(--border); border-radius:var(--r,14px); box-shadow:var(--sh-xs); margin-bottom:14px; overflow:hidden; }
-    .al-section-h { padding:12px 18px; border-bottom:1px solid var(--border); font-family:var(--ff-d); font-size:var(--fs-sm); font-weight:700; letter-spacing:.4px; color:var(--ink); display:flex; align-items:center; justify-content:space-between; }
-    .al-section-b { padding:16px 18px; }
-    .al-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px 22px; }
-    .al-field .k { font-size:var(--fs-2xs); font-weight:700; letter-spacing:.9px; text-transform:uppercase; color:var(--ink-3); }
-    .al-field .v { font-size:var(--fs-md); color:var(--ink); font-weight:600; margin-top:3px; }
-    .al-empty { color:var(--ink-3); font-size:var(--fs-sm); padding:6px 0; }
-    .al-needs { font-size:var(--fs-xs); color:var(--ink-4); font-style:italic; }
-    @media (max-width:640px){ .al-detail-actions{ margin-left:0; width:100%; } }
-  </style>`;
+  // ── Alert detail v2 — two-column glass layout (from mockup) ───────────
+  const ALD_CSS = `
+    <style>
+      .ald { display:flex; flex-direction:column; gap:16px; }
+      .ald-crumb { display:flex; align-items:center; gap:6px; font-size:var(--fs-2xs); color:var(--ink-3); padding:2px 2px; }
+      .ald-crumb .lnk { color:var(--ink-2); font-weight:600; cursor:pointer; }
+      .ald-crumb .lnk:hover { color:var(--ink); }
+      .ald-crumb .sep { opacity:.5; }
+      .ald-crumb .cur { color:var(--ink); font-weight:700; }
+      .ald-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--sh-xs); padding:20px 22px; scroll-margin-top:72px; }
+      .ald-header { display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; }
+      .ald-header-main { flex:1; min-width:0; }
+      .ald-header-top { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+      .ald-title { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; text-transform:capitalize; }
+      .ald-chip { font-size:var(--fs-2xs); font-weight:700; padding:4px 11px; border-radius:20px; display:inline-flex; align-items:center; gap:6px; }
+      .ald-chip .dot { width:6px; height:6px; border-radius:50%; background:currentColor; }
+      .ald-chip.ok { background:rgba(31,157,91,.12); color:var(--ok); }
+      .ald-chip.warn { background:rgba(224,142,18,.12); color:var(--warn); }
+      .ald-chip.danger { background:rgba(217,70,60,.12); color:var(--err); }
+      .ald-chip.neutral { background:var(--surface-2); color:var(--ink-3); }
+      .ald-meta { display:flex; gap:16px; flex-wrap:wrap; margin-top:8px; font-size:var(--fs-sm); color:var(--ink-2); }
+      .ald-meta b { color:var(--ink); font-weight:600; margin-right:5px; }
+      .ald-actions { display:flex; gap:8px; flex-shrink:0; flex-wrap:wrap; }
+      .ald-btn { font-size:var(--fs-sm); font-weight:600; padding:9px 16px; border-radius:10px; cursor:pointer; border:1px solid var(--border-2); color:var(--ink-2); background:var(--surface); }
+      .ald-btn:hover { border-color:var(--ink-4); color:var(--ink); }
+      .ald-btn.primary { background:var(--blue-hi); color:#fff; border:none; }
+      .ald-secnav { display:flex; gap:4px; padding:6px; flex-wrap:wrap; position:sticky; top:6px; z-index:6; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:var(--sh-xs); }
+      .ald-secnav a { font-size:var(--fs-xs); font-weight:600; color:var(--ink-2); padding:8px 13px; border-radius:9px; cursor:pointer; white-space:nowrap; }
+      .ald-secnav a:hover { background:var(--surface-2); }
+      .ald-secnav a.active { background:var(--surface-2); color:var(--ink); }
+      .ald-grid { display:grid; grid-template-columns:1fr 300px; gap:16px; align-items:start; }
+      .ald-main { display:flex; flex-direction:column; gap:16px; min-width:0; }
+      .ald-side { display:flex; flex-direction:column; gap:14px; position:sticky; top:72px; }
+      @media (max-width:900px){ .ald-grid{ grid-template-columns:1fr; } .ald-side{ position:static; } }
+      .ald-card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
+      .ald-card-head h2 { font-family:var(--ff-d); font-size:var(--fs-md); font-weight:700; color:var(--ink); }
+      .ald-card-head .cmeta { font-size:var(--fs-2xs); color:var(--ink-3); font-family:var(--ff-m); }
+      .ald-fact { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); font-size:var(--fs-sm); }
+      .ald-fact:last-child { border-bottom:none; }
+      .ald-fact .k { color:var(--ink-3); }
+      .ald-fact .v { font-weight:600; color:var(--ink); text-align:right; }
+      .ald-mono { font-family:var(--ff-m); }
+      .ald-desc { margin-top:14px; }
+      .ald-desc .dk { font-size:var(--fs-2xs); font-weight:700; letter-spacing:.9px; text-transform:uppercase; color:var(--ink-3); margin-bottom:6px; }
+      .ald-desc .dv { font-size:var(--fs-sm); color:var(--ink-2); line-height:1.6; white-space:pre-wrap; }
+      .ald-tl-row { display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); align-items:flex-start; }
+      .ald-tl-row:last-child { border-bottom:none; }
+      .ald-tl-icon { width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+      .ald-tl-icon svg { width:15px; height:15px; }
+      .ald-tl-title { font-size:var(--fs-sm); font-weight:600; color:var(--ink); }
+      .ald-tl-meta { font-size:var(--fs-xs); color:var(--ink-3); margin-top:2px; }
+      .ald-tl-time { margin-left:auto; font-size:var(--fs-2xs); color:var(--ink-3); font-family:var(--ff-m); white-space:nowrap; }
+      .ald-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:28px 20px; text-align:center; gap:8px; }
+      .ald-empty svg { width:28px; height:28px; color:var(--ink-3); opacity:.6; }
+      .ald-empty .t { font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); }
+      .ald-empty .s { font-size:var(--fs-xs); color:var(--ink-3); max-width:340px; line-height:1.5; }
+      .ald-mapbox { height:190px; border-radius:12px; overflow:hidden; background:var(--surface-2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; }
+    </style>`;
 
   function open(id) {
     if (!_container) return;
     const a = _allAlerts.find(x => (x.alert_id || x.id) == id);
     if (!a) { OpsModal.toast('Alert not found', 'warning'); return; }
-    const status = a.status || 'active';
-    const badge = status === 'resolved' ? 'nominal' : severityBadgeClass(a.severity);
-    const field = (k, v) => `<div class="al-field"><div class="k">${k}</div><div class="v">${v}</div></div>`;
-    const s = (title, body, needs) => `<div class="al-section"><div class="al-section-h">${title}${needs ? '<span class="al-needs">pending backend data</span>' : ''}</div><div class="al-section-b">${body}</div></div>`;
+    const L = OpsModal.link;
+    const status = (a.status || 'active').toLowerCase();
+    const isResolved = status === 'resolved';
+    const created = a.timestamp || a.created_at;
+    const dt = v => v ? OpsModal.fmtDateTime(v) : '—';
+    const typeLabel = (a.alert_type || a.type || 'System Alert').replace(/_/g, ' ');
+    const sevCls = (() => { const v = String(a.severity || '').toLowerCase(); return (v === 'critical' || v === 'high') ? 'danger' : (v === 'moderate' || v === 'medium') ? 'warn' : v ? 'ok' : 'neutral'; })();
+    const statusCls = isResolved ? 'ok' : status === 'active' ? 'danger' : 'warn';
+    const statusLabel = isResolved ? 'Resolved' : (a.status || 'Active').charAt(0).toUpperCase() + (a.status || 'Active').slice(1);
+    const deviceLink = a.sensor_id ? L('sensors', a.sensor_id, a.sensor_name || a.device_name || a.sensor_id) : _dash(a.sensor_name || a.device_name);
+    const propLink = a.property_id ? L('properties', a.property_id, a.property_name || a.property || a.location) : _dash(a.location || a.property || a.property_name || a.site_name);
 
-    const info = `<div class="al-grid">
-      ${field('Alert ID', a.alert_id || a.id)}
-      ${field('Alert Type', a.alert_type || a.type || 'System Alert')}
-      ${field('Severity', `<span class="status-badge ${severityBadgeClass(a.severity)}">${severityLabel(a.severity)}</span>`)}
-      ${field('Status', `<span class="status-badge ${badge}">${status}</span>`)}
-      ${field('Property', a.property_id ? OpsModal.link('properties', a.property_id, a.property_name || a.property || a.location) : _dash(a.location || a.property || a.property_name || a.site_name))}
-      ${field('Device', a.sensor_id ? OpsModal.link('sensors', a.sensor_id, a.sensor_name || a.device_name || a.sensor_id) : _dash(a.sensor_name || a.device_name))}
-      ${field('Trigger Time', a.timestamp || a.created_at ? OpsModal.fmtDateTime(a.timestamp || a.created_at) : '—')}
-      ${field('Assigned To', _dash(a.assigned_team))}
-      ${a.time_to_overflow_min ? field('Time to Overflow', `<span style="color:var(--err);font-weight:700;">${a.time_to_overflow_min} min</span>`) : ''}
-    </div>${a.description ? `<div style="margin-top:12px;">${field('Description', a.description)}</div>` : ''}`;
+    const fact = (k, v) => `<div class="ald-fact"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+    const emptyBox = (icon, t, s) => `<div class="ald-empty">${icon}<div class="t">${t}</div><div class="s">${s}</div></div>`;
+    const iClip  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21.4 11.5l-9.2 9.2a5 5 0 01-7.1-7.1l9.2-9.2a3.5 3.5 0 015 5l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5"/></svg>';
+    const iList  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>';
+    const iDoc   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>';
+    const iAlert = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2.6 17.5a1.5 1.5 0 001.3 2.3h16.2a1.5 1.5 0 001.3-2.3L13.7 3.9a1.5 1.5 0 00-2.6 0z"/></svg>';
+    const iUser  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0113 0"/></svg>';
+    const iCheck = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>';
 
-    const resolution = status === 'resolved'
-      ? `<div class="al-grid">${field('Outcome', _dash(a.outcome))}${field('Resolved', a.resolved_at ? OpsModal.fmtDateTime(a.resolved_at) : '—')}</div>${a.notes ? `<div style="margin-top:12px;">${field('Notes', a.notes)}</div>` : ''}`
-      : `<div class="al-empty">This incident is still open.</div>${a.notes ? `<div style="margin-top:10px;">${field('Field Notes', a.notes)}</div>` : ''}`;
+    const infoBody = `
+      ${fact('Alert ID', `<span class="ald-mono">${a.alert_id || a.id}</span>`)}
+      ${fact('Alert type', `<span class="ald-mono">${a.alert_type || a.type || '—'}</span>`)}
+      ${fact('Severity', `<span style="color:var(--${sevCls === 'danger' ? 'err' : sevCls === 'warn' ? 'warn' : 'ok'});">${severityLabel(a.severity)}</span>`)}
+      ${fact('Status', `<span style="color:var(--${statusCls === 'ok' ? 'ok' : statusCls === 'danger' ? 'err' : 'warn'});">${statusLabel}</span>`)}
+      ${fact('Location', _dash(a.location || a.property || a.site_name))}
+      ${fact('Assigned team', a.assigned_team ? L('teams', a.assigned_team_id || a.assigned_team, a.assigned_team) : '—')}
+      ${a.time_to_overflow_min ? fact('Time to overflow', `<span style="color:var(--err);font-weight:700;">${a.time_to_overflow_min} min</span>`) : ''}
+      ${a.description ? `<div class="ald-desc"><div class="dk">Description</div><div class="dv">${a.description}</div></div>` : ''}`;
+
+    const mapBody = (a.latitude && a.longitude)
+      ? `<div class="ald-mapbox"><div style="text-align:center;">
+           <div class="ald-mono" style="font-size:var(--fs-md);color:var(--ink);font-weight:700;">${a.latitude}, ${a.longitude}</div>
+           <div style="font-size:var(--fs-xs);color:var(--ink-3);margin-top:4px;">Alert location</div>
+         </div></div>
+         <div style="margin-top:12px;"><button class="ald-btn" onclick="switchTab('dashboard')">Open on operational map →</button></div>`
+      : emptyBox(iDoc, 'No coordinates', 'This alert has no latitude/longitude to plot on the operational map.');
+
+    const deviceBody = a.sensor_id
+      ? `${fact('Device', deviceLink)}
+         ${fact('Sentinel ID', `<span class="ald-mono">${a.sensor_id}</span>`)}
+         ${a.sensor_name ? fact('Name', a.sensor_name) : ''}
+         <div style="margin-top:12px;"><button class="ald-btn" onclick="fgOpen('sensors','${String(a.sensor_id).replace(/'/g, "\\'")}')">Open device record →</button></div>`
+      : emptyBox(iAlert, 'No device linked', 'This alert is not tied to a Sentinel device.');
+
+    const propBody = a.property_id
+      ? `${fact('Property', propLink)}
+         ${fact('Property ID', `<span class="ald-mono">${a.property_id}</span>`)}
+         <div style="margin-top:12px;"><button class="ald-btn" onclick="fgOpen('properties','${String(a.property_id).replace(/'/g, "\\'")}')">Open property record →</button></div>`
+      : emptyBox(iAlert, 'No property linked', 'This alert is not tied to a property record.');
+
+    // Timeline — derived from the fields the alert carries
+    const tl = [];
+    if (created) tl.push({ t: 'Alert created', m: 'Raised from telemetry ingest', d: created, bg: 'rgba(217,70,60,.12)', c: 'var(--err)', ic: iAlert });
+    if (a.assigned_team) tl.push({ t: 'Assigned to ' + a.assigned_team, m: 'Dispatched to field crew', d: created, bg: 'rgba(28,184,232,.12)', c: 'var(--blue-hi)', ic: iUser });
+    if (isResolved) tl.push({ t: 'Resolved', m: a.outcome || 'Marked resolved', d: a.resolved_at || created, bg: 'rgba(31,157,91,.12)', c: 'var(--ok)', ic: iCheck });
+    const timelineBody = tl.length
+      ? tl.map(e => `<div class="ald-tl-row">
+          <div class="ald-tl-icon" style="background:${e.bg};color:${e.c};">${e.ic}</div>
+          <div><div class="ald-tl-title">${e.t}</div><div class="ald-tl-meta">${e.m}</div></div>
+          <div class="ald-tl-time">${dt(e.d)}</div>
+        </div>`).join('')
+      : emptyBox(iCheck, 'No timeline yet', 'Events appear here as the alert is assigned and resolved.');
+
+    const resolutionBody = isResolved
+      ? `${fact('Outcome', _dash(a.outcome))}
+         ${fact('Resolved at', `<span class="ald-mono">${dt(a.resolved_at || created)}</span>`)}
+         ${a.notes ? `<div class="ald-desc"><div class="dk">Resolution notes</div><div class="dv">${a.notes}</div></div>` : ''}`
+      : emptyBox(iCheck, 'Still open', 'This incident has not been resolved yet. Resolve it to record the outcome.') + (a.notes ? `<div class="ald-desc"><div class="dk">Field notes</div><div class="dv">${a.notes}</div></div>` : '');
+
+    const SECTIONS = [
+      ['info', 'Alert information', 'alerts', infoBody],
+      ['map', 'Map', 'alert location', mapBody],
+      ['device', 'Related device', 'sensor_id join', deviceBody],
+      ['property', 'Related property', 'property_id join', propBody],
+      ['timeline', 'Timeline', 'derived events', timelineBody],
+      ['resolution', 'Resolution', isResolved ? 'resolved' : 'open', resolutionBody],
+      ['attachments', 'Attachments', '', emptyBox(iClip, 'No attachments', 'No files are stored against this alert.')],
+      ['activity', 'Activity log', "audit_log · entity_type = 'alert'", emptyBox(iList, 'No activity log', 'A per-alert audit trail is not available in this response.')],
+    ];
+    const navHTML = SECTIONS.map((sec, idx) =>
+      `<a class="${idx === 0 ? 'active' : ''}" onclick="this.parentNode.querySelectorAll('a').forEach(function(x){x.classList.remove('active')});this.classList.add('active');var el=document.getElementById('ald-${sec[0]}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'})">${sec[1]}</a>`
+    ).join('');
+    const cardsHTML = SECTIONS.map(sec =>
+      `<div class="ald-card" id="ald-${sec[0]}">
+         <div class="ald-card-head"><h2>${sec[1]}</h2>${sec[2] ? `<span class="cmeta">${sec[2]}</span>` : ''}</div>
+         ${sec[3]}
+       </div>`
+    ).join('');
+
+    const sidebar = `
+      <div class="ald-card">
+        <div class="ald-card-head"><h2 style="font-size:var(--fs-sm);">Quick facts</h2></div>
+        ${fact('Alert ID', `<span class="ald-mono">${a.alert_id || a.id}</span>`)}
+        ${fact('Severity', severityLabel(a.severity))}
+        ${fact('Status', `<span style="color:var(--${statusCls === 'ok' ? 'ok' : statusCls === 'danger' ? 'err' : 'warn'});">${statusLabel}</span>`)}
+        ${fact('Created', `<span class="ald-mono">${dt(created)}</span>`)}
+        ${isResolved ? fact('Resolved', `<span class="ald-mono">${dt(a.resolved_at || created)}</span>`) : ''}
+      </div>
+      <div class="ald-card">
+        <div class="ald-card-head"><h2 style="font-size:var(--fs-sm);">Related</h2></div>
+        ${fact('Device', deviceLink)}
+        ${fact('Property', propLink)}
+        ${a.assigned_team ? fact('Team', L('teams', a.assigned_team_id || a.assigned_team, a.assigned_team)) : ''}
+      </div>`;
 
     const actions = [
-      status !== 'resolved' ? `<button class="btn-primary" onclick="OpsAlerts.assignAlert('${id}')">Assign Team</button>` : '',
-      status !== 'resolved' ? `<button class="btn-ghost" onclick="OpsAlerts.resolveAlert('${id}')">Resolve</button>` : '',
+      !isResolved ? `<button class="ald-btn primary" onclick="OpsAlerts.assignAlert('${id}')">Assign team</button>` : '',
+      !isResolved ? `<button class="ald-btn" onclick="OpsAlerts.resolveAlert('${id}')">Resolve</button>` : '',
     ].filter(Boolean).join('');
 
     _container.innerHTML = `
-      ${AL_DETAIL_CSS}
-      <div class="al-detail-top">
-        <button class="al-back" onclick="OpsAlerts.back()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Alerts</button>
-        <div>
-          <div class="al-detail-name">${a.alert_type || 'System Alert'}</div>
-          <div class="al-detail-meta">${a.alert_id || a.id} · ${_dash(a.location || a.property || a.site_name)}</div>
+      ${ALD_CSS}
+      <div class="ald">
+        <div class="ald-crumb">
+          <span class="lnk" onclick="OpsAlerts.back()">Alerts</span>
+          <span class="sep">/</span>
+          <span class="cur">${a.alert_id || a.id}</span>
         </div>
-        <div class="al-detail-actions">${actions}</div>
+
+        <div class="ald-card ald-header">
+          <div class="ald-header-main">
+            <div class="ald-header-top">
+              <span class="ald-title">${typeLabel}</span>
+              <span class="ald-chip ${sevCls}">${severityLabel(a.severity)}</span>
+              <span class="ald-chip ${statusCls}"><span class="dot"></span>${statusLabel}</span>
+            </div>
+            <div class="ald-meta">
+              <span><b>Alert type</b>${a.alert_type || a.type || '—'}</span>
+              <span><b>Device</b>${deviceLink}</span>
+              <span><b>Property</b>${propLink}</span>
+              <span><b>Created</b>${dt(created)}</span>
+              <span><b>Assigned team</b>${a.assigned_team || '—'}</span>
+            </div>
+          </div>
+          <div class="ald-actions">${actions}</div>
+        </div>
+
+        <div class="ald-secnav">${navHTML}</div>
+
+        <div class="ald-grid">
+          <div class="ald-main">${cardsHTML}</div>
+          <div class="ald-side">${sidebar}</div>
+        </div>
       </div>
-      ${s('Alert Information', info)}
-      ${s('Map', a.latitude && a.longitude ? `<div class="al-grid">${field('Latitude', a.latitude)}${field('Longitude', a.longitude)}</div><div style="margin-top:10px;"><a class="btn-ghost" style="text-decoration:none;padding:7px 12px;" onclick="switchTab('dashboard')">Open on operational map →</a></div>` : '<div class="al-empty">No coordinates on this alert.</div>', !(a.latitude && a.longitude))}
-      ${s('Related Device', a.sensor_id ? `<div class="al-grid">${field('Device', OpsModal.link('sensors', a.sensor_id, a.sensor_name || a.sensor_id))}</div>` : '<div class="al-empty">No device linked.</div>')}
-      ${s('Related Property', a.property_id ? `<div class="al-grid">${field('Property', OpsModal.link('properties', a.property_id, a.property_name || a.property || a.property_id))}</div>` : '<div class="al-empty">No property linked.</div>')}
-      ${s('Timeline', `<div class="al-empty">Triggered ${a.timestamp || a.created_at ? OpsModal.fmtDateTime(a.timestamp || a.created_at) : '—'}${a.assigned_team ? ' · Assigned to ' + a.assigned_team : ''}${status === 'resolved' ? ' · Resolved' : ''}.</div>`, true)}
-      ${s('Resolution', resolution)}
-      ${s('Attachments', '<div class="al-empty">No attachments.</div>', true)}
-      ${s('Activity Log', '<div class="al-empty">No activity log in this response.</div>', true)}
     `;
   }
 
