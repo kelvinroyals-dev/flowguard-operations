@@ -188,11 +188,11 @@ const OpsMaintenance = (function () {
 
     const jobDetails = `<div class="mp-fgrid">
       ${f('Work Order', esc(j.ticket_id))}
-      ${f('Property', esc(_dash(j.property_name)))}
+      ${f('Property', j.property_id ? OpsModal.link('properties', j.property_id, j.property_name || j.property_id) : esc(_dash(j.property_name)))}
       ${f('Location', esc(_dash(j.location || j.city)))}
       ${f('Task', esc(j.title || WORK_TYPE_LABEL[j.work_type] || (j.work_type || '').replace(/_/g, ' ') || '—'))}
       ${f('Priority', esc(j.priority || 'normal'))}
-      ${f('Assigned Team', esc(_dash(j.team_name)))}
+      ${f('Assigned Team', j.assigned_team ? OpsModal.link('teams', j.assigned_team, j.team_name || j.assigned_team) : esc(_dash(j.team_name)))}
       ${f('Due Date', j.scheduled_date ? OpsModal.fmtDate(j.scheduled_date) : '—')}
       ${f('Status', `<span class="status-badge ${j.status === 'resolved' ? 'nominal' : j.status === 'in_progress' ? 'warning' : 'watch'}">${(j.status || '').replace(/_/g, ' ')}</span>`)}
       ${f('Estimated Duration', j.estimated_hours ? j.estimated_hours + 'h' : '—')}
@@ -202,7 +202,7 @@ const OpsMaintenance = (function () {
     </div>`;
 
     const notes = j.description || j.notes ? `<div class="mp-f"><div class="v" style="font-weight:400;white-space:pre-wrap;line-height:1.5;">${esc(j.description || j.notes)}</div></div>` : '<div class="mp-e">No notes.</div>';
-    const team = j.team_name ? `<div class="mp-fgrid">${f('Crew', esc(j.team_name))}${j.crew_size ? f('Crew size', j.crew_size) : ''}</div>` : '<div class="mp-e">No crew assigned.</div>';
+    const team = j.team_name ? `<div class="mp-fgrid">${f('Crew', j.assigned_team ? OpsModal.link('teams', j.assigned_team, j.team_name) : esc(j.team_name))}${j.crew_size ? f('Crew size', j.crew_size) : ''}</div>` : '<div class="mp-e">No crew assigned.</div>';
 
     const actions = [
       j.status === 'scheduled' ? `<button class="btn-primary" onclick="OpsMaintenance.advance('${OpsModal.sid(j.ticket_id)}','in_progress')">Start Job</button>` : '',

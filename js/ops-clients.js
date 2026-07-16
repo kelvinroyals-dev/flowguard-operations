@@ -235,6 +235,7 @@ const OpsClients = (function () {
     const activeAreas = areas.filter(a => a.status === 'active');
 
     const field = (k, v) => `<div class="cl-field"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+    const L = OpsModal.link;
 
     // Company Information — includes every list-view field + more
     const companyInfo = `<div class="cl-grid">
@@ -261,7 +262,7 @@ const OpsClients = (function () {
       <div style="overflow-x:auto;"><table class="ops-table">
         <thead><tr><th>Property</th><th>Type</th><th>Location</th><th>Pipeline</th><th>Inspection</th></tr></thead>
         <tbody>${areas.map(a => `<tr>
-          <td class="bright">${a.property_name || '—'}</td>
+          <td>${a.property_id ? L('properties', a.property_id, a.property_name || a.property_id) : (a.property_name || '—')}</td>
           <td style="font-size:var(--fs-sm);">${(a.property_type || '').replace(/_/g, ' ') || '—'}</td>
           <td style="font-size:var(--fs-sm);">${[a.city, a.state].filter(Boolean).join(', ') || '—'}</td>
           <td>${pipelineBadge(a.status)}</td>
@@ -272,7 +273,7 @@ const OpsClients = (function () {
       <div style="overflow-x:auto;"><table class="ops-table">
         <thead><tr><th>Property</th><th>Type</th><th>Location</th><th>Status</th></tr></thead>
         <tbody>${activeAreas.map(a => `<tr>
-          <td class="bright">${a.property_name || '—'}</td>
+          <td>${a.property_id ? L('properties', a.property_id, a.property_name || a.property_id) : (a.property_name || '—')}</td>
           <td style="font-size:var(--fs-sm);">${(a.property_type || '').replace(/_/g, ' ') || '—'}</td>
           <td style="font-size:var(--fs-sm);">${[a.city, a.state].filter(Boolean).join(', ') || '—'}</td>
           <td>${pipelineBadge(a.status)}</td>
@@ -282,7 +283,7 @@ const OpsClients = (function () {
       <div style="overflow-x:auto;"><table class="ops-table">
         <thead><tr><th>Invoice</th><th>Amount</th><th>Status</th><th>Due</th></tr></thead>
         <tbody>${invoices.map(inv => `<tr>
-          <td class="bright" style="font-family:var(--ff-m);font-size:var(--fs-sm);">${inv.invoice_id}</td>
+          <td>${L('billing', inv.invoice_id, inv.invoice_id)}</td>
           <td style="font-family:var(--ff-d);font-weight:700;">₦${Number(inv.total_amount || 0).toLocaleString()}</td>
           <td><span class="status-badge ${inv.payment_status === 'paid' ? 'nominal' : inv.payment_status === 'overdue' ? 'critical' : 'watch'}">${inv.payment_status}</span></td>
           <td style="font-size:var(--fs-sm);">${inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</td>

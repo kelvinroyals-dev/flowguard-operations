@@ -252,17 +252,82 @@ const OpsProperties = (function () {
     const invoices = a.invoices || [];
     const loc = [a.city, a.state].filter(Boolean).join(', ') || a.location || '—';
     const field = (k, v) => `<div class="pr-field"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+    const L = OpsModal.link;
+
+    // ── related records (all cross-module linked) ──────────────────────
+    const assetsArr    = a.assets     || [];
+    const devicesArr   = a.devices    || [];
+    const incidentsArr = a.incidents  || [];
+    const ticketsArr   = a.tickets    || [];
+
+    const statusDot = s => {
+      const on = ['active', 'online', 'operational'].includes(String(s || '').toLowerCase());
+      const warn = ['maintenance', 'degraded', 'warning'].includes(String(s || '').toLowerCase());
+      const c = on ? 'var(--ok)' : warn ? 'var(--warn)' : 'var(--ink-3)';
+      return `<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:7px;height:7px;border-radius:50%;background:${c};"></span>${(s || '—')}</span>`;
+    };
+    const sevBadge = s => {
+      const v = String(s || '').toLowerCase();
+      const cls = v === 'critical' ? 'critical' : v === 'high' ? 'critical' : v === 'moderate' || v === 'medium' ? 'watch' : 'nominal';
+      return `<span class="status-badge ${cls}">${s || '—'}</span>`;
+    };
+
+    const assetsBody = assetsArr.length
+      ? `<div style="overflow-x:auto;"><table class="ops-table">
+          <thead><tr><th>Asset</th><th>Type</th><th>Health</th><th style="text-align:center;">Status</th></tr></thead>
+          <tbody>${assetsArr.map(x => `<tr>
+            <td>${L('assets', x.property_id, x.name || x.property_id)}</td>
+            <td style="font-size:var(--fs-sm);">${(x.type || '').replace(/_/g, ' ') || '—'}</td>
+            <td>${healthCell(x.health_score)}</td>
+            <td style="text-align:center;">${pipelineBadge(x.status)}</td>
+          </tr>`).join('')}</tbody></table></div>`
+      : '<div class="pr-empty">No drainage assets recorded for this property yet.</div>';
+
+    const devicesBody = devicesArr.length
+      ? `<div style="overflow-x:auto;"><table class="ops-table">
+          <thead><tr><th>Device</th><th>Sentinel ID</th><th>Status</th></tr></thead>
+          <tbody>${devicesArr.map(d => `<tr>
+            <td>${L('sensors', d.sensor_id, d.name || d.sensor_id)}</td>
+            <td style="font-family:var(--ff-m);font-size:var(--fs-sm);">${d.sensor_id}</td>
+            <td style="font-size:var(--fs-sm);">${statusDot(d.status)}</td>
+          </tr>`).join('')}</tbody></table></div>`
+      : '<div class="pr-empty">No Sentinel devices linked to this property yet.</div>';
+
+    const incidentsBody = incidentsArr.length
+      ? `<div style="overflow-x:auto;"><table class="ops-table">
+          <thead><tr><th>Incident</th><th>Type</th><th>Severity</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody>${incidentsArr.map(al => `<tr>
+            <td>${L('alerts', al.alert_id, al.alert_id)}</td>
+            <td style="font-size:var(--fs-sm);">${(al.alert_type || '').replace(/_/g, ' ') || '—'}</td>
+            <td>${sevBadge(al.severity)}</td>
+            <td style="font-size:var(--fs-sm);">${al.status || '—'}</td>
+            <td style="font-size:var(--fs-sm);">${al.created_at ? new Date(al.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</td>
+          </tr>`).join('')}</tbody></table></div>`
+      : '<div class="pr-empty">No incidents recorded for this property.</div>';
+
+    const ticketsBody = ticketsArr.length
+      ? `<div style="overflow-x:auto;"><table class="ops-table">
+          <thead><tr><th>Work Order</th><th>Type</th><th>Team</th><th>Status</th><th>Scheduled</th></tr></thead>
+          <tbody>${ticketsArr.map(t => `<tr>
+            <td>${L('maintenance', t.ticket_id, t.title || t.ticket_id)}</td>
+            <td style="font-size:var(--fs-sm);">${(t.work_type || '').replace(/_/g, ' ') || '—'}</td>
+            <td>${t.assigned_team ? L('teams', t.assigned_team, t.assigned_team) : '—'}</td>
+            <td style="font-size:var(--fs-sm);">${(t.status || '').replace(/_/g, ' ') || '—'}</td>
+            <td style="font-size:var(--fs-sm);">${t.scheduled_date ? new Date(t.scheduled_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</td>
+          </tr>`).join('')}</tbody></table></div>`
+      : '<div class="pr-empty">No work orders scheduled for this property.</div>';
 
     // Overview — includes every list column + more
     const overview = `<div class="pr-grid">
       ${field('Property Name', a.property_name || '—')}
       ${field('Type', (a.property_type || '').replace(/_/g, ' ') || '—')}
-      ${field('Client', a.client_name || a.client_email || '—')}
+      ${field('Client', a.user_id ? L('clients', a.user_id, a.client_name || a.client_email || 'Client') : (a.client_name || a.client_email || '—'))}
+      ${a.parent_property_id ? field('Parent Estate', L('properties', a.parent_property_id, a.parent_name || a.parent_property_id)) : ''}
       ${field('Location', loc)}
       ${field('Risk Level', riskBadge(a.risk_level || a.urgency_level))}
       ${field('Drain Health', healthCell(a.health_score))}
-      ${field('Devices', isNaN(parseInt(a.sentinel_count)) ? '—' : parseInt(a.sentinel_count))}
-      ${field('Open Incidents', a.open_incidents == null ? '—' : a.open_incidents)}
+      ${field('Devices', devicesArr.length || (isNaN(parseInt(a.sentinel_count)) ? '—' : parseInt(a.sentinel_count)))}
+      ${field('Open Incidents', incidentsArr.filter(x => x.status === 'active').length || (a.open_incidents == null ? '—' : a.open_incidents))}
       ${field('SLA', a.sla ? `<span class="status-badge nominal">${a.sla}</span>` : '—')}
       ${field('Status', pipelineBadge(a.status))}
       ${field('Submitted', fmtDate(a.created_at))}
@@ -291,7 +356,7 @@ const OpsProperties = (function () {
         </tr>`).join('')}</tbody></table></div>` : '<div class="pr-empty">No inspections or work orders yet.</div>';
 
     const contacts = `<div class="pr-grid">
-      ${field('Client', a.client_name || '—')}
+      ${field('Client', a.user_id ? L('clients', a.user_id, a.client_name || 'Client') : (a.client_name || '—'))}
       ${field('Contact Person', dash(a.contact_person_name))}
       ${field('Phone', dash(a.client_phone))}
       ${field('Email', dash(a.client_email))}
@@ -303,7 +368,7 @@ const OpsProperties = (function () {
       <tbody>${quotes.map(q => `<tr><td style="font-family:var(--ff-m);font-size:var(--fs-sm);">${q.quote_id}</td><td style="font-family:var(--ff-d);font-weight:700;">₦${Number(q.total_monthly || 0).toLocaleString()}</td><td>${pipelineBadge(q.status)}</td></tr>`).join('')}</tbody></table></div>` : ''}
       ${invoices.length ? `<div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;">Invoices</div>
       <div style="overflow-x:auto;"><table class="ops-table"><thead><tr><th>Invoice</th><th>Amount</th><th>Status</th><th>Due</th></tr></thead>
-      <tbody>${invoices.map(inv => `<tr><td style="font-family:var(--ff-m);font-size:var(--fs-sm);">${inv.invoice_id}</td><td style="font-family:var(--ff-d);font-weight:700;">₦${Number(inv.total_amount || 0).toLocaleString()}</td><td><span class="status-badge ${inv.payment_status === 'paid' ? 'nominal' : inv.payment_status === 'overdue' ? 'critical' : 'watch'}">${inv.payment_status}</span></td><td style="font-size:var(--fs-sm);">${inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      <tbody>${invoices.map(inv => `<tr><td>${L('billing', inv.invoice_id, inv.invoice_id)}</td><td style="font-family:var(--ff-d);font-weight:700;">₦${Number(inv.total_amount || 0).toLocaleString()}</td><td><span class="status-badge ${inv.payment_status === 'paid' ? 'nominal' : inv.payment_status === 'overdue' ? 'critical' : 'watch'}">${inv.payment_status}</span></td><td style="font-size:var(--fs-sm);">${inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</td></tr>`).join('')}</tbody></table></div>` : ''}
     ` : '<div class="pr-empty">No quotes or invoices yet.</div>';
 
     const timeline = `<div class="pr-empty">Submitted ${fmtDate(a.created_at)}${inspections.length ? ' · ' + inspections.length + ' inspection(s)' : ''}.</div>`;
@@ -331,13 +396,11 @@ const OpsProperties = (function () {
 
       ${section('Overview', overview)}
       ${section('Estate Map', estateMap, '', !(a.latitude && a.longitude))}
-      ${section('Drain Network', drainNetwork)}
-      ${section('Devices', '<div class="pr-empty">Device list opens from the network view. <a onclick="OpsNetwork.open(\'' + pid + '\')" style="color:var(--blue-hi);cursor:pointer;">Open →</a></div>', '', true)}
-      ${section('Assets', '<div class="pr-empty">Asset list opens from the network view. <a onclick="OpsNetwork.open(\'' + pid + '\')" style="color:var(--blue-hi);cursor:pointer;">Open →</a></div>', '', true)}
+      ${section('Assets', assetsBody)}
+      ${section('Devices', devicesBody)}
+      ${section('Incidents', incidentsBody)}
+      ${section('Work Orders', ticketsBody)}
       ${section('Maintenance', maintenance)}
-      ${section('Incidents', '<div class="pr-empty">No incidents linked in this response.</div>', '', true)}
-      ${section('Reports', '<div class="pr-empty">No reports linked in this response.</div>', '', true)}
-      ${section('Documents', '<div class="pr-empty">No documents uploaded.</div>', '', true)}
       ${section('Contacts', contacts)}
       ${section('Billing', billing)}
       ${section('Timeline', timeline, '', true)}

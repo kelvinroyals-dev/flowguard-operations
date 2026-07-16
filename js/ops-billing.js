@@ -381,8 +381,8 @@ const OpsBilling = (function () {
 
     const details = `<div class="bl-grid">
       ${field('Invoice', id)}
-      ${field('Client', dash(inv.client_name))}
-      ${field('Property', dash(inv.property_name))}
+      ${field('Client', inv.user_id ? OpsModal.link('clients', inv.user_id, inv.client_name || 'Client') : dash(inv.client_name))}
+      ${field('Property', inv.property_id ? OpsModal.link('properties', inv.property_id, inv.property_name || inv.property_id) : dash(inv.property_name))}
       ${field('Amount', '₦' + Number(inv.total_amount || 0).toLocaleString())}
       ${field('Due Date', fmtDate(inv.due_date))}
       ${field('Status', `<span class="status-badge ${badge}">${status}</span>`)}

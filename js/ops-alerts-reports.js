@@ -481,8 +481,8 @@ const OpsAlerts = (function () {
       ${field('Alert Type', a.alert_type || a.type || 'System Alert')}
       ${field('Severity', `<span class="status-badge ${severityBadgeClass(a.severity)}">${severityLabel(a.severity)}</span>`)}
       ${field('Status', `<span class="status-badge ${badge}">${status}</span>`)}
-      ${field('Property', _dash(a.location || a.property || a.property_name || a.site_name))}
-      ${field('Device', _dash(a.sensor_name || a.device_name))}
+      ${field('Property', a.property_id ? OpsModal.link('properties', a.property_id, a.property_name || a.property || a.location) : _dash(a.location || a.property || a.property_name || a.site_name))}
+      ${field('Device', a.sensor_id ? OpsModal.link('sensors', a.sensor_id, a.sensor_name || a.device_name || a.sensor_id) : _dash(a.sensor_name || a.device_name))}
       ${field('Trigger Time', a.timestamp || a.created_at ? OpsModal.fmtDateTime(a.timestamp || a.created_at) : '—')}
       ${field('Assigned To', _dash(a.assigned_team))}
       ${a.time_to_overflow_min ? field('Time to Overflow', `<span style="color:var(--err);font-weight:700;">${a.time_to_overflow_min} min</span>`) : ''}
@@ -508,8 +508,8 @@ const OpsAlerts = (function () {
       </div>
       ${s('Alert Information', info)}
       ${s('Map', a.latitude && a.longitude ? `<div class="al-grid">${field('Latitude', a.latitude)}${field('Longitude', a.longitude)}</div><div style="margin-top:10px;"><a class="btn-ghost" style="text-decoration:none;padding:7px 12px;" onclick="switchTab('dashboard')">Open on operational map →</a></div>` : '<div class="al-empty">No coordinates on this alert.</div>', !(a.latitude && a.longitude))}
-      ${s('Related Device', a.sensor_name || a.device_name ? `<div class="al-grid">${field('Device', a.sensor_name || a.device_name)}</div>` : '<div class="al-empty">No device linked.</div>')}
-      ${s('Related Property', a.property || a.property_name || a.site_name ? `<div class="al-grid">${field('Property', a.property || a.property_name || a.site_name)}</div>` : '<div class="al-empty">No property linked.</div>')}
+      ${s('Related Device', a.sensor_id ? `<div class="al-grid">${field('Device', OpsModal.link('sensors', a.sensor_id, a.sensor_name || a.sensor_id))}</div>` : '<div class="al-empty">No device linked.</div>')}
+      ${s('Related Property', a.property_id ? `<div class="al-grid">${field('Property', OpsModal.link('properties', a.property_id, a.property_name || a.property || a.property_id))}</div>` : '<div class="al-empty">No property linked.</div>')}
       ${s('Timeline', `<div class="al-empty">Triggered ${a.timestamp || a.created_at ? OpsModal.fmtDateTime(a.timestamp || a.created_at) : '—'}${a.assigned_team ? ' · Assigned to ' + a.assigned_team : ''}${status === 'resolved' ? ' · Resolved' : ''}.</div>`, true)}
       ${s('Resolution', resolution)}
       ${s('Attachments', '<div class="al-empty">No attachments.</div>', true)}

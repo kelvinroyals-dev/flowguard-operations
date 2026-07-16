@@ -163,6 +163,23 @@ const OpsModal = (function () {
     }
   }
 
+  // ── RELATIONSHIP LINK ──────────────────────────────────────────────────
+  // Renders a related record as a bold, clickable cross-module link. Clicking
+  // switches to `tab` and opens the record by id in its own module.
+  // `label` is inserted as-is (apiGet values are already HTML-escaped).
+  function link(tab, id, label, opts = {}) {
+    const text = (label == null || label === '') ? '—' : label;
+    if (id == null || id === '' || text === '—') {
+      return `<span class="fg-link-none">${text}</span>`;
+    }
+    const safeId  = String(id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const safeTab = String(tab).replace(/'/g, "\\'");
+    const cls = 'fg-link' + (opts.block ? ' fg-link-block' : '');
+    return `<a class="${cls}" role="link" tabindex="0"`
+      + ` onclick="fgOpen('${safeTab}','${safeId}')"`
+      + ` onkeydown="if(event.key==='Enter'){fgOpen('${safeTab}','${safeId}')}">${text}</a>`;
+  }
+
   // ── FORM HELPERS ───────────────────────────────────────────────────────
 
   function field(label, name, type = 'text', value = '', options = {}) {
@@ -475,7 +492,7 @@ const OpsModal = (function () {
 
   return {
     open, close, setLoading,
-    field, row, getFormData,
+    field, row, link, getFormData,
     apiGet, apiPost, apiPut, apiDelete,
     escape, sid,
     toast, confirm, _runConfirm,

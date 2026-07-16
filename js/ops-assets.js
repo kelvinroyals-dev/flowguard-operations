@@ -165,13 +165,17 @@ const OpsAssets = (function () {
   function renderDetail(a) {
     const pid = __sid(a.property_id);
     const inspections = a.inspections || [];
-    const nodes = Number(a.node_count) || 0;
+    const devicesArr = a.devices || [];
+    const ticketsArr = a.tickets || [];
+    const nodes = devicesArr.length || Number(a.node_count) || 0;
     const field = (k, v) => `<div class="as-field"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+    const L = OpsModal.link;
 
     const overview = `<div class="as-grid">
       ${field('Asset Name', esc(a.asset_code || a.property_name || '—'))}
       ${field('Category', esc(catLabel(a.property_type)))}
-      ${field('Property', esc(a.parent_name || '—'))}
+      ${field('Property', a.parent_property_id ? L('properties', a.parent_property_id, a.parent_name || a.parent_property_id) : esc(a.parent_name || '—'))}
+      ${field('Client', a.user_id ? L('clients', a.user_id, a.client_name || a.client_email || 'Client') : esc(a.client_name || '—'))}
       ${field('Serial Number', dash(a.serial_number || a.asset_code))}
       ${field('Status', statusOf(a))}
       ${field('Condition', condBadge(a.risk_level))}
@@ -191,7 +195,15 @@ const OpsAssets = (function () {
       <div style="overflow-x:auto;"><table class="ops-table"><thead><tr><th>ID</th><th>Status</th><th>Date</th><th>Team</th><th>Score</th></tr></thead>
       <tbody>${inspections.map(i => `<tr><td style="font-family:var(--ff-m);font-size:var(--fs-sm);">${i.inspection_id}</td><td><span class="status-badge ${i.status === 'completed' ? 'nominal' : 'watch'}">${i.status}</span></td><td style="font-size:var(--fs-sm);">${i.scheduled_date ? new Date(i.scheduled_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</td><td style="font-size:var(--fs-sm);">${i.assigned_team || '—'}</td><td style="font-family:var(--ff-d);font-weight:700;">${i.drainage_condition_score ? i.drainage_condition_score + '/10' : '—'}</td></tr>`).join('')}</tbody></table></div>` : '<div class="as-empty">No maintenance history yet.</div>';
 
-    const relatedDevices = `<div class="as-field"><div class="k">Sentinels monitoring this asset</div><div class="v">${nodes}</div></div><div style="margin-top:10px;"><a class="btn-ghost" style="text-decoration:none;padding:7px 12px;" onclick="OpsNetwork.open('${__sid(a.parent_property_id || a.property_id)}')">Open on network view →</a></div>`;
+    const relatedDevices = devicesArr.length
+      ? `<div style="overflow-x:auto;"><table class="ops-table"><thead><tr><th>Device</th><th>Sentinel ID</th><th>Status</th></tr></thead>
+         <tbody>${devicesArr.map(d => `<tr><td>${L('sensors', d.sensor_id, d.name || d.sensor_id)}</td><td style="font-family:var(--ff-m);font-size:var(--fs-sm);">${d.sensor_id}</td><td style="font-size:var(--fs-sm);">${d.status || '—'}</td></tr>`).join('')}</tbody></table></div>`
+      : '<div class="as-empty">No Sentinel devices monitoring this asset yet.</div>';
+
+    const relatedWork = ticketsArr.length
+      ? `<div style="overflow-x:auto;"><table class="ops-table"><thead><tr><th>Work Order</th><th>Type</th><th>Team</th><th>Status</th></tr></thead>
+         <tbody>${ticketsArr.map(t => `<tr><td>${L('maintenance', t.ticket_id, t.title || t.ticket_id)}</td><td style="font-size:var(--fs-sm);">${(t.work_type || '').replace(/_/g, ' ') || '—'}</td><td>${t.assigned_team ? L('teams', t.assigned_team, t.assigned_team) : '—'}</td><td style="font-size:var(--fs-sm);">${(t.status || '').replace(/_/g, ' ') || '—'}</td></tr>`).join('')}</tbody></table></div>`
+      : '<div class="as-empty">No work orders linked to this asset.</div>';
 
     _container.innerHTML = `
       ${SHARED_CSS}
@@ -209,7 +221,7 @@ const OpsAssets = (function () {
       ${section('Documents', '<div class="as-empty">No documents uploaded.</div>', true)}
       ${section('Photos', '<div class="as-empty">No photos uploaded.</div>', true)}
       ${section('Related Devices', relatedDevices)}
-      ${section('Related Work Orders', '<div class="as-empty">No work orders linked in this response.</div>', true)}
+      ${section('Related Work Orders', relatedWork)}
     `;
   }
 

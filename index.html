@@ -203,6 +203,12 @@
     .tbs-kind { font-size: var(--fs-2xs); font-weight: 800; letter-spacing: .8px; text-transform: uppercase; padding: 2px 6px; border-radius: 5px; background: var(--neon-trace); color: var(--blue-hi); }
     .tbs-sub { margin-left: auto; font-size: var(--fs-2xs); color: var(--ink-3); }
 
+    /* cross-module relationship links (OpsModal.link) */
+    .fg-link { color: var(--blue-hi); font-weight: 700; cursor: pointer; text-decoration: none; border-bottom: 1px solid transparent; transition: border-color .12s, opacity .12s; }
+    .fg-link:hover, .fg-link:focus { border-bottom-color: var(--blue-hi); opacity: .9; outline: none; }
+    .fg-link-block { display: inline-flex; align-items: center; gap: 6px; }
+    .fg-link-none { color: var(--ink-3); font-weight: 600; }
+
     /* storm banner — two-line, with action, like the sample */
     .tb-storm { display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 12px; border-radius: 9px; background: var(--eb); border: 1px solid rgba(248,113,113,.4); color: var(--err); flex-shrink: 1; min-width: 0; }
     .tb-storm > svg { width: 17px; height: 17px; flex-shrink: 0; }
@@ -1354,21 +1360,21 @@
   </script>
   <script src="js/config.js?v=sec2"></script>
 <script src="js/auth.js?v=sec2"></script>
-<script src="js/ops-modal.js?v=sec2"></script>
+<script src="js/ops-modal.js?v=sec8"></script>
 <script src="js/fg-paginator.js?v=sec2"></script>
 <script src="js/ops-dashboard.js?v=sec7"></script>
 <script src="js/ops-user-management.js?v=sec6"></script>
-<script src="js/ops-clients.js?v=sec6"></script>
-<script src="js/ops-properties.js?v=sec6"></script>
-  <script src="js/ops-assets.js?v=sec6"></script>
+<script src="js/ops-clients.js?v=sec8"></script>
+<script src="js/ops-properties.js?v=sec8"></script>
+  <script src="js/ops-assets.js?v=sec8"></script>
   <script src="js/ops-network.js?v=sec2"></script>
   <script src="js/ops-sensors.js?v=sec2"></script>
 <script src="js/ops-teams.js?v=sec6"></script>
-<script src="js/ops-alerts-reports.js?v=sec7"></script>
+<script src="js/ops-alerts-reports.js?v=sec8"></script>
 <script src="js/ops-field-reports.js?v=sec6"></script>
-<script src="js/ops-maintenance.js?v=sec6"></script>
+<script src="js/ops-maintenance.js?v=sec8"></script>
 <script src="js/ops-forecast.js?v=sec6"></script>
-<script src="js/ops-billing.js?v=sec6"></script>
+<script src="js/ops-billing.js?v=sec8"></script>
 <script src="js/ops-sla.js?v=sec6"></script>
 <script src="js/ops-audit.js?v=sec6"></script>
 <script src="js/ops-settings.js?v=sec2"></script>
@@ -2006,7 +2012,44 @@
     });
   });
 
+  // ── Cross-module deep-link ────────────────────────────────────────────
+  // fgOpen(tab, id): switch to a module and open a specific record's detail.
+  // Powers the bold relationship links (OpsModal.link) across detail screens.
+  const FG_OPEN = {
+    clients:         ['OpsClients',        'open'],
+    properties:      ['OpsProperties',     'open'],
+    assets:          ['OpsAssets',         'open'],
+    sensors:         ['OpsSensors',        'viewSensor'],
+    alerts:          ['OpsAlerts',         'open'],
+    billing:         ['OpsBilling',        'open'],
+    'team-members':  ['OpsUserManagement', 'open'],
+    teams:           ['OpsTeams',          'viewTeam'],
+    maintenance:     ['OpsMaintenance',    'openJob'],
+    'field-reports': ['OpsFieldReports',   'openReport'],
+  };
+  function fgOpen(tab, id) {
+    if (!tab || id == null || id === '') return;
+    if (typeof Auth !== 'undefined' && Auth.hasNavAccess && !Auth.hasNavAccess(tab)) {
+      try { OpsModal.toast('You do not have access to that module', 'warning'); } catch (e) {}
+      return;
+    }
+    switchTab(tab);
+    const spec = FG_OPEN[tab];
+    if (!spec) return;
+    const [g, m] = spec;
+    let tries = 12;
+    (function attempt() {
+      const mod = window[g];
+      if (mod && typeof mod[m] === 'function') {
+        try { mod[m](id); } catch (e) { console.error('[FlowGuard] fgOpen', tab, id, e); }
+      } else if (tries-- > 0) {
+        setTimeout(attempt, 60);
+      }
+    })();
+  }
+
   window.switchTab        = switchTab;
+  window.fgOpen           = fgOpen;
   window.reloadTab        = reloadTab;
   window.updateAlertCount = updateAlertCount;
   window.stampSync        = stampSync;
