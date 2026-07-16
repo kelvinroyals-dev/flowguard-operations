@@ -117,10 +117,24 @@ const OpsTeams = (function () {
         <div class="tm-stat total"><div class="tm-stat-label">Total Teams</div><div class="tm-stat-val" id="tm-total">—</div></div>
       </div>
 
-      <div id="tm-content">
-        <div style="padding:48px;text-align:center;color:var(--ink-3);">
-          <div class="loading" style="margin:0 auto 12px;"></div>
-          <div style="font-size:var(--fs-base);">Loading teams…</div>
+      <div class="lv-wrap">
+        <div class="lv-toolbar">
+          <div class="lv-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="tm-search" placeholder="Search teams…" oninput="OpsTeams.searchTeams(this.value)">
+          </div>
+          <div class="lv-filters">
+            <div class="lv-filter active" id="tmf-all" onclick="OpsTeams.filterStatus('all')">All</div>
+            <div class="lv-filter" id="tmf-on_site" onclick="OpsTeams.filterStatus('on_site')">On site</div>
+            <div class="lv-filter" id="tmf-en_route" onclick="OpsTeams.filterStatus('en_route')">En route</div>
+            <div class="lv-filter" id="tmf-idle" onclick="OpsTeams.filterStatus('idle')">Idle</div>
+          </div>
+        </div>
+        <div id="tm-body">
+          <div style="padding:48px;text-align:center;color:var(--ink-3);">
+            <div class="loading" style="margin:0 auto 12px;"></div>
+            <div style="font-size:var(--fs-base);">Loading teams…</div>
+          </div>
         </div>
       </div>
     `;
@@ -135,14 +149,9 @@ const OpsTeams = (function () {
       _teams     = res.data || res.teams || [];
       if (!Array.isArray(_teams)) _teams = [];
       updateStats(_teams);
-      if (_teams.length > 12) {
-        _pg = FGPaginator.create(_teams, { pageSize: 12, containerId: 'tm-content' });
-        _pg.render(renderTeams);
-      } else {
-        renderTeams(_teams);
-      }
+      applyTeams();
     } catch (err) {
-      document.getElementById('tm-content').innerHTML = `
+      document.getElementById('tm-body').innerHTML = `
         <div style="padding:48px;text-align:center;">
           <div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load teams</div>
           <div style="color:var(--ink-3);font-size:var(--fs-sm);margin-bottom:16px;">${err.message}</div>
@@ -211,50 +220,67 @@ const OpsTeams = (function () {
 
   // ── RENDER CARDS ─────────────────────────────────────────────────────
 
+  let _tterm = '', _tstatus = 'all';
+  function searchTeams(q) { _tterm = q.trim().toLowerCase(); applyTeams(); }
+  function filterStatus(k) {
+    _tstatus = k;
+    ['all', 'on_site', 'en_route', 'idle'].forEach(x => {
+      const el = document.getElementById('tmf-' + x);
+      if (el) el.classList.toggle('active', x === k);
+    });
+    applyTeams();
+  }
+  function applyTeams() {
+    let rows = _teams;
+    if (_tstatus !== 'all') rows = rows.filter(t => {
+      const s = (t.status || '').toLowerCase();
+      return _tstatus === 'idle' ? (s !== 'on_site' && s !== 'en_route') : s === _tstatus;
+    });
+    if (_tterm) rows = rows.filter(t => `${t.team_name || t.name || ''} ${t.team_id || t.id || ''}`.toLowerCase().includes(_tterm));
+    renderTeams(rows);
+  }
+
   function renderTeams(teams) {
-    const el = document.getElementById('tm-content');
+    const el = document.getElementById('tm-body');
     if (!el) return;
 
     if (!teams || teams.length === 0) {
       el.innerHTML = `
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:60px;text-align:center;box-shadow:var(--sh-xs);">
-          <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" style="margin:0 auto 14px;opacity:.25;display:block;"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0112 0v2"/></svg>
-          <div style="font-size:var(--fs-md);font-weight:600;color:var(--ink-2);margin-bottom:8px;">No teams yet</div>
-          <button class="btn-primary" onclick="OpsTeams.createTeam()">Create First Team</button>
+        <div style="padding:48px;text-align:center;color:var(--ink-3);">
+          <div style="font-size:var(--fs-md);font-weight:600;color:var(--ink-2);margin-bottom:8px;">${_teams.length ? 'No teams match this filter' : 'No teams yet'}</div>
+          ${_teams.length ? '' : '<button class="btn-primary" onclick="OpsTeams.createTeam()">Create First Team</button>'}
         </div>`;
       return;
     }
 
-    // Columns per spec: Team, Members, Supervisor, Active Jobs, Vehicle, Availability
     el.innerHTML = `
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r,14px);overflow:hidden;box-shadow:var(--sh-xs);">
-        <div style="overflow-x:auto;">
-          <table class="ops-table">
-            <thead><tr><th>Team</th><th style="text-align:center;">Members</th><th>Supervisor</th><th style="text-align:center;">Active Jobs</th><th>Vehicle</th><th>Availability</th></tr></thead>
-            <tbody>
-              ${teams.map(t => {
-                const id = t.team_id || t.id;
-                const name = t.team_name || t.name || id || '—';
-                const sc = statusConfig(t.status);
-                const members = t.members || [];
-                const supervisor = t.supervisor || t.lead_name || (members.find(m => m.team_role === 'lead') || {}).full_name;
-                return `<tr class="clickable" onclick="OpsTeams.viewTeam('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsTeams.viewTeam('${id}')}">
-                  <td>
-                    <div style="display:flex;align-items:center;gap:10px;">
-                      <div class="tm-card-avatar" style="width:30px;height:30px;font-size:var(--fs-sm);background:${teamColor(name)};">${initials(name)}</div>
-                      <div><div class="tm-card-name" style="font-size:var(--fs-md);">${name}</div><div class="tm-card-id" style="font-size:var(--fs-xs);color:var(--ink-3);font-family:var(--ff-m);">${id}</div></div>
-                    </div>
-                  </td>
-                  <td class="num" style="text-align:center;font-weight:700;">${members.length}</td>
-                  <td style="font-size:var(--fs-sm);">${_dash(supervisor)}</td>
-                  <td style="text-align:center;">${t.active_jobs != null ? t.active_jobs : '<span style="color:var(--ink-4);">—</span>'}</td>
-                  <td style="font-size:var(--fs-sm);">${_dash(t.vehicle)}</td>
-                  <td><span class="status-badge ${sc.badge}">${sc.label}</span></td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>
+      <div class="lv-scroll">
+        <table class="lv-table">
+          <thead><tr><th>Team</th><th>Members</th><th>Supervisor</th><th>Active jobs</th><th>Vehicle</th><th>Availability</th></tr></thead>
+          <tbody>
+            ${teams.map(t => {
+              const id = t.team_id || t.id;
+              const name = t.team_name || t.name || id || '—';
+              const sc = statusConfig(t.status);
+              const scls = { on_site: 'ok', en_route: 'warn' }[(t.status || '').toLowerCase()] || 'neutral';
+              const members = t.members || [];
+              const supervisor = t.supervisor || t.lead_name || (members.find(m => m.team_role === 'lead') || {}).full_name;
+              return `<tr class="clickable" onclick="OpsTeams.viewTeam('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsTeams.viewTeam('${id}')}">
+                <td>
+                  <div class="lv-name-cell">
+                    <div class="lv-avatar" style="background:${teamColor(name)};">${initials(name)}</div>
+                    <div style="min-width:0;"><div class="lv-name">${name}</div><span class="lv-source">${id}</span></div>
+                  </div>
+                </td>
+                <td class="lv-mono">${members.length}</td>
+                <td>${_dash(supervisor)}</td>
+                <td class="lv-mono">${t.active_jobs != null ? t.active_jobs : '<span class="lv-dash">—</span>'}</td>
+                <td>${_dash(t.vehicle)}</td>
+                <td><span class="lv-status ${scls}">${sc.label}</span></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
       </div>`;
   }
 
@@ -615,7 +641,7 @@ const OpsTeams = (function () {
   }
 
   return {
-    render, back, manageMembers, addMemberToTeam, confirmAddMember,
+    render, back, searchTeams, filterStatus, manageMembers, addMemberToTeam, confirmAddMember,
     removeMember, viewTeam, dispatch, confirmDispatch,
     editStatus, confirmStatus, createTeam, confirmCreate, deleteTeam,
   };

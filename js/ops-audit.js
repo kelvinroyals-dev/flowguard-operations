@@ -107,25 +107,23 @@ const OpsAudit = (function () {
         </button>
       </div>
 
-      <!-- Filters -->
-      <div class="au-filters">
-        <span class="au-filter-label">Filter by</span>
-        <select class="au-filter-input" id="au-action-filter" onchange="OpsAudit.applyFilters()">
-          <option value="">All actions</option>
-          ${Object.entries(ACTION_CONFIG).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
-        </select>
-        <input class="au-filter-input" id="au-actor-filter" placeholder="Actor name…" oninput="OpsAudit.applyFilters()" style="width:160px;">
-        <input class="au-filter-input" type="date" id="au-from-filter" onchange="OpsAudit.applyFilters()" title="From date">
-        <span style="font-size:var(--fs-sm);color:var(--ink-3);">→</span>
-        <input class="au-filter-input" type="date" id="au-to-filter" onchange="OpsAudit.applyFilters()" title="To date">
-        <button class="btn-ghost" onclick="OpsAudit.clearFilters()" style="font-size:var(--fs-sm);padding:6px 12px;">Clear</button>
-      </div>
-
-      <!-- Log -->
-      <div class="au-card">
-        <div class="au-card-head">
-          <div class="au-card-title">Activity</div>
-          <span id="au-count" style="font-size:var(--fs-sm);color:var(--ink-3);font-family:var(--ff-m);"></span>
+      <div class="lv-wrap">
+        <div class="lv-toolbar">
+          <div class="lv-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="au-actor-filter" placeholder="Search actor…" oninput="OpsAudit.applyFilters()">
+          </div>
+          <div class="lv-toolbar-right">
+            <span id="au-count" style="font-size:var(--fs-xs);color:var(--ink-3);font-family:var(--ff-m);"></span>
+            <select class="au-filter-input" id="au-action-filter" onchange="OpsAudit.applyFilters()">
+              <option value="">All actions</option>
+              ${Object.entries(ACTION_CONFIG).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
+            </select>
+            <input class="au-filter-input" type="date" id="au-from-filter" onchange="OpsAudit.applyFilters()" title="From date">
+            <span style="font-size:var(--fs-sm);color:var(--ink-3);">→</span>
+            <input class="au-filter-input" type="date" id="au-to-filter" onchange="OpsAudit.applyFilters()" title="To date">
+            <button class="btn-ghost" onclick="OpsAudit.clearFilters()" style="font-size:var(--fs-sm);padding:6px 12px;">Clear</button>
+          </div>
         </div>
         <div id="au-log-body">
           <div style="padding:48px;text-align:center;color:var(--ink-3);">
@@ -211,23 +209,26 @@ const OpsAudit = (function () {
       const r = (log.result || (String(log.action || '').includes('fail') ? 'failure' : 'success')).toLowerCase();
       return `<span class="status-badge ${r.includes('fail') || r.includes('deny') ? 'critical' : 'nominal'}">${r}</span>`;
     };
-    // Columns per spec: Date, User, Action, Module, Object, IP Address, Result
+    const resultPill = log => {
+      const r = (log.result || (String(log.action || '').includes('fail') ? 'failure' : 'success')).toLowerCase();
+      const bad = r.includes('fail') || r.includes('deny');
+      return `<span class="lv-status ${bad ? 'danger' : 'ok'}">${r}</span>`;
+    };
     el.innerHTML = `
-      <style>.ops-table tbody tr.clickable{cursor:pointer;transition:background .12s;} .ops-table tbody tr.clickable:hover{background:var(--surface-2,#f2f8fb);}</style>
-      <div style="overflow-x:auto;">
-        <table class="ops-table">
-          <thead><tr><th>Date</th><th>User</th><th>Action</th><th>Module</th><th>Object</th><th>IP Address</th><th>Result</th></tr></thead>
+      <div class="lv-scroll">
+        <table class="lv-table">
+          <thead><tr><th>Date</th><th>User</th><th>Action</th><th>Module</th><th>Object</th><th>IP address</th><th>Result</th></tr></thead>
           <tbody>
             ${items.map(log => {
               const ac = getActionConfig(log.action);
               return `<tr class="clickable" onclick="OpsAudit.viewEntry('${log.id || ''}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsAudit.viewEntry('${log.id || ''}')}">
-                <td style="font-size:var(--fs-sm);font-family:var(--ff-m);">${OpsModal.fmtDateTime(log.created_at)}</td>
-                <td style="font-size:var(--fs-sm);">${_dash(log.actor_name || 'System')}</td>
+                <td class="lv-mono">${OpsModal.fmtDateTime(log.created_at)}</td>
+                <td>${_dash(log.actor_name || 'System')}</td>
                 <td><span class="au-action-badge" style="background:${ac.bg};color:${ac.color};">${ac.label}</span></td>
-                <td style="font-size:var(--fs-sm);">${_dash(log.module || log.target_type)}</td>
-                <td style="font-size:var(--fs-sm);">${_dash(log.target_label || log.target_id)}</td>
-                <td style="font-size:var(--fs-sm);font-family:var(--ff-m);">${_dash(log.ip_address)}</td>
-                <td>${resultBadge(log)}</td>
+                <td>${_dash(log.module || log.target_type)}</td>
+                <td>${_dash(log.target_label || log.target_id)}</td>
+                <td class="lv-mono">${_dash(log.ip_address)}</td>
+                <td>${resultPill(log)}</td>
               </tr>`;
             }).join('')}
           </tbody>

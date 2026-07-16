@@ -110,10 +110,13 @@ const OpsUserManagement = (function () {
         </button>
       </div>
 
-      <div class="um-table-card">
-        <div class="um-table-head">
-          <div class="um-table-title">All Staff</div>
-          <div class="um-controls">
+      <div class="lv-wrap">
+        <div class="lv-toolbar">
+          <div class="lv-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="um-search" placeholder="Search members…" oninput="OpsUserManagement.search(this.value)">
+          </div>
+          <div class="lv-toolbar-right">
             <select class="um-filter" id="um-team-filter" onchange="OpsUserManagement.filterTeam(this.value)">
               <option value="">All Teams</option>
             </select>
@@ -204,10 +207,13 @@ const OpsUserManagement = (function () {
     applyFilters();
   }
 
+  let _term = '';
+  function search(q) { _term = q.trim().toLowerCase(); applyFilters(); }
   function applyFilters() {
     let filtered = _users;
     if (_activeRole) filtered = filtered.filter(u => (u.role_id || u.role) === _activeRole);
     if (_activeTeam) filtered = filtered.filter(u => String(u.team_id || u.team?.team_id || '') === String(_activeTeam));
+    if (_term) filtered = filtered.filter(u => `${u.full_name || u.name || ''} ${u.email || ''}`.toLowerCase().includes(_term));
     if (_pg) _pg.update(filtered);
     else renderTable(filtered);
   }
@@ -261,14 +267,13 @@ const OpsUserManagement = (function () {
       return;
     }
 
-    // Columns per spec: Name, Role, Team, Phone, Email, Availability, Current Assignment, Status
     el.innerHTML = `
-      <div style="overflow-x:auto;">
-        <table class="ops-table">
+      <div class="lv-scroll">
+        <table class="lv-table">
           <thead>
             <tr>
-              <th>Name</th><th>Role</th><th>Team</th><th>Phone</th><th>Email</th>
-              <th>Availability</th><th>Current Assignment</th><th>Status</th>
+              <th>Name</th><th>Role</th><th>Team</th><th>Phone</th>
+              <th>Availability</th><th>Current assignment</th><th>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -282,18 +287,17 @@ const OpsUserManagement = (function () {
               const avail    = u.availability || (isActive ? 'Available' : '—');
               return `<tr class="clickable" onclick="OpsUserManagement.open('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsUserManagement.open('${id}')}">
                 <td>
-                  <div class="um-user-wrap">
-                    <div class="um-avatar" style="background:${avatarColor(name)};">${initials(name)}</div>
-                    <div><div class="um-user-name">${name}</div><div class="um-user-email">${u.email || ''}</div></div>
+                  <div class="lv-name-cell">
+                    <div class="lv-avatar" style="background:${avatarColor(name)};">${initials(name)}</div>
+                    <div style="min-width:0;"><div class="lv-name">${name}</div><span class="lv-source">${u.email || ''}</span></div>
                   </div>
                 </td>
                 <td><span class="um-role-chip" style="background:${rc.bg};color:${rc.color};">${rc.label}</span></td>
                 <td>${teamName ? `<span class="um-team-chip">${teamName}</span>` : `<span class="um-team-chip unassigned">Unassigned</span>`}</td>
-                <td style="font-size:var(--fs-sm);">${_dash(u.phone)}</td>
-                <td style="font-size:var(--fs-sm);">${_dash(u.email)}</td>
-                <td style="font-size:var(--fs-sm);">${_dash(avail)}</td>
-                <td style="font-size:var(--fs-sm);">${_dash(u.current_assignment)}</td>
-                <td><span class="status-badge ${isActive ? 'nominal' : 'offline'}">${u.status || 'active'}</span></td>
+                <td>${_dash(u.phone)}</td>
+                <td>${_dash(avail)}</td>
+                <td>${_dash(u.current_assignment)}</td>
+                <td><span class="lv-status ${isActive ? 'ok' : 'neutral'}">${u.status || 'active'}</span></td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -514,7 +518,7 @@ const OpsUserManagement = (function () {
   }
 
   return {
-    render, open, back, filterRole, filterTeam,
+    render, open, back, search, filterRole, filterTeam,
     openInvite, sendInvite,
     editUser, saveEdit,
     deactivateUser, reactivateUser, deleteUser,

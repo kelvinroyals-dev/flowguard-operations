@@ -167,14 +167,17 @@ const OpsBilling = (function () {
       </div>
 
       <!-- Invoice table -->
-      <div class="bl-table-card">
-        <div class="bl-table-head">
-          <div class="bl-card-title">All Invoices</div>
-          <div class="bl-filter-tabs">
-            <button class="bl-filter-btn active"   id="blf-all"     onclick="OpsBilling.setFilter('all')">All</button>
-            <button class="bl-filter-btn overdue"  id="blf-overdue" onclick="OpsBilling.setFilter('overdue')">Overdue</button>
-            <button class="bl-filter-btn pending"  id="blf-pending" onclick="OpsBilling.setFilter('pending')">Pending</button>
-            <button class="bl-filter-btn paid"     id="blf-paid"    onclick="OpsBilling.setFilter('paid')">Paid</button>
+      <div class="lv-wrap">
+        <div class="lv-toolbar">
+          <div class="lv-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="bl-search" placeholder="Search invoices…" oninput="OpsBilling.search(this.value)">
+          </div>
+          <div class="lv-filters">
+            <div class="lv-filter active" id="blf-all"     onclick="OpsBilling.setFilter('all')">All</div>
+            <div class="lv-filter"        id="blf-overdue" onclick="OpsBilling.setFilter('overdue')">Overdue</div>
+            <div class="lv-filter"        id="blf-pending" onclick="OpsBilling.setFilter('pending')">Pending</div>
+            <div class="lv-filter"        id="blf-paid"    onclick="OpsBilling.setFilter('paid')">Paid</div>
           </div>
         </div>
         <div id="bl-table-body">
@@ -290,18 +293,22 @@ const OpsBilling = (function () {
 
   // ── INVOICE TABLE ─────────────────────────────────────────────────────
 
+  let _term = '';
+  function _applyBilling() {
+    let rows = _filter === 'all' ? _invoices : _invoices.filter(i => (i.payment_status || '').toLowerCase() === _filter);
+    if (_term) rows = rows.filter(i => `${i.invoice_id || i.id || ''} ${i.client_name || ''} ${i.property_name || ''}`.toLowerCase().includes(_term));
+    if (_pg) _pg.update(rows);
+    else renderInvoiceTable(rows);
+  }
   function setFilter(f) {
     _filter = f;
     ['all','overdue','pending','paid'].forEach(k => {
       const btn = document.getElementById(`blf-${k}`);
       if (btn) btn.classList.toggle('active', k === f);
     });
-    const filtered = f === 'all'
-      ? _invoices
-      : _invoices.filter(i => (i.payment_status || '').toLowerCase() === f);
-    if (_pg) _pg.update(filtered);
-    else renderInvoiceTable(filtered);
+    _applyBilling();
   }
+  function search(q) { _term = q.trim().toLowerCase(); _applyBilling(); }
 
   function renderInvoiceTable(invoices) {
     const el = document.getElementById('bl-table-body');
@@ -315,35 +322,37 @@ const OpsBilling = (function () {
       return;
     }
 
-    // Columns per spec: Invoice, Client, Property, Amount, Due Date, Status, Payment Method
+    const L = OpsModal.link;
     el.innerHTML = `
-      <div style="overflow-x:auto;">
-        <table class="ops-table">
+      <div class="lv-scroll">
+        <table class="lv-table">
           <thead>
             <tr>
               <th>Invoice</th>
               <th>Client</th>
               <th>Property</th>
-              <th style="text-align:right;">Amount</th>
-              <th>Due Date</th>
+              <th>Amount</th>
+              <th>Due date</th>
+              <th>Method</th>
               <th>Status</th>
-              <th>Payment Method</th>
             </tr>
           </thead>
           <tbody>
             ${invoices.map(inv => {
               const id     = inv.invoice_id || inv.id;
               const status = (inv.payment_status || 'pending').toLowerCase();
-              const badge  = { paid:'nominal', overdue:'critical', pending:'watch', cancelled:'offline' }[status] || 'watch';
+              const cls    = { paid:'ok', overdue:'danger', pending:'warn', cancelled:'neutral' }[status] || 'warn';
               const isOverdue = status === 'overdue';
+              const clientCell = inv.user_id ? L('clients', inv.user_id, inv.client_name || 'Client') : dash(inv.client_name);
+              const propCell = inv.property_id ? L('properties', inv.property_id, inv.property_name || inv.property_id) : dash(inv.property_name);
               return `<tr class="clickable" onclick="OpsBilling.open('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsBilling.open('${id}')}">
-                <td style="font-family:var(--ff-m);font-size:var(--fs-sm);" class="bright">${id}</td>
-                <td>${dash(inv.client_name)}</td>
-                <td style="font-size:var(--fs-sm);">${dash(inv.property_name)}</td>
-                <td style="text-align:right;font-family:var(--ff-d);font-weight:800;color:${isOverdue ? 'var(--err)' : 'var(--ink)'};">₦${Number(inv.total_amount || 0).toLocaleString()}</td>
-                <td style="font-size:var(--fs-sm);font-family:var(--ff-m);${isOverdue ? 'color:var(--err);font-weight:700;' : ''}">${fmtDate(inv.due_date)}</td>
-                <td><span class="status-badge ${badge}">${status}</span></td>
-                <td style="font-size:var(--fs-sm);">${dash(inv.payment_method)}</td>
+                <td class="lv-mono" style="color:var(--ink);font-weight:700;">${id}</td>
+                <td>${clientCell}</td>
+                <td>${propCell}</td>
+                <td class="lv-mono" style="font-weight:700;color:${isOverdue ? 'var(--err)' : 'var(--ink)'};">₦${Number(inv.total_amount || 0).toLocaleString()}</td>
+                <td class="lv-mono" style="${isOverdue ? 'color:var(--err);font-weight:700;' : ''}">${fmtDate(inv.due_date)}</td>
+                <td>${dash(inv.payment_method)}</td>
+                <td><span class="lv-status ${cls}">${status}</span></td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -485,6 +494,6 @@ const OpsBilling = (function () {
     return Math.floor((Date.now() - new Date(ds).getTime()) / 86400000);
   }
 
-  return { render, setFilter, open, back, sendReminder, markPaid };
+  return { render, setFilter, search, open, back, sendReminder, markPaid };
 
 })();

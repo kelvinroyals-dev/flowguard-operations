@@ -98,44 +98,45 @@ const OpsMaintenance = (function () {
   ];
 
   function drawBoard() {
-    const board = document.getElementById('mp-board');
+    const board = document.getElementById('mp-board-body');
     if (!board) return;
     if (!_jobs.length) {
       board.innerHTML = `<div class="mp-empty"><b>No scheduled work.</b><br>Jobs appear here once they carry a work type, a crew, or a scheduled date.<br><br><button class="mp-add" onclick="OpsMaintenance.newJob()">+ New Job</button></div>`;
       return;
     }
-    const rows = _jobs.slice().sort((a, b) => new Date(a.scheduled_date || a.created_at) - new Date(b.scheduled_date || b.created_at));
+    let rows = _jobs.slice().sort((a, b) => new Date(a.scheduled_date || a.created_at) - new Date(b.scheduled_date || b.created_at));
+    if (_mstatus !== 'all') rows = rows.filter(j => (j.status || '') === _mstatus);
+    if (_mterm) rows = rows.filter(j => `${j.ticket_id || ''} ${j.property_name || ''} ${j.title || ''} ${j.work_type || ''} ${j.team_name || ''}`.toLowerCase().includes(_mterm));
     const pc = p => PRIORITY_COLOR[p] || PRIORITY_COLOR.normal;
-    const statusBadge = s => { const m = { scheduled: 'watch', in_progress: 'warning', resolved: 'nominal', closed: 'nominal' }; return `<span class="status-badge ${m[s] || 'offline'}">${(s || '').replace(/_/g, ' ') || '—'}</span>`; };
-    // Columns per spec: Work Order, Property, Location, Task, Priority, Assigned Team, Due Date, Status, Estimated Duration, Progress
+    const statusPill = s => { const m = { scheduled: 'warn', in_progress: 'warn', resolved: 'ok', closed: 'ok' }; return `<span class="lv-status ${m[s] || 'neutral'}">${(s || '').replace(/_/g, ' ') || '—'}</span>`; };
+    if (!rows.length) { board.innerHTML = `<div class="mp-empty">No work orders match this filter.</div>`; return; }
+    const L = OpsModal.link;
     board.innerHTML = `
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r,14px);box-shadow:var(--sh-xs);overflow:hidden;">
-        <div style="overflow-x:auto;">
-          <table class="ops-table">
-            <thead><tr>
-              <th>Work Order</th><th>Property</th><th>Location</th><th>Task</th><th>Priority</th>
-              <th>Assigned Team</th><th>Due Date</th><th>Status</th><th>Est. Duration</th><th>Progress</th>
-            </tr></thead>
-            <tbody>
-              ${rows.map(j => {
-                const overdue = j.status === 'scheduled' && j.scheduled_date && new Date(j.scheduled_date).getTime() < Date.now();
-                const prog = progressOf(j.status);
-                return `<tr class="clickable" onclick="OpsMaintenance.openJob('${OpsModal.sid(j.ticket_id)}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsMaintenance.openJob('${OpsModal.sid(j.ticket_id)}')}">
-                  <td style="font-family:var(--ff-m);font-size:var(--fs-sm);" class="bright">${esc(j.ticket_id)}</td>
-                  <td style="font-size:var(--fs-sm);">${esc(_dash(j.property_name))}</td>
-                  <td style="font-size:var(--fs-sm);">${esc(_dash(j.location || j.city))}</td>
-                  <td style="font-size:var(--fs-sm);">${esc(j.title || WORK_TYPE_LABEL[j.work_type] || (j.work_type || '').replace(/_/g, ' ') || '—')}</td>
-                  <td><span style="color:${pc(j.priority)};background:${pc(j.priority)}18;padding:2px 8px;border-radius:5px;font-size:var(--fs-2xs);font-weight:700;">${esc(j.priority || 'normal')}</span></td>
-                  <td style="font-size:var(--fs-sm);">${esc(j.team_name || '')}${j.team_name ? '' : '<span style="color:var(--ink-4);">Unassigned</span>'}</td>
-                  <td style="font-size:var(--fs-sm);font-family:var(--ff-m);${overdue ? 'color:var(--err);font-weight:700;' : ''}">${j.scheduled_date ? OpsModal.fmtDate(j.scheduled_date) : '—'}${overdue ? ' · overdue' : ''}</td>
-                  <td>${statusBadge(j.status)}</td>
-                  <td style="font-size:var(--fs-sm);">${j.estimated_hours ? j.estimated_hours + 'h' : '—'}</td>
-                  <td><div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;min-width:40px;height:5px;border-radius:3px;background:var(--surface-3);overflow:hidden;"><div style="height:100%;width:${prog}%;background:var(--ok);"></div></div><span style="font-size:var(--fs-2xs);color:var(--ink-3);font-family:var(--ff-m);">${prog}%</span></div></td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>
+      <div class="lv-scroll">
+        <table class="lv-table">
+          <thead><tr>
+            <th>Work order</th><th>Property</th><th>Task</th><th>Priority</th>
+            <th>Team</th><th>Due date</th><th>Status</th><th>Progress</th>
+          </tr></thead>
+          <tbody>
+            ${rows.map(j => {
+              const overdue = j.status === 'scheduled' && j.scheduled_date && new Date(j.scheduled_date).getTime() < Date.now();
+              const prog = progressOf(j.status);
+              const propCell = j.property_id ? L('properties', j.property_id, j.property_name || j.property_id) : esc(_dash(j.property_name));
+              const teamCell = j.assigned_team ? L('teams', j.assigned_team, j.team_name || j.assigned_team) : (j.team_name ? esc(j.team_name) : '<span class="lv-dash">Unassigned</span>');
+              return `<tr class="clickable" onclick="OpsMaintenance.openJob('${OpsModal.sid(j.ticket_id)}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsMaintenance.openJob('${OpsModal.sid(j.ticket_id)}')}">
+                <td class="lv-mono" style="color:var(--ink);font-weight:700;">${esc(j.ticket_id)}</td>
+                <td>${propCell}</td>
+                <td>${esc(j.title || WORK_TYPE_LABEL[j.work_type] || (j.work_type || '').replace(/_/g, ' ') || '—')}</td>
+                <td><span style="color:${pc(j.priority)};background:${pc(j.priority)}18;padding:2px 8px;border-radius:5px;font-size:var(--fs-2xs);font-weight:700;">${esc(j.priority || 'normal')}</span></td>
+                <td>${teamCell}</td>
+                <td class="lv-mono" style="${overdue ? 'color:var(--err);font-weight:700;' : ''}">${j.scheduled_date ? OpsModal.fmtDate(j.scheduled_date) : '—'}${overdue ? ' · overdue' : ''}</td>
+                <td>${statusPill(j.status)}</td>
+                <td><div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;min-width:40px;height:5px;border-radius:3px;background:var(--surface-3);overflow:hidden;"><div style="height:100%;width:${prog}%;background:var(--ok);"></div></div><span style="font-size:var(--fs-2xs);color:var(--ink-3);font-family:var(--ff-m);">${prog}%</span></div></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
       </div>`;
   }
 
@@ -175,7 +176,32 @@ const OpsMaintenance = (function () {
         <button class="mp-add" onclick="OpsMaintenance.newJob()">+ New Job</button>
       </div>
       <div id="mp-kpis" class="mp-kpis-wrap"></div>
-      <div id="mp-board" class="mp-board"><div class="mp-empty">Loading the planner…</div></div>`;
+      <div class="lv-wrap">
+        <div class="lv-toolbar">
+          <div class="lv-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="mp-search" placeholder="Search work orders…" oninput="OpsMaintenance.search(this.value)">
+          </div>
+          <div class="lv-filters">
+            <div class="lv-filter active" id="mpf-all" onclick="OpsMaintenance.filterStatus('all')">All</div>
+            <div class="lv-filter" id="mpf-scheduled" onclick="OpsMaintenance.filterStatus('scheduled')">Scheduled</div>
+            <div class="lv-filter" id="mpf-in_progress" onclick="OpsMaintenance.filterStatus('in_progress')">In progress</div>
+            <div class="lv-filter" id="mpf-resolved" onclick="OpsMaintenance.filterStatus('resolved')">Complete</div>
+          </div>
+        </div>
+        <div id="mp-board-body"><div class="mp-empty">Loading the planner…</div></div>
+      </div>`;
+  }
+
+  let _mterm = '', _mstatus = 'all';
+  function search(q) { _mterm = q.trim().toLowerCase(); drawBoard(); }
+  function filterStatus(k) {
+    _mstatus = k;
+    ['all', 'scheduled', 'in_progress', 'resolved'].forEach(x => {
+      const el = document.getElementById('mpf-' + x);
+      if (el) el.classList.toggle('active', x === k);
+    });
+    drawBoard();
   }
 
   // ── FULL DETAIL SCREEN (no pop-up) ──
@@ -349,5 +375,5 @@ const OpsMaintenance = (function () {
     </style>`;
   }
 
-  return { render, back, newJob, submitNewJob, openJob, advance, completeJob };
+  return { render, back, search, filterStatus, newJob, submitNewJob, openJob, advance, completeJob };
 })();
