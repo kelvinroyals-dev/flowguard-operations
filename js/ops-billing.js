@@ -11,7 +11,8 @@ const OpsBilling = (function () {
   'use strict';
 
   let _invoices = [], _container = null, _filter = 'all', _term = '';
-  let _props = [], _draft = [];
+  let _props = [], _draft = [], _editId = null;
+  const DEFAULT_VAT = 7.5;
 
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const dash = v => (v == null || v === '') ? '—' : v;
@@ -254,6 +255,8 @@ const OpsBilling = (function () {
       ${F('Property', propLink)}
       ${F('Client', clientLink)}
       ${F('Subtotal', NGN(inv.subtotal != null ? inv.subtotal : total))}
+      ${F('VAT rate', (inv.vat_rate != null ? inv.vat_rate : 7.5) + '%')}
+      ${F('VAT amount', NGN(inv.vat_amount || 0))}
       ${F('Total amount', NGN(total))}
       ${F('Balance due', `<b style="color:${balance > 0 ? 'var(--err)' : 'var(--ok)'}">${NGN(balance)}</b>`)}
       ${F('Issue date', `<span class="lv-mono">${fmtDate(inv.issue_date || inv.created_at)}</span>`)}
@@ -309,7 +312,7 @@ const OpsBilling = (function () {
       avatar: { text: '₦', bg: 'linear-gradient(135deg,#16a8d3,#0d7fa0)' },
       chips: [{ cls: chipCls, label: pm.l, dot: true }],
       meta: [['Property', esc(inv.property_name || '—')], ['Client', inv.client_name ? esc(inv.client_name) : 'Unlinked'], ['Issued', fmtDate(inv.issue_date || inv.created_at)], ['Due', fmtDate(inv.due_date)]],
-      actions: `<button class="fgd-btn" onclick="window.print()">Download PDF</button>${eff !== 'paid' ? `<button class="fgd-btn" style="background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;" onclick="OpsBilling.recordPayment('${id}')">Record payment</button>` : ''}`,
+      actions: `<button class="fgd-btn" onclick="window.print()">Download PDF</button><button class="fgd-btn" onclick="OpsBilling.openEdit('${id}')">Edit</button>${eff !== 'paid' ? `<button class="fgd-btn" style="background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;" onclick="OpsBilling.recordPayment('${id}')">Record payment</button>` : ''}`,
       sections: [
         { id: 'details', title: 'Invoice details', meta: 'invoices', body: detailsBody },
         { id: 'services', title: 'Services', meta: 'invoices.line_items (jsonb)', body: servicesBody },
@@ -336,24 +339,58 @@ const OpsBilling = (function () {
       });
   }
 
-  // ────────────────────────────────────────────────── CREATE
-  async function openCreate() {
-    if (!_container) return;
-    _draft = [{ description: '', qty: 1, unit_price: 0, amount: 0 }];
-    _container.innerHTML = BL_CSS + `<div style="padding:60px;text-align:center;color:var(--ink-3);">Loading…</div>`;
+  // ────────────────────────────────────────────────── CREATE / EDIT
+  async function ensureProps() {
+    if (_props.length) return;
     try {
       const res = await OpsModal.apiGet('/properties/all');
       _props = (res.data || []).filter(p => p.asset_class === 'customer_property' || p.asset_class == null);
     } catch { _props = []; }
-    const today = new Date().toISOString().slice(0, 10);
-    const due = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10);
+  }
+
+  async function openCreate() {
+    if (!_container) return;
+    _editId = null;
+    _draft = [{ description: '', qty: 1, unit_price: 0, amount: 0 }];
+    _container.innerHTML = BL_CSS + `<div style="padding:60px;text-align:center;color:var(--ink-3);">Loading…</div>`;
+    await ensureProps();
+    renderForm(null);
+  }
+
+  async function openEdit(id) {
+    if (!_container) return;
+    _container.innerHTML = BL_CSS + `<div style="padding:60px;text-align:center;color:var(--ink-3);">Loading…</div>`;
+    await ensureProps();
+    let inv;
+    try { inv = (await OpsModal.apiGet('/billing/invoices/' + id)).data; }
+    catch { return OpsModal.toast('Failed to load invoice', 'critical'); }
+    _editId = id;
+    const items = Array.isArray(inv.line_items) ? inv.line_items : (() => { try { return JSON.parse(inv.line_items || '[]'); } catch { return []; } })();
+    _draft = items.length
+      ? items.map(l => ({ description: l.description || '', qty: l.qty != null ? Number(l.qty) : 1, unit_price: l.unit_price != null ? Number(l.unit_price) : (Number(l.amount) || 0), amount: Number(l.amount) || 0 }))
+      : [{ description: '', qty: 1, unit_price: 0, amount: 0 }];
+    renderForm(inv);
+  }
+
+  function renderForm(inv) {
+    const isEdit = !!inv;
+    const today = (inv && inv.issue_date) ? String(inv.issue_date).slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const due = (inv && inv.due_date) ? String(inv.due_date).slice(0, 10) : new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10);
+    const selType = inv ? inv.invoice_type : 'maintenance';
+    const selStatus = inv ? String(inv.status || 'open').toLowerCase() : 'open';
+    let selP = inv ? String(inv.payment_status || 'unpaid').toLowerCase() : 'unpaid';
+    if (selP === 'pending') selP = 'unpaid';
+    const vat = inv && inv.vat_rate != null ? Number(inv.vat_rate) : DEFAULT_VAT;
+    const pid = inv ? inv.property_id : '';
+    const o = (v, l, sel) => `<option value="${esc(v)}"${String(v) === String(sel) ? ' selected' : ''}>${esc(l)}</option>`;
+
     _container.innerHTML = BL_CSS + `
-      <div class="fgd-crumb"><span class="lnk" onclick="OpsBilling.back()">Billing</span><span class="sep">/</span><span class="cur">New invoice</span></div>
+      <div class="fgd-crumb"><span class="lnk" onclick="OpsBilling.back()">Billing</span><span class="sep">/</span><span class="cur">${isEdit ? esc(inv.invoice_id) : 'New invoice'}</span></div>
       <div class="bl-head">
-        <div><h1>New invoice</h1><div class="sub">Invoice ID will be auto-generated on save</div></div>
+        <div><h1>${isEdit ? 'Edit invoice' : 'New invoice'}</h1><div class="sub">${isEdit ? esc(inv.invoice_id) : 'Invoice ID will be auto-generated on save'}</div></div>
         <div class="bl-head-actions">
-          <button class="bl-btn" onclick="OpsBilling.confirmCreate(false)" id="bl-draft-btn">Save as draft</button>
-          <button class="bl-btn primary" onclick="OpsBilling.confirmCreate(true)" id="bl-create-btn">Create &amp; send</button>
+          <button class="bl-btn" onclick="OpsBilling.back()">Cancel</button>
+          <button class="bl-btn primary" onclick="OpsBilling.confirmSave(true)" id="bl-create-btn">${isEdit ? 'Save changes' : 'Create & send'}</button>
         </div>
       </div>
       <div class="bl-grid2">
@@ -364,7 +401,7 @@ const OpsBilling = (function () {
               <div class="bl-field-label">Property <span class="sub">required · determines client</span></div>
               <select class="bl-input" id="bl-c-property" onchange="OpsBilling.onProp()">
                 <option value="">— Select a property —</option>
-                ${_props.map(p => `<option value="${esc(p.property_id)}">${esc(p.property_name || p.property_id)}</option>`).join('')}
+                ${_props.map(p => o(p.property_id, p.property_name || p.property_id, pid)).join('')}
               </select>
             </div>
             <div class="bl-field">
@@ -374,10 +411,7 @@ const OpsBilling = (function () {
             <div class="bl-field">
               <div class="bl-field-label">Invoice type</div>
               <select class="bl-input" id="bl-c-type">
-                <option value="maintenance">maintenance</option>
-                <option value="installation">installation</option>
-                <option value="subscription">subscription</option>
-                <option value="one_time">one_time</option>
+                ${['maintenance', 'installation', 'subscription', 'one_time'].map(t => o(t, t, selType)).join('')}
               </select>
             </div>
             <div style="display:flex;gap:12px;">
@@ -392,6 +426,10 @@ const OpsBilling = (function () {
             <div class="bl-li-head"><span>Description</span><span>Qty</span><span>Unit price</span><span style="text-align:right;">Amount</span><span></span></div>
             <div id="bl-items"></div>
             <button class="bl-addrow" onclick="OpsBilling.addItem()">+ Add line</button>
+            <div class="bl-field" style="max-width:220px;margin-top:14px;margin-bottom:0;">
+              <div class="bl-field-label">VAT rate (%) <span class="sub">default 7.5</span></div>
+              <input class="bl-input" type="number" min="0" step="0.1" id="bl-c-vat" value="${vat}" oninput="OpsBilling.recalc()">
+            </div>
             <div class="bl-totals" id="bl-totals"></div>
           </div>
 
@@ -399,18 +437,17 @@ const OpsBilling = (function () {
             <div class="fgd-card-head"><h2>Status</h2><span class="cmeta">two separate columns</span></div>
             <div style="display:flex;gap:12px;">
               <div class="bl-field" style="flex:1;"><div class="bl-field-label">status</div>
-                <select class="bl-input" id="bl-c-status"><option value="open">open</option><option value="closed">closed</option></select></div>
+                <select class="bl-input" id="bl-c-status">${['open', 'closed'].map(s => o(s, s, selStatus)).join('')}</select></div>
               <div class="bl-field" style="flex:1;"><div class="bl-field-label">payment_status</div>
-                <select class="bl-input" id="bl-c-pstatus" onchange="OpsBilling.recalc()"><option value="unpaid">unpaid</option><option value="partial">partial</option><option value="paid">paid</option></select></div>
+                <select class="bl-input" id="bl-c-pstatus" onchange="OpsBilling.recalc()">${['unpaid', 'partial', 'paid'].map(s => o(s, s, selP)).join('')}</select></div>
             </div>
-            <div class="bl-field"><div class="bl-field-label">Balance due <span class="sub">computed</span></div><input class="bl-input" id="bl-c-balance" disabled></div>
+            <div class="bl-field" style="margin-bottom:0;"><div class="bl-field-label">Balance due <span class="sub">computed</span></div><input class="bl-input" id="bl-c-balance" disabled></div>
             ${gap('Both fields exist on the row and are exposed because their relationship isn\'t documented. Pick one as source of truth before this ships.')}
           </div>
 
           <div class="bl-savebar">
             <button class="bl-btn" onclick="OpsBilling.back()">Cancel</button>
-            <button class="bl-btn" onclick="OpsBilling.confirmCreate(false)">Save as draft</button>
-            <button class="bl-btn primary" onclick="OpsBilling.confirmCreate(true)">Create &amp; send</button>
+            <button class="bl-btn primary" onclick="OpsBilling.confirmSave(true)">${isEdit ? 'Save changes' : 'Create & send'}</button>
           </div>
         </div>
 
@@ -418,6 +455,7 @@ const OpsBilling = (function () {
           <div class="fgd-card"><div class="fgd-card-head"><h2>Preview</h2></div><div id="bl-preview"></div></div>
         </div>
       </div>`;
+    onProp();
     renderItems();
   }
 
@@ -455,11 +493,15 @@ const OpsBilling = (function () {
     recalc();
   }
 
+  function vatRateInput() { return Math.max(0, parseFloat((document.getElementById('bl-c-vat') || {}).value) || 0); }
+
   function recalc() {
     const subtotal = _draft.reduce((s, l) => s + (Number(l.amount) || 0), 0);
-    const total = subtotal;
+    const vatRate = vatRateInput();
+    const vat = Math.round(subtotal * vatRate) / 100;
+    const total = subtotal + vat;
     const tot = document.getElementById('bl-totals');
-    if (tot) tot.innerHTML = `<div class="bl-totrow"><span>Subtotal</span><span>${NGN(subtotal)}</span></div><div class="bl-totrow grand"><span>Total</span><span>${NGN(total)}</span></div>`;
+    if (tot) tot.innerHTML = `<div class="bl-totrow"><span>Subtotal</span><span>${NGN(subtotal)}</span></div><div class="bl-totrow"><span>VAT (${vatRate}%)</span><span>${NGN(vat)}</span></div><div class="bl-totrow grand"><span>Total</span><span>${NGN(total)}</span></div>`;
     const ps = (document.getElementById('bl-c-pstatus') || {}).value || 'unpaid';
     const balance = ps === 'paid' ? 0 : total;
     const bd = document.getElementById('bl-c-balance'); if (bd) bd.value = NGN(balance);
@@ -467,14 +509,16 @@ const OpsBilling = (function () {
     const prev = document.getElementById('bl-preview');
     const F = OpsModal.fact;
     if (prev) prev.innerHTML = `
-      ${F('Invoice ID', 'Auto on save')}
+      ${F('Invoice ID', _editId ? esc(_editId) : 'Auto on save')}
       ${F('Property', prop ? esc(prop.property_name || prop.property_id) : '—')}
       ${F('Client', prop ? (prop.client_name || 'Unlinked') : '—')}
+      ${F('Subtotal', NGN(subtotal))}
+      ${F('VAT (' + vatRate + '%)', NGN(vat))}
       ${F('Total', NGN(total))}
       ${F('Balance due', NGN(balance))}`;
   }
 
-  async function confirmCreate(send) {
+  async function confirmSave() {
     const pid = (document.getElementById('bl-c-property') || {}).value;
     if (!pid) return OpsModal.toast('Select a property first', 'critical');
     const items = _draft.filter(l => l.description || l.amount).map(l => ({ description: l.description, qty: Number(l.qty) || 0, unit_price: Number(l.unit_price) || 0, amount: Number(l.amount) || 0 }));
@@ -485,25 +529,26 @@ const OpsBilling = (function () {
       invoice_type: (document.getElementById('bl-c-type') || {}).value || 'maintenance',
       issue_date: (document.getElementById('bl-c-issue') || {}).value || null,
       due_date: (document.getElementById('bl-c-due') || {}).value || null,
-      line_items: items, subtotal, total_amount: subtotal,
+      line_items: items, subtotal, vat_rate: vatRateInput(),
       status: (document.getElementById('bl-c-status') || {}).value || 'open',
       payment_status: (document.getElementById('bl-c-pstatus') || {}).value || 'unpaid',
     };
-    const btnId = send ? 'bl-create-btn' : 'bl-draft-btn';
-    OpsModal.setLoading(btnId, true);
+    OpsModal.setLoading('bl-create-btn', true);
     try {
-      const res = await OpsModal.apiPost('/billing/invoices', payload);
-      OpsModal.toast(send ? 'Invoice created' : 'Draft saved', 'nominal');
-      const newId = res.data && res.data.invoice_id;
+      const res = _editId
+        ? await OpsModal.apiPut('/billing/invoices/' + _editId, payload)
+        : await OpsModal.apiPost('/billing/invoices', payload);
+      OpsModal.toast(_editId ? 'Invoice updated' : 'Invoice created', 'nominal');
+      const newId = (res.data && res.data.invoice_id) || _editId;
       if (newId) open(newId); else back();
     } catch (err) {
-      OpsModal.toast('Failed to create invoice: ' + err.message, 'critical');
-      OpsModal.setLoading(btnId, false);
+      OpsModal.toast('Failed to save invoice: ' + err.message, 'critical');
+      OpsModal.setLoading('bl-create-btn', false);
     }
   }
 
   return {
     render, setFilter, search, open, back, exportCsv,
-    openCreate, onProp, addItem, removeItem, editItem, recalc, confirmCreate, recordPayment,
+    openCreate, openEdit, onProp, addItem, removeItem, editItem, recalc, confirmSave, recordPayment,
   };
 })();
