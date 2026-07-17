@@ -109,21 +109,25 @@ const OpsSettings = (function () {
     const btns = list => list && list.length ? `<div class="set-savebar">${list.map(b => btn(b[0], b[1])).join('')}</div>` : '';
     const note = t => `<div class="set-sub2">${t}</div>`;
 
-    const MODULES = ['Dashboard','Network','Assets','Properties','Clients','Devices','Reports','Teams','Field Reports'];
-    const PERMS = ['View','Create','Edit','Delete','Export','Approve','Assign','Manage'];
-    const permMatrix = `
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-        <span class="set-flabel" style="font-weight:600;">Role</span>
-        <select class="set-input" style="width:220px;"><option>Operations Manager</option><option>Dispatcher</option><option>Field Lead</option><option>Finance</option><option>Viewer</option></select>
-        <button class="set-btn" onclick="OpsSettings.na('Copy from role')">Copy from role</button>
-      </div>
-      <div style="overflow-x:auto;"><table class="set-matrix">
-        <thead><tr><th>Module</th>${PERMS.map(p=>`<th>${p}</th>`).join('')}</tr></thead>
-        <tbody>${MODULES.map(m=>`<tr><td>${m}</td>${PERMS.map(()=>`<td><input type="checkbox"></td>`).join('')}</tr>`).join('')}</tbody>
-      </table></div>`;
-
-    const rolesList = ['Operations Manager','Dispatcher','Field Lead','Finance','Viewer']
-      .map(r=>`<div class="set-row"><div class="set-row-main"><div class="set-row-ic">◈</div><div class="set-row-name">${r}</div></div><div class="set-row-right"><button class="set-btn" onclick="OpsSettings.na('Edit role')">Edit</button></div></div>`).join('');
+    // Read-only role/permission reference, built from the REAL role model that
+    // Team Members enforces (OpsUserManagement.ROLE_CONFIG) — a single source of
+    // truth, so this never drifts from the actual roles. Access is role-based:
+    // there is no per-module permission editor to persist to.
+    const ROLES = (typeof OpsUserManagement !== 'undefined' && OpsUserManagement.ROLE_CONFIG) ? OpsUserManagement.ROLE_CONFIG : null;
+    const seen = new Set();
+    const rolesRef = ROLES
+      ? Object.keys(ROLES).map(key => {
+          const r = ROLES[key];
+          if (seen.has(r.label)) return '';   // collapse admin/super_admin duplicates
+          seen.add(r.label);
+          return `<div class="set-row" style="align-items:flex-start;gap:14px;">
+            <div class="set-row-main" style="flex:0 0 auto;">
+              <span style="display:inline-flex;align-items:center;padding:3px 11px;border-radius:20px;font-size:var(--fs-xs);font-weight:700;background:${r.bg};color:${r.color};white-space:nowrap;">${r.label}</span>
+            </div>
+            <div style="flex:1;font-size:var(--fs-sm);color:var(--ink-2);line-height:1.55;text-align:right;">${(r.perms || []).join(' · ') || '—'}</div>
+          </div>`;
+        }).join('')
+      : '<div class="set-sub2">Role model unavailable — open Team Members once to load it.</div>';
 
     const chanRow = (name, icon, sub, id) => `<div class="set-row"><div class="set-row-main"><div class="set-row-ic">${icon}</div><div><div class="set-row-name">${name}</div><div class="set-row-sub">${sub}</div></div></div><div class="set-row-right">${tog(id?{id}:{})}</div></div>`;
     const channels = `
@@ -151,11 +155,10 @@ const OpsSettings = (function () {
         toggles:[{l:'Multi-factor authentication (MFA)', sub:'Protect your login with a second factor'}],
         buttons:[['Change password'],['Save',true]] },
 
-      { g:'Access', k:'users', label:'User management', b:'partial',
-        note:`${isAdmin?'':'Admins only. '}Staff accounts live in the users table and are managed in Team Members. Roles and the permission model are shown here for reference.`,
-        fields:[{l:'Full name'},{l:'Email', t:'email'},{l:'Role', t:'select', opts:['Operations Manager','Dispatcher','Field Lead','Finance','Viewer']}],
-        buttons:[['Open Team Members'],['Reset password'],['Disable account'],['Invite user',true]],
-        custom:`<div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3);margin:18px 0 6px;">Roles</div>${rolesList}<div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3);margin:18px 0 10px;">Permissions</div>${permMatrix}` },
+      { g:'Access', k:'users', label:'User management', b:'ok',
+        note:'Staff accounts, invites, roles and team assignments are managed in Team Members. This is a read-only reference for the role and permission model the app enforces.',
+        custom:`<div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3);margin:2px 0 10px;">Roles &amp; permissions</div>${rolesRef}`,
+        buttons:[['Open Team Members',true]] },
 
       { g:'Access', k:'teams', label:'Teams', b:'partial',
         note:'Field teams and members live in field_teams and are managed in the Teams module.',

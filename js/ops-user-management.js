@@ -545,6 +545,7 @@ const OpsUserManagement = (function () {
     openInvite, sendInvite,
     editUser, saveEdit,
     deactivateUser, reactivateUser, deleteUser,
+    ROLE_CONFIG,   // single source of truth for the role/permission reference
   };
 
 })();
