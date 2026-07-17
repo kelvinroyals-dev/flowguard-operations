@@ -312,7 +312,7 @@ const OpsBilling = (function () {
       avatar: { text: '₦', bg: 'linear-gradient(135deg,#16a8d3,#0d7fa0)' },
       chips: [{ cls: chipCls, label: pm.l, dot: true }],
       meta: [['Property', esc(inv.property_name || '—')], ['Client', inv.client_name ? esc(inv.client_name) : 'Unlinked'], ['Issued', fmtDate(inv.issue_date || inv.created_at)], ['Due', fmtDate(inv.due_date)]],
-      actions: `<button class="fgd-btn" onclick="window.print()">Download PDF</button><button class="fgd-btn" onclick="OpsBilling.openEdit('${id}')">Edit</button>${eff !== 'paid' ? `<button class="fgd-btn" style="background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;" onclick="OpsBilling.recordPayment('${id}')">Record payment</button>` : ''}`,
+      actions: `<button class="fgd-btn" onclick="OpsBilling.downloadPdf('${id}')">Download PDF</button><button class="fgd-btn" onclick="OpsBilling.openEdit('${id}')">Edit</button>${eff !== 'paid' ? `<button class="fgd-btn" style="background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;" onclick="OpsBilling.recordPayment('${id}')">Record payment</button>` : ''}`,
       sections: [
         { id: 'details', title: 'Invoice details', meta: 'invoices', body: detailsBody },
         { id: 'services', title: 'Services', meta: 'invoices.line_items (jsonb)', body: servicesBody },
@@ -323,6 +323,22 @@ const OpsBilling = (function () {
       ],
       sidebar,
     });
+  }
+
+  // Generated server-side (pdfkit) so ₦ renders; fetched with auth then saved.
+  async function downloadPdf(id) {
+    try {
+      const base = (window.CONFIG && CONFIG.API_BASE) || '/api/v1';
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token') || '';
+      OpsModal.toast('Preparing PDF…', 'watch');
+      const res = await fetch(base + '/billing/invoices/' + id + '/pdf', { headers: { Authorization: 'Bearer ' + token } });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = id + '.pdf';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+    } catch (err) { OpsModal.toast('Failed to download PDF: ' + err.message, 'critical'); }
   }
 
   function recordPayment(id) {
@@ -549,6 +565,6 @@ const OpsBilling = (function () {
 
   return {
     render, setFilter, search, open, back, exportCsv,
-    openCreate, openEdit, onProp, addItem, removeItem, editItem, recalc, confirmSave, recordPayment,
+    openCreate, openEdit, onProp, addItem, removeItem, editItem, recalc, confirmSave, recordPayment, downloadPdf,
   };
 })();
