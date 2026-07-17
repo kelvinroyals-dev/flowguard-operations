@@ -261,6 +261,8 @@ const OpsForecast = (function () {
             <div id="fcx-map"></div>
             <div class="fcx-layers">
               <div class="fcx-layer active" data-l="heat" onclick="OpsForecast.layer('heat',this)">${ICON.heat}<span>Risk heatmap</span></div>
+              <div class="fcx-layer" data-l="rain" onclick="OpsForecast.layer('rain',this)">${ICON.rain}<span>Rainfall</span></div>
+              <div class="fcx-layer" data-l="net" onclick="OpsForecast.layer('net',this)">${ICON.net}<span>Drainage network</span></div>
               <div class="fcx-layer active" data-l="prop" onclick="OpsForecast.layer('prop',this)">${ICON.prop}<span>Properties</span></div>
               <div class="fcx-layer" data-l="dev" onclick="OpsForecast.layer('dev',this)">${ICON.dev}<span>Sentinel devices</span></div>
               <div class="fcx-layer" data-l="inc" onclick="OpsForecast.layer('inc',this)">${ICON.inc}<span>Incidents</span></div>
@@ -365,11 +367,22 @@ const OpsForecast = (function () {
     L.control.zoom({ position: 'bottomright' }).addTo(_map);
     L.tileLayer(tileUrl(), { subdomains: 'abcd', maxZoom: 19 }).addTo(_map);
 
-    _layers = { heat: L.layerGroup(), prop: L.layerGroup(), dev: L.layerGroup(), inc: L.layerGroup() };
+    _layers = { heat: L.layerGroup(), rain: L.layerGroup(), net: L.layerGroup(), prop: L.layerGroup(), dev: L.layerGroup(), inc: L.layerGroup() };
     const pts = [];
+
+    // Rainfall overlay — city-wide forecast intensity (Open-Meteo is one Lagos
+    // point, so it's a coverage wash, not per-drain rain).
+    const rainMm = _fc.cumulative_rain_mm || 0;
+    if (rainMm > 0) {
+      _layers.rain.addLayer(L.circle([6.5244, 3.3792], { radius: 16000, color: '#1cb8e8', weight: 1, fillColor: '#1cb8e8', fillOpacity: Math.min(0.28, rainMm / 120) }));
+      _layers.rain.addLayer(L.marker([6.5244, 3.3792], { icon: L.divIcon({ className: '', iconSize: [70, 20], iconAnchor: [35, 10], html: `<div style="background:#1cb8e8;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;">${Math.round(rainMm)}mm / 24h</div>` }) }));
+    }
+
     est.forEach(e => {
       const col = riskHex(e.predicted_risk);
       _layers.heat.addLayer(L.circle([e.latitude, e.longitude], { radius: 900, color: col, weight: 0, fillColor: col, fillOpacity: 0.18 }));
+      // drainage-network coverage ring per estate
+      _layers.net.addLayer(L.circle([e.latitude, e.longitude], { radius: 600, color: '#1cb8e8', weight: 1.5, dashArray: '4 4', fill: false, opacity: 0.6 }));
       const s = 16 + Math.round(e.predicted_risk / 10);
       const border = e.has_live ? '2px solid #fff' : '2px dashed #fff';
       const op = e.has_live ? '1' : '.82';
@@ -399,6 +412,22 @@ const OpsForecast = (function () {
     // Default-on layers
     _layers.heat.addTo(_map);
     _layers.prop.addTo(_map);
+
+    // Never leave the hero map mysteriously blank — say why nothing is drawn.
+    const old = document.getElementById('fcx-map-empty');
+    if (old) old.remove();
+    if (!pts.length) {
+      const total = (_fc.estates || []).length;
+      const msg = total
+        ? 'Properties scored, but none are geolocated yet — add latitude/longitude to plot them on the risk map.'
+        : 'No properties scored for this window. If Sentinels are stale, the environmental forecast still needs the updated backend deployed.';
+      const wrap = holder.parentElement;
+      const ov = document.createElement('div');
+      ov.id = 'fcx-map-empty';
+      ov.style.cssText = 'position:absolute;inset:0;z-index:405;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;pointer-events:none;';
+      ov.innerHTML = `<div style="max-width:340px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--sh-md);padding:18px 20px;pointer-events:auto;"><div style="font-weight:700;color:var(--ink);margin-bottom:6px;">Nothing to plot yet</div><div style="font-size:var(--fs-sm);color:var(--ink-3);line-height:1.5;">${msg}</div></div>`;
+      wrap.appendChild(ov);
+    }
 
     if (pts.length) { try { _map.fitBounds(pts, { padding: [60, 60], maxZoom: 13 }); } catch (_) {} }
     if (window.ResizeObserver) new ResizeObserver(() => { try { _map.invalidateSize(); } catch (_) {} }).observe(holder);
