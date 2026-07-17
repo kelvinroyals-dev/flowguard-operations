@@ -1305,7 +1305,7 @@
       <div class="tb-user" id="tb-user">
         <button class="fg-av" id="user-avatar" onclick="toggleUserMenu(event)">--</button>
         <div class="tb-user-menu" id="tb-user-menu">
-          <button id="nav-settings" onclick="switchTab('settings');closeUserMenu()">Settings</button>
+          <button id="nav-settings" onclick="switchTab('settings');closeUserMenu()">Administration</button>
           <button class="danger" onclick="handleLogout()">Sign out</button>
         </div>
       </div>
@@ -1379,7 +1379,7 @@
 <script src="js/ops-billing.js?v=sec10"></script>
 <script src="js/ops-sla.js?v=sec6"></script>
 <script src="js/ops-audit.js?v=sec7"></script>
-<script src="js/ops-settings.js?v=sec4"></script>
+<script src="js/ops-settings.js?v=sec5"></script>
 
 <script>
   if (typeof Auth === 'undefined' || !Auth.isAuthenticated()) window.location.href = 'login.html';
@@ -1402,7 +1402,7 @@
     billing:          { module:'Intelligence', title:'Billing & Revenue'           },
     sla:              { module:'Intelligence', title:'SLA Tracker'                 },
     audit:            { module:'Intelligence', title:'Audit Log'                   },
-    settings:         { module:'System',       title:'Settings & Configuration'    },
+    settings:         { module:'Administration', title:'Administration'              },
   };
 
   const ALL_TABS = Object.keys(TAB_META);

@@ -32,7 +32,7 @@ const OpsSettings = (function () {
     if (note) note.style.display = 'none';
   }
 
-  let _active = 'company';
+  let _active = 'profile';
 
   const SET_STYLE = `<style>
     .set-crumb{font-size:var(--fs-2xs);color:var(--ink-3);font-weight:700;letter-spacing:.6px;margin-bottom:10px;}
@@ -85,203 +85,127 @@ const OpsSettings = (function () {
   </style>`;
 
   function render(container) {
+    let U = {};
+    try { U = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}'); } catch (e) {}
+    const isAdmin = ['admin','super_admin','operations_manager'].includes(U.role);
+    const uInitials = (U.full_name || U.name || '?').split(' ').filter(Boolean).map(w=>w[0]).join('').toUpperCase().slice(0,2);
+
     const F = (label, ctrl, sub) => `<div class="set-field-row"><div class="set-flabel">${label}${sub?`<span class="sub">${sub}</span>`:''}</div><div>${ctrl}</div></div>`;
     const ctl = f => {
+      const v = f.val != null ? ` value="${String(f.val).replace(/"/g,'&quot;')}"` : '';
       if (f.t === 'select') return `<select class="set-input" ${f.id?`id="${f.id}"`:''}>${(f.opts||[]).map(o=>`<option>${o}</option>`).join('')}</select>`;
       if (f.t === 'textarea') return `<textarea class="set-input" rows="3" ${f.id?`id="${f.id}"`:''} style="resize:vertical;"></textarea>`;
-      return `<input class="set-input" ${f.id?`id="${f.id}"`:''} type="${f.t||'text'}"${f.ph?` placeholder="${f.ph}"`:''}>`;
+      return `<input class="set-input" ${f.id?`id="${f.id}"`:''} type="${f.t||'text'}"${v}${f.ro?' disabled':''}${f.ph?` placeholder="${f.ph}"`:''}>`;
     };
     const flds = list => (list||[]).map(f => F(f.l, ctl(f), f.sub)).join('');
     const tog = o => `<label class="set-switch"><input type="checkbox" ${o&&o.id?`id="${o.id}"`:''}${o&&o.on?' checked':''}><span></span></label>`;
     const togs = list => (list||[]).map(t => F(t.l, tog(t), t.sub)).join('');
     const btn = (l, primary) => {
-      const oc = /^save$/i.test(l) ? 'OpsSettings.save()' : /reset|restore defaults/i.test(l) ? 'OpsSettings.reset()' : /^cancel$/i.test(l) ? "reloadTab('settings')" : `OpsSettings.na('${l.replace(/'/g,'')}')`;
+      const oc = /^save$/i.test(l) ? 'OpsSettings.save()' : /reset|restore defaults/i.test(l) ? 'OpsSettings.reset()' : /^cancel$/i.test(l) ? "reloadTab('settings')" : /team members/i.test(l) ? "switchTab('team-members')" : /teams$/i.test(l) ? "switchTab('teams')" : /audit/i.test(l) ? "switchTab('audit')" : /reports/i.test(l) ? "switchTab('reports')" : `OpsSettings.na('${l.replace(/'/g,'')}')`;
       return `<button class="set-btn${primary?' primary':''}" onclick="${oc}">${l}</button>`;
     };
     const btns = list => list && list.length ? `<div class="set-savebar">${list.map(b => btn(b[0], b[1])).join('')}</div>` : '';
     const note = t => `<div class="set-sub2">${t}</div>`;
 
-    // Permissions matrix
-    const MODULES = ['Dashboard','Network','Assets','Properties','Clients','Billing','Devices','Reports','Teams','Field Reports','Settings'];
+    const MODULES = ['Dashboard','Network','Assets','Properties','Clients','Devices','Reports','Teams','Field Reports'];
     const PERMS = ['View','Create','Edit','Delete','Export','Approve','Assign','Manage'];
     const permMatrix = `
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
         <span class="set-flabel" style="font-weight:600;">Role</span>
         <select class="set-input" style="width:220px;"><option>Operations Manager</option><option>Dispatcher</option><option>Field Lead</option><option>Finance</option><option>Viewer</option></select>
+        <button class="set-btn" onclick="OpsSettings.na('Copy from role')">Copy from role</button>
       </div>
       <div style="overflow-x:auto;"><table class="set-matrix">
         <thead><tr><th>Module</th>${PERMS.map(p=>`<th>${p}</th>`).join('')}</tr></thead>
         <tbody>${MODULES.map(m=>`<tr><td>${m}</td>${PERMS.map(()=>`<td><input type="checkbox"></td>`).join('')}</tr>`).join('')}</tbody>
       </table></div>`;
 
-    // Notification channels list
+    const rolesList = ['Operations Manager','Dispatcher','Field Lead','Finance','Viewer']
+      .map(r=>`<div class="set-row"><div class="set-row-main"><div class="set-row-ic">◈</div><div class="set-row-name">${r}</div></div><div class="set-row-right"><button class="set-btn" onclick="OpsSettings.na('Edit role')">Edit</button></div></div>`).join('');
+
     const chanRow = (name, icon, sub, id) => `<div class="set-row"><div class="set-row-main"><div class="set-row-ic">${icon}</div><div><div class="set-row-name">${name}</div><div class="set-row-sub">${sub}</div></div></div><div class="set-row-right">${tog(id?{id}:{})}</div></div>`;
-    const iMail='✉', iChat='💬';
     const channels = `
-      ${chanRow('Email','✉','SMTP · transactional + alerts','s-email-alerts')}
+      ${chanRow('Email','✉','SMTP · alerts + digests','s-email-alerts')}
+      ${chanRow('Push','🔔','In-app + mobile')}
       ${chanRow('SMS','📱','Critical alerts to on-call','s-sms-alerts')}
-      ${chanRow('WhatsApp','🟢','Business API — not connected')}
-      ${chanRow('Push notification','🔔','In-app + mobile')}
-      ${chanRow('Slack','#','Ops channel webhook')}
-      ${chanRow('Microsoft Teams','▦','Incident channel')}
-      ${chanRow('Voice call','📞','Escalation calls')}`;
+      ${chanRow('WhatsApp','🟢','Business API — not connected')}`;
 
-    // Email templates
-    const TEMPLATES = ['Welcome','Password Reset','Invoice','Maintenance Reminder','Incident Alert','Weekly Report','Monthly Report','SLA Breach','Device Offline'];
-    const templates = TEMPLATES.map(t=>`<div class="set-row"><div class="set-row-main"><div class="set-row-ic">✉</div><div class="set-row-name">${t}</div></div><div class="set-row-right"><button class="set-btn" onclick="OpsSettings.na('Preview')">Preview</button><button class="set-btn" onclick="OpsSettings.na('Send test')">Send test</button></div></div>`).join('');
+    const NEVENTS = ['Alert created','Alert resolved','Device offline','Work order assigned','SLA breach','Report ready'];
+    const eventsChecklist = `<div class="set-field-row"><div class="set-flabel">Notify me about<span class="sub">Which events reach you</span></div><div style="display:flex;flex-wrap:wrap;gap:10px 18px;">${NEVENTS.map((e,i)=>`<label style="display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-sm);color:var(--ink-2);"><input type="checkbox" ${i<3?'checked':''} style="width:15px;height:15px;accent-color:var(--blue-hi);">${e}</label>`).join('')}</div></div>`;
 
-    // Integrations
-    const SERVICES = [['Weather API','Connected','on'],['Maps API','Connected','on'],['Payment Gateway','Not connected',''],['CRM','Not connected',''],['ERP','Not connected',''],['GIS','Not connected',''],['SSO','Not connected',''],['Monitoring','Not connected','']];
-    const integrations = SERVICES.map(([n,st,on])=>`<div class="set-row"><div class="set-row-main"><div class="set-row-ic">🔌</div><div><div class="set-row-name">${n}</div><div class="set-row-sub">${st}</div></div></div><div class="set-row-right"><span class="set-tag ${on}">${on?'Active':'Off'}</span><button class="set-btn" onclick="OpsSettings.na('${on?'Disconnect':'Connect'}')">${on?'Disconnect':'Connect'}</button></div></div>`).join('');
-
-    // API keys sample table
-    const apiKeys = `<div style="overflow-x:auto;"><table class="set-matrix" style="text-align:left;">
-      <thead><tr><th style="text-align:left;">Key name</th><th style="text-align:left;">Key</th><th style="text-align:left;">Scope</th><th style="text-align:left;">Last used</th><th></th></tr></thead>
-      <tbody>
-        <tr><td>Ingest key</td><td><span class="set-mono">fg_live_••••7a2c</span></td><td>write:telemetry</td><td>2h ago</td><td style="text-align:right;"><button class="set-btn" onclick="OpsSettings.na('Revoke')">Revoke</button></td></tr>
-        <tr><td>Read-only export</td><td><span class="set-mono">fg_live_••••0f19</span></td><td>read:all</td><td>4d ago</td><td style="text-align:right;"><button class="set-btn" onclick="OpsSettings.na('Revoke')">Revoke</button></td></tr>
-      </tbody></table></div>`;
-
-    // Webhook events
-    const EVENTS = ['Device Online','Device Offline','Alert Created','Alert Resolved','Work Order Created','Work Order Completed','Invoice Paid','Report Generated'];
-    const webhookEvents = `<div class="set-field-row"><div class="set-flabel">Event types<span class="sub">Which events POST to the URL</span></div><div style="display:flex;flex-wrap:wrap;gap:10px 18px;">${EVENTS.map(e=>`<label style="display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-sm);color:var(--ink-2);"><input type="checkbox" style="width:15px;height:15px;accent-color:var(--blue-hi);">${e}</label>`).join('')}</div></div>`;
-
-    // Subscription usage
-    const usage = (label, used, total, pct) => `<div class="set-field-row"><div class="set-flabel">${label}</div><div><div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--ink-2);margin-bottom:5px;"><span>${used}</span><span style="color:var(--ink-3);">of ${total}</span></div><div class="set-usage"><i style="width:${pct}%;"></i></div></div></div>`;
-    const subUsage = usage('Seats used','18 seats','25 seats',72) + usage('Devices','5 devices','50 devices',10) + usage('Storage','2.1 GB','20 GB',11) + usage('API usage (month)','48k calls','250k calls',19);
+    const SERVICES = [['Weather provider','Open-Meteo · connected','on'],['SMS gateway','Not connected',''],['Email provider','SMTP · connected','on'],['Maps provider','CARTO · connected','on'],['Internal APIs','api.flowguard.ng','on']];
+    const integrations = SERVICES.map(([n,st,on])=>`<div class="set-row"><div class="set-row-main"><div class="set-row-ic">🔌</div><div><div class="set-row-name">${n}</div><div class="set-row-sub">${st}</div></div></div><div class="set-row-right"><span class="set-tag ${on}">${on?'Active':'Off'}</span><button class="set-btn" onclick="OpsSettings.na('${on?'Test connection':'Connect'}')">${on?'Test':'Connect'}</button></div></div>`).join('');
 
     const SECTIONS = [
-      { g:'General', k:'company', label:'Company profile', b:'partial',
+      { g:'Account', k:'profile', label:'My profile', b:'partial',
+        custom:`<div class="set-field-row"><div class="set-flabel">Photo</div><div style="display:flex;align-items:center;gap:12px;"><div class="set-avatar-lg">${uInitials}</div><button class="set-btn" onclick="OpsSettings.na('Upload photo')">Upload photo</button></div></div>`,
         fields:[
-          {l:'Company name', id:'s-company-name'}, {l:'Legal name'}, {l:'Registration number'}, {l:'Tax ID'},
-          {l:'Industry', t:'select', opts:['Facilities management','Real estate','Government','Utilities','Other']},
-          {l:'Company email', id:'s-contact-email', t:'email'}, {l:'Phone number', id:'s-contact-phone'},
-          {l:'Website', ph:'https://'}, {l:'Address'}, {l:'Country', t:'select', opts:['Nigeria','Ghana','Kenya','South Africa']},
-          {l:'State'}, {l:'Time zone', id:'s-timezone', ph:'Africa/Lagos'},
-          {l:'Currency', t:'select', opts:['NGN — Naira','USD — Dollar','GHS — Cedi','KES — Shilling']}, {l:'Business hours', ph:'Mon–Fri 08:00–17:00'},
+          {l:'Name', val:U.full_name||U.name||''},
+          {l:'Email', t:'email', val:U.email||'', ro:true, sub:'Managed by your admin'},
+          {l:'Phone', val:U.phone||''},
+          {l:'Job title', val:U.job_title||''},
+          {l:'Team', val:U.team_name||'', ro:true},
         ],
-        custom:`<div class="set-field-row"><div class="set-flabel">Logo</div><div style="display:flex;align-items:center;gap:12px;"><div style="width:64px;height:40px;border-radius:8px;background:var(--ink);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;">FG</div><button class="set-btn" onclick="OpsSettings.na('Upload logo')">Upload logo</button></div></div>
-        <div class="set-field-row"><div class="set-flabel">Favicon</div><div style="display:flex;align-items:center;gap:12px;"><div style="width:32px;height:32px;border-radius:8px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;">◆</div><button class="set-btn" onclick="OpsSettings.na('Upload favicon')">Upload favicon</button></div></div>`,
-        toggles:[{l:'Show company branding'},{l:'Enable white label'},{l:'Display support contact'}],
-        buttons:[['Preview portal'],['Cancel'],['Save',true]] },
+        toggles:[{l:'Multi-factor authentication (MFA)', sub:'Protect your login with a second factor'}],
+        buttons:[['Change password'],['Save',true]] },
 
-      { g:'General', k:'branding', label:'Branding', b:'no',
-        note:'Not persisted yet — a branding table would store these; today logo/theme ship in code.',
-        fields:[{l:'Logo'},{l:'Icon'},{l:'Company name'},{l:'Primary colour', ph:'#16a8d3'},{l:'Secondary colour', ph:'#0d7fa0'},{l:'Accent colour', ph:'#1f9d5b'},{l:'Font', t:'select', opts:['Plus Jakarta Sans','Inter','System']},{l:'Login background'},{l:'Email header image'},{l:'Portal URL'}],
-        toggles:[{l:'White label'},{l:'Show “Powered by FlowGuard”', on:true},{l:'Custom login screen'},{l:'Custom emails'}],
-        buttons:[['Preview'],['Restore defaults'],['Publish',true]] },
-
-      { g:'General', k:'prefs', label:'Preferences', b:'no',
-        note:'UI-only for now — a per-user/workspace preferences table would persist these.',
-        fields:[{l:'Default landing page', t:'select', opts:['Situation','Network','Properties','Devices']},{l:'Default map zoom', t:'number'},{l:'Default region'},{l:'Default language', t:'select', opts:['English','French']},{l:'Date format', t:'select', opts:['DD MMM YYYY','MM/DD/YYYY','YYYY-MM-DD']},{l:'Time format', t:'select', opts:['24-hour','12-hour']},{l:'Distance units', t:'select', opts:['Metric (km)','Imperial (mi)']},{l:'Temperature units', t:'select', opts:['Celsius','Fahrenheit']}],
-        toggles:[{l:'Compact mode'},{l:'Animations', on:true},{l:'Live updates', on:true},{l:'Auto refresh', on:true},{l:'Sound alerts'},{l:'High-contrast mode'}],
-        buttons:[['Restore defaults'],['Save',true]] },
-
-      { g:'Access', k:'users', label:'Users & roles', b:'partial',
-        note:'Staff accounts live in the users table and are fully managed in Team Members. Roles below are a reference.',
-        fields:[{l:'Full name'},{l:'Email', t:'email'},{l:'Phone'},{l:'Employee ID'},{l:'Department'},{l:'Team', t:'select', opts:['—','Field Team A','Field Team B']},{l:'Role', t:'select', opts:['Operations Manager','Dispatcher','Field Lead','Finance','Viewer']},{l:'Manager'}],
-        toggles:[{l:'Active', on:true},{l:'Force password change'},{l:'Require MFA'},{l:'API access'}],
-        buttons:[['Open Team Members'],['Add user'],['Export'],['Send invite',true]] },
-
-      { g:'Access', k:'perms', label:'Permissions', b:'no',
-        note:'Roles are code-defined today; this matrix shows the model a permissions table would drive.',
-        custom:permMatrix,
-        buttons:[['Copy from role'],['Reset'],['Save',true]] },
+      { g:'Access', k:'users', label:'User management', b:'partial',
+        note:`${isAdmin?'':'Admins only. '}Staff accounts live in the users table and are managed in Team Members. Roles and the permission model are shown here for reference.`,
+        fields:[{l:'Full name'},{l:'Email', t:'email'},{l:'Role', t:'select', opts:['Operations Manager','Dispatcher','Field Lead','Finance','Viewer']}],
+        buttons:[['Open Team Members'],['Reset password'],['Disable account'],['Invite user',true]],
+        custom:`<div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3);margin:18px 0 6px;">Roles</div>${rolesList}<div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3);margin:18px 0 10px;">Permissions</div>${permMatrix}` },
 
       { g:'Access', k:'teams', label:'Teams', b:'partial',
-        note:'Field teams live in field_teams and are managed in the Teams module.',
-        fields:[{l:'Team name'},{l:'Supervisor'},{l:'Members', t:'number'},{l:'Vehicle'},{l:'Region'},{l:'Working hours'},{l:'Emergency contact'}],
-        toggles:[{l:'Available', on:true},{l:'Emergency response team'},{l:'On duty'}],
-        buttons:[['Open Teams'],['Assign members'],['Archive'],['Create team',true]] },
+        note:'Field teams and members live in field_teams and are managed in the Teams module.',
+        fields:[{l:'Team name'},{l:'Supervisor'},{l:'Members', t:'number'},{l:'Coverage area'},{l:'Shift assignment', t:'select', opts:['Day','Night','Rotating']}],
+        toggles:[{l:'Available', on:true},{l:'On duty'}],
+        buttons:[['Open Teams'],['Assign members'],['Create team',true]] },
 
-      { g:'Operations', k:'devicetypes', label:'Device types', b:'no',
-        note:'Device variants are inferred per sensor today; a device-type catalogue would live here.',
-        fields:[{l:'Device name'},{l:'Model'},{l:'Manufacturer'},{l:'Firmware version'},{l:'Sensor types'},{l:'Battery capacity'},{l:'Connectivity', t:'select', opts:['Cellular','LoRa','Hybrid']},{l:'Sampling interval'},{l:'Sleep interval'}],
-        toggles:[{l:'Active', on:true},{l:'Supports OTA updates', on:true},{l:'GPS enabled'},{l:'Camera enabled'}],
-        buttons:[['Duplicate'],['Archive'],['Add device type',true]] },
+      { g:'Operations', k:'devices', label:'Devices', b:'no',
+        note:'System-wide device behaviour. Not persisted as settings yet — these would drive fleet defaults.',
+        fields:[{l:'Offline timeout', ph:'6 hours', sub:'No telemetry before a node is marked offline'},{l:'Heartbeat interval', ph:'15 min'},{l:'Sampling interval', ph:'5 min'},{l:'Firmware rollout', t:'select', opts:['Manual','Staged','Immediate']},{l:'Calibration defaults'}],
+        buttons:[['Save',true]] },
 
-      { g:'Operations', k:'alerts', label:'Alert rules', b:'partial',
-        note:'Global thresholds below are saved to /settings. The rule builder is scaffolding for a future alert_rules table.',
+      { g:'Operations', k:'alerts', label:'Alerts', b:'partial',
+        note:'Global alert rules. Thresholds, escalation and SLA below are saved to /settings.',
         fields:[
-          {l:'Critical threshold', id:'s-threshold-critical', t:'number', sub:'Water level % → critical'},
-          {l:'Warning threshold', id:'s-threshold-warning', t:'number', sub:'Water level % → warning'},
-          {l:'Escalation time', id:'s-escalation-time', t:'number', sub:'Minutes before escalation'},
-          {l:'Response SLA', id:'s-response-sla', t:'number', sub:'Target response minutes'},
-          {l:'Rule name'}, {l:'Alert category', t:'select', opts:['Water level','Battery','Silt','Connectivity','Flood']},
-          {l:'Trigger'}, {l:'Severity', t:'select', opts:['Critical','High','Moderate','Low']},
-          {l:'Assigned team', t:'select', opts:['—','Field Team A','Field Team B']}, {l:'Notification group'},
+          {l:'Water level — critical', id:'s-threshold-critical', t:'number', sub:'% that raises a critical alert'},
+          {l:'Water level — warning', id:'s-threshold-warning', t:'number', sub:'% that raises a warning'},
+          {l:'Device offline threshold', ph:'6 hours', sub:'When to alert on a silent node'},
+          {l:'Weather thresholds', ph:'Heavy rain / storm', sub:'Trigger conditions from the weather feed'},
+          {l:'Escalation time', id:'s-escalation-time', t:'number', sub:'Minutes before an alert escalates'},
+          {l:'Response SLA', id:'s-response-sla', t:'number', sub:'Target minutes to respond'},
+          {l:'Notification routing', t:'select', opts:['On-call team','All ops','Assigned team']},
         ],
-        toggles:[{l:'Enabled', on:true},{l:'Auto assign'},{l:'Repeat notifications'},{l:'Auto resolve'}],
-        buttons:[['Test rule'],['Duplicate'],['Disable'],['Create rule',true]] },
+        buttons:[['Save',true]] },
 
-      { g:'Operations', k:'mainttpl', label:'Maintenance templates', b:'no',
-        note:'No template store yet — work orders are created ad-hoc.',
-        fields:[{l:'Template name'},{l:'Category', t:'select', opts:['Silt clearing','Enzyme refill','Node repair','Inspection']},{l:'Estimated duration'},{l:'Priority', t:'select', opts:['Low','Normal','High','Urgent']},{l:'Checklist', t:'textarea'},{l:'Required tools'},{l:'Required PPE'},{l:'Instructions', t:'textarea'}],
-        toggles:[{l:'Active', on:true},{l:'Mandatory checklist'}],
-        buttons:[['Duplicate'],['Archive'],['Create',true]] },
+      { g:'Operations', k:'map', label:'Map', b:'no',
+        note:'Default map presentation for the operational view.',
+        fields:[{l:'Default map', t:'select', opts:['CARTO Light','CARTO Dark','OpenStreetMap']},{l:'Layer defaults', t:'select', opts:['Sensors + assets','Sensors only','Heatmap']},{l:'Labels', t:'select', opts:['On','Off','On hover']},{l:'Measurement units', t:'select', opts:['Metric (km)','Imperial (mi)']},{l:'Coordinate format', t:'select', opts:['Decimal degrees','DMS']}],
+        buttons:[['Restore defaults'],['Save',true]] },
 
-      { g:'Billing', k:'billingset', label:'Billing settings', b:'partial',
-        note:'Invoices/quotes are managed in Billing. These defaults would drive generation.',
-        fields:[{l:'Currency', t:'select', opts:['NGN','USD','GHS','KES']},{l:'Tax rate', t:'number', ph:'7.5'},{l:'Invoice prefix', ph:'INV-'},{l:'Invoice due days', t:'number', ph:'30'},{l:'Late fee', t:'number'},{l:'Default payment terms'},{l:'Bank details', t:'textarea'}],
-        toggles:[{l:'Auto-generate invoice'},{l:'Auto-send invoice'},{l:'Charge late fees'},{l:'Enable VAT', on:true}],
-        buttons:[['Preview invoice'],['Open Billing'],['Save',true]] },
-
-      { g:'Billing', k:'subs', label:'Subscription & licensing', b:'no',
-        note:'Plan and usage shown for reference — not modelled in the schema yet.',
-        fields:[{l:'Plan', t:'select', opts:['Growth','Scale','Enterprise']},{l:'License key'},{l:'Organization ID'},{l:'Subscription status'},{l:'Renewal date', t:'date'},{l:'Billing cycle', t:'select', opts:['Monthly','Annual']}],
-        custom:subUsage,
-        toggles:[{l:'Auto renew', on:true},{l:'Usage alerts', on:true},{l:'Overage protection'}],
-        buttons:[['Download invoice'],['Contact sales'],['Manage billing'],['Renew license'],['Upgrade plan',true]] },
-
-      { g:'Notifications', k:'notifs', label:'Notification channels', b:'partial',
-        note:'Email and SMS toggles + alert contacts below are saved to /settings.',
+      { g:'Delivery', k:'notifs', label:'Notifications', b:'partial',
+        note:'Personal and system notifications. Channels and alert contacts below are saved to /settings.',
         custom:channels,
-        fields:[{l:'Alert email', id:'s-alert-email', t:'email'},{l:'Alert phone', id:'s-alert-phone'},{l:'Provider'},{l:'Sender name'},{l:'API credentials', t:'password'},{l:'Retry attempts', t:'number'}],
-        toggles:[{l:'Weekly digest', id:'s-weekly-digest'},{l:'Enable quiet hours'},{l:'Retry failed messages', on:true}],
-        buttons:[['Test notification'],['Save',true]] },
+        fields:[{l:'Alert email', id:'s-alert-email', t:'email'},{l:'Alert phone', id:'s-alert-phone'}],
+        toggles:[{l:'Weekly digest', id:'s-weekly-digest'},{l:'Quiet hours', sub:'Mute non-critical at night'}],
+        buttons:[['Test notification'],['Save',true]],
+        after:eventsChecklist },
 
-      { g:'Notifications', k:'emailtpl', label:'Email templates', b:'no',
-        note:'Notification copy is code-defined; an editable template store would live here.',
-        custom:templates,
-        buttons:[['Duplicate'],['Reset'],['Send test email',true]] },
-
-      { g:'Developer', k:'integrations', label:'Integrations', b:'no',
-        note:'Weather and Maps are live; the rest are placeholders for an integrations registry.',
-        custom:integrations,
-        fields:[{l:'Service name'},{l:'API key', t:'password'},{l:'Secret', t:'password'},{l:'Endpoint'}],
-        buttons:[['Test connection'],['Connect',true]] },
-
-      { g:'Developer', k:'apikeys', label:'API keys', b:'no',
-        note:'Illustrative — programmatic keys are not issued from this workspace yet.',
-        custom:apiKeys,
-        fields:[{l:'Key name'},{l:'Scope', t:'select', opts:['read:all','write:telemetry','admin']},{l:'Expiry', t:'date'}],
-        toggles:[{l:'Active', on:true},{l:'Read only'},{l:'Never expires'}],
-        buttons:[['Regenerate'],['Revoke'],['Generate',true]] },
-
-      { g:'Developer', k:'webhooks', label:'Webhooks', b:'no',
-        note:'Outbound webhooks are not wired yet.',
-        fields:[{l:'Name'},{l:'URL', ph:'https://'},{l:'Secret', t:'password'},{l:'Retry count', t:'number'}],
-        custom:webhookEvents,
-        toggles:[{l:'Enabled'},{l:'Verify signature', on:true},{l:'Retry failed deliveries', on:true}],
-        buttons:[['Test'],['Disable'],['Save',true]] },
+      { g:'Delivery', k:'reports', label:'Reports', b:'no',
+        note:'Reporting defaults. Report generation lives in the Reports module.',
+        fields:[{l:'Report templates', t:'select', opts:['Daily operations','Weekly performance','Financial']},{l:'Export defaults', t:'select', opts:['PDF','CSV','XLSX']},{l:'Scheduled reports', t:'select', opts:['Off','Weekly','Monthly']}],
+        buttons:[['Open Reports'],['Save',true]] },
 
       { g:'System', k:'security', label:'Security', b:'no',
-        note:'Sessions are JWT-based; these controls are not persisted as settings yet.',
-        fields:[{l:'Password policy', t:'select', opts:['Standard','Strong','Very strong']},{l:'Session timeout', t:'select', opts:['30 min','1 hour','8 hours']},{l:'Allowed domains'},{l:'Allowed IPs'},{l:'Login attempts', t:'number'},{l:'Password expiry', t:'select', opts:['Never','90 days','60 days','30 days']},{l:'MFA method', t:'select', opts:['Authenticator app','SMS','Email']}],
-        toggles:[{l:'Force MFA'},{l:'SSO'},{l:'Password expiration'},{l:'Device trust'},{l:'IP restriction'},{l:'Audit all changes', on:true}],
+        note:'Sessions are JWT-based today; these controls are not persisted as settings yet.',
+        fields:[{l:'Password policy', t:'select', opts:['Standard','Strong','Very strong']},{l:'MFA policy', t:'select', opts:['Optional','Required for admins','Required for all']},{l:'Session timeout', t:'select', opts:['30 min','1 hour','8 hours']},{l:'IP restrictions'},{l:'Audit retention', t:'select', opts:['90 days','180 days','1 year','Forever']}],
         buttons:[['Force logout all users'],['Save',true]] },
 
-      { g:'System', k:'audit', label:'Audit', b:'partial',
-        note:'Every ops action is written to audit_log and viewable in the Audit module.',
-        fields:[{l:'Log retention', t:'select', opts:['90 days','180 days','1 year','Forever']},{l:'Export schedule', t:'select', opts:['Off','Weekly','Monthly']},{l:'Storage location'}],
-        toggles:[{l:'Enable audit logging', on:true},{l:'Track login events', on:true},{l:'Track API calls'},{l:'Track configuration changes', on:true}],
-        buttons:[['Clear old logs'],['Open Audit log'],['Export logs',true]] },
-
-      { g:'System', k:'backup', label:'Backup & data retention', b:'no',
-        note:'Backups run at the database layer today, not from the app.',
-        fields:[{l:'Backup frequency', t:'select', opts:['Hourly','Daily','Weekly']},{l:'Backup time'},{l:'Retention period', t:'select', opts:['7 days','30 days','90 days','1 year']},{l:'Storage location'},{l:'Archive after'},{l:'Delete after'}],
-        toggles:[{l:'Automatic backup', on:true},{l:'Encrypt backup', on:true},{l:'Verify backup', on:true},{l:'Geo redundancy'}],
-        buttons:[['Restore backup'],['Download backup'],['View backup history'],['Run backup now',true]] },
+      { g:'System', k:'integrations', label:'Integrations', b:'partial',
+        note:'What FlowGuard actually talks to. Weather, email and maps are live.',
+        custom:integrations,
+        buttons:[['Save',true]] },
     ];
 
     let nav = '', lastG = '';
@@ -290,12 +214,13 @@ const OpsSettings = (function () {
       nav += `<div class="set-item${s.k === _active ? ' active' : ''}" id="set-item-${s.k}" onclick="OpsSettings.section('${s.k}')">${s.label}<span class="set-dot ${s.b}"></span></div>`;
     });
     const chip = b => `<span class="set-chip ${b}">${b === 'yes' ? 'Backed by a table' : b === 'partial' ? 'Partial / indirect' : 'Not backed yet'}</span>`;
-    const panels = SECTIONS.map(s => `<div class="set-panel${s.k === _active ? ' active' : ''}" id="set-panel-${s.k}"><div class="set-panel-head"><h2>${s.label}</h2>${chip(s.b)}</div>${s.note?note(s.note):''}${s.custom&&!s.fields?s.custom:''}${flds(s.fields)}${s.custom&&s.fields?s.custom:''}${togs(s.toggles)}${btns(s.buttons)}</div>`).join('');
+    const panels = SECTIONS.map(s => `<div class="set-panel${s.k === _active ? ' active' : ''}" id="set-panel-${s.k}"><div class="set-panel-head"><h2>${s.label}</h2>${chip(s.b)}</div>${s.note?note(s.note):''}${s.custom&&!s.fields?s.custom:''}${flds(s.fields)}${s.custom&&s.fields?s.custom:''}${togs(s.toggles)}${s.after||''}${btns(s.buttons)}</div>`).join('');
 
     container.innerHTML = `
       ${SET_STYLE}
       <style>
         .set-mono{font-family:var(--ff-m);font-size:var(--fs-xs);}
+        .set-avatar-lg{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--blue-hi),var(--blue-dim));color:#fff;font-weight:700;font-family:var(--ff-m);display:flex;align-items:center;justify-content:center;}
         .set-matrix{width:100%;border-collapse:collapse;font-size:var(--fs-sm);}
         .set-matrix th{text-align:center;font-size:var(--fs-2xs);text-transform:uppercase;letter-spacing:.4px;color:var(--ink-3);font-weight:700;padding:0 6px 10px;border-bottom:1px solid var(--border-2);white-space:nowrap;}
         .set-matrix th:first-child{text-align:left;}
@@ -312,13 +237,11 @@ const OpsSettings = (function () {
         .set-row-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
         .set-tag{font-size:var(--fs-2xs);font-weight:700;padding:2px 9px;border-radius:20px;background:var(--surface-2);color:var(--ink-3);}
         .set-tag.on{background:rgba(31,157,91,.12);color:var(--ok);}
-        .set-usage{height:7px;border-radius:5px;background:var(--surface-2);overflow:hidden;}
-        .set-usage i{display:block;height:100%;background:var(--blue-hi);}
         .set-sub2{font-size:var(--fs-xs);color:var(--ink-3);line-height:1.5;margin:-2px 0 12px;max-width:640px;}
       </style>
-      <div class="set-crumb">SETTINGS</div>
-      <div class="set-header"><div><div class="set-title">Settings</div><div class="set-sub">${SECTIONS.length} sections · workspace configuration</div></div></div>
-      <div id="st-loading" style="padding:60px;text-align:center;color:var(--ink-3);"><div class="loading" style="margin:0 auto 12px;"></div>Loading settings…</div>
+      <div class="set-crumb">ADMINISTRATION</div>
+      <div class="set-header"><div><div class="set-title">Administration</div><div class="set-sub">${SECTIONS.length} sections · users, teams, devices, alerts and system config</div></div></div>
+      <div id="st-loading" style="padding:60px;text-align:center;color:var(--ink-3);"><div class="loading" style="margin:0 auto 12px;"></div>Loading…</div>
       <div id="st-body" style="display:none;">
         <div class="set-grid">
           <div class="set-nav">
@@ -329,18 +252,12 @@ const OpsSettings = (function () {
               <span><span class="sw" style="background:var(--err);opacity:.5;"></span>Not backed yet</span>
             </div>
           </div>
-          <div class="set-content">
-            ${panels}
-          </div>
+          <div class="set-content">${panels}</div>
         </div>
       </div>`;
 
     updateClock();
     loadSettings();
-  }
-
-  function na(label) {
-    OpsModal.toast((label ? label + ' — ' : '') + 'not wired to a backend yet.', 'watch');
   }
 
   function section(k) {
