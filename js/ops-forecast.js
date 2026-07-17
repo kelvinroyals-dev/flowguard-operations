@@ -288,8 +288,12 @@ const OpsForecast = (function () {
     if (!el) return;
     const e = _sel;
     if (!e) { el.style.display = 'none'; return; }
-    el.style.display = 'block';
+    el.style.display = 'flex';
     const cur = e.current_risk, pred = e.predicted_risk;
+    // Translucent, risk-tinted glass (matches the mockup's see-through vibe):
+    // warm tint at the top when risk is high, cool at the bottom.
+    const tint = pred >= 70 ? '217,70,60' : pred >= 40 ? '224,142,18' : '31,157,91';
+    el.style.background = `linear-gradient(165deg, rgba(${tint},.16), rgba(255,255,255,.76) 42%, rgba(255,255,255,.76) 72%, rgba(28,184,232,.07))`;
     const at = f => Math.round(cur + (pred - cur) * f);
     const months = d => d ? Math.round((Date.now() - new Date(d).getTime()) / 2592e6) + 'mo ago' : '—';
     // Live section — hidden entirely when no Sentinel is installed.
@@ -534,9 +538,9 @@ const OpsForecast = (function () {
     .fcx-legend { position:absolute; bottom:14px; left:16px; z-index:410; display:flex; gap:12px; background:var(--surface); border:1px solid var(--border); border-radius:10px; box-shadow:var(--sh-xs); padding:8px 12px; }
     .fcx-legend span { display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-2xs); color:var(--ink-2); font-weight:600; }
     .fcx-legend .sw { width:9px; height:9px; border-radius:3px; }
-    .fcx-inspector { position:absolute; top:52px; right:16px; bottom:16px; z-index:410; width:250px; max-height:calc(100% - 68px); background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--sh-md); padding:15px; display:flex; flex-direction:column; overflow:hidden; }
-    .fcx-insp-scroll { flex:1; min-height:0; overflow-y:auto; margin:0 -2px; padding:0 2px; }
-    .fcx-insp-foot { flex-shrink:0; padding-top:12px; margin-top:4px; border-top:1px solid var(--border); }
+    .fcx-inspector { position:absolute; top:52px; right:16px; bottom:16px; z-index:410; width:250px; max-height:calc(100% - 68px); background:rgba(255,255,255,.72); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,.6); border-radius:16px; box-shadow:0 8px 30px rgba(10,42,61,.16); padding:16px; display:flex; flex-direction:column; overflow:hidden; }
+    .fcx-insp-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; margin:0 -2px; padding:0 2px; }
+    .fcx-insp-foot { flex:0 0 auto; padding-top:12px; margin-top:4px; border-top:1px solid rgba(10,42,61,.08); }
     @media (max-width:560px){ .fcx-inspector { position:static; width:auto; max-height:none; margin:12px; } }
     .fcx-insp-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-shrink:0; }
     .fcx-insp-name { font-size:var(--fs-sm); font-weight:700; color:var(--ink); flex:1; min-width:0; }
@@ -558,8 +562,9 @@ const OpsForecast = (function () {
     .fcx-cap .track { height:6px; border-radius:4px; background:var(--surface-2); overflow:hidden; }
     .fcx-cap .fill { height:100%; border-radius:4px; }
     .fcx-act { font-size:var(--fs-sm); color:var(--ink); font-weight:600; line-height:1.4; }
-    .fcx-btn { font-size:var(--fs-sm); font-weight:600; padding:9px 14px; border-radius:9px; cursor:pointer; border:1px solid var(--border-2); background:var(--surface); color:var(--ink-2); }
-    .fcx-btn.primary { background:var(--blue-hi); color:#fff; border:none; }
+    .fcx-btn { font-size:var(--fs-sm); font-weight:600; padding:9px 14px; border-radius:10px; cursor:pointer; border:1px solid var(--border-2); background:var(--surface); color:var(--ink-2); }
+    .fcx-btn.primary { background:linear-gradient(135deg,#16a8d3,#0d7fa0); color:#fff; border:none; box-shadow:0 4px 14px rgba(22,168,211,.30); }
+    .fcx-btn.primary:hover { filter:brightness(1.05); }
 
     .fcx-side { display:flex; flex-direction:column; gap:16px; }
     .fcx-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--sh-xs); padding:16px 18px; }
