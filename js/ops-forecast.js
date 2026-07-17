@@ -11,7 +11,7 @@
 const OpsForecast = (function () {
   'use strict';
 
-  let _root = null, _fc = null, _kpis = null, _map = null, _horizon = 'today', _sel = null;
+  let _root = null, _fc = null, _kpis = null, _md = null, _map = null, _horizon = 'today', _sel = null, _layers = {};
 
   const esc = v => (v == null ? '' : String(v)).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
   const riskColor = v => v >= 70 ? 'var(--err)' : v >= 40 ? 'var(--warn)' : 'var(--ok)';
@@ -105,12 +105,14 @@ const OpsForecast = (function () {
     _root = container;
     container.innerHTML = STYLES + `<div class="fcx"><div class="fcx-loading"><div class="loading" style="margin:0 auto 12px;"></div>Building the risk forecast…</div></div>`;
     try {
-      const [fcRes, kpiRes] = await Promise.all([
+      const [fcRes, kpiRes, mdRes] = await Promise.all([
         OpsModal.apiGet(`/forecast?horizon=${_horizon}`),
         OpsModal.apiGet('/analytics/kpis').catch(() => ({ data: {} })),
+        OpsModal.apiGet('/analytics/map-data').catch(() => ({ data: {} })),
       ]);
       _fc = fcRes.data || {};
       _kpis = kpiRes.data || {};
+      _md = mdRes.data || {};
       if (!_sel && (_fc.estates || []).length) _sel = _fc.estates[0];
       draw();
       await loadLeaflet();
@@ -259,11 +261,8 @@ const OpsForecast = (function () {
             <div id="fcx-map"></div>
             <div class="fcx-layers">
               <div class="fcx-layer active" data-l="heat" onclick="OpsForecast.layer('heat',this)">${ICON.heat}<span>Risk heatmap</span></div>
-              <div class="fcx-layer" data-l="rain" onclick="OpsForecast.layer('rain',this)">${ICON.rain}<span>Rainfall</span></div>
-              <div class="fcx-layer" data-l="net" onclick="OpsForecast.layer('net',this)">${ICON.net}<span>Drainage network</span></div>
               <div class="fcx-layer active" data-l="prop" onclick="OpsForecast.layer('prop',this)">${ICON.prop}<span>Properties</span></div>
               <div class="fcx-layer" data-l="dev" onclick="OpsForecast.layer('dev',this)">${ICON.dev}<span>Sentinel devices</span></div>
-              <div class="fcx-layer" data-l="team" onclick="OpsForecast.layer('team',this)">${ICON.team}<span>Teams</span></div>
               <div class="fcx-layer" data-l="inc" onclick="OpsForecast.layer('inc',this)">${ICON.inc}<span>Incidents</span></div>
             </div>
             <div class="fcx-legend"><span><span class="sw" style="background:#1f9d5b"></span>Low</span><span><span class="sw" style="background:#e08e12"></span>Medium</span><span><span class="sw" style="background:#d9463c"></span>High</span></div>
@@ -365,19 +364,42 @@ const OpsForecast = (function () {
     _map = L.map(holder, { center: [6.5244, 3.3792], zoom: 11, zoomControl: false, attributionControl: false });
     L.control.zoom({ position: 'bottomright' }).addTo(_map);
     L.tileLayer(tileUrl(), { subdomains: 'abcd', maxZoom: 19 }).addTo(_map);
+
+    _layers = { heat: L.layerGroup(), prop: L.layerGroup(), dev: L.layerGroup(), inc: L.layerGroup() };
     const pts = [];
     est.forEach(e => {
       const col = riskHex(e.predicted_risk);
-      L.circle([e.latitude, e.longitude], { radius: 900, color: col, weight: 0, fillColor: col, fillOpacity: 0.18 }).addTo(_map);
+      _layers.heat.addLayer(L.circle([e.latitude, e.longitude], { radius: 900, color: col, weight: 0, fillColor: col, fillOpacity: 0.18 }));
       const s = 16 + Math.round(e.predicted_risk / 10);
       const border = e.has_live ? '2px solid #fff' : '2px dashed #fff';
       const op = e.has_live ? '1' : '.82';
       const icon = L.divIcon({ className: '', iconSize: [s, s], iconAnchor: [s / 2, s / 2],
         html: `<div style="width:${s}px;height:${s}px;border-radius:50%;background:${col};border:${border};opacity:${op};box-shadow:0 1px 5px rgba(10,42,61,.35);display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:800;">${e.predicted_risk}</div>` });
-      const m = L.marker([e.latitude, e.longitude], { icon }).addTo(_map);
+      const m = L.marker([e.latitude, e.longitude], { icon });
       m.on('click', () => { _sel = e; renderInspector(); });
+      _layers.prop.addLayer(m);
       pts.push([e.latitude, e.longitude]);
     });
+
+    // Sentinel devices
+    (_md && _md.sensors || []).filter(s => s.latitude && s.longitude).forEach(s => {
+      const on = s.status === 'active';
+      const c = on ? '#1cb8e8' : '#8aa2ae';
+      const icon = L.divIcon({ className: '', iconSize: [12, 12], iconAnchor: [6, 6], html: `<div style="width:12px;height:12px;border-radius:3px;background:${c};border:2px solid #fff;box-shadow:0 1px 3px rgba(10,42,61,.3);"></div>` });
+      _layers.dev.addLayer(L.marker([s.latitude, s.longitude], { icon, title: s.name || s.sensor_id }));
+    });
+
+    // Incidents (active alerts)
+    (_md && _md.alerts || []).filter(a => a.latitude && a.longitude).forEach(a => {
+      const c = a.severity === 'critical' ? '#d9463c' : a.severity === 'high' ? '#e08e12' : '#e08e12';
+      const icon = L.divIcon({ className: '', iconSize: [14, 14], iconAnchor: [7, 7], html: `<div style="width:14px;height:14px;border-radius:50%;background:${c};border:2px solid #fff;box-shadow:0 0 0 4px ${c}33;"></div>` });
+      _layers.inc.addLayer(L.marker([a.latitude, a.longitude], { icon, title: (a.alert_type || 'Alert') + ' · ' + (a.client_name || '') }));
+    });
+
+    // Default-on layers
+    _layers.heat.addTo(_map);
+    _layers.prop.addTo(_map);
+
     if (pts.length) { try { _map.fitBounds(pts, { padding: [60, 60], maxZoom: 13 }); } catch (_) {} }
     if (window.ResizeObserver) new ResizeObserver(() => { try { _map.invalidateSize(); } catch (_) {} }).observe(holder);
   }
@@ -385,8 +407,11 @@ const OpsForecast = (function () {
   // ── interactions ───────────────────────────────────────────────────────
   function setHorizon(h) { _horizon = h; _sel = null; render(_root); }
   function layer(key, elx) {
-    if (elx) elx.classList.toggle('active');
-    if (key !== 'heat' && key !== 'prop') OpsModal.toast('That map layer isn’t wired to live data yet.', 'watch');
+    const grp = _layers[key];
+    if (!grp || !_map) { if (elx) elx.classList.toggle('active'); return; }
+    const on = _map.hasLayer(grp);
+    if (on) { _map.removeLayer(grp); if (elx) elx.classList.remove('active'); }
+    else { grp.addTo(_map); if (elx) elx.classList.add('active'); }
   }
   function select(pid) {
     const e = (_fc.estates || []).find(x => String(x.property_id) === String(pid));
