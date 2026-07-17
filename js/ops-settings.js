@@ -36,7 +36,9 @@ const OpsSettings = (function () {
 
   const SET_STYLE = `<style>
     .set-crumb{font-size:var(--fs-2xs);color:var(--ink-3);font-weight:700;letter-spacing:.6px;margin-bottom:10px;}
-    .set-header{display:flex;align-items:flex-start;gap:16px;margin-bottom:16px;flex-wrap:wrap;}
+    .set-header{display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap;}
+    .set-back{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-sm);font-weight:600;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:8px 13px;cursor:pointer;}
+    .set-back:hover{color:var(--ink);border-color:var(--border-2);}
     .set-title{font-family:var(--ff-d);font-size:var(--fs-xl);font-weight:700;color:var(--ink);line-height:1.1;}
     .set-sub{font-size:var(--fs-sm);color:var(--ink-3);margin-top:3px;}
     .set-grid{display:grid;grid-template-columns:262px 1fr;gap:16px;align-items:start;}
@@ -239,8 +241,11 @@ const OpsSettings = (function () {
         .set-tag.on{background:rgba(31,157,91,.12);color:var(--ok);}
         .set-sub2{font-size:var(--fs-xs);color:var(--ink-3);line-height:1.5;margin:-2px 0 12px;max-width:640px;}
       </style>
-      <div class="set-crumb">ADMINISTRATION</div>
-      <div class="set-header"><div><div class="set-title">Administration</div><div class="set-sub">${SECTIONS.length} sections · users, teams, devices, alerts and system config</div></div></div>
+      <div class="set-crumb"><span class="lnk" onclick="switchTab('dashboard')" style="cursor:pointer;color:var(--ink-2);font-weight:700;">Situation</span><span style="opacity:.5;"> / </span>ADMINISTRATION</div>
+      <div class="set-header">
+        <button class="set-back" onclick="switchTab('dashboard')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Back to Situation</button>
+        <div><div class="set-title">Administration</div><div class="set-sub">${SECTIONS.length} sections · users, teams, devices, alerts and system config</div></div>
+      </div>
       <div id="st-loading" style="padding:60px;text-align:center;color:var(--ink-3);"><div class="loading" style="margin:0 auto 12px;"></div>Loading…</div>
       <div id="st-body" style="display:none;">
         <div class="set-grid">
@@ -258,6 +263,10 @@ const OpsSettings = (function () {
 
     updateClock();
     loadSettings();
+  }
+
+  function na(label) {
+    OpsModal.toast((label ? label + ' — ' : '') + 'not wired to a backend yet.', 'watch');
   }
 
   function section(k) {
