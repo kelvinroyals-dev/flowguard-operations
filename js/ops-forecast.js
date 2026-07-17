@@ -127,6 +127,7 @@ const OpsForecast = (function () {
     const rainVals = series.map(h => h.rainfall || 0);
     const n = series.length;
     const total = est.length;
+    const liveN = est.filter(e => e.has_live).length;
     const high = est.filter(e => e.predicted_risk >= 70).length;
     const med = est.filter(e => e.predicted_risk >= 40 && e.predicted_risk < 70).length;
     const low = est.filter(e => e.predicted_risk < 40).length;
@@ -159,7 +160,7 @@ const OpsForecast = (function () {
       ${kpi('Overall risk index', `<span style="color:${riskColor(overall)}">${riskLabel(overall)}</span>`, `${overall}/100`, `Peak across ${total} estate${total === 1 ? '' : 's'}`, riskVals, riskHex(overall), dRisk)}
       ${kpi('High-risk properties', high, '', `${med} medium · ${low} low`, est.map(e => e.predicted_risk), '#e08e12', null)}
       ${kpi('Rainfall forecast (24h)', rain24, 'mm', _fc.has_rainfall_data ? 'Open-Meteo · Lagos' : 'No live rainfall feed', rainVals, '#1cb8e8', null)}
-      ${kpi('Network capacity', capacity, '%', `Drain headroom · ${avgCur}% avg load`, riskVals.map(v => 100 - v), '#1f9d5b', null)}
+      ${kpi(`Network capacity`, capacity, '%', `${liveN ? 'Measured on ' + liveN : 'Estimated'} · ${avgCur}% avg load`, riskVals.map(v => 100 - v), '#1f9d5b', null)}
       ${kpi('Open preventive actions', preventive, '', 'Recommended by the model', est.map(e => e.recommendation_level === 'critical' ? 100 : e.recommendation_level === 'warning' ? 60 : 20), '#1cb8e8', null)}
     </div>`;
 
@@ -175,23 +176,27 @@ const OpsForecast = (function () {
           </div>`).join('') : '<div class="fcx-nodata" style="padding:20px 0;">No forecast events for this window.</div>'}
       </div>`;
 
-    const cov = total ? Math.round(est.reduce((s, e) => s + (e.data_coverage || 0), 0) / total) : 0;
-    const confLvl = cov >= 75 ? 'High' : cov >= 45 ? 'Medium' : 'Low';
+    const liveCount = _fc.live_count != null ? _fc.live_count : est.filter(e => e.has_live).length;
+    const conf = _fc.portfolio_confidence != null ? _fc.portfolio_confidence : 60;
+    const confLvl = conf >= 80 ? 'High' : conf >= 55 ? 'Medium' : 'Low';
+    const confSub = liveCount > 0
+      ? `${liveCount} of ${total} propert${total === 1 ? 'y' : 'ies'} live-monitored · rest on weather + historical data.`
+      : 'Based on weather + historical data — no Sentinels installed yet.';
+    const check = (on, label) => `<div class="fcx-check"><span class="fcx-check-m ${on ? 'on' : 'off'}">${on ? '✓' : '—'}</span>${label}</div>`;
     const confCard = `
       <div class="fcx-card">
-        <div class="fcx-card-head"><h3>Model confidence</h3></div>
+        <div class="fcx-card-head"><h3>Forecast confidence</h3></div>
         <div class="fcx-conf-row">
-          ${ring(cov, riskHex(100 - cov))}
-          <div><div class="fcx-conf-t">${confLvl} confidence</div><div class="fcx-conf-s">Rule-based blend of live sensor trend and Open-Meteo rainfall — not a trained model. Coverage reflects how many Sentinels are reporting.</div></div>
+          ${ring(conf, conf >= 80 ? '#1f9d5b' : conf >= 55 ? '#e08e12' : '#d9463c')}
+          <div><div class="fcx-conf-t">${confLvl} confidence</div><div class="fcx-conf-s">${confSub}</div></div>
         </div>
-        <div class="fcx-src-label">Data sources</div>
-        <div class="fcx-src">
-          <span class="fcx-src-ic" title="Sentinel telemetry">${ICON.dev}</span>
-          <span class="fcx-src-ic" title="Rainfall (Open-Meteo)">${ICON.rain}</span>
-          <span class="fcx-src-ic" title="Drainage network">${ICON.net}</span>
-          <span class="fcx-src-ic" title="Alerts">${ICON.inc}</span>
+        <div class="fcx-checks">
+          ${check(_fc.has_rainfall_data, 'Weather forecast')}
+          ${check(true, 'Historical data')}
+          ${check(liveCount > 0, 'Live Sentinels')}
+          ${check(est.some(e => e.last_inspection), 'Recent inspections')}
         </div>
-        <div class="fcx-live"><span class="fcx-live-dot"></span>Live · updated ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
+        <div class="fcx-live"><span class="fcx-live-dot"></span>Rule-based blend · updated ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
       </div>`;
 
     const charts = `<div class="fcx-charts">
@@ -215,20 +220,22 @@ const OpsForecast = (function () {
     const table = `<div class="fcx-card fcx-tablecard">
       <div class="fcx-card-head"><h3>Highest-risk properties</h3></div>
       <div class="lv-scroll"><table class="lv-table">
-        <thead><tr><th>Property</th><th>Current risk</th><th>Forecast (24h)</th><th>Rain ETA</th><th>Drain capacity</th><th>Status</th><th>Recommendation</th></tr></thead>
+        <thead><tr><th>Property</th><th>Risk</th><th>Forecast (24h)</th><th>Rain ETA</th><th>Last cleaned</th><th>Capacity</th><th>Status</th><th>Recommendation</th></tr></thead>
         <tbody>${topEst.length ? topEst.map(e => {
           const st = e.recommendation_level === 'critical' ? { c: 'danger', l: 'Dispatch' } : e.recommendation_level === 'warning' ? { c: 'warn', l: 'Preventive' } : { c: 'ok', l: 'Monitoring' };
           const capp = Math.max(0, 100 - e.current_risk);
-          return `<tr class="clickable" onclick="fgOpen('properties','${esc(e.property_id)}')">
-            <td>${OpsModal.link('properties', e.property_id, e.name || e.property_id)}</td>
+          const cleaned = (e.last_cleaning || e.last_inspection) ? Math.round((Date.now() - new Date(e.last_cleaning || e.last_inspection).getTime()) / 2592e6) + 'mo' : '—';
+          return `<tr class="clickable" onclick="OpsForecast.select('${esc(e.property_id)}')">
+            <td><span class="fcx-livedot ${e.has_live ? 'on' : ''}" title="${e.has_live ? 'Live-monitored' : 'Estimated (no Sentinel)'}"></span>${OpsModal.link('properties', e.property_id, e.name || e.property_id)}</td>
             <td><span class="lv-status ${riskChipCls(e.current_risk)}">${e.current_risk} · ${riskLabel(e.current_risk)}</span></td>
             <td><span class="lv-status ${riskChipCls(e.predicted_risk)}">${e.predicted_risk} · ${riskLabel(e.predicted_risk)}</span></td>
             <td class="lv-mono">${rainEta(series)}</td>
+            <td class="lv-mono">${cleaned}</td>
             <td><div class="fcx-capbar"><div class="track"><div class="fill" style="width:${capp}%;background:${riskColor(e.current_risk)};"></div></div><span class="lv-mono">${capp}%</span></div></td>
             <td><span class="lv-status ${st.c}">${st.l}</span></td>
             <td style="color:var(--ink-3);font-size:var(--fs-xs);">${esc((e.recommendation || '').slice(0, 42))}</td>
           </tr>`;
-        }).join('') : '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--ink-3);">No estates are reporting enough telemetry to score yet.</td></tr>'}</tbody>
+        }).join('') : '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--ink-3);">No managed properties to score yet.</td></tr>'}</tbody>
       </table></div>
     </div>`;
 
@@ -262,7 +269,7 @@ const OpsForecast = (function () {
             <div class="fcx-legend"><span><span class="sw" style="background:#1f9d5b"></span>Low</span><span><span class="sw" style="background:#e08e12"></span>Medium</span><span><span class="sw" style="background:#d9463c"></span>High</span></div>
             <div id="fcx-inspector" class="fcx-inspector"></div>
           </div>
-          <div class="fcx-side">${eventsCard}${confCard}</div>
+          <div class="fcx-side">${eventsCard}<div class="fcx-card" id="fcx-inputs-card"><div class="fcx-card-head"><h3>Prediction inputs</h3></div><div id="fcx-inputs"></div></div>${confCard}</div>
         </div>
         ${charts}
         ${table}
@@ -273,21 +280,55 @@ const OpsForecast = (function () {
 
   function renderInspector() {
     const el = document.getElementById('fcx-inspector');
+    renderInputs();
     if (!el) return;
     const e = _sel;
     if (!e) { el.style.display = 'none'; return; }
     el.style.display = 'block';
     const cur = e.current_risk, pred = e.predicted_risk;
     const at = f => Math.round(cur + (pred - cur) * f);
-    const cap = Math.max(0, 100 - cur);
+    const months = d => d ? Math.round((Date.now() - new Date(d).getTime()) / 2592e6) + 'mo ago' : '—';
+    // Live section — hidden entirely when no Sentinel is installed.
+    const liveBlock = e.has_live
+      ? `<div class="fcx-insp-b"><div class="fcx-insp-l">Live monitoring</div><div class="fcx-live-grid"><div><span class="k">Sentinels</span><span class="v">${e.sensor_count}</span></div><div><span class="k">Coverage</span><span class="v">${e.data_coverage || 0}%</span></div><div><span class="k">Last seen</span><span class="v">${e.latest_reading ? timeAgo(e.latest_reading) : '—'}</span></div></div></div>`
+      : `<div class="fcx-insp-b fcx-nolive"><div class="fcx-nolive-t">No Sentinel installed</div><div class="fcx-nolive-s">Forecast based on environmental &amp; historical data.</div></div>`;
     el.innerHTML = `
       <div class="fcx-insp-head"><span class="fcx-insp-name">${esc(e.name || e.property_id)}</span><span class="fcx-chip ${riskChipCls(pred)}">${riskLabel(pred)} risk</span><span class="fcx-insp-x" onclick="OpsForecast.deselect()">&times;</span></div>
+      <div class="fcx-insp-b"><div class="fcx-insp-l">Property</div><div class="fcx-pf"><div><span class="k">Client</span><span class="v">${esc(e.client_name || 'Unlinked')}</span></div><div><span class="k">Last cleaned</span><span class="v">${months(e.last_cleaning || e.last_inspection)}</span></div><div><span class="k">Open incidents</span><span class="v">${e.open_incidents || 0}</span></div><div><span class="k">Flood history</span><span class="v">${e.flood_events || 0}</span></div></div></div>
       <div class="fcx-insp-b"><div class="fcx-insp-l">Current risk</div><div class="fcx-gauge"><span class="big" style="color:${riskColor(cur)}">${cur}</span>${ringMini(cur, riskHex(cur))}</div></div>
       <div class="fcx-insp-b"><div class="fcx-insp-l">Forecast risk</div><div class="fcx-hours"><div class="fcx-h"><div class="h">6h</div><div class="v" style="color:${riskColor(at(.25))}">${at(.25)}%</div></div><div class="fcx-h"><div class="h">12h</div><div class="v" style="color:${riskColor(at(.5))}">${at(.5)}%</div></div><div class="fcx-h"><div class="h">24h</div><div class="v" style="color:${riskColor(pred)}">${pred}%</div></div></div></div>
-      <div class="fcx-insp-b"><div class="fcx-insp-l">Drain headroom</div><div class="fcx-cap"><div class="cap-row"><span>Capacity</span><span class="mono">${cap}%</span></div><div class="track"><div class="fill" style="width:${cap}%;background:${riskColor(cur)}"></div></div></div></div>
-      <div class="fcx-insp-b"><div class="fcx-insp-l">Sentinels reporting</div><div style="font-size:var(--fs-sm);font-weight:700;color:var(--ink);">${e.sensor_count || 0} node${e.sensor_count === 1 ? '' : 's'} · ${e.data_coverage || 0}% coverage</div></div>
+      ${liveBlock}
       <div class="fcx-insp-b"><div class="fcx-insp-l">Recommended action</div><div class="fcx-act">${e.recommendation_level === 'ok' ? '✓' : '!'} ${esc(e.recommendation || 'Monitor as usual')}</div></div>
       <button class="fcx-btn primary" style="width:100%;margin-top:12px;" onclick="OpsForecast.act()">Create preventive action</button>`;
+  }
+
+  // Prediction inputs — the explainability panel: why the model reached its
+  // score. Contributors come straight from the backend (real components).
+  function renderInputs() {
+    const el = document.getElementById('fcx-inputs');
+    if (!el) return;
+    const e = _sel;
+    if (!e) { el.innerHTML = '<div class="fcx-nodata" style="padding:16px 0;">Select a property on the map to see what drives its risk.</div>'; return; }
+    const contribs = e.contributors || [];
+    const maxD = Math.max(1, ...contribs.map(c => Math.abs(c.delta || 0)));
+    el.innerHTML = `
+      <div class="fcx-inputs-top"><span class="fcx-inputs-name">${esc(e.name || e.property_id)}</span><span class="fcx-chip ${riskChipCls(e.predicted_risk)}">${riskLabel(e.predicted_risk)} · ${e.predicted_risk}%</span></div>
+      <div class="fcx-inputs-list">
+        ${contribs.map(c => {
+          const d = c.delta || 0, up = c.dir === 'up';
+          const w = Math.round((Math.abs(d) / maxD) * 100);
+          return `<div class="fcx-ci">
+            <div class="fcx-ci-top"><span class="fcx-ci-arrow ${up ? 'up' : 'down'}">${up ? '↑' : '↓'}</span><span class="fcx-ci-label">${esc(c.label)}</span><span class="fcx-ci-delta ${up ? 'up' : 'down'}">${d ? (up ? '+' : '−') + Math.abs(d) : (c.note || '')}</span></div>
+            ${d ? `<div class="fcx-ci-bar"><div class="fcx-ci-fill ${up ? 'up' : 'down'}" style="width:${w}%;"></div></div>` : ''}
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="fcx-inputs-foot">${e.confidence != null ? `Forecast confidence <b>${e.confidence}%</b> · ${(e.confidence_sources || []).join(' · ')}` : ''}</div>`;
+  }
+
+  function timeAgo(ts) {
+    const m = Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
+    if (m < 1) return 'now'; if (m < 60) return m + 'm'; if (m < 1440) return Math.floor(m / 60) + 'h'; return Math.floor(m / 1440) + 'd';
   }
 
   function buildEvents(est, series) {
@@ -329,8 +370,10 @@ const OpsForecast = (function () {
       const col = riskHex(e.predicted_risk);
       L.circle([e.latitude, e.longitude], { radius: 900, color: col, weight: 0, fillColor: col, fillOpacity: 0.18 }).addTo(_map);
       const s = 16 + Math.round(e.predicted_risk / 10);
+      const border = e.has_live ? '2px solid #fff' : '2px dashed #fff';
+      const op = e.has_live ? '1' : '.82';
       const icon = L.divIcon({ className: '', iconSize: [s, s], iconAnchor: [s / 2, s / 2],
-        html: `<div style="width:${s}px;height:${s}px;border-radius:50%;background:${col};border:2px solid #fff;box-shadow:0 1px 5px rgba(10,42,61,.35);display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:800;">${e.predicted_risk}</div>` });
+        html: `<div style="width:${s}px;height:${s}px;border-radius:50%;background:${col};border:${border};opacity:${op};box-shadow:0 1px 5px rgba(10,42,61,.35);display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:800;">${e.predicted_risk}</div>` });
       const m = L.marker([e.latitude, e.longitude], { icon }).addTo(_map);
       m.on('click', () => { _sel = e; renderInspector(); });
       pts.push([e.latitude, e.longitude]);
@@ -344,6 +387,14 @@ const OpsForecast = (function () {
   function layer(key, elx) {
     if (elx) elx.classList.toggle('active');
     if (key !== 'heat' && key !== 'prop') OpsModal.toast('That map layer isn’t wired to live data yet.', 'watch');
+  }
+  function select(pid) {
+    const e = (_fc.estates || []).find(x => String(x.property_id) === String(pid));
+    if (!e) return;
+    _sel = e; renderInspector();
+    if (_map && e.latitude && e.longitude) { try { _map.panTo([e.latitude, e.longitude]); } catch (_) {} }
+    const card = document.getElementById('fcx-inputs-card');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
   function deselect() { _sel = null; renderInspector(); }
   function act() { OpsModal.toast('Preventive-action workflow isn’t wired to a backend yet.', 'watch'); }
@@ -434,6 +485,39 @@ const OpsForecast = (function () {
     .fcx-src-ic svg { width:15px; height:15px; }
     .fcx-live { display:flex; align-items:center; gap:6px; font-size:var(--fs-2xs); color:var(--ink-3); margin-top:10px; }
     .fcx-live-dot { width:7px; height:7px; border-radius:50%; background:var(--ok); box-shadow:0 0 0 3px rgba(31,157,91,.18); }
+    .fcx-checks { display:flex; flex-direction:column; gap:6px; margin-top:12px; }
+    .fcx-check { display:flex; align-items:center; gap:8px; font-size:var(--fs-xs); color:var(--ink-2); }
+    .fcx-check-m { width:16px; height:16px; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; }
+    .fcx-check-m.on { background:rgba(31,157,91,.15); color:var(--ok); }
+    .fcx-check-m.off { background:var(--surface-2); color:var(--ink-4); }
+
+    /* prediction inputs (explainability) */
+    #fcx-inputs { }
+    .fcx-inputs-top { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
+    .fcx-inputs-name { font-size:var(--fs-sm); font-weight:700; color:var(--ink); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .fcx-inputs-list { display:flex; flex-direction:column; gap:9px; }
+    .fcx-ci-top { display:flex; align-items:center; gap:7px; font-size:var(--fs-xs); }
+    .fcx-ci-arrow { font-weight:800; }
+    .fcx-ci-arrow.up { color:var(--err); } .fcx-ci-arrow.down { color:var(--ok); }
+    .fcx-ci-label { color:var(--ink-2); flex:1; min-width:0; }
+    .fcx-ci-delta { font-weight:700; font-family:var(--ff-m); font-size:var(--fs-2xs); }
+    .fcx-ci-delta.up { color:var(--err); } .fcx-ci-delta.down { color:var(--ok); }
+    .fcx-ci-bar { height:5px; border-radius:3px; background:var(--surface-2); overflow:hidden; margin-top:4px; }
+    .fcx-ci-fill { height:100%; border-radius:3px; }
+    .fcx-ci-fill.up { background:var(--err); opacity:.7; } .fcx-ci-fill.down { background:var(--ok); opacity:.7; }
+    .fcx-inputs-foot { font-size:var(--fs-2xs); color:var(--ink-3); margin-top:12px; padding-top:10px; border-top:1px solid var(--border); }
+    .fcx-inputs-foot b { color:var(--ink); }
+
+    /* inspector property facts + live/no-live */
+    .fcx-pf, .fcx-live-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 10px; }
+    .fcx-pf > div, .fcx-live-grid > div { display:flex; flex-direction:column; }
+    .fcx-pf .k, .fcx-live-grid .k { font-size:9px; text-transform:uppercase; letter-spacing:.4px; color:var(--ink-3); font-weight:700; }
+    .fcx-pf .v, .fcx-live-grid .v { font-size:var(--fs-sm); font-weight:700; color:var(--ink); }
+    .fcx-nolive { text-align:center; }
+    .fcx-nolive-t { font-size:var(--fs-sm); font-weight:700; color:var(--warn); }
+    .fcx-nolive-s { font-size:var(--fs-xs); color:var(--ink-3); margin-top:3px; line-height:1.5; }
+    .fcx-livedot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:7px; vertical-align:middle; background:transparent; border:1.5px solid var(--ink-4); }
+    .fcx-livedot.on { background:var(--ok); border-color:var(--ok); box-shadow:0 0 0 2px rgba(31,157,91,.15); }
 
     .fcx-charts { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
     @media (max-width:1200px){ .fcx-charts{ grid-template-columns:repeat(2,1fr); } }
@@ -461,6 +545,6 @@ const OpsForecast = (function () {
     .lv-status.low { background:rgba(31,157,91,.12); color:var(--ok); }
   </style>`;
 
-  return { render, setHorizon, layer, deselect, act, open, back };
+  return { render, setHorizon, layer, select, deselect, act, open, back };
 
 })();
