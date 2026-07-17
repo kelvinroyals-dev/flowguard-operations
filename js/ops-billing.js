@@ -21,6 +21,9 @@ const OpsBilling = (function () {
   const fmtDate = ds => ds ? new Date(ds).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
   const inThisMonth = ds => { if (!ds) return false; const d = new Date(ds), n = new Date(); return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear(); };
 
+  // Gate write actions on the billing.manage permission (server also enforces).
+  const canManage = () => (typeof Auth !== 'undefined' && Auth.can) ? Auth.can('billing.manage') : true;
+
   function payMeta(ps) {
     ps = String(ps || '').toLowerCase();
     return ({ paid: { c: 'paid', l: 'Paid' }, overdue: { c: 'overdue', l: 'Overdue' }, pending: { c: 'pending', l: 'Pending' }, partial: { c: 'partial', l: 'Partially paid' }, unpaid: { c: 'pending', l: 'Pending' } })[ps]
@@ -111,7 +114,7 @@ const OpsBilling = (function () {
         </div>
         <div class="bl-head-actions">
           <button class="bl-btn" onclick="OpsBilling.exportCsv()">Export</button>
-          <button class="bl-btn primary" onclick="OpsBilling.openCreate()">+ New invoice</button>
+          ${canManage() ? `<button class="bl-btn primary" onclick="OpsBilling.openCreate()">+ New invoice</button>` : ''}
         </div>
       </div>
       <div id="bl-story" class="bl-story"></div>
@@ -312,7 +315,7 @@ const OpsBilling = (function () {
       avatar: { text: '₦', bg: 'linear-gradient(135deg,#16a8d3,#0d7fa0)' },
       chips: [{ cls: chipCls, label: pm.l, dot: true }],
       meta: [['Property', esc(inv.property_name || '—')], ['Client', inv.client_name ? esc(inv.client_name) : 'Unlinked'], ['Issued', fmtDate(inv.issue_date || inv.created_at)], ['Due', fmtDate(inv.due_date)], ['Sent', inv.sent_at ? fmtDate(inv.sent_at) : 'Not sent']],
-      actions: `<button class="fgd-btn" onclick="OpsBilling.downloadPdf('${id}')">Download PDF</button><button class="fgd-btn" onclick="OpsBilling.openEdit('${id}')">Edit</button>${eff !== 'paid' ? `<button class="fgd-btn" onclick="OpsBilling.recordPayment('${id}')">Record payment</button>` : ''}<button class="fgd-btn" style="background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;" onclick="OpsBilling.sendInvoiceEmail('${id}')">${inv.sent_at ? 'Resend to client' : 'Send to client'}</button>`,
+      actions: `<button class="fgd-btn" onclick="OpsBilling.downloadPdf('${id}')">Download PDF</button>${canManage() ? `<button class="fgd-btn" onclick="OpsBilling.openEdit('${id}')">Edit</button>${eff !== 'paid' ? `<button class="fgd-btn" onclick="OpsBilling.recordPayment('${id}')">Record payment</button>` : ''}<button class="fgd-btn" style="background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;" onclick="OpsBilling.sendInvoiceEmail('${id}')">${inv.sent_at ? 'Resend to client' : 'Send to client'}</button>` : ''}`,
       sections: [
         { id: 'details', title: 'Invoice details', meta: 'invoices', body: detailsBody },
         { id: 'services', title: 'Services', meta: 'invoices.line_items (jsonb)', body: servicesBody },
@@ -368,6 +371,7 @@ const OpsBilling = (function () {
 
   async function openCreate() {
     if (!_container) return;
+    if (!canManage()) return OpsModal.toast('You do not have permission to create invoices', 'critical');
     _editId = null;
     _draft = [{ description: '', qty: 1, unit_price: 0, amount: 0 }];
     _container.innerHTML = BL_CSS + `<div style="padding:60px;text-align:center;color:var(--ink-3);">Loading…</div>`;
@@ -377,6 +381,7 @@ const OpsBilling = (function () {
 
   async function openEdit(id) {
     if (!_container) return;
+    if (!canManage()) return OpsModal.toast('You do not have permission to edit invoices', 'critical');
     _container.innerHTML = BL_CSS + `<div style="padding:60px;text-align:center;color:var(--ink-3);">Loading…</div>`;
     await ensureProps();
     let inv;

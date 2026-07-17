@@ -47,10 +47,37 @@ const Auth = (function () {
   }
 
   // ── ROLE / NAV ACCESS ──────────────────────────────────────────────────
+  // Nav tab -> permission module. Once the editable permission model loads
+  // (loadPermissions), nav access is driven by it; until then we fall back to
+  // the static CONFIG.NAV_ACCESS role map so the app is never blank on boot.
+  const TAB_MODULE = {
+    dashboard: 'situation', network: 'network', maintenance: 'maintenance', alerts: 'alerts',
+    assets: 'assets', properties: 'properties', clients: 'clients', billing: 'billing',
+    'field-reports': 'field-reports', teams: 'teams', 'team-members': 'team-members',
+    sensors: 'devices', reports: 'reports', forecast: 'forecast', audit: 'audit', settings: 'administration',
+  };
+  let _perms = null;   // effective permission map for the current user
+
+  async function loadPermissions() {
+    try {
+      const base = (typeof CONFIG !== 'undefined' && CONFIG.API_BASE) ? CONFIG.API_BASE : '/api/v1';
+      const r = await fetch(base + '/settings/permissions/me', { headers: { Authorization: 'Bearer ' + getToken() } });
+      if (!r.ok) return null;
+      const j = await r.json();
+      _perms = (j.data && j.data.permissions) || null;
+      return _perms;
+    } catch { return null; }
+  }
+
+  // Generic permission check for gating buttons/actions. Fail-open until the
+  // model loads (the server still enforces writes regardless).
+  function can(key) { return !_perms || _perms[key] !== false; }
 
   function hasNavAccess(tabKey) {
-    const role    = getRole();
+    const role = getRole();
     if (!role) return false;
+    const mod = TAB_MODULE[tabKey];
+    if (_perms && mod) return _perms[mod + '.view'] !== false;
     const allowed = CONFIG.NAV_ACCESS[role] || [];
     return allowed.includes(tabKey);
   }
@@ -135,6 +162,7 @@ const Auth = (function () {
   return {
     getToken, getUser, getRole,
     isAuthenticated, hasNavAccess, getDefaultTab,
+    loadPermissions, can,
     logout, install401Interceptor,
     updateUserInfo, getGreeting, getPersonalizedGreeting,
   };
