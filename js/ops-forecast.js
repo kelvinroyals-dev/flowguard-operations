@@ -11,7 +11,7 @@
 const OpsForecast = (function () {
   'use strict';
 
-  let _root = null, _fc = null, _kpis = null, _md = null, _map = null, _horizon = 'today', _sel = null, _layers = {};
+  let _root = null, _fc = null, _kpis = null, _md = null, _map = null, _horizon = 'today', _sel = null, _layers = {}, _tiles = null, _themeObs = null;
 
   const esc = v => (v == null ? '' : String(v)).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
   const riskColor = v => v >= 70 ? 'var(--err)' : v >= 40 ? 'var(--warn)' : 'var(--ok)';
@@ -293,7 +293,10 @@ const OpsForecast = (function () {
     // Translucent, risk-tinted glass (matches the mockup's see-through vibe):
     // warm tint at the top when risk is high, cool at the bottom.
     const tint = pred >= 70 ? '217,70,60' : pred >= 40 ? '224,142,18' : '31,157,91';
-    el.style.background = `linear-gradient(165deg, rgba(${tint},.16), rgba(255,255,255,.76) 42%, rgba(255,255,255,.76) 72%, rgba(28,184,232,.07))`;
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const base = dark ? '16,26,38' : '255,255,255';       // --surface rgb per theme
+    const baseA = dark ? '.86' : '.76';
+    el.style.background = `linear-gradient(165deg, rgba(${tint},${dark ? '.24' : '.16'}), rgba(${base},${baseA}) 42%, rgba(${base},${baseA}) 72%, rgba(28,184,232,.07))`;
     const at = f => Math.round(cur + (pred - cur) * f);
     const months = d => d ? Math.round((Date.now() - new Date(d).getTime()) / 2592e6) + 'mo ago' : '—';
     // Live section — hidden entirely when no Sentinel is installed.
@@ -374,7 +377,14 @@ const OpsForecast = (function () {
     const est = (_fc.estates || []).filter(e => e.latitude && e.longitude);
     _map = L.map(holder, { center: [6.5244, 3.3792], zoom: 11, zoomControl: false, attributionControl: false });
     L.control.zoom({ position: 'bottomright' }).addTo(_map);
-    L.tileLayer(tileUrl(), { subdomains: 'abcd', maxZoom: 19 }).addTo(_map);
+    _tiles = L.tileLayer(tileUrl(), { subdomains: 'abcd', maxZoom: 19 }).addTo(_map);
+    // Live-swap the basemap (and re-tint the inspector) when the theme toggles.
+    if (_themeObs) _themeObs.disconnect();
+    _themeObs = new MutationObserver(() => {
+      if (_map && _tiles) { try { _tiles.setUrl(tileUrl()); } catch (_) {} }
+      if (_sel) renderInspector();
+    });
+    _themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
     _layers = { heat: L.layerGroup(), rain: L.layerGroup(), net: L.layerGroup(), prop: L.layerGroup(), dev: L.layerGroup(), inc: L.layerGroup() };
     const pts = [];
@@ -536,6 +546,7 @@ const OpsForecast = (function () {
     .fcx-map-wrap .leaflet-control-zoom a:hover { background:var(--surface-2); color:var(--blue-hi,#0d7fa0); }
     .fcx-map-wrap .leaflet-control-zoom a.leaflet-disabled { color:var(--ink-4,#9fb0b8); background:var(--surface); }
     .fcx-map-head { position:absolute; top:0; left:0; right:0; z-index:400; display:flex; align-items:center; justify-content:space-between; padding:14px 18px; background:linear-gradient(180deg,rgba(255,255,255,.85),transparent); pointer-events:none; }
+    html[data-theme="dark"] .fcx-map-head { background:linear-gradient(180deg,rgba(8,20,27,.88),transparent); }
     .fcx-map-head h2 { font-family:var(--ff-d); font-size:var(--fs-md); font-weight:700; color:var(--ink); }
     .fcx-meta { font-size:var(--fs-2xs); color:var(--ink-3); }
     .fcx-layers { position:absolute; top:52px; left:16px; z-index:410; width:172px; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:var(--sh-md); padding:7px; }
@@ -549,6 +560,7 @@ const OpsForecast = (function () {
     .fcx-inspector { position:absolute; top:52px; right:16px; bottom:16px; z-index:410; width:250px; max-height:calc(100% - 68px); background:rgba(255,255,255,.72); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,.6); border-radius:16px; box-shadow:0 8px 30px rgba(10,42,61,.16); padding:16px; display:flex; flex-direction:column; overflow:hidden; }
     .fcx-insp-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; margin:0 -2px; padding:0 2px; }
     .fcx-insp-foot { flex:0 0 auto; padding-top:12px; margin-top:4px; border-top:1px solid rgba(10,42,61,.08); }
+    html[data-theme="dark"] .fcx-inspector { border-color:rgba(255,255,255,.14); }
     @media (max-width:560px){ .fcx-inspector { position:static; width:auto; max-height:none; margin:12px; } }
     .fcx-insp-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-shrink:0; }
     .fcx-insp-name { font-size:var(--fs-sm); font-weight:700; color:var(--ink); flex:1; min-width:0; }
