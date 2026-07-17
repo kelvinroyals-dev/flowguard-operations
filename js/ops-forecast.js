@@ -344,18 +344,40 @@ const OpsForecast = (function () {
     if (m < 1) return 'now'; if (m < 60) return m + 'm'; if (m < 1440) return Math.floor(m / 60) + 'h'; return Math.floor(m / 1440) + 'd';
   }
 
+  // Events are derived from the SAME scored estates the map/inspector use, so
+  // the feed is informative even on a dry day or before any Sentinel is live —
+  // rainfall spikes, the sharpest-risk property, open incidents and overdue
+  // maintenance all surface, not just heavy-rain events.
   function buildEvents(est, series) {
     const out = [];
     const rainVals = series.map(h => h.rainfall || 0);
     let peakI = 0; rainVals.forEach((v, i) => { if (v > rainVals[peakI]) peakI = i; });
-    if (rainVals.length && rainVals[peakI] >= 5) out.push({ icon: ICON.rain, bg: 'rgba(217,70,60,.12)', color: '#d9463c', title: 'Heavy rain expected', desc: `${Math.round(rainVals[peakI])}mm forecast around +${peakI}h.`, time: `+${peakI}h` });
-    const worst = est[0];
-    if (worst && worst.predicted_risk >= 60) out.push({ icon: ICON.cap, bg: 'rgba(224,142,18,.12)', color: '#e08e12', title: 'Capacity threshold', desc: `${worst.name} forecast to reach ${worst.predicted_risk}% risk.`, time: 'soon' });
-    const prev = est.filter(e => e.recommendation_level === 'warning');
-    if (prev.length) out.push({ icon: ICON.inc, bg: 'rgba(224,142,18,.12)', color: '#e08e12', title: 'Preventive cleaning due', desc: `${prev.length} propert${prev.length === 1 ? 'y' : 'ies'} recommended for pre-cleaning.`, time: '12h' });
+    const peakRain = rainVals.length ? rainVals[peakI] : 0;
+    if (peakRain >= 5) out.push({ icon: ICON.rain, bg: 'rgba(217,70,60,.12)', color: '#d9463c', title: 'Heavy rain expected', desc: `${Math.round(peakRain)}mm forecast around +${peakI}h — drains will load fast.`, time: `+${peakI}h` });
+    else if (peakRain >= 1.5) out.push({ icon: ICON.rain, bg: 'rgba(28,184,232,.12)', color: '#1cb8e8', title: 'Showers expected', desc: `${peakRain.toFixed(1)}mm forecast around +${peakI}h.`, time: `+${peakI}h` });
+
     const crit = est.filter(e => e.recommendation_level === 'critical');
-    if (crit.length) out.push({ icon: ICON.crew, bg: 'rgba(28,184,232,.12)', color: '#1cb8e8', title: 'Crew recommended', desc: `Deploy crews to ${crit.slice(0, 2).map(e => e.name).join(', ')}${crit.length > 2 ? ' +' + (crit.length - 2) : ''}.`, time: 'now' });
-    return out;
+    if (crit.length) out.push({ icon: ICON.crew, bg: 'rgba(217,70,60,.12)', color: '#d9463c', title: 'Crew recommended', desc: `Deploy crews to ${crit.slice(0, 2).map(e => e.name).join(', ')}${crit.length > 2 ? ' +' + (crit.length - 2) : ''}.`, time: 'now' });
+
+    const warn = est.filter(e => e.recommendation_level === 'warning');
+    if (warn.length) out.push({ icon: ICON.inc, bg: 'rgba(224,142,18,.12)', color: '#e08e12', title: 'Preventive cleaning due', desc: `${warn.length} propert${warn.length === 1 ? 'y' : 'ies'} recommended for pre-cleaning.`, time: '12h' });
+
+    // The sharpest end of the portfolio, even when it hasn't tripped a recommendation.
+    const worst = est[0];
+    if (worst && !crit.length && !warn.length && worst.predicted_risk >= 45)
+      out.push({ icon: ICON.cap, bg: 'rgba(224,142,18,.12)', color: '#e08e12', title: 'Highest forecast risk', desc: `${worst.name} at ${worst.predicted_risk}% (${worst.has_live ? 'live' : 'modelled'}).`, time: 'window' });
+
+    const incProps = est.filter(e => e.open_incidents > 0);
+    const incTotal = incProps.reduce((n, e) => n + (e.open_incidents || 0), 0);
+    if (incTotal) out.push({ icon: ICON.inc, bg: 'rgba(217,70,60,.12)', color: '#d9463c', title: 'Open incidents', desc: `${incTotal} active incident${incTotal === 1 ? '' : 's'} across ${incProps.length} propert${incProps.length === 1 ? 'y' : 'ies'}.`, time: 'now' });
+
+    const overdue = est.filter(e => { const d = e.last_cleaning || e.last_inspection; return d && (Date.now() - new Date(d).getTime()) > 270 * 864e5; });
+    if (overdue.length) out.push({ icon: ICON.cap, bg: 'rgba(224,142,18,.12)', color: '#e08e12', title: 'Maintenance overdue', desc: `${overdue.length} propert${overdue.length === 1 ? 'y' : 'ies'} not cleaned in 9+ months.`, time: 'plan' });
+
+    // Never dead-empty when there are properties to speak to.
+    if (!out.length && est.length) out.push({ icon: ICON.crew, bg: 'rgba(31,157,91,.12)', color: '#1f9d5b', title: 'All clear', desc: `No elevated risk across ${est.length} propert${est.length === 1 ? 'y' : 'ies'} for this window.`, time: '—' });
+
+    return out.slice(0, 6);
   }
 
   // ── map ──────────────────────────────────────────────────────────────
