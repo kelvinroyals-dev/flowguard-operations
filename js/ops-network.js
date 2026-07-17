@@ -25,16 +25,56 @@ const OpsNetwork = (function () {
 
   function open(propertyId) {
     _propertyId = propertyId;
+    const c = document.getElementById('content-network');
+    // Mark rendered so renderTab doesn't double-render; we render directly
+    // (the tab may already have been rendered as the picker).
+    if (c) c.setAttribute('data-rendered', 'true');
     switchTab('network');
+    if (c) render(c);
   }
 
+  let _root = null;
+
   async function render(container) {
-    if (!_propertyId) {
-      container.innerHTML = `<div class="nw-empty">Open a property from the Properties screen to see its drainage network.</div>${styles()}`;
-      return;
-    }
+    _root = container;
+    if (!_propertyId) { await renderPicker(container); return; }
     container.innerHTML = styles() + '<div id="nw-body"><div class="nw-empty">Loading the network…</div></div>';
     await load();
+  }
+
+  // No property selected (opened from the top nav) → let the user pick one,
+  // instead of a dead-end "open a property elsewhere" message.
+  async function renderPicker(container) {
+    container.innerHTML = styles() + '<div id="nw-body"><div class="nw-empty">Loading properties…</div></div>';
+    try {
+      const res = await OpsModal.apiGet('/properties/all');
+      const rows = (res.data || []).filter(p => p.asset_class === 'customer_property' || p.asset_class == null);
+      const el = document.getElementById('nw-body');
+      if (!el) return;
+      const s = v => String(v == null ? '' : v).replace(/[^A-Za-z0-9_\-.:]/g, '');
+      el.innerHTML = `
+        <div class="fg-page-header"><div><div class="fg-page-title">Drainage Network</div><div class="fg-page-sub">Pick a property to see its assets, Sentinels and flow of water through the network</div></div></div>
+        ${rows.length ? `<div class="nw-pick-grid">${rows.map(p => `
+          <div class="nw-pick-card" onclick="OpsNetwork.open('${s(p.property_id)}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsNetwork.open('${s(p.property_id)}')}">
+            <div class="nw-pick-name">${esc(p.property_name || '—')}</div>
+            <div class="nw-pick-sub">${esc([p.city, p.state].filter(Boolean).join(', ') || p.location || '—')}</div>
+            <div class="nw-pick-stats">
+              <span>${p.asset_count != null ? p.asset_count : 0} assets</span>
+              <span>${p.sentinel_count != null ? p.sentinel_count : 0} devices</span>
+              <span>Health ${p.health_score != null ? p.health_score : '—'}</span>
+            </div>
+          </div>`).join('')}</div>`
+          : '<div class="nw-empty">No properties yet. Add one from the Properties screen.</div>'}`;
+    } catch (err) {
+      const el = document.getElementById('nw-body');
+      if (el) el.innerHTML = `<div class="nw-empty">Couldn't load properties — ${esc(err.message || 'network error')}.</div>`;
+    }
+  }
+
+  function backToPicker() {
+    _propertyId = null;
+    _data = null;
+    if (_root) renderPicker(_root);
   }
 
   let _outcomes = null;
@@ -98,7 +138,7 @@ const OpsNetwork = (function () {
 
     el.innerHTML = `
       <div class="nw-head">
-        <button class="nw-back" onclick="switchTab('properties')">← Properties</button>
+        <button class="nw-back" onclick="OpsNetwork.backToPicker()">← All networks</button>
         <div class="nw-title">
           <h2>${esc(p.property_name)}</h2>
           <span>${(p.property_type || '').replace(/_/g, ' ')}${p.city ? ' · ' + esc(p.city) : ''}${p.state ? ', ' + esc(p.state) : ''}</span>
@@ -272,6 +312,13 @@ const OpsNetwork = (function () {
       .nw-orph { padding:4px 10px; border-radius:100px; border:1px solid var(--warn); background:transparent; color:var(--warn); font-size:var(--fs-xs); font-family:var(--ff-b); cursor:pointer; }
 
       .nw-empty { padding:40px; text-align:center; color:var(--ink-3); font-size:var(--fs-base); line-height:1.7; background:var(--surface); border:1px solid var(--border); border-radius:14px; }
+      .nw-pick-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; }
+      .nw-pick-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--sh-xs); padding:16px 18px; cursor:pointer; transition:border-color .12s, box-shadow .12s; }
+      .nw-pick-card:hover { border-color:var(--blue-dim); box-shadow:var(--sh-md); }
+      .nw-pick-name { font-family:var(--ff-d); font-size:var(--fs-md); font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .nw-pick-sub { font-size:var(--fs-sm); color:var(--ink-3); margin-top:2px; }
+      .nw-pick-stats { display:flex; gap:12px; flex-wrap:wrap; margin-top:12px; font-size:var(--fs-xs); color:var(--ink-2); font-family:var(--ff-m); }
+      .nw-pick-stats span { background:var(--surface-2); border:1px solid var(--border); border-radius:7px; padding:4px 8px; }
       .nw-empty b { color:var(--ink); }
       .nw-add { margin-top:4px; padding:8px 15px; border-radius:9px; border:1px solid var(--blue-dim); background:var(--neon-trace); color:var(--blue-hi); font-size:var(--fs-sm); font-weight:700; font-family:var(--ff-b); cursor:pointer; }
 
@@ -288,5 +335,5 @@ const OpsNetwork = (function () {
 
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
-  return { render, open };
+  return { render, open, backToPicker };
 })();
