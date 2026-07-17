@@ -156,9 +156,9 @@ const OpsSettings = (function () {
         buttons:[['Change password'],['Save',true]] },
 
       { g:'Access', k:'users', label:'User management', b:'ok',
-        note:'Staff accounts, invites, roles and team assignments are managed in Team Members. This is a read-only reference for the role and permission model the app enforces.',
-        custom:`<div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3);margin:2px 0 10px;">Roles &amp; permissions</div>${rolesRef}`,
-        buttons:[['Open Team Members',true]] },
+        note:'Staff accounts, invites and team assignments are managed in Team Members. Here you set what each role can see and change — saved to the server and enforced by the API.',
+        custom:`<div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3);margin:2px 0 10px;">Roles &amp; permissions</div><div id="set-perm-wrap"><div class="set-sub2">Loading permission model…</div></div>`,
+        buttons:[['Open Team Members']] },
 
       { g:'Access', k:'teams', label:'Teams', b:'partial',
         note:'Field teams and members live in field_teams and are managed in the Teams module.',
@@ -276,6 +276,67 @@ const OpsSettings = (function () {
     _active = k;
     document.querySelectorAll('.set-item').forEach(el => el.classList.toggle('active', el.id === 'set-item-' + k));
     document.querySelectorAll('.set-panel').forEach(el => el.classList.toggle('active', el.id === 'set-panel-' + k));
+    if (k === 'users' && !_perm) loadPermissions();
+  }
+
+  // ── Editable role permissions (persisted + API-enforced) ──
+  let _perm = null, _permChanges = {};
+  const ROLE_LABEL = { operations_manager: 'Ops Manager', dispatcher: 'Dispatcher', field_lead: 'Field Lead', analyst: 'Analyst', finance: 'Finance' };
+  const escp = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  async function loadPermissions() {
+    const wrap = document.getElementById('set-perm-wrap');
+    if (!wrap) return;
+    wrap.innerHTML = '<div class="set-sub2">Loading permission model…</div>';
+    try {
+      _perm = (await OpsModal.apiGet('/settings/permissions')).data;
+      _permChanges = {};
+      renderPermMatrix();
+    } catch (err) {
+      const denied = /403/.test(err.message || '');
+      wrap.innerHTML = `<div class="set-sub2">${denied ? 'Only admins can view and edit the permission model.' : 'Failed to load permissions: ' + escp(err.message)}</div>`;
+    }
+  }
+
+  function renderPermMatrix() {
+    const wrap = document.getElementById('set-perm-wrap');
+    if (!wrap || !_perm) return;
+    const rows = [];
+    _perm.modules.forEach(m => _perm.actions.forEach(a => {
+      const key = m.key + '.' + a;
+      const cells = _perm.roles.map(role => {
+        const val = !!(_perm.grants[role] && _perm.grants[role][key]);
+        return `<td style="text-align:center;"><input type="checkbox" ${val ? 'checked' : ''} onchange="OpsSettings.togglePerm('${role}','${key}',this.checked)"></td>`;
+      }).join('');
+      rows.push(`<tr><td style="white-space:nowrap;">${m.label} · <span style="color:var(--ink-3);text-transform:capitalize;">${a}</span></td>${cells}</tr>`);
+    }));
+    wrap.innerHTML = `
+      <div style="font-size:var(--fs-xs);color:var(--ink-3);margin-bottom:10px;line-height:1.5;">Admins always have full access (not editable). <b>View</b> = can open the module; <b>Manage</b> = can create/change within it. Saved changes are enforced by the API.</div>
+      <div style="overflow-x:auto;"><table class="set-matrix">
+        <thead><tr><th>Permission</th>${_perm.roles.map(r => `<th>${ROLE_LABEL[r] || r}</th>`).join('')}</tr></thead>
+        <tbody>${rows.join('')}</tbody>
+      </table></div>
+      <div class="set-savebar"><span class="set-saved" id="set-perm-saved">Saved</span><button class="set-btn" onclick="OpsSettings.loadPermissions()">Reset</button><button class="set-btn primary" id="set-perm-save-btn" onclick="OpsSettings.savePermissions()">Save permissions</button></div>`;
+  }
+
+  function togglePerm(role, key, val) {
+    _permChanges[role + '|' + key] = { role, permission_key: key, allowed: val };
+    if (_perm && _perm.grants[role]) _perm.grants[role][key] = val;
+  }
+
+  async function savePermissions() {
+    const changes = Object.values(_permChanges || {});
+    if (!changes.length) return OpsModal.toast('No changes to save', 'watch');
+    OpsModal.setLoading('set-perm-save-btn', true);
+    try {
+      _perm = (await OpsModal.apiPut('/settings/permissions', { changes })).data;
+      _permChanges = {};
+      renderPermMatrix();
+      OpsModal.toast('Permissions saved and enforced', 'nominal');
+    } catch (err) {
+      OpsModal.toast('Failed to save: ' + err.message, 'critical');
+      OpsModal.setLoading('set-perm-save-btn', false);
+    }
   }
 
   function updateClock() {
@@ -409,6 +470,6 @@ const OpsSettings = (function () {
     OpsModal.toast('Demo mode has been deprecated', 'watch');
   }
 
-  return { render, section, na, save, reset, toggleDemo };
+  return { render, section, na, save, reset, toggleDemo, loadPermissions, renderPermMatrix, togglePerm, savePermissions };
 
 })();
