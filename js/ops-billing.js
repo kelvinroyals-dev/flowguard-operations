@@ -328,11 +328,13 @@ const OpsBilling = (function () {
   // Generated server-side (pdfkit) so ₦ renders; fetched with auth then saved.
   async function downloadPdf(id) {
     try {
-      const base = (window.CONFIG && CONFIG.API_BASE) || '/api/v1';
+      const base = (typeof CONFIG !== 'undefined' && CONFIG.API_BASE) ? CONFIG.API_BASE : '/api/v1';
       const token = sessionStorage.getItem('token') || localStorage.getItem('token') || '';
       OpsModal.toast('Preparing PDF…', 'watch');
       const res = await fetch(base + '/billing/invoices/' + id + '/pdf', { headers: { Authorization: 'Bearer ' + token } });
       if (!res.ok) throw new Error('HTTP ' + res.status);
+      const ct = res.headers.get('content-type') || '';
+      if (!ct.includes('pdf')) throw new Error('unexpected response (' + (ct || 'no content-type') + ')');
       const blob = await res.blob();
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob); a.download = id + '.pdf';
