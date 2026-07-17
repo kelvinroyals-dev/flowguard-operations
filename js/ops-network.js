@@ -124,100 +124,89 @@ const OpsNetwork = (function () {
     }).join('')}</div>`;
   }
 
+  function initials(str) {
+    return String(str || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
+  }
+
+  // Same detail format as Clients / Properties / Assets: crumb → glass header
+  // (avatar, chips, meta, actions) → section nav → two-column grid. The network
+  // "tree" is just the body of the Drainage-network section.
   function draw() {
     const el = document.getElementById('nw-body');
     if (!el || !_data) return;
     const p = _data.property;
     const billing = _data.billing;
-    const s = _data.summary;
+    const s = _data.summary || {};
     const assets = _data.assets || [];
     const orphans = _data.unassigned_sentinels || [];
     const oc = _outcomes;
-
     const health = p.health_score != null ? Number(p.health_score) : null;
+    const pid = p.property_id;
+    const loc = [p.city, p.state].filter(Boolean).join(', ') || p.location || '';
+    const F = OpsModal.fact;
 
-    el.innerHTML = `
-      <div class="nw-head">
-        <button class="nw-back" onclick="OpsNetwork.backToPicker()">← All networks</button>
-        <div class="nw-title">
-          <h2>${esc(p.property_name)}</h2>
-          <span>${(p.property_type || '').replace(/_/g, ' ')}${p.city ? ' · ' + esc(p.city) : ''}${p.state ? ', ' + esc(p.state) : ''}</span>
-        </div>
-      </div>
+    const chips = [];
+    if (health != null) chips.push({ cls: health >= 75 ? 'ok' : health >= 50 ? 'warn' : 'danger', dot: true, label: `Health ${health}` });
+    if (p.risk_level) chips.push({ cls: /high|critical/.test(p.risk_level) ? 'danger' : p.risk_level === 'moderate' ? 'warn' : 'neutral', label: `${p.risk_level} risk` });
+    if (s.unmonitored) chips.push({ cls: 'warn', label: `${s.unmonitored} unmonitored` });
 
-      <div id="nw-kpis"></div>
+    const overviewBody = `
+      ${F('Health score', health != null ? `<b style="color:${hCol(health)}">${health}/100</b>` : '—')}
+      ${F('Days flood-free', oc ? oc.days_since_flood : '—')}
+      ${F('Incidents prevented', oc ? oc.incidents_prevented : '—')}
+      ${F('Sentinel coverage', s.sentinel_count ? `${s.sentinels_active ?? 0}/${s.sentinel_count} online` : 'None')}
+      ${F('Unmonitored assets', s.unmonitored || 0)}
+      ${billing ? F('MRR', billing.mrr != null ? '₦' + Number(billing.mrr).toLocaleString() : '—') : ''}`;
 
-      ${!assets.length ? `
-        <div class="nw-empty">
-          <b>No drainage assets registered for this property.</b><br>
-          The canals, catch basins and pump stations that protect this estate live here — register them
-          so Sentinels can be assigned and work can be tracked against them.
-          <br><br><button class="nw-add" onclick="switchTab('assets')">Go to Assets →</button>
-        </div>`
-      : `
-        <div class="nw-tree">
-          ${assets.map(assetRow).join('')}
-        </div>`}
+    const assetsBody = assets.length
+      ? `<div class="nw-tree">${assets.map(assetRow).join('')}</div>`
+      : OpsModal.emptyState('', 'No drainage assets registered', 'The canals, catch basins and pump stations that protect this estate live here. Register them so Sentinels can be assigned and work tracked against them.<br><button class="nw-add" style="margin-top:12px" onclick="switchTab(\'assets\')">Go to Assets →</button>');
 
-      ${orphans.length ? `
-        <div class="nw-orphans">
-          <div class="nw-orph-h">⚠ ${orphans.length} Sentinel${orphans.length > 1 ? 's' : ''} on this client's account cover no asset here</div>
-          <div class="nw-orph-list">
-            ${orphans.map(o => `<button class="nw-orph" onclick="switchTab('sensors')">${esc(o.name || o.sensor_id)} · ${o.status}</button>`).join('')}
-          </div>
-        </div>` : ''}
+    const activityBody = (oc && oc.recent_events && oc.recent_events.length)
+      ? oc.recent_events.map(e => `<div class="nw-act-row"><span class="nw-act-type">${esc((e.event_type || '').replace(/_/g, ' '))}</span><span class="nw-act-desc">${esc(e.description || '—')}</span><span class="nw-act-time">${OpsModal.fmtDate(e.occurred_at)}</span></div>`).join('')
+      : '<div class="nw-act-empty">No recorded work against this property yet.</div>';
 
-      ${oc ? `
-        <div class="nw-activity">
-          <div class="nw-activity-h">Recent activity</div>
-          ${oc.recent_events && oc.recent_events.length
-            ? oc.recent_events.map(e => `
-                <div class="nw-act-row">
-                  <span class="nw-act-type">${esc((e.event_type || '').replace(/_/g, ' '))}</span>
-                  <span class="nw-act-desc">${esc(e.description || '—')}</span>
-                  <span class="nw-act-time">${OpsModal.fmtDate(e.occurred_at)}</span>
-                </div>`).join('')
-            : '<div class="nw-act-empty">No recorded work against this property yet.</div>'}
-        </div>` : ''}
-    `;
-
-    renderMissionKpis(p, s, billing, health, oc);
-  }
-
-  // ── Mission-control KPI header: what's true about this property right
-  // now, in one strip — health, days flood-free, prevention track record,
-  // Sentinel coverage, and MRR where a billing account resolves. ──
-  function renderMissionKpis(p, s, billing, health, oc) {
-    const kp = document.getElementById('nw-kpis');
-    if (!kp) return;
-    const cards = [
-      {
-        label: 'Health score', value: health != null ? health : '—',
-        sub: health != null ? (health >= 75 ? 'Healthy' : health >= 50 ? 'Needs attention' : 'At risk') : 'No score yet',
-        subClass: health == null ? '' : health >= 75 ? 'ok' : health >= 50 ? 'warn' : 'err',
-      },
-      {
-        label: 'Days flood-free', value: oc ? oc.days_since_flood : '—',
-        sub: oc ? (oc.flood_free_basis === 'last_incident' ? 'Since last incident' : 'Since monitoring began') : 'No data yet',
-      },
-      {
-        label: 'Incidents prevented', value: oc ? oc.incidents_prevented : '—',
-        sub: oc && oc.incidents_prevented ? 'Confirmed saves' : 'None recorded',
-        subClass: oc && oc.incidents_prevented ? 'ok' : '',
-      },
-      {
-        label: 'Sentinels', value: s.sentinel_count ? `${s.sentinels_active ?? 0}/${s.sentinel_count}` : '—',
-        sub: s.unmonitored ? `${s.unmonitored} asset${s.unmonitored > 1 ? 's' : ''} unmonitored` : (s.asset_count ? 'All assets covered' : 'No assets yet'),
-        subClass: s.unmonitored ? 'warn' : (s.sentinel_count ? 'ok' : ''),
-      },
+    const sections = [
+      { id: 'overview', title: 'Overview', meta: `${s.asset_count || 0} assets · ${s.sentinel_count || 0} Sentinels`, body: overviewBody },
+      { id: 'network', title: 'Drainage network', meta: assets.length ? `${assets.length} asset${assets.length > 1 ? 's' : ''}` : '', body: assetsBody },
     ];
-    if (billing) {
-      cards.push({
-        label: 'MRR', value: billing.mrr != null ? '₦' + Number(billing.mrr).toLocaleString() : '—',
-        sub: billing.tier ? `${billing.tier} tier` : 'Billing account',
+    if (orphans.length) {
+      sections.push({
+        id: 'orphans', title: 'Unassigned Sentinels', meta: `${orphans.length}`,
+        body: `<div class="nw-orph-note">These Sentinels are on this client's account but cover no asset here.</div><div class="nw-orph-list">${orphans.map(o => `<button class="nw-orph" onclick="switchTab('sensors')">${esc(o.name || o.sensor_id)} · ${o.status}</button>`).join('')}</div>`,
       });
     }
-    kp.innerHTML = OpsModal.kpiStrip(cards);
+    sections.push({ id: 'activity', title: 'Recent activity', body: activityBody });
+
+    const sidebar = `
+      <div class="fgd-card"><div class="fgd-card-head"><h2>Property</h2></div>
+        ${F('Property', OpsModal.link('properties', pid, esc(p.property_name || pid)))}
+        ${p.client_name ? F('Client', esc(p.client_name)) : ''}
+        ${F('Type', (p.property_type || '').replace(/_/g, ' ') || '—')}
+        ${F('Location', esc(loc) || '—')}
+        ${F('Assets', s.asset_count != null ? s.asset_count : '—')}
+        ${F('Sentinels', s.sentinel_count ? `${s.sentinels_active ?? 0}/${s.sentinel_count} online` : 'None')}
+        ${billing && billing.tier ? F('Plan', `${billing.tier}${billing.mrr != null ? ' · ₦' + Number(billing.mrr).toLocaleString() + '/mo' : ''}`) : ''}
+      </div>
+      <div class="fgd-card"><div class="fgd-card-head"><h2>Jump to</h2></div>
+        <div class="nw-jump">
+          <button class="fgd-btn" onclick="fgOpen('properties','${pid}')">Open property</button>
+          <button class="fgd-btn" onclick="switchTab('assets')">Assets</button>
+          <button class="fgd-btn" onclick="switchTab('sensors')">Sentinels</button>
+        </div>
+      </div>`;
+
+    el.innerHTML = OpsModal.detailShell({
+      back: 'OpsNetwork.backToPicker()',
+      crumbRoot: 'Drainage Network',
+      title: esc(p.property_name || 'Network'),
+      avatar: { text: initials(p.property_name), bg: 'linear-gradient(135deg,#0d7fa0,#1f9d5b)' },
+      chips,
+      meta: [['Type', (p.property_type || '').replace(/_/g, ' ') || '—'], ['Location', esc(loc) || '—']],
+      actions: `<button class="fgd-btn" onclick="fgOpen('properties','${pid}')">Open property</button>`,
+      sections,
+      sidebar,
+    });
   }
 
   function assetRow(a) {
@@ -306,9 +295,10 @@ const OpsNetwork = (function () {
       .sent-tag b { font-family:var(--ff-m); color:var(--ink); font-weight:600; }
       .sent-none { font-size:var(--fs-xs); color:var(--warn); }
 
-      .nw-orphans { margin-top:16px; padding:13px 15px; border:1px solid var(--warn); border-radius:12px; background:var(--wb); }
-      .nw-orph-h { font-size:var(--fs-sm); font-weight:700; color:var(--warn); margin-bottom:8px; }
+      .nw-orph-note { font-size:var(--fs-sm); color:var(--ink-3); margin-bottom:10px; line-height:1.5; }
       .nw-orph-list { display:flex; gap:6px; flex-wrap:wrap; }
+      .nw-jump { display:flex; flex-wrap:wrap; gap:8px; }
+      .nw-jump .fgd-btn { flex:1; min-width:96px; text-align:center; }
       .nw-orph { padding:4px 10px; border-radius:100px; border:1px solid var(--warn); background:transparent; color:var(--warn); font-size:var(--fs-xs); font-family:var(--ff-b); cursor:pointer; }
 
       .nw-empty { padding:40px; text-align:center; color:var(--ink-3); font-size:var(--fs-base); line-height:1.7; background:var(--surface); border:1px solid var(--border); border-radius:14px; }
