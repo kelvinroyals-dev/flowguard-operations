@@ -1,172 +1,119 @@
 // ============================================
-// OPS BILLING MODULE v1.0.0
-// Revenue dashboard — MRR, invoices, overdue
-//
-// API contracts expected:
-//   GET /billing/summary  → { mrr, arr, overdue_count, overdue_amount,
-//                             active_subscriptions, avg_revenue_per_site,
-//                             mrr_trend: [{month, amount}] }
-//   GET /billing/invoices → { data: [Invoice] }
-//   GET /billing/invoices/:id
-//   POST /billing/invoices/:id/send-reminder
-//   POST /billing/invoices/:id/mark-paid
+// OPS BILLING — invoices
+// List (story strip + lv-table) · Invoice detail (detailShell) · Create invoice
+// Built to the billing / invoice-detail / create-invoice mockups, and honest
+// about schema gaps: invoices carry BOTH `status` and `payment_status`, client
+// is derived via the property (not a client_id on the invoice), there's no
+// payment_method column, and no contracts / payment-ledger / credit-note /
+// attachments tables — the UI surfaces those gaps rather than faking them.
 // ============================================
-
 const OpsBilling = (function () {
   'use strict';
 
-  let _invoices = [];
-  let _pg       = null;
-  let _filter   = 'all'; // all | overdue | pending | paid
-  let _container = null;
-  const dash = v => (v == null || v === '') ? '—' : v;
+  let _invoices = [], _container = null, _filter = 'all', _term = '';
+  let _props = [], _draft = [];
 
+  const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const dash = v => (v == null || v === '') ? '—' : v;
+  const NGN = n => '₦' + Number(n || 0).toLocaleString();
+  const money = n => { n = Number(n || 0); if (n >= 1e6) return '₦' + (n / 1e6).toFixed(2) + 'M'; if (n >= 1e3) return '₦' + Math.round(n / 1e3) + 'K'; return '₦' + n.toLocaleString(); };
+  const fmtDate = ds => ds ? new Date(ds).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+  const inThisMonth = ds => { if (!ds) return false; const d = new Date(ds), n = new Date(); return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear(); };
+
+  function payMeta(ps) {
+    ps = String(ps || '').toLowerCase();
+    return ({ paid: { c: 'paid', l: 'Paid' }, overdue: { c: 'overdue', l: 'Overdue' }, pending: { c: 'pending', l: 'Pending' }, partial: { c: 'partial', l: 'Partially paid' }, unpaid: { c: 'pending', l: 'Pending' } })[ps]
+      || { c: 'pending', l: ps ? ps[0].toUpperCase() + ps.slice(1) : 'Pending' };
+  }
+  // A pending/partial invoice past its due date reads as "overdue" for the operator.
+  function effStatus(inv) {
+    const ps = String(inv.payment_status || 'pending').toLowerCase();
+    if (ps !== 'paid' && (inv.days_overdue > 0 || (inv.due_date && new Date(inv.due_date) < new Date() && ps !== 'paid'))) return 'overdue';
+    return ps;
+  }
+
+  const BL_CSS = `<style id="bl-css">
+    .bl-head { display:flex; align-items:center; gap:16px; margin-bottom:16px; flex-wrap:wrap; }
+    .bl-head h1 { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); }
+    .bl-head .sub { font-size:var(--fs-sm); color:var(--ink-3); margin-top:2px; }
+    .bl-head-actions { margin-left:auto; display:flex; gap:8px; }
+    .bl-btn { font-size:var(--fs-sm); font-weight:600; padding:9px 16px; border-radius:10px; cursor:pointer; border:1px solid var(--border-2); background:var(--surface); color:var(--ink-2); }
+    .bl-btn:hover { border-color:var(--blue-dim); color:var(--blue-hi); }
+    .bl-btn.primary { background:linear-gradient(135deg,#16a8d3,#0d7fa0); color:#fff; border:none; }
+    .bl-btn.primary:hover { filter:brightness(1.05); color:#fff; }
+
+    .bl-story { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:16px; }
+    @media (max-width:900px){ .bl-story{ grid-template-columns:repeat(2,1fr); } }
+    .bl-story-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--sh-xs); padding:16px 18px; }
+    .bl-story-label { font-size:var(--fs-xs); color:var(--ink-2); font-weight:600; margin-bottom:8px; }
+    .bl-story-value { font-size:22px; font-weight:800; font-family:var(--ff-d); color:var(--ink); letter-spacing:-.02em; }
+    .bl-story-value.danger{ color:var(--err); } .bl-story-value.green{ color:var(--ok); } .bl-story-value.amber{ color:var(--warn); }
+    .bl-story-sub { font-size:var(--fs-2xs); color:var(--ink-3); margin-top:4px; }
+
+    .bl-status { display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-2xs); font-weight:700; padding:3px 10px; border-radius:20px; }
+    .bl-status.paid{ background:rgba(31,157,91,.12); color:var(--ok); }
+    .bl-status.overdue{ background:rgba(217,70,60,.12); color:var(--err); }
+    .bl-status.pending{ background:rgba(224,142,18,.12); color:var(--warn); }
+    .bl-status.partial{ background:rgba(28,184,232,.14); color:var(--blue-hi,#0d7fa0); }
+    .bl-raw { display:block; font-size:var(--fs-2xs); color:var(--ink-4); font-family:var(--ff-mono,monospace); margin-top:3px; }
+    .bl-flag { color:var(--warn); font-weight:700; cursor:help; }
+
+    .bl-gap { display:flex; gap:8px; align-items:flex-start; font-size:var(--fs-xs); color:var(--ink-3); background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:10px 12px; line-height:1.5; margin-top:12px; }
+    .bl-gap svg{ width:14px; height:14px; flex-shrink:0; margin-top:1px; color:var(--warn); }
+    .bl-gap .mono{ font-family:var(--ff-mono,monospace); color:var(--ink-2); }
+
+    .bl-tbl { width:100%; border-collapse:collapse; font-size:var(--fs-sm); }
+    .bl-tbl th { text-align:left; font-size:var(--fs-2xs); text-transform:uppercase; letter-spacing:.4px; color:var(--ink-3); font-weight:700; padding:0 8px 10px; border-bottom:1px solid var(--border); }
+    .bl-tbl td { padding:11px 8px; border-bottom:1px solid var(--border); color:var(--ink-2); }
+    .bl-tbl tr:last-child td { border-bottom:none; }
+    .bl-tbl td.strong{ color:var(--ink); font-weight:600; }
+    .bl-tbl td.num, .bl-tbl th.num{ text-align:right; font-family:var(--ff-mono,monospace); }
+
+    /* create form */
+    .bl-grid2 { display:grid; grid-template-columns:1fr 300px; gap:16px; align-items:start; }
+    @media (max-width:900px){ .bl-grid2{ grid-template-columns:1fr; } }
+    .bl-side { display:flex; flex-direction:column; gap:14px; position:sticky; top:70px; }
+    .bl-field { margin-bottom:14px; }
+    .bl-field:last-child { margin-bottom:0; }
+    .bl-field-label { font-size:var(--fs-sm); font-weight:600; color:var(--ink); margin-bottom:5px; display:flex; gap:8px; align-items:baseline; }
+    .bl-field-label .sub{ font-size:var(--fs-2xs); color:var(--ink-3); font-weight:500; }
+    .bl-input { width:100%; box-sizing:border-box; padding:9px 11px; border:1px solid var(--border); border-radius:9px; font-family:var(--ff-b); font-size:var(--fs-sm); color:var(--ink); background:var(--surface); }
+    .bl-input:focus{ outline:none; border-color:var(--blue-dim); }
+    .bl-derived { padding:9px 11px; border:1px dashed var(--border-2); border-radius:9px; font-size:var(--fs-sm); color:var(--ink-2); background:var(--surface-2); }
+    .bl-derived.warn{ color:var(--warn); border-color:var(--warn); background:rgba(224,142,18,.06); }
+    .bl-omit { font-size:var(--fs-xs); color:var(--ink-3); background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:9px 11px; margin-top:6px; line-height:1.5; }
+    .bl-omit .mono{ font-family:var(--ff-mono,monospace); }
+    .bl-li-head, .bl-li { display:grid; grid-template-columns:1fr 56px 116px 104px 26px; gap:8px; align-items:center; }
+    .bl-li-head { font-size:var(--fs-2xs); text-transform:uppercase; letter-spacing:.4px; color:var(--ink-3); font-weight:700; margin-bottom:8px; }
+    .bl-li { margin-bottom:8px; }
+    .bl-li .amt{ font-family:var(--ff-mono,monospace); font-weight:700; color:var(--ink); text-align:right; font-size:var(--fs-sm); }
+    .bl-li-rm{ cursor:pointer; color:var(--ink-4); font-size:18px; text-align:center; line-height:1; }
+    .bl-li-rm:hover{ color:var(--err); }
+    .bl-addrow{ font-size:var(--fs-sm); font-weight:600; color:var(--blue-hi,#0d7fa0); background:var(--neon-trace,rgba(28,184,232,.08)); border:1px dashed var(--blue-dim,#7fc8e0); border-radius:9px; padding:8px 12px; cursor:pointer; width:100%; margin-top:4px; }
+    .bl-totals{ margin-top:14px; border-top:1px solid var(--border); padding-top:12px; }
+    .bl-totrow{ display:flex; justify-content:space-between; font-size:var(--fs-sm); color:var(--ink-2); padding:4px 0; }
+    .bl-totrow.grand{ font-weight:800; color:var(--ink); font-size:var(--fs-md); border-top:1px solid var(--border); margin-top:6px; padding-top:10px; }
+    .bl-savebar{ display:flex; justify-content:flex-end; gap:8px; margin-top:16px; flex-wrap:wrap; }
+  </style>`;
+
+  const IWARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+  const gap = html => `<div class="bl-gap">${IWARN}<span>${html}</span></div>`;
+
+  // ────────────────────────────────────────────────── LIST
   function render(container) {
     _container = container;
-    container.innerHTML = `
-      <style>
-        .ops-table tbody tr.clickable { cursor:pointer; transition:background .12s; }
-        .ops-table tbody tr.clickable:hover { background:var(--surface-2,#f2f8fb); }
-        .bl-back { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:8px 13px; cursor:pointer; }
-        .bl-detail-top { display:flex; align-items:center; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
-        .bl-detail-name { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; }
-        .bl-detail-meta { font-size:var(--fs-sm); color:var(--ink-3); margin-top:3px; }
-        .bl-detail-actions { margin-left:auto; display:flex; gap:8px; }
-        .bl-section { background:var(--surface,#fff); border:1px solid var(--border); border-radius:var(--r,14px); box-shadow:var(--sh-xs); margin-bottom:14px; overflow:hidden; }
-        .bl-section-h { padding:12px 18px; border-bottom:1px solid var(--border); font-family:var(--ff-d); font-size:var(--fs-sm); font-weight:700; letter-spacing:.4px; color:var(--ink); display:flex; align-items:center; justify-content:space-between; }
-        .bl-section-b { padding:16px 18px; }
-        .bl-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px 22px; }
-        .bl-field .k { font-size:var(--fs-2xs); font-weight:700; letter-spacing:.9px; text-transform:uppercase; color:var(--ink-3); }
-        .bl-field .v { font-size:var(--fs-md); color:var(--ink); font-weight:600; margin-top:3px; }
-        .bl-empty { color:var(--ink-3); font-size:var(--fs-sm); padding:6px 0; }
-        .bl-needs { font-size:var(--fs-xs); color:var(--ink-4); font-style:italic; }
-        /* ── KPI row ── */
-        .bl-kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:20px; }
-
-        .bl-kpi {
-          background:var(--surface,#fff);
-          border:1px solid var(--border,#dae6ef);
-          border-radius:var(--r,14px);
-          padding:18px;
-          box-shadow:var(--sh-xs);
-          position:relative; overflow:hidden;
-          transition:all .2s;
-        }
-        .bl-kpi:hover { transform:translateY(-2px); box-shadow:var(--sh-md); }
-        .bl-kpi::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; }
-        .bl-kpi.green::after  { background:var(--ok,#0a8a6a); }
-        .bl-kpi.blue::after   { background:linear-gradient(90deg,var(--navy,#0a2a3d),var(--blue,#16a8d3)); }
-        .bl-kpi.amber::after  { background:var(--amber,#f5a623); }
-        .bl-kpi.red::after    { background:var(--err,#dc2626); }
-        .bl-kpi.purple::after { background:#7c3aed; }
-
-        .bl-kpi-label { font-size:var(--fs-2xs); font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-3,#6b8fa3); margin-bottom:6px; }
-        .bl-kpi-val   { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-2xl); font-weight:900; color:var(--ink,#0a1f2e); letter-spacing:-.03em; line-height:1; }
-        .bl-kpi-val.green  { color:var(--ok,#0a8a6a); }
-        .bl-kpi-val.blue   { color:var(--blue,#16a8d3); }
-        .bl-kpi-val.amber  { color:var(--amber,#f5a623); }
-        .bl-kpi-val.red    { color:var(--err,#dc2626); }
-        .bl-kpi-val.purple { color:#7c3aed; }
-        .bl-kpi-sub { font-size:var(--fs-xs); color:var(--ink-3,#6b8fa3); margin-top:4px; }
-        .bl-kpi-sub.red { color:var(--err,#dc2626); font-weight:600; }
-
-        /* ── Trend + overdue row ── */
-        .bl-mid { display:grid; grid-template-columns:1fr 360px; gap:16px; margin-bottom:20px; }
-
-        /* MRR chart card */
-        .bl-chart-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); box-shadow:var(--sh-xs); overflow:hidden; }
-        .bl-card-head { padding:14px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; }
-        .bl-card-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--ink,#0a1f2e); }
-        .bl-chart-body { padding:20px; }
-
-        /* Bar chart */
-        .bl-bars { display:flex; align-items:flex-end; gap:6px; height:120px; }
-        .bl-bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
-        .bl-bar { width:100%; border-radius:4px 4px 0 0; background:linear-gradient(180deg,var(--blue,#16a8d3),var(--navy,#0a2a3d)); min-height:4px; transition:height .4s cubic-bezier(.22,1,.36,1); position:relative; cursor:pointer; }
-        .bl-bar:hover { filter:brightness(1.15); }
-        .bl-bar-tip { position:absolute; top:-28px; left:50%; transform:translateX(-50%); background:var(--navy,#0a2a3d); color:white; font-size:var(--fs-2xs); font-weight:700; padding:2px 6px; border-radius:4px; white-space:nowrap; opacity:0; transition:opacity .15s; pointer-events:none; }
-        .bl-bar:hover .bl-bar-tip { opacity:1; }
-        .bl-bar-label { font-size:var(--fs-2xs); color:var(--ink-4,#9eb8c8); font-family:var(--ff-m,'JetBrains Mono',monospace); }
-
-        /* Overdue list */
-        .bl-overdue-card { background:var(--surface,#fff); border:1px solid rgba(220,38,38,.2); border-radius:var(--r,14px); box-shadow:var(--sh-xs); overflow:hidden; }
-        .bl-overdue-head { padding:14px 18px; border-bottom:1px solid rgba(220,38,38,.12); display:flex; align-items:center; gap:8px; background:rgba(220,38,38,.03); }
-        .bl-overdue-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--err,#dc2626); }
-        .bl-overdue-item { padding:11px 18px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; gap:10px; transition:background .12s; }
-        .bl-overdue-item:last-child { border-bottom:none; }
-        .bl-overdue-item:hover { background:var(--surface-2,#f7fafc); }
-        .bl-overdue-name { font-size:var(--fs-base); font-weight:600; color:var(--ink,#0a1f2e); }
-        .bl-overdue-days { font-size:var(--fs-sm); color:var(--err,#dc2626); font-weight:600; }
-        .bl-overdue-amount { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-lg); font-weight:800; color:var(--err,#dc2626); }
-
-        /* ── Invoice table ── */
-        .bl-table-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); box-shadow:var(--sh-xs); overflow:hidden; }
-        .bl-table-head { padding:14px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; gap:12px; }
-
-        .bl-filter-tabs { display:flex; gap:5px; }
-        .bl-filter-btn { padding:5px 14px; border-radius:20px; border:1px solid var(--border,#dae6ef); background:var(--surface,#fff); font-family:var(--ff-b,'Inter',sans-serif); font-size:var(--fs-sm); font-weight:600; color:var(--ink-3,#6b8fa3); cursor:pointer; transition:all .15s; }
-        .bl-filter-btn:hover { border-color:var(--border-2,#b8d0de); color:var(--ink-2,#2d5068); }
-        .bl-filter-btn.active { background:var(--navy,#0a2a3d); border-color:var(--navy,#0a2a3d); color:white; }
-        .bl-filter-btn.active.overdue { background:var(--err,#dc2626); border-color:var(--err,#dc2626); }
-        .bl-filter-btn.active.pending { background:var(--warn,#b45309); border-color:var(--warn,#b45309); }
-        .bl-filter-btn.active.paid    { background:var(--ok,#0a8a6a);  border-color:var(--ok,#0a8a6a); }
-      </style>
-
-      <!-- KPI row -->
-      <div class="bl-kpis">
-        <div class="bl-kpi green">
-          <div class="bl-kpi-label">Monthly Revenue</div>
-          <div class="bl-kpi-val green" id="bl-mrr">—</div>
-          <div class="bl-kpi-sub" id="bl-mrr-sub">Loading…</div>
+    container.innerHTML = BL_CSS + `
+      <div class="bl-head">
+        <div>
+          <h1>Billing</h1>
+          <div class="sub" id="bl-count">Loading invoices…</div>
         </div>
-        <div class="bl-kpi blue">
-          <div class="bl-kpi-label">Annual Run Rate</div>
-          <div class="bl-kpi-val blue" id="bl-arr">—</div>
-          <div class="bl-kpi-sub" id="bl-arr-sub">Projected</div>
-        </div>
-        <div class="bl-kpi amber">
-          <div class="bl-kpi-label">Active Subscriptions</div>
-          <div class="bl-kpi-val amber" id="bl-subs">—</div>
-          <div class="bl-kpi-sub" id="bl-subs-sub">Deployed sites</div>
-        </div>
-        <div class="bl-kpi purple">
-          <div class="bl-kpi-label">Avg Revenue / Site</div>
-          <div class="bl-kpi-val purple" id="bl-arps">—</div>
-          <div class="bl-kpi-sub">Per month</div>
-        </div>
-        <div class="bl-kpi red">
-          <div class="bl-kpi-label">Overdue</div>
-          <div class="bl-kpi-val red" id="bl-overdue-val">—</div>
-          <div class="bl-kpi-sub red" id="bl-overdue-sub">—</div>
+        <div class="bl-head-actions">
+          <button class="bl-btn" onclick="OpsBilling.exportCsv()">Export</button>
+          <button class="bl-btn primary" onclick="OpsBilling.openCreate()">+ New invoice</button>
         </div>
       </div>
-
-      <!-- MRR trend + overdue list -->
-      <div class="bl-mid">
-        <div class="bl-chart-card">
-          <div class="bl-card-head">
-            <div class="bl-card-title">MRR Trend</div>
-            <span style="font-size:var(--fs-xs);color:var(--ink-3);font-family:var(--ff-m);">Last 6 months</span>
-          </div>
-          <div class="bl-chart-body">
-            <div class="bl-bars" id="bl-bars">
-              <div style="margin:auto;color:var(--ink-3);font-size:var(--fs-base);">Loading…</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="bl-overdue-card">
-          <div class="bl-overdue-head">
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <div class="bl-overdue-title">Overdue Invoices</div>
-          </div>
-          <div id="bl-overdue-list">
-            <div style="padding:28px;text-align:center;color:var(--ink-3);font-size:var(--fs-base);">Loading…</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Invoice table -->
+      <div id="bl-story" class="bl-story"></div>
       <div class="lv-wrap">
         <div class="lv-toolbar">
           <div class="lv-search">
@@ -175,325 +122,388 @@ const OpsBilling = (function () {
           </div>
           <div class="lv-filters">
             <div class="lv-filter active" id="blf-all"     onclick="OpsBilling.setFilter('all')">All</div>
-            <div class="lv-filter"        id="blf-overdue" onclick="OpsBilling.setFilter('overdue')">Overdue</div>
-            <div class="lv-filter"        id="blf-pending" onclick="OpsBilling.setFilter('pending')">Pending</div>
             <div class="lv-filter"        id="blf-paid"    onclick="OpsBilling.setFilter('paid')">Paid</div>
+            <div class="lv-filter"        id="blf-pending" onclick="OpsBilling.setFilter('pending')">Pending</div>
+            <div class="lv-filter"        id="blf-overdue" onclick="OpsBilling.setFilter('overdue')">Overdue</div>
+            <div class="lv-filter"        id="blf-partial" onclick="OpsBilling.setFilter('partial')">Partially paid</div>
           </div>
         </div>
-        <div id="bl-table-body">
-          <div style="padding:48px;text-align:center;color:var(--ink-3);">
-            <div class="loading" style="margin:0 auto 12px;"></div>
-            <div style="font-size:var(--fs-base);">Loading invoices…</div>
-          </div>
-        </div>
-      </div>
-    `;
-
+        <div id="bl-table-body"><div style="padding:48px;text-align:center;color:var(--ink-3);">Loading invoices…</div></div>
+      </div>`;
     loadAll();
   }
 
-  // ── DATA ──────────────────────────────────────────────────────────────
-
   async function loadAll() {
     try {
-      const [summaryRes, invoicesRes] = await Promise.all([
-        OpsModal.apiGet('/billing/summary'),
-        OpsModal.apiGet('/billing/invoices'),
-      ]);
-
-      renderKPIs(summaryRes.data || {});
-      renderTrend(summaryRes.data?.mrr_trend || []);
-
-      _invoices = invoicesRes.data || invoicesRes.invoices || [];
-      renderOverdue(_invoices.filter(i => i.payment_status === 'overdue'));
-      _pg = FGPaginator.create(_invoices, { pageSize: 25, containerId: 'bl-table-body' });
-      _pg.render(renderInvoiceTable);
-
+      const res = await OpsModal.apiGet('/billing/invoices');
+      _invoices = res.data || res.invoices || [];
+      const c = document.getElementById('bl-count'); if (c) c.textContent = `${_invoices.length} invoice${_invoices.length === 1 ? '' : 's'}`;
+      renderStory();
+      applyFilter();
     } catch (err) {
-      document.getElementById('bl-table-body').innerHTML = `
-        <div style="padding:48px;text-align:center;">
-          <div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load billing data</div>
-          <div style="color:var(--ink-3);font-size:var(--fs-sm);margin-bottom:16px;">${err.message}</div>
-          <button class="btn-ghost" onclick="reloadTab('billing')">Retry</button>
-        </div>`;
+      const el = document.getElementById('bl-table-body');
+      if (el) el.innerHTML = `<div style="padding:48px;text-align:center;"><div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load billing data</div><div style="color:var(--ink-3);font-size:var(--fs-sm);">${esc(err.message)}</div></div>`;
     }
   }
 
-  // ── KPI CARDS ─────────────────────────────────────────────────────────
-
-  function renderKPIs(d) {
-    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-    const mrr = d.mrr || 0;
-    const arr = mrr * 12;
-
-    set('bl-mrr',         fmtMoney(mrr));
-    set('bl-mrr-sub',     d.mrr_growth ? `${d.mrr_growth > 0 ? '+' : ''}${d.mrr_growth}% vs last month` : 'Current month');
-    set('bl-arr',         fmtMoney(arr));
-    set('bl-subs',        d.active_subscriptions ?? '—');
-    set('bl-arps',        d.avg_revenue_per_site ? fmtMoney(d.avg_revenue_per_site) : '—');
-    set('bl-overdue-val', d.overdue_count != null ? d.overdue_count : '—');
-    set('bl-overdue-sub', d.overdue_amount ? `₦${Number(d.overdue_amount).toLocaleString()} outstanding` : 'invoices');
+  function renderStory() {
+    const unpaid = _invoices.filter(i => String(i.payment_status).toLowerCase() !== 'paid');
+    const outstanding = unpaid.reduce((s, i) => s + (Number(i.balance_due) || 0), 0);
+    const overdue = _invoices.filter(i => effStatus(i) === 'overdue');
+    const overdueAmt = overdue.reduce((s, i) => s + (Number(i.balance_due) || Number(i.total_amount) || 0), 0);
+    const paidMonth = _invoices.filter(i => String(i.payment_status).toLowerCase() === 'paid' && inThisMonth(i.paid_date));
+    const paidMonthAmt = paidMonth.reduce((s, i) => s + (Number(i.total_amount) || 0), 0);
+    const unlinked = _invoices.filter(i => !i.user_id && !i.client_name);
+    const cards = [
+      { label: 'Outstanding balance', value: money(outstanding), cls: '', sub: `Across ${unpaid.length} unpaid invoice${unpaid.length === 1 ? '' : 's'}` },
+      { label: 'Overdue', value: money(overdueAmt), cls: 'danger', sub: `${overdue.length} invoice${overdue.length === 1 ? '' : 's'} past due date` },
+      { label: 'Paid this month', value: money(paidMonthAmt), cls: 'green', sub: `${paidMonth.length} invoice${paidMonth.length === 1 ? '' : 's'} settled` },
+      { label: 'Unlinked to a client', value: unlinked.length, cls: 'amber', sub: 'Invoices with no client resolved' },
+    ];
+    const el = document.getElementById('bl-story');
+    if (el) el.innerHTML = cards.map(c => `<div class="bl-story-card"><div class="bl-story-label">${c.label}</div><div class="bl-story-value ${c.cls}">${c.value}</div><div class="bl-story-sub">${c.sub}</div></div>`).join('');
   }
 
-  // ── MRR BAR CHART ─────────────────────────────────────────────────────
-
-  function renderTrend(trend) {
-    const el = document.getElementById('bl-bars');
-    if (!el) return;
-
-    if (!trend || trend.length === 0) {
-      el.innerHTML = '<div style="margin:auto;color:var(--ink-3);font-size:var(--fs-base);">No trend data yet</div>';
-      return;
-    }
-
-    const max = Math.max(...trend.map(t => t.amount || 0), 1);
-    el.innerHTML = trend.map(t => {
-      const pct   = Math.max(4, Math.round(((t.amount || 0) / max) * 100));
-      const label = t.month ? new Date(t.month + '-01').toLocaleDateString('en-GB', { month:'short' }) : '—';
-      return `
-        <div class="bl-bar-wrap">
-          <div class="bl-bar" style="height:${pct}%;">
-            <div class="bl-bar-tip">₦${fmtMoney(t.amount)}</div>
-          </div>
-          <div class="bl-bar-label">${label}</div>
-        </div>`;
-    }).join('');
-  }
-
-  // ── OVERDUE LIST ──────────────────────────────────────────────────────
-
-  function renderOverdue(invoices) {
-    const el = document.getElementById('bl-overdue-list');
-    if (!el) return;
-
-    if (!invoices || invoices.length === 0) {
-      el.innerHTML = `
-        <div style="padding:28px;text-align:center;color:var(--ok);">
-          <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 8px;display:block;"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          <div style="font-size:var(--fs-base);font-weight:600;">No overdue invoices</div>
-        </div>`;
-      return;
-    }
-
-    el.innerHTML = invoices.slice(0, 6).map(inv => {
-      const days = inv.days_overdue || daysSince(inv.due_date);
-      return `
-        <div class="bl-overdue-item">
-          <div>
-            <div class="bl-overdue-name">${inv.client_name || '—'}</div>
-            <div class="bl-overdue-days">${days} days overdue</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <div class="bl-overdue-amount">₦${Number(inv.total_amount || 0).toLocaleString()}</div>
-            <button class="btn-ghost" onclick="OpsBilling.sendReminder('${inv.invoice_id || inv.id}')" style="padding:5px 10px;font-size:var(--fs-xs);">Remind</button>
-          </div>
-        </div>`;
-    }).join('');
-  }
-
-  // ── INVOICE TABLE ─────────────────────────────────────────────────────
-
-  let _term = '';
-  function _applyBilling() {
-    let rows = _filter === 'all' ? _invoices : _invoices.filter(i => (i.payment_status || '').toLowerCase() === _filter);
-    if (_term) rows = rows.filter(i => `${i.invoice_id || i.id || ''} ${i.client_name || ''} ${i.property_name || ''}`.toLowerCase().includes(_term));
-    if (_pg) _pg.update(rows);
-    else renderInvoiceTable(rows);
-  }
   function setFilter(f) {
     _filter = f;
-    ['all','overdue','pending','paid'].forEach(k => {
-      const btn = document.getElementById(`blf-${k}`);
-      if (btn) btn.classList.toggle('active', k === f);
-    });
-    _applyBilling();
+    ['all', 'paid', 'pending', 'overdue', 'partial'].forEach(k => { const b = document.getElementById('blf-' + k); if (b) b.classList.toggle('active', k === f); });
+    applyFilter();
   }
-  function search(q) { _term = q.trim().toLowerCase(); _applyBilling(); }
+  function search(q) { _term = (q || '').trim().toLowerCase(); applyFilter(); }
 
-  function renderInvoiceTable(invoices) {
+  function applyFilter() {
+    let rows = _invoices;
+    if (_filter !== 'all') rows = rows.filter(i => effStatus(i) === _filter);
+    if (_term) rows = rows.filter(i => `${i.invoice_id || ''} ${i.client_name || ''} ${i.property_name || ''}`.toLowerCase().includes(_term));
+    renderTable(rows);
+  }
+
+  function renderTable(rows) {
     const el = document.getElementById('bl-table-body');
     if (!el) return;
-
-    if (!invoices || invoices.length === 0) {
-      el.innerHTML = `
-        <div style="padding:48px;text-align:center;color:var(--ink-3);">
-          <div style="font-size:var(--fs-md);font-weight:600;color:var(--ink-2);">No invoices found</div>
-        </div>`;
-      return;
-    }
-
+    if (!rows.length) { el.innerHTML = `<div style="padding:48px;text-align:center;color:var(--ink-3);"><div style="font-size:var(--fs-md);font-weight:600;color:var(--ink-2);">No invoices found</div></div>`; return; }
     const L = OpsModal.link;
-    el.innerHTML = `
-      <div class="lv-scroll">
-        <table class="lv-table">
-          <thead>
-            <tr>
-              <th>Invoice</th>
-              <th>Client</th>
-              <th>Property</th>
-              <th>Amount</th>
-              <th>Due date</th>
-              <th>Method</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${invoices.map(inv => {
-              const id     = inv.invoice_id || inv.id;
-              const status = (inv.payment_status || 'pending').toLowerCase();
-              const cls    = { paid:'ok', overdue:'danger', pending:'warn', cancelled:'neutral' }[status] || 'warn';
-              const isOverdue = status === 'overdue';
-              const clientCell = inv.user_id ? L('clients', inv.user_id, inv.client_name || 'Client') : dash(inv.client_name);
-              const propCell = inv.property_id ? L('properties', inv.property_id, inv.property_name || inv.property_id) : dash(inv.property_name);
-              return `<tr class="clickable" onclick="OpsBilling.open('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsBilling.open('${id}')}">
-                <td class="lv-mono" style="color:var(--ink);font-weight:700;">${id}</td>
-                <td>${clientCell}</td>
-                <td>${propCell}</td>
-                <td class="lv-mono" style="font-weight:700;color:${isOverdue ? 'var(--err)' : 'var(--ink)'};">₦${Number(inv.total_amount || 0).toLocaleString()}</td>
-                <td class="lv-mono" style="${isOverdue ? 'color:var(--err);font-weight:700;' : ''}">${fmtDate(inv.due_date)}</td>
-                <td>${dash(inv.payment_method)}</td>
-                <td><span class="lv-status ${cls}">${status}</span></td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>`;
+    el.innerHTML = `<div class="lv-scroll"><table class="lv-table">
+      <thead><tr>
+        <th>Invoice</th>
+        <th>Client <span class="bl-flag" title="Invoices have no client_id — resolved via the property's client / invoice.user_id">⚠</span></th>
+        <th>Property</th>
+        <th>Amount</th>
+        <th>Due date</th>
+        <th>Status</th>
+        <th>Payment method <span class="bl-flag" title="No payment_method column exists on invoices">⚠</span></th>
+      </tr></thead>
+      <tbody>${rows.map(inv => {
+        const id = inv.invoice_id;
+        const eff = effStatus(inv), pm = payMeta(eff);
+        const overdue = eff === 'overdue';
+        const client = inv.user_id ? L('clients', inv.user_id, inv.client_name || 'Client') : '<span style="color:var(--ink-4);">Unlinked</span>';
+        const prop = inv.property_id ? L('properties', inv.property_id, inv.property_name || inv.property_id) : dash(inv.property_name);
+        return `<tr class="clickable" onclick="OpsBilling.open('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsBilling.open('${id}')}">
+          <td class="lv-mono" style="color:var(--ink);font-weight:700;">${esc(id)}</td>
+          <td>${client}</td>
+          <td>${prop}</td>
+          <td class="lv-mono" style="font-weight:700;color:${overdue ? 'var(--err)' : 'var(--ink)'};">${NGN(inv.total_amount)}</td>
+          <td class="lv-mono" style="${overdue ? 'color:var(--err);font-weight:700;' : ''}">${fmtDate(inv.due_date)}</td>
+          <td><span class="bl-status ${pm.c}">${pm.l}</span><span class="bl-raw">status: ${esc(inv.status || '—')}</span></td>
+          <td class="lv-dash">—</td>
+        </tr>`;
+      }).join('')}</tbody></table></div>`;
+  }
+
+  function exportCsv() {
+    if (!_invoices.length) return OpsModal.toast('Nothing to export', 'watch');
+    const head = ['invoice_id', 'client', 'property', 'total_amount', 'balance_due', 'due_date', 'payment_status', 'status'];
+    const esc2 = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+    const lines = [head.join(',')].concat(_invoices.map(i => [i.invoice_id, i.client_name || '', i.property_name || '', i.total_amount || 0, i.balance_due || 0, i.due_date || '', i.payment_status || '', i.status || ''].map(esc2).join(',')));
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'flowguard-invoices.csv'; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
   function back() { if (_container) render(_container); }
 
-  // ── ACTIONS ───────────────────────────────────────────────────────────
-
-  // ── FULL DETAIL SCREEN (no pop-up) ──
+  // ────────────────────────────────────────────────── DETAIL
   async function open(id) {
     if (!_container) return;
-    _container.innerHTML = `<div style="padding:60px;text-align:center;color:var(--ink-3);"><div class="loading" style="margin:0 auto 12px;"></div>Loading invoice…</div>`;
+    _container.innerHTML = BL_CSS + `<div style="padding:60px;text-align:center;color:var(--ink-3);">Loading invoice…</div>`;
     try {
-      const res = await OpsModal.apiGet(`/billing/invoices/${id}`);
+      const res = await OpsModal.apiGet('/billing/invoices/' + id);
       renderDetail(res.data || {});
     } catch (err) {
-      _container.innerHTML = `<div style="padding:48px;text-align:center;"><div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load invoice</div><button class="bl-back" onclick="OpsBilling.back()">← Back to Billing</button></div>`;
+      _container.innerHTML = BL_CSS + `<div style="padding:48px;text-align:center;"><div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load invoice</div><button class="bl-btn" onclick="OpsBilling.back()">← Back to Billing</button></div>`;
     }
   }
-
-  function section(title, body, needs) {
-    return `<div class="bl-section"><div class="bl-section-h">${title}${needs ? '<span class="bl-needs">pending backend data</span>' : ''}</div><div class="bl-section-b">${body}</div></div>`;
-  }
-
-  // Re-injected on the detail screen because renderDetail replaces the whole
-  // container (removing the list render's <style>), else the invoice detail
-  // renders unstyled.
-  const BL_DETAIL_CSS = `<style>
-    .bl-back { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:8px 13px; cursor:pointer; }
-    .bl-back:hover { color:var(--ink); border-color:var(--border-2); }
-    .bl-detail-top { display:flex; align-items:center; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
-    .bl-detail-name { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; }
-    .bl-detail-meta { font-size:var(--fs-sm); color:var(--ink-3); margin-top:3px; }
-    .bl-detail-actions { margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; }
-    .bl-section { background:var(--surface,#fff); border:1px solid var(--border); border-radius:var(--r,14px); box-shadow:var(--sh-xs); margin-bottom:14px; overflow:hidden; }
-    .bl-section-h { padding:12px 18px; border-bottom:1px solid var(--border); font-family:var(--ff-d); font-size:var(--fs-sm); font-weight:700; letter-spacing:.4px; color:var(--ink); display:flex; align-items:center; justify-content:space-between; }
-    .bl-section-b { padding:16px 18px; }
-    .bl-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px 22px; }
-    .bl-field .k { font-size:var(--fs-2xs); font-weight:700; letter-spacing:.9px; text-transform:uppercase; color:var(--ink-3); }
-    .bl-field .v { font-size:var(--fs-md); color:var(--ink); font-weight:600; margin-top:3px; }
-    .bl-empty { color:var(--ink-3); font-size:var(--fs-sm); padding:6px 0; }
-    .bl-needs { font-size:var(--fs-xs); color:var(--ink-4); font-style:italic; }
-    @media (max-width:640px){ .bl-detail-actions{ margin-left:0; width:100%; } }
-  </style>`;
 
   function renderDetail(inv) {
-    const id = inv.invoice_id || inv.id;
-    const status = (inv.payment_status || 'pending').toLowerCase();
-    const badge = { paid: 'nominal', overdue: 'critical', pending: 'watch', cancelled: 'offline' }[status] || 'watch';
-    const items = inv.line_items || inv.services || [];
-    const payments = inv.payments || [];
-    const field = (k, v) => `<div class="bl-field"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+    const F = OpsModal.fact, L = OpsModal.link;
+    const id = inv.invoice_id;
+    const eff = effStatus(inv), pm = payMeta(eff);
+    const chipCls = { paid: 'ok', overdue: 'danger', pending: 'warn', partial: 'warn' }[pm.c] || 'neutral';
+    const items = Array.isArray(inv.line_items) ? inv.line_items : (() => { try { return JSON.parse(inv.line_items || '[]'); } catch { return []; } })();
+    const total = Number(inv.total_amount) || 0;
+    const balance = inv.balance_due != null ? Number(inv.balance_due) : total;
+    const paidSoFar = Math.max(0, total - balance);
+    const q = inv.quote;
+    const clientLink = inv.user_id ? L('clients', inv.user_id, inv.client_name || 'Client') : '<span style="color:var(--warn);">Not linked to a clients row</span>';
+    const propLink = inv.property_id ? L('properties', inv.property_id, inv.property_name || inv.property_id) : dash(inv.property_name);
 
-    const details = `<div class="bl-grid">
-      ${field('Invoice', id)}
-      ${field('Client', inv.user_id ? OpsModal.link('clients', inv.user_id, inv.client_name || 'Client') : dash(inv.client_name))}
-      ${field('Property', inv.property_id ? OpsModal.link('properties', inv.property_id, inv.property_name || inv.property_id) : dash(inv.property_name))}
-      ${field('Amount', '₦' + Number(inv.total_amount || 0).toLocaleString())}
-      ${field('Due Date', fmtDate(inv.due_date))}
-      ${field('Status', `<span class="status-badge ${badge}">${status}</span>`)}
-      ${field('Payment Method', dash(inv.payment_method))}
-      ${field('Issue Date', fmtDate(inv.issue_date || inv.created_at))}
-      ${inv.paid_at ? field('Paid On', fmtDate(inv.paid_at)) : ''}
-    </div>${inv.description ? `<div style="margin-top:12px;">${field('Description', inv.description)}</div>` : ''}`;
+    const detailsBody = `
+      ${F('Invoice ID', `<span class="lv-mono">${esc(id)}</span>`)}
+      ${F('Invoice type', `<span class="lv-mono">${esc(inv.invoice_type || '—')}</span>`)}
+      ${F('Property', propLink)}
+      ${F('Client', clientLink)}
+      ${F('Subtotal', NGN(inv.subtotal != null ? inv.subtotal : total))}
+      ${F('Total amount', NGN(total))}
+      ${F('Balance due', `<b style="color:${balance > 0 ? 'var(--err)' : 'var(--ok)'}">${NGN(balance)}</b>`)}
+      ${F('Issue date', `<span class="lv-mono">${fmtDate(inv.issue_date || inv.created_at)}</span>`)}
+      ${F('Due date', `<span class="lv-mono">${fmtDate(inv.due_date)}</span>`)}
+      ${F('payment_status', `<span class="lv-mono">${esc(inv.payment_status || '—')}</span>`)}
+      ${F('status', `<span class="lv-mono">${esc(inv.status || '—')}</span>`)}
+      ${gap('Both <span class="mono">status</span> and <span class="mono">payment_status</span> are shown raw because nothing documents how they differ. The chip above uses <span class="mono">payment_status</span>.')}`;
 
-    const services = items.length ? `
-      <div style="overflow-x:auto;"><table class="ops-table"><thead><tr><th>Description</th><th style="text-align:right;">Amount</th></tr></thead>
-      <tbody>${items.map(l => `<tr><td>${l.description || '—'}</td><td style="text-align:right;font-family:var(--ff-d);font-weight:700;">₦${Number(l.amount || 0).toLocaleString()}</td></tr>`).join('')}</tbody></table></div>` : '<div class="bl-empty">No line items on this invoice.</div>';
+    const servicesBody = items.length
+      ? `<table class="bl-tbl"><thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead>
+         <tbody>${items.map(l => `<tr>
+           <td class="strong">${esc(l.description || '—')}</td>
+           <td class="num">${l.qty != null ? esc(l.qty) : '—'}</td>
+           <td class="num">${l.unit_price != null ? NGN(l.unit_price) : '—'}</td>
+           <td class="num">${NGN(l.amount)}</td></tr>`).join('')}</tbody></table>
+         ${gap('Parsed from the <span class="mono">invoices.line_items</span> jsonb blob — no normalized line-items table, so shape isn\'t guaranteed.')}`
+      : OpsModal.emptyState('', 'No line items', 'This invoice has an empty <span class="mono">line_items</span> array.');
 
-    const paymentsBody = payments.length ? `
-      <div style="overflow-x:auto;"><table class="ops-table"><thead><tr><th>Date</th><th>Method</th><th style="text-align:right;">Amount</th></tr></thead>
-      <tbody>${payments.map(p => `<tr><td style="font-size:var(--fs-sm);">${fmtDate(p.paid_at || p.date)}</td><td style="font-size:var(--fs-sm);">${dash(p.method)}</td><td style="text-align:right;font-family:var(--ff-d);font-weight:700;">₦${Number(p.amount || 0).toLocaleString()}</td></tr>`).join('')}</tbody></table></div>` : (status === 'paid' ? `<div class="bl-empty">Paid ${fmtDate(inv.paid_at)}${inv.payment_method ? ' · ' + inv.payment_method : ''}.</div>` : '<div class="bl-empty">No payments recorded.</div>');
+    const contractBody = q
+      ? `${F('Nearest quote', `<span class="lv-mono">${esc(q.quote_id || '—')}</span>`)}
+         ${F('Selected packages', esc(Array.isArray(q.selected_packages) ? q.selected_packages.join(', ') : (q.selected_packages || '—')))}
+         ${F('Monthly value', q.total_monthly != null ? NGN(q.total_monthly) : '—')}
+         ${F('Is latest', q.is_latest ? 'Yes' : 'No')}
+         ${gap('No contracts table exists. The closest real record is the <span class="mono">service_quotes</span> row above — a quote is not a signed contract.')}`
+      : `${OpsModal.emptyState('', 'No linked quote', 'No <span class="mono">service_quotes</span> row for this property.')}${gap('No contracts table exists anywhere in the schema.')}`;
 
-    const actions = status !== 'paid'
-      ? `<button class="btn-ghost" onclick="OpsBilling.sendReminder('${id}')">Send Reminder</button><button class="btn-primary" onclick="OpsBilling.markPaid('${id}')">Mark as Paid</button>`
-      : '';
+    const paymentsBody = `
+      ${F('Total amount', NGN(total))}
+      ${F('Paid so far (implied)', NGN(paidSoFar))}
+      ${F('Balance due', `<b style="color:${balance > 0 ? 'var(--err)' : 'var(--ok)'}">${NGN(balance)}</b>`)}
+      ${F('Payment method', '<span style="color:var(--ink-4);">Not captured — no column exists</span>')}
+      ${gap('No payment-ledger table — only the current <span class="mono">balance_due</span> / <span class="mono">payment_status</span> snapshot. Individual installments aren\'t recoverable.')}`;
 
-    _container.innerHTML = `
-      ${BL_DETAIL_CSS}
-      <div class="bl-detail-top">
-        <button class="bl-back" onclick="OpsBilling.back()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Billing</button>
-        <div>
-          <div class="bl-detail-name">Invoice ${id}</div>
-          <div class="bl-detail-meta">${dash(inv.client_name)} · ₦${Number(inv.total_amount || 0).toLocaleString()} · <span class="status-badge ${badge}">${status}</span></div>
-        </div>
-        <div class="bl-detail-actions">${actions}</div>
+    const sidebar = `
+      <div class="fgd-card"><div class="fgd-card-head"><h2>Quick facts</h2></div>
+        ${F('Invoice ID', `<span class="lv-mono">${esc(id)}</span>`)}
+        ${F('Type', `<span class="lv-mono">${esc(inv.invoice_type || '—')}</span>`)}
+        ${F('Total', NGN(total))}
+        ${F('Balance due', `<b style="color:${balance > 0 ? 'var(--err)' : 'var(--ok)'}">${NGN(balance)}</b>`)}
+        ${F('Due', `<span class="lv-mono">${fmtDate(inv.due_date)}</span>`)}
+        ${F('Client', inv.user_id ? L('clients', inv.user_id, inv.client_name || 'Client') : 'Unlinked')}
       </div>
-      ${section('Invoice Details', details)}
-      ${section('Services', services)}
-      ${section('Contract', '<div class="bl-empty">No contract linked in this response.</div>', true)}
-      ${section('Payments', paymentsBody)}
-      ${section('Credit Notes', '<div class="bl-empty">No credit notes.</div>', true)}
-      ${section('Attachments', '<div class="bl-empty">No attachments.</div>', true)}
-    `;
-  }
+      <div class="fgd-card"><div class="fgd-card-head"><h2>Related</h2></div>
+        ${F('Property', propLink)}
+        ${F('Nearest quote', q && q.quote_id ? `<span class="lv-mono">${esc(q.quote_id)}</span>` : '—')}
+        ${F('Open tickets', inv.property_id ? L('maintenance', inv.property_id, String(inv.open_tickets || 0)) : (inv.open_tickets || 0))}
+      </div>`;
 
-  async function sendReminder(id) {
-    try {
-      await OpsModal.apiPost(`/billing/invoices/${id}/send-reminder`, {});
-      OpsModal.toast('Reminder sent to client', 'nominal');
-    } catch (err) {
-      OpsModal.toast('Failed: ' + err.message, 'critical');
-    }
-  }
-
-  function markPaid(id) {
-    OpsModal.confirm(`Mark invoice ${id} as paid?`, async function () {
-      try {
-        await OpsModal.apiPost(`/billing/invoices/${id}/mark-paid`, {});
-        OpsModal.close();
-        OpsModal.toast('Invoice marked as paid', 'nominal');
-        reloadTab('billing');
-      } catch (err) {
-        OpsModal.toast('Failed: ' + err.message, 'critical');
-        OpsModal.setLoading('modal-confirm-btn', false);
-      }
+    _container.innerHTML = BL_CSS + OpsModal.detailShell({
+      back: 'OpsBilling.back()',
+      crumbRoot: 'Billing',
+      title: esc(id),
+      avatar: { text: '₦', bg: 'linear-gradient(135deg,#16a8d3,#0d7fa0)' },
+      chips: [{ cls: chipCls, label: pm.l, dot: true }],
+      meta: [['Property', esc(inv.property_name || '—')], ['Client', inv.client_name ? esc(inv.client_name) : 'Unlinked'], ['Issued', fmtDate(inv.issue_date || inv.created_at)], ['Due', fmtDate(inv.due_date)]],
+      actions: `<button class="fgd-btn" onclick="window.print()">Download PDF</button>${eff !== 'paid' ? `<button class="fgd-btn" style="background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;" onclick="OpsBilling.recordPayment('${id}')">Record payment</button>` : ''}`,
+      sections: [
+        { id: 'details', title: 'Invoice details', meta: 'invoices', body: detailsBody },
+        { id: 'services', title: 'Services', meta: 'invoices.line_items (jsonb)', body: servicesBody },
+        { id: 'contract', title: 'Contract', meta: 'service_quotes', body: contractBody },
+        { id: 'payments', title: 'Payments', meta: 'no ledger table', body: paymentsBody },
+        { id: 'credits', title: 'Credit notes', body: OpsModal.emptyState('', 'No credit notes table exists', 'Nothing in the schema stores adjustments, refunds, or waived charges. This tab needs new schema.') },
+        { id: 'attachments', title: 'Attachments', body: OpsModal.emptyState('', 'No attachments table exists', 'A signed quote PDF or proof-of-payment can\'t be attached until file storage is added — the same gap as every module.') },
+      ],
+      sidebar,
     });
   }
 
-  // ── HELPERS ───────────────────────────────────────────────────────────
-
-  function fmtMoney(n) {
-    if (!n) return '₦0';
-    if (n >= 1000000) return `₦${(n / 1000000).toFixed(1)}M`;
-    if (n >= 1000)    return `₦${(n / 1000).toFixed(0)}K`;
-    return `₦${Number(n).toLocaleString()}`;
+  function recordPayment(id) {
+    OpsModal.confirm(
+      `There's no payment-ledger table, so a partial payment can't be itemized. Recording payment here settles the invoice in full — balance due goes to ₦0 and status becomes paid. Continue?`,
+      async function () {
+        OpsModal.setLoading('modal-confirm-btn', true);
+        try {
+          await OpsModal.apiPost('/billing/invoices/' + id + '/mark-paid', {});
+          OpsModal.close();
+          OpsModal.toast('Invoice settled', 'nominal');
+          open(id);
+        } catch (err) { OpsModal.toast('Failed: ' + err.message, 'critical'); OpsModal.setLoading('modal-confirm-btn', false); }
+      });
   }
 
-  function fmtDate(ds) {
-    if (!ds) return '—';
-    return new Date(ds).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+  // ────────────────────────────────────────────────── CREATE
+  async function openCreate() {
+    if (!_container) return;
+    _draft = [{ description: '', qty: 1, unit_price: 0, amount: 0 }];
+    _container.innerHTML = BL_CSS + `<div style="padding:60px;text-align:center;color:var(--ink-3);">Loading…</div>`;
+    try {
+      const res = await OpsModal.apiGet('/properties/all');
+      _props = (res.data || []).filter(p => p.asset_class === 'customer_property' || p.asset_class == null);
+    } catch { _props = []; }
+    const today = new Date().toISOString().slice(0, 10);
+    const due = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10);
+    _container.innerHTML = BL_CSS + `
+      <div class="fgd-crumb"><span class="lnk" onclick="OpsBilling.back()">Billing</span><span class="sep">/</span><span class="cur">New invoice</span></div>
+      <div class="bl-head">
+        <div><h1>New invoice</h1><div class="sub">Invoice ID will be auto-generated on save</div></div>
+        <div class="bl-head-actions">
+          <button class="bl-btn" onclick="OpsBilling.confirmCreate(false)" id="bl-draft-btn">Save as draft</button>
+          <button class="bl-btn primary" onclick="OpsBilling.confirmCreate(true)" id="bl-create-btn">Create &amp; send</button>
+        </div>
+      </div>
+      <div class="bl-grid2">
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div class="fgd-card">
+            <div class="fgd-card-head"><h2>Invoice details</h2><span class="cmeta">invoices</span></div>
+            <div class="bl-field">
+              <div class="bl-field-label">Property <span class="sub">required · determines client</span></div>
+              <select class="bl-input" id="bl-c-property" onchange="OpsBilling.onProp()">
+                <option value="">— Select a property —</option>
+                ${_props.map(p => `<option value="${esc(p.property_id)}">${esc(p.property_name || p.property_id)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="bl-field">
+              <div class="bl-field-label">Client <span class="sub">derived, read-only</span></div>
+              <div class="bl-derived warn" id="bl-c-client">Select a property first</div>
+            </div>
+            <div class="bl-field">
+              <div class="bl-field-label">Invoice type</div>
+              <select class="bl-input" id="bl-c-type">
+                <option value="maintenance">maintenance</option>
+                <option value="installation">installation</option>
+                <option value="subscription">subscription</option>
+                <option value="one_time">one_time</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:12px;">
+              <div class="bl-field" style="flex:1;"><div class="bl-field-label">Issue date</div><input class="bl-input" type="date" id="bl-c-issue" value="${today}"></div>
+              <div class="bl-field" style="flex:1;"><div class="bl-field-label">Due date</div><input class="bl-input" type="date" id="bl-c-due" value="${due}"></div>
+            </div>
+            <div class="bl-omit">Payment method isn't collected — there's no column for it on <span class="mono">invoices</span>.</div>
+          </div>
+
+          <div class="fgd-card">
+            <div class="fgd-card-head"><h2>Services</h2><span class="cmeta">writes to invoices.line_items (jsonb)</span></div>
+            <div class="bl-li-head"><span>Description</span><span>Qty</span><span>Unit price</span><span style="text-align:right;">Amount</span><span></span></div>
+            <div id="bl-items"></div>
+            <button class="bl-addrow" onclick="OpsBilling.addItem()">+ Add line</button>
+            <div class="bl-totals" id="bl-totals"></div>
+          </div>
+
+          <div class="fgd-card">
+            <div class="fgd-card-head"><h2>Status</h2><span class="cmeta">two separate columns</span></div>
+            <div style="display:flex;gap:12px;">
+              <div class="bl-field" style="flex:1;"><div class="bl-field-label">status</div>
+                <select class="bl-input" id="bl-c-status"><option value="open">open</option><option value="closed">closed</option></select></div>
+              <div class="bl-field" style="flex:1;"><div class="bl-field-label">payment_status</div>
+                <select class="bl-input" id="bl-c-pstatus" onchange="OpsBilling.recalc()"><option value="unpaid">unpaid</option><option value="partial">partial</option><option value="paid">paid</option></select></div>
+            </div>
+            <div class="bl-field"><div class="bl-field-label">Balance due <span class="sub">computed</span></div><input class="bl-input" id="bl-c-balance" disabled></div>
+            ${gap('Both fields exist on the row and are exposed because their relationship isn\'t documented. Pick one as source of truth before this ships.')}
+          </div>
+
+          <div class="bl-savebar">
+            <button class="bl-btn" onclick="OpsBilling.back()">Cancel</button>
+            <button class="bl-btn" onclick="OpsBilling.confirmCreate(false)">Save as draft</button>
+            <button class="bl-btn primary" onclick="OpsBilling.confirmCreate(true)">Create &amp; send</button>
+          </div>
+        </div>
+
+        <div class="bl-side">
+          <div class="fgd-card"><div class="fgd-card-head"><h2>Preview</h2></div><div id="bl-preview"></div></div>
+        </div>
+      </div>`;
+    renderItems();
   }
 
-  function daysSince(ds) {
-    if (!ds) return 0;
-    return Math.floor((Date.now() - new Date(ds).getTime()) / 86400000);
+  function onProp() {
+    const pid = document.getElementById('bl-c-property').value;
+    const p = _props.find(x => x.property_id === pid);
+    const el = document.getElementById('bl-c-client');
+    if (!p) { el.className = 'bl-derived warn'; el.textContent = 'Select a property first'; }
+    else if (p.client_name || p.user_id) { el.className = 'bl-derived'; el.textContent = p.client_name || 'Linked client'; }
+    else { el.className = 'bl-derived warn'; el.textContent = 'No client linked to this property'; }
+    recalc();
   }
 
-  return { render, setFilter, search, open, back, sendReminder, markPaid };
+  function renderItems() {
+    const el = document.getElementById('bl-items');
+    if (!el) return;
+    el.innerHTML = _draft.map((l, i) => `<div class="bl-li">
+      <input class="bl-input" placeholder="Description" value="${esc(l.description || '')}" oninput="OpsBilling.editItem(${i},'description',this.value)">
+      <input class="bl-input" type="number" min="0" value="${l.qty != null ? l.qty : 1}" oninput="OpsBilling.editItem(${i},'qty',this.value)">
+      <input class="bl-input" type="number" min="0" value="${l.unit_price != null ? l.unit_price : 0}" oninput="OpsBilling.editItem(${i},'unit_price',this.value)">
+      <span class="amt">${NGN(l.amount)}</span>
+      <span class="bl-li-rm" onclick="OpsBilling.removeItem(${i})" title="Remove">×</span>
+    </div>`).join('');
+    recalc();
+  }
+  function addItem() { _draft.push({ description: '', qty: 1, unit_price: 0, amount: 0 }); renderItems(); }
+  function removeItem(i) { _draft.splice(i, 1); if (!_draft.length) _draft.push({ description: '', qty: 1, unit_price: 0, amount: 0 }); renderItems(); }
+  function editItem(i, k, v) {
+    if (!_draft[i]) return;
+    _draft[i][k] = (k === 'description') ? v : (parseFloat(v) || 0);
+    _draft[i].amount = (parseFloat(_draft[i].qty) || 0) * (parseFloat(_draft[i].unit_price) || 0);
+    // update just the amount + totals without wiping focus
+    const row = document.querySelectorAll('#bl-items .bl-li')[i];
+    if (row) row.querySelector('.amt').textContent = NGN(_draft[i].amount);
+    recalc();
+  }
 
+  function recalc() {
+    const subtotal = _draft.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+    const total = subtotal;
+    const tot = document.getElementById('bl-totals');
+    if (tot) tot.innerHTML = `<div class="bl-totrow"><span>Subtotal</span><span>${NGN(subtotal)}</span></div><div class="bl-totrow grand"><span>Total</span><span>${NGN(total)}</span></div>`;
+    const ps = (document.getElementById('bl-c-pstatus') || {}).value || 'unpaid';
+    const balance = ps === 'paid' ? 0 : total;
+    const bd = document.getElementById('bl-c-balance'); if (bd) bd.value = NGN(balance);
+    const prop = _props.find(x => x.property_id === (document.getElementById('bl-c-property') || {}).value);
+    const prev = document.getElementById('bl-preview');
+    const F = OpsModal.fact;
+    if (prev) prev.innerHTML = `
+      ${F('Invoice ID', 'Auto on save')}
+      ${F('Property', prop ? esc(prop.property_name || prop.property_id) : '—')}
+      ${F('Client', prop ? (prop.client_name || 'Unlinked') : '—')}
+      ${F('Total', NGN(total))}
+      ${F('Balance due', NGN(balance))}`;
+  }
+
+  async function confirmCreate(send) {
+    const pid = (document.getElementById('bl-c-property') || {}).value;
+    if (!pid) return OpsModal.toast('Select a property first', 'critical');
+    const items = _draft.filter(l => l.description || l.amount).map(l => ({ description: l.description, qty: Number(l.qty) || 0, unit_price: Number(l.unit_price) || 0, amount: Number(l.amount) || 0 }));
+    if (!items.length) return OpsModal.toast('Add at least one line item', 'critical');
+    const subtotal = items.reduce((s, l) => s + l.amount, 0);
+    const payload = {
+      property_id: pid,
+      invoice_type: (document.getElementById('bl-c-type') || {}).value || 'maintenance',
+      issue_date: (document.getElementById('bl-c-issue') || {}).value || null,
+      due_date: (document.getElementById('bl-c-due') || {}).value || null,
+      line_items: items, subtotal, total_amount: subtotal,
+      status: (document.getElementById('bl-c-status') || {}).value || 'open',
+      payment_status: (document.getElementById('bl-c-pstatus') || {}).value || 'unpaid',
+    };
+    const btnId = send ? 'bl-create-btn' : 'bl-draft-btn';
+    OpsModal.setLoading(btnId, true);
+    try {
+      const res = await OpsModal.apiPost('/billing/invoices', payload);
+      OpsModal.toast(send ? 'Invoice created' : 'Draft saved', 'nominal');
+      const newId = res.data && res.data.invoice_id;
+      if (newId) open(newId); else back();
+    } catch (err) {
+      OpsModal.toast('Failed to create invoice: ' + err.message, 'critical');
+      OpsModal.setLoading(btnId, false);
+    }
+  }
+
+  return {
+    render, setFilter, search, open, back, exportCsv,
+    openCreate, onProp, addItem, removeItem, editItem, recalc, confirmCreate, recordPayment,
+  };
 })();
