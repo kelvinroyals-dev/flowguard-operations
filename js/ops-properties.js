@@ -440,13 +440,18 @@ const OpsProperties = (function () {
       </div>
       ${a.issue_description ? `<div class="prd-desc">${a.issue_description}</div>` : ''}`;
 
+    const verified = a.location_verified === true;
     const mapBody = (a.latitude && a.longitude)
       ? `<div class="prd-mapbox"><div style="text-align:center;">
-           <div class="prd-mono" style="font-size:var(--fs-md);color:var(--ink);font-weight:700;">${a.latitude}, ${a.longitude}</div>
-           <div style="font-size:var(--fs-xs);color:var(--ink-3);margin-top:4px;">Estate coordinates</div>
+           <div class="prd-mono" style="font-size:var(--fs-md);color:var(--ink);font-weight:700;">${(+a.latitude).toFixed(6)}, ${(+a.longitude).toFixed(6)}</div>
+           <div style="font-size:var(--fs-xs);color:${verified ? 'var(--ok)' : 'var(--warn)'};margin-top:4px;font-weight:600;">${verified ? '✓ Confirmed location' : 'Approximate — from address, not yet confirmed'}</div>
          </div></div>
-         <div style="margin-top:12px;"><button class="prd-btn" onclick="OpsNetwork.open('${pid}')">Open on network map →</button></div>`
-      : emptyBox(iDoc, 'No coordinates on file', 'Add a latitude/longitude to plot this estate and its coverage on the network map.');
+         <div class="prd-actions" style="margin-top:12px;">
+           <button class="prd-btn" onclick="OpsNetwork.open('${pid}')">Open on network map →</button>
+           <button class="prd-btn primary" onclick="OpsProperties.setLocation('${pid}')">${verified ? 'Adjust location' : 'Verify location'}</button>
+         </div>`
+      : `${emptyBox(iDoc, 'No coordinates on file', 'This property is not on the map yet. Drop its pin to plot it, and to power dispatch and per-property risk scoring.')}
+         <div style="margin-top:12px;"><button class="prd-btn primary" onclick="OpsProperties.setLocation('${pid}')">Set location</button></div>`;
 
     const networkBody = assetsArr.length
       ? `<table class="prd-table"><thead><tr><th>Asset</th><th>Type</th><th>Health</th><th>Status</th></tr></thead>
@@ -724,6 +729,78 @@ const OpsProperties = (function () {
     }
   }
 
-  return { render, filterStage, search, open, back, editArea, saveArea, deleteArea, scheduleInspection, confirmSchedule };
+  // ────────────────────────────────────── LOCATION (pin tool)
+  // Coordinates are the source of truth for the map, dispatch and risk scoring.
+  // Addresses geocode to a point on registration, but a geocoder can miss by a
+  // district — so an operator can drop/drag the pin to the exact spot and mark
+  // it confirmed. No client-side geocoding (CSP blocks Nominatim from the
+  // browser): the pin + editable lat/long are the interface.
+  let _leafletP = null;
+  function ensureLeaflet() {
+    return _leafletP || (_leafletP = new Promise(res => {
+      if (window.L) return res();
+      if (!document.getElementById('fg-leaflet-css')) {
+        const c = document.createElement('link'); c.id = 'fg-leaflet-css'; c.rel = 'stylesheet';
+        c.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(c);
+      }
+      const s = document.createElement('script'); s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      s.onload = res; document.head.appendChild(s);
+    }));
+  }
+
+  async function setLocation(propertyId) {
+    let a;
+    try { a = (await OpsModal.apiGet('/properties/' + propertyId)).data; }
+    catch { return OpsModal.toast('Failed to load property', 'critical'); }
+    const hasC = a.latitude != null && a.longitude != null;
+    const lat0 = hasC ? Number(a.latitude) : 6.5244;
+    const lon0 = hasC ? Number(a.longitude) : 3.3792;
+    const inpCss = 'width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-family:var(--ff-mono,monospace);font-size:var(--fs-sm);color:var(--ink);background:var(--surface);';
+    OpsModal.open('Set property location', `
+      <div style="font-size:var(--fs-sm);color:var(--ink-3);margin-bottom:10px;line-height:1.5;">
+        Drag the pin (or click the map) to the exact gate. Coordinates are the source of truth for the map, dispatch and risk scoring — the address is just for humans.
+      </div>
+      <div id="plm-map" style="height:320px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--surface-2);"></div>
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <div style="flex:1;"><div style="font-size:var(--fs-2xs);text-transform:uppercase;letter-spacing:.5px;color:var(--ink-3);font-weight:700;margin-bottom:4px;">Latitude</div><input id="plm-lat" style="${inpCss}" value="${lat0.toFixed(6)}"></div>
+        <div style="flex:1;"><div style="font-size:var(--fs-2xs);text-transform:uppercase;letter-spacing:.5px;color:var(--ink-3);font-weight:700;margin-bottom:4px;">Longitude</div><input id="plm-lon" style="${inpCss}" value="${lon0.toFixed(6)}"></div>
+      </div>
+      ${hasC && a.location_verified ? '' : `<div style="margin-top:10px;font-size:var(--fs-xs);color:var(--warn);font-weight:600;">${hasC ? 'This pin came from the address and is unconfirmed — drag it to verify.' : 'No coordinates yet — place the pin to put this property on the map.'}</div>`}
+    `, [
+      { label: 'Cancel', onclick: 'OpsModal.close()', class: 'btn-ghost' },
+      { label: 'Save location', onclick: `OpsProperties.saveLocation('${propertyId}')`, class: 'btn-primary', id: 'modal-save-btn' },
+    ]);
+    await ensureLeaflet();
+    const holder = document.getElementById('plm-map');
+    if (!holder || !window.L) return;
+    const map = L.map(holder, { center: [lat0, lon0], zoom: hasC ? 15 : 11, attributionControl: false });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 19 }).addTo(map);
+    const mk = L.marker([lat0, lon0], { draggable: true }).addTo(map);
+    const latI = document.getElementById('plm-lat'), lonI = document.getElementById('plm-lon');
+    const sync = ll => { latI.value = ll.lat.toFixed(6); lonI.value = ll.lng.toFixed(6); };
+    mk.on('drag', e => sync(e.target.getLatLng()));
+    map.on('click', e => { mk.setLatLng(e.latlng); sync(e.latlng); });
+    const fromInputs = () => { const la = parseFloat(latI.value), lo = parseFloat(lonI.value); if (Number.isFinite(la) && Number.isFinite(lo)) { mk.setLatLng([la, lo]); map.panTo([la, lo]); } };
+    latI.addEventListener('change', fromInputs); lonI.addEventListener('change', fromInputs);
+    setTimeout(() => { try { map.invalidateSize(); } catch (_) {} }, 60);
+  }
+
+  async function saveLocation(propertyId) {
+    const la = parseFloat((document.getElementById('plm-lat') || {}).value);
+    const lo = parseFloat((document.getElementById('plm-lon') || {}).value);
+    if (!Number.isFinite(la) || !Number.isFinite(lo)) return OpsModal.toast('Drop the pin first', 'critical');
+    OpsModal.setLoading('modal-save-btn', true);
+    try {
+      await OpsModal.apiPut('/properties/' + propertyId + '/location', { latitude: la, longitude: lo });
+      OpsModal.close();
+      OpsModal.toast('Location saved', 'nominal');
+      open(propertyId);
+    } catch (err) {
+      OpsModal.toast('Failed to save location: ' + err.message, 'critical');
+      OpsModal.setLoading('modal-save-btn', false);
+    }
+  }
+
+  return { render, filterStage, search, open, back, editArea, saveArea, deleteArea, scheduleInspection, confirmSchedule, setLocation, saveLocation };
 
 })();

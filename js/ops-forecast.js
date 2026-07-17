@@ -260,7 +260,7 @@ const OpsForecast = (function () {
         ${kpis}
         <div class="fcx-map-row">
           <div class="fcx-map-wrap">
-            <div class="fcx-map-head"><h2>Risk heatmap</h2><span class="fcx-meta">${total} propert${total === 1 ? 'y' : 'ies'} scored${est.filter(e => e.geo_approx).length ? ` · ${est.filter(e => e.geo_approx).length} approx. location` : ''} · Lagos</span></div>
+            <div class="fcx-map-head"><h2>Risk heatmap</h2><span class="fcx-meta">${total} propert${total === 1 ? 'y' : 'ies'} scored${est.filter(e => e.geo_approx).length ? ` · ${est.filter(e => e.geo_approx).length} to verify` : ''} · Lagos</span></div>
             <div id="fcx-map"></div>
             <div class="fcx-layers">
               <div class="fcx-layer active" data-l="heat" onclick="OpsForecast.layer('heat',this)">${ICON.heat}<span>Risk heatmap</span></div>
@@ -428,7 +428,7 @@ const OpsForecast = (function () {
     if (!pts.length) {
       const total = (_fc.estates || []).length;
       const msg = total
-        ? 'Properties scored, but none are geolocated yet — add latitude/longitude to plot them on the risk map.'
+        ? 'Properties are scored, but none have coordinates yet. Open a property and use <b>Set location</b> to drop its pin — it will appear here immediately.'
         : 'No properties scored for this window. If Sentinels are stale, the environmental forecast still needs the updated backend deployed.';
       const wrap = holder.parentElement;
       const ov = document.createElement('div');
@@ -527,6 +527,14 @@ const OpsForecast = (function () {
     @media (max-width:1000px){ .fcx-map-row{ grid-template-columns:1fr; } }
     .fcx-map-wrap { position:relative; height:560px; border-radius:16px; overflow:hidden; border:1px solid var(--border); box-shadow:var(--sh-xs); }
     #fcx-map { position:absolute; inset:0; background:var(--surface-2); }
+    /* Zoom control: platform-styled, and sits BEHIND the panels/inspector */
+    .fcx-map-wrap .leaflet-bottom { z-index:380; }
+    .fcx-map-wrap .leaflet-control-zoom { border:none; box-shadow:var(--sh-md); border-radius:10px; overflow:hidden; margin:0 16px 16px 0; }
+    .fcx-map-wrap .leaflet-control-zoom a { width:32px; height:32px; line-height:32px; font-size:17px; color:var(--ink-2); background:var(--surface); border:1px solid var(--border); border-bottom:none; font-family:var(--ff-d); }
+    .fcx-map-wrap .leaflet-control-zoom a:first-child { border-radius:10px 10px 0 0; }
+    .fcx-map-wrap .leaflet-control-zoom a:last-child { border-radius:0 0 10px 10px; border-bottom:1px solid var(--border); }
+    .fcx-map-wrap .leaflet-control-zoom a:hover { background:var(--surface-2); color:var(--blue-hi,#0d7fa0); }
+    .fcx-map-wrap .leaflet-control-zoom a.leaflet-disabled { color:var(--ink-4,#9fb0b8); background:var(--surface); }
     .fcx-map-head { position:absolute; top:0; left:0; right:0; z-index:400; display:flex; align-items:center; justify-content:space-between; padding:14px 18px; background:linear-gradient(180deg,rgba(255,255,255,.85),transparent); pointer-events:none; }
     .fcx-map-head h2 { font-family:var(--ff-d); font-size:var(--fs-md); font-weight:700; color:var(--ink); }
     .fcx-meta { font-size:var(--fs-2xs); color:var(--ink-3); }
