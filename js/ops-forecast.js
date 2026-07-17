@@ -257,7 +257,7 @@ const OpsForecast = (function () {
         ${kpis}
         <div class="fcx-map-row">
           <div class="fcx-map-wrap">
-            <div class="fcx-map-head"><h2>Risk heatmap</h2><span class="fcx-meta">${total} estate${total === 1 ? '' : 's'} scored · Lagos drainage network</span></div>
+            <div class="fcx-map-head"><h2>Risk heatmap</h2><span class="fcx-meta">${total} propert${total === 1 ? 'y' : 'ies'} scored${est.filter(e => e.geo_approx).length ? ` · ${est.filter(e => e.geo_approx).length} approx. location` : ''} · Lagos</span></div>
             <div id="fcx-map"></div>
             <div class="fcx-layers">
               <div class="fcx-layer active" data-l="heat" onclick="OpsForecast.layer('heat',this)">${ICON.heat}<span>Risk heatmap</span></div>
@@ -295,7 +295,7 @@ const OpsForecast = (function () {
       : `<div class="fcx-insp-b fcx-nolive"><div class="fcx-nolive-t">No Sentinel installed</div><div class="fcx-nolive-s">Forecast based on environmental &amp; historical data.</div></div>`;
     el.innerHTML = `
       <div class="fcx-insp-head"><span class="fcx-insp-name">${esc(e.name || e.property_id)}</span><span class="fcx-chip ${riskChipCls(pred)}">${riskLabel(pred)} risk</span><span class="fcx-insp-x" onclick="OpsForecast.deselect()">&times;</span></div>
-      <div class="fcx-insp-b"><div class="fcx-insp-l">Property</div><div class="fcx-pf"><div><span class="k">Client</span><span class="v">${esc(e.client_name || 'Unlinked')}</span></div><div><span class="k">Last cleaned</span><span class="v">${months(e.last_cleaning || e.last_inspection)}</span></div><div><span class="k">Open incidents</span><span class="v">${e.open_incidents || 0}</span></div><div><span class="k">Flood history</span><span class="v">${e.flood_events || 0}</span></div></div></div>
+      <div class="fcx-insp-b"><div class="fcx-insp-l">Property${e.geo_approx ? ' · approx. location' : ''}</div><div class="fcx-pf"><div><span class="k">Client</span><span class="v">${esc(e.client_name || 'Unlinked')}</span></div><div><span class="k">Last cleaned</span><span class="v">${months(e.last_cleaning || e.last_inspection)}</span></div><div><span class="k">Open incidents</span><span class="v">${e.open_incidents || 0}</span></div><div><span class="k">Flood history</span><span class="v">${e.flood_events || 0}</span></div></div></div>
       <div class="fcx-insp-b"><div class="fcx-insp-l">Current risk</div><div class="fcx-gauge"><span class="big" style="color:${riskColor(cur)}">${cur}</span>${ringMini(cur, riskHex(cur))}</div></div>
       <div class="fcx-insp-b"><div class="fcx-insp-l">Forecast risk</div><div class="fcx-hours"><div class="fcx-h"><div class="h">6h</div><div class="v" style="color:${riskColor(at(.25))}">${at(.25)}%</div></div><div class="fcx-h"><div class="h">12h</div><div class="v" style="color:${riskColor(at(.5))}">${at(.5)}%</div></div><div class="fcx-h"><div class="h">24h</div><div class="v" style="color:${riskColor(pred)}">${pred}%</div></div></div></div>
       ${liveBlock}
