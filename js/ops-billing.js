@@ -311,8 +311,8 @@ const OpsBilling = (function () {
       title: esc(id),
       avatar: { text: '₦', bg: 'linear-gradient(135deg,#16a8d3,#0d7fa0)' },
       chips: [{ cls: chipCls, label: pm.l, dot: true }],
-      meta: [['Property', esc(inv.property_name || '—')], ['Client', inv.client_name ? esc(inv.client_name) : 'Unlinked'], ['Issued', fmtDate(inv.issue_date || inv.created_at)], ['Due', fmtDate(inv.due_date)]],
-      actions: `<button class="fgd-btn" onclick="OpsBilling.downloadPdf('${id}')">Download PDF</button><button class="fgd-btn" onclick="OpsBilling.openEdit('${id}')">Edit</button>${eff !== 'paid' ? `<button class="fgd-btn" style="background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;" onclick="OpsBilling.recordPayment('${id}')">Record payment</button>` : ''}`,
+      meta: [['Property', esc(inv.property_name || '—')], ['Client', inv.client_name ? esc(inv.client_name) : 'Unlinked'], ['Issued', fmtDate(inv.issue_date || inv.created_at)], ['Due', fmtDate(inv.due_date)], ['Sent', inv.sent_at ? fmtDate(inv.sent_at) : 'Not sent']],
+      actions: `<button class="fgd-btn" onclick="OpsBilling.downloadPdf('${id}')">Download PDF</button><button class="fgd-btn" onclick="OpsBilling.openEdit('${id}')">Edit</button>${eff !== 'paid' ? `<button class="fgd-btn" onclick="OpsBilling.recordPayment('${id}')">Record payment</button>` : ''}<button class="fgd-btn" style="background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;" onclick="OpsBilling.sendInvoiceEmail('${id}')">${inv.sent_at ? 'Resend to client' : 'Send to client'}</button>`,
       sections: [
         { id: 'details', title: 'Invoice details', meta: 'invoices', body: detailsBody },
         { id: 'services', title: 'Services', meta: 'invoices.line_items (jsonb)', body: servicesBody },
@@ -408,7 +408,8 @@ const OpsBilling = (function () {
         <div><h1>${isEdit ? 'Edit invoice' : 'New invoice'}</h1><div class="sub">${isEdit ? esc(inv.invoice_id) : 'Invoice ID will be auto-generated on save'}</div></div>
         <div class="bl-head-actions">
           <button class="bl-btn" onclick="OpsBilling.back()">Cancel</button>
-          <button class="bl-btn primary" onclick="OpsBilling.confirmSave(true)" id="bl-create-btn">${isEdit ? 'Save changes' : 'Create & send'}</button>
+          ${isEdit ? '' : `<button class="bl-btn" id="bl-draft-btn" onclick="OpsBilling.confirmSave(false)">Save as draft</button>`}
+          <button class="bl-btn primary" id="bl-create-btn" onclick="OpsBilling.confirmSave(${isEdit ? 'false' : 'true'})">${isEdit ? 'Save changes' : 'Create & send'}</button>
         </div>
       </div>
       <div class="bl-grid2">
@@ -465,7 +466,8 @@ const OpsBilling = (function () {
 
           <div class="bl-savebar">
             <button class="bl-btn" onclick="OpsBilling.back()">Cancel</button>
-            <button class="bl-btn primary" onclick="OpsBilling.confirmSave(true)">${isEdit ? 'Save changes' : 'Create & send'}</button>
+            ${isEdit ? '' : `<button class="bl-btn" onclick="OpsBilling.confirmSave(false)">Save as draft</button>`}
+            <button class="bl-btn primary" onclick="OpsBilling.confirmSave(${isEdit ? 'false' : 'true'})">${isEdit ? 'Save changes' : 'Create & send'}</button>
           </div>
         </div>
 
@@ -536,7 +538,7 @@ const OpsBilling = (function () {
       ${F('Balance due', NGN(balance))}`;
   }
 
-  async function confirmSave() {
+  async function confirmSave(send) {
     const pid = (document.getElementById('bl-c-property') || {}).value;
     if (!pid) return OpsModal.toast('Select a property first', 'critical');
     const items = _draft.filter(l => l.description || l.amount).map(l => ({ description: l.description, qty: Number(l.qty) || 0, unit_price: Number(l.unit_price) || 0, amount: Number(l.amount) || 0 }));
@@ -551,22 +553,50 @@ const OpsBilling = (function () {
       status: (document.getElementById('bl-c-status') || {}).value || 'open',
       payment_status: (document.getElementById('bl-c-pstatus') || {}).value || 'unpaid',
     };
-    OpsModal.setLoading('bl-create-btn', true);
+    const btnId = (send && !_editId) ? 'bl-create-btn' : (_editId ? 'bl-create-btn' : 'bl-draft-btn');
+    OpsModal.setLoading(btnId, true);
     try {
       const res = _editId
         ? await OpsModal.apiPut('/billing/invoices/' + _editId, payload)
         : await OpsModal.apiPost('/billing/invoices', payload);
-      OpsModal.toast(_editId ? 'Invoice updated' : 'Invoice created', 'nominal');
       const newId = (res.data && res.data.invoice_id) || _editId;
+      if (send && !_editId && newId) {
+        try {
+          const s = await OpsModal.apiPost('/billing/invoices/' + newId + '/send', {});
+          const em = s.data && s.data.emailed;
+          OpsModal.toast(em ? ('Invoice created & emailed to ' + s.data.to) : 'Created — email not delivered (check mail config)', em ? 'nominal' : 'watch');
+        } catch (e) {
+          OpsModal.toast('Invoice created, but sending failed: ' + e.message, 'watch');
+        }
+      } else {
+        OpsModal.toast(_editId ? 'Invoice updated' : 'Draft saved', 'nominal');
+      }
       if (newId) open(newId); else back();
     } catch (err) {
       OpsModal.toast('Failed to save invoice: ' + err.message, 'critical');
-      OpsModal.setLoading('bl-create-btn', false);
+      OpsModal.setLoading(btnId, false);
     }
+  }
+
+  // Email the invoice (PDF + pay CTA) to the client from the detail view.
+  function sendInvoiceEmail(id) {
+    OpsModal.confirm('Email this invoice to the client? They\'ll get the PDF attached and a link to log in and pay.', async function () {
+      OpsModal.setLoading('modal-confirm-btn', true);
+      try {
+        const res = await OpsModal.apiPost('/billing/invoices/' + id + '/send', {});
+        OpsModal.close();
+        const d = res.data || {};
+        OpsModal.toast(d.emailed ? ('Invoice emailed to ' + d.to) : 'Marked as sent — email not delivered (check mail config)', d.emailed ? 'nominal' : 'watch');
+        open(id);
+      } catch (err) {
+        OpsModal.setLoading('modal-confirm-btn', false);
+        OpsModal.toast('Failed to send: ' + err.message, 'critical');
+      }
+    });
   }
 
   return {
     render, setFilter, search, open, back, exportCsv,
-    openCreate, openEdit, onProp, addItem, removeItem, editItem, recalc, confirmSave, recordPayment, downloadPdf,
+    openCreate, openEdit, onProp, addItem, removeItem, editItem, recalc, confirmSave, recordPayment, downloadPdf, sendInvoiceEmail,
   };
 })();
