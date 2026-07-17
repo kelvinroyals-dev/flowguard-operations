@@ -53,7 +53,7 @@ const Auth = (function () {
   const TAB_MODULE = {
     dashboard: 'situation', network: 'network', maintenance: 'maintenance', alerts: 'alerts',
     assets: 'assets', properties: 'properties', clients: 'clients', billing: 'billing',
-    'field-reports': 'field-reports', teams: 'teams', 'team-members': 'team-members',
+    'field-reports': 'field-reports', support: 'support', teams: 'teams', 'team-members': 'team-members',
     sensors: 'devices', reports: 'reports', forecast: 'forecast', audit: 'audit', settings: 'administration',
   };
   let _perms = null;   // effective permission map for the current user

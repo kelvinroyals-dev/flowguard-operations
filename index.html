@@ -1280,6 +1280,7 @@
         <span class="tnav-item" tabindex="0">Field ops</span>
         <div class="tnav-drop">
           <button class="tnav-link" id="nav-field-reports" onclick="switchTab('field-reports')">Field Reports<span class="nav-badge" id="nav-badge-field-reports" style="display:none;">0</span></button>
+          <button class="tnav-link" id="nav-support" onclick="switchTab('support')">Support</button>
           <button class="tnav-link" id="nav-teams" onclick="switchTab('teams')">Teams</button>
           <button class="tnav-link" id="nav-team-members" onclick="switchTab('team-members')">Team Members</button>
         </div>
@@ -1330,6 +1331,7 @@
       <div id="content-team-members" class="tab-content"></div>
       <div id="content-field-reports" class="tab-content"></div>
       <div id="content-maintenance"   class="tab-content"></div>
+      <div id="content-support"       class="tab-content"></div>
       <div id="content-forecast"     class="tab-content"></div>
       <div id="content-reports"      class="tab-content"></div>
       <div id="content-billing"      class="tab-content"></div>
@@ -1360,8 +1362,8 @@
     console.log('%c FlowGuard Ops ' + FG_BUILD + ' ', 'background:#22d3ee;color:#04222b;font-weight:700;border-radius:3px',
       '| tabs: dashboard, alerts, clients, properties, assets, sentinel, network, teams');
   </script>
-  <script src="js/config.js?v=sec2"></script>
-<script src="js/auth.js?v=sec3"></script>
+  <script src="js/config.js?v=sec3"></script>
+<script src="js/auth.js?v=sec4"></script>
 <script src="js/ops-modal.js?v=sec10"></script>
 <script src="js/fg-paginator.js?v=sec2"></script>
 <script src="js/ops-dashboard.js?v=sec8"></script>
@@ -1375,6 +1377,7 @@
 <script src="js/ops-alerts-reports.js?v=sec12"></script>
 <script src="js/ops-field-reports.js?v=sec7"></script>
 <script src="js/ops-maintenance.js?v=sec9"></script>
+<script src="js/ops-support.js?v=sec1"></script>
 <script src="js/ops-forecast.js?v=sec16"></script>
 <script src="js/ops-billing.js?v=sec16"></script>
 <script src="js/ops-sla.js?v=sec6"></script>
@@ -1397,6 +1400,7 @@
     'team-members':   { module:'Field',        title:'Team Members'                },
     'field-reports':  { module:'Field',        title:'Field Reports'               },
     maintenance:      { module:'Field',        title:'Maintenance Planner'         },
+    support:          { module:'Support',      title:'Support Inbox'               },
     forecast:         { module:'Intelligence', title:'AI Risk Forecast'            },
     reports:          { module:'Intelligence', title:'Reports & Analytics'         },
     billing:          { module:'Intelligence', title:'Billing & Revenue'           },
@@ -1746,6 +1750,7 @@
       'team-members':   () => typeof OpsUserManagement !== 'undefined' ? OpsUserManagement : null,
       'field-reports':  () => typeof OpsFieldReports   !== 'undefined' ? OpsFieldReports   : null,
       maintenance:      () => typeof OpsMaintenance     !== 'undefined' ? OpsMaintenance    : null,
+      support:          () => typeof OpsSupport         !== 'undefined' ? OpsSupport        : null,
       forecast:         () => typeof OpsForecast        !== 'undefined' ? OpsForecast       : null,
       reports:          () => typeof OpsReports        !== 'undefined' ? OpsReports        : null,
       billing:          () => typeof OpsBilling        !== 'undefined' ? OpsBilling        : null,

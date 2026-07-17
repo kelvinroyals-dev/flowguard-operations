@@ -38,13 +38,13 @@ const CONFIG = Object.freeze({
   // To grant a role access to a new tab: add the key here only.
   // 'admin' is an API alias for 'super_admin'.
   NAV_ACCESS: Object.freeze({
-    admin:              ['dashboard','alerts','clients','properties','assets','network','sensors','teams','team-members','field-reports','maintenance','forecast','reports','billing','sla','audit','settings'],
-    super_admin:        ['dashboard','alerts','clients','properties','assets','network','sensors','teams','team-members','field-reports','maintenance','forecast','reports','billing','sla','audit','settings'],
-    operations_manager: ['dashboard','alerts','clients','properties','assets','network','sensors','teams','field-reports','maintenance','forecast','reports','billing','sla'],
-    dispatcher:         ['dashboard','alerts','assets','network','sensors','teams','field-reports','maintenance','forecast'],
+    admin:              ['dashboard','alerts','clients','properties','assets','network','sensors','teams','team-members','field-reports','maintenance','support','forecast','reports','billing','sla','audit','settings'],
+    super_admin:        ['dashboard','alerts','clients','properties','assets','network','sensors','teams','team-members','field-reports','maintenance','support','forecast','reports','billing','sla','audit','settings'],
+    operations_manager: ['dashboard','alerts','clients','properties','assets','network','sensors','teams','field-reports','maintenance','support','forecast','reports','billing','sla'],
+    dispatcher:         ['dashboard','alerts','assets','network','sensors','teams','field-reports','maintenance','support','forecast'],
     field_lead:         ['dashboard','alerts','assets','network','sensors','field-reports','maintenance','forecast'],
     analyst:            ['dashboard','field-reports','forecast','reports','billing','sla','audit'],
-    finance:            ['dashboard','clients','reports','billing'],
+    finance:            ['dashboard','clients','reports','billing','support'],
   }),
 
   // ── ROLE DISPLAY LABELS ───────────────────────────────────────────────
