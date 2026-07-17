@@ -142,7 +142,10 @@ const OpsForecast = (function () {
     const dRisk = avgPred - avgCur;
 
     const xl = n ? ['Now', '+6h', '+12h', '+18h', '+24h'] : ['Now', '+24h'];
-    const rainMax = Math.max(100, Math.ceil((Math.max(0, ...(rainVals.length ? rainVals : [0])) + 5) / 25) * 25);
+    // Auto-scale rainfall to the actual forecast so light rain is still visible
+    // (a fixed 0–100 axis flattened real ~1–3mm/hr readings to nothing).
+    const maxRain = Math.max(0, ...(rainVals.length ? rainVals : [0]));
+    const rainMax = Math.max(4, Math.ceil(maxRain * 1.3));
 
     // Drain capacity vs forecast volume (m³/s) — forecast volume derived from
     // rainfall, drain capacity a network baseline. Synthetic magnitude, real shape.
@@ -247,7 +250,7 @@ const OpsForecast = (function () {
     _root.innerHTML = STYLES + `
       <div class="fcx">
         <div class="fcx-header">
-          <div><div class="fcx-title">AI Risk Forecast</div><div class="fcx-sub">Predictive flood intelligence across the FlowGuard drainage network.</div></div>
+          <div><div class="fcx-titlerow"><span class="fcx-title">AI Risk Forecast</span><span class="fcx-badge">Future capability</span></div><div class="fcx-sub">Predictive flood intelligence across the FlowGuard drainage network.</div></div>
           <div class="fcx-controls">
             <label class="fcx-ctl"><span>Forecast model</span><select class="fcx-select">${modelOpts}</select></label>
             <label class="fcx-ctl"><span>Time range</span><select class="fcx-select" onchange="OpsForecast.setHorizon(this.value)">${rangeOpts}</select></label>
@@ -295,12 +298,14 @@ const OpsForecast = (function () {
       : `<div class="fcx-insp-b fcx-nolive"><div class="fcx-nolive-t">No Sentinel installed</div><div class="fcx-nolive-s">Forecast based on environmental &amp; historical data.</div></div>`;
     el.innerHTML = `
       <div class="fcx-insp-head"><span class="fcx-insp-name">${esc(e.name || e.property_id)}</span><span class="fcx-chip ${riskChipCls(pred)}">${riskLabel(pred)} risk</span><span class="fcx-insp-x" onclick="OpsForecast.deselect()">&times;</span></div>
-      <div class="fcx-insp-b"><div class="fcx-insp-l">Property${e.geo_approx ? ' · approx. location' : ''}</div><div class="fcx-pf"><div><span class="k">Client</span><span class="v">${esc(e.client_name || 'Unlinked')}</span></div><div><span class="k">Last cleaned</span><span class="v">${months(e.last_cleaning || e.last_inspection)}</span></div><div><span class="k">Open incidents</span><span class="v">${e.open_incidents || 0}</span></div><div><span class="k">Flood history</span><span class="v">${e.flood_events || 0}</span></div></div></div>
-      <div class="fcx-insp-b"><div class="fcx-insp-l">Current risk</div><div class="fcx-gauge"><span class="big" style="color:${riskColor(cur)}">${cur}</span>${ringMini(cur, riskHex(cur))}</div></div>
-      <div class="fcx-insp-b"><div class="fcx-insp-l">Forecast risk</div><div class="fcx-hours"><div class="fcx-h"><div class="h">6h</div><div class="v" style="color:${riskColor(at(.25))}">${at(.25)}%</div></div><div class="fcx-h"><div class="h">12h</div><div class="v" style="color:${riskColor(at(.5))}">${at(.5)}%</div></div><div class="fcx-h"><div class="h">24h</div><div class="v" style="color:${riskColor(pred)}">${pred}%</div></div></div></div>
-      ${liveBlock}
-      <div class="fcx-insp-b"><div class="fcx-insp-l">Recommended action</div><div class="fcx-act">${e.recommendation_level === 'ok' ? '✓' : '!'} ${esc(e.recommendation || 'Monitor as usual')}</div></div>
-      <button class="fcx-btn primary" style="width:100%;margin-top:12px;" onclick="OpsForecast.act()">Create preventive action</button>`;
+      <div class="fcx-insp-scroll">
+        <div class="fcx-insp-b"><div class="fcx-insp-l">Property${e.geo_approx ? ' · approx. location' : ''}</div><div class="fcx-pf"><div><span class="k">Client</span><span class="v">${esc(e.client_name || 'Unlinked')}</span></div><div><span class="k">Last cleaned</span><span class="v">${months(e.last_cleaning || e.last_inspection)}</span></div><div><span class="k">Open incidents</span><span class="v">${e.open_incidents || 0}</span></div><div><span class="k">Flood history</span><span class="v">${e.flood_events || 0}</span></div></div></div>
+        <div class="fcx-insp-b"><div class="fcx-insp-l">Current risk</div><div class="fcx-gauge"><span class="big" style="color:${riskColor(cur)}">${cur}</span>${ringMini(cur, riskHex(cur))}</div></div>
+        <div class="fcx-insp-b"><div class="fcx-insp-l">Forecast risk</div><div class="fcx-hours"><div class="fcx-h"><div class="h">6h</div><div class="v" style="color:${riskColor(at(.25))}">${at(.25)}%</div></div><div class="fcx-h"><div class="h">12h</div><div class="v" style="color:${riskColor(at(.5))}">${at(.5)}%</div></div><div class="fcx-h"><div class="h">24h</div><div class="v" style="color:${riskColor(pred)}">${pred}%</div></div></div></div>
+        ${liveBlock}
+        <div class="fcx-insp-b"><div class="fcx-insp-l">Recommended action</div><div class="fcx-act">${e.recommendation_level === 'ok' ? '✓' : '!'} ${esc(e.recommendation || 'Monitor as usual')}</div></div>
+      </div>
+      <div class="fcx-insp-foot"><button class="fcx-btn primary" style="width:100%;" onclick="OpsForecast.act()">Create preventive action</button></div>`;
   }
 
   // Prediction inputs — the explainability panel: why the model reached its
@@ -451,15 +456,49 @@ const OpsForecast = (function () {
     if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
   function deselect() { _sel = null; renderInspector(); }
-  function act() { OpsModal.toast('Preventive-action workflow isn’t wired to a backend yet.', 'watch'); }
+  // Real action: schedule a preventive work order for the selected property.
+  function act() {
+    const e = _sel; if (!e) return;
+    const tomorrow = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
+    OpsModal.open('Create preventive action', `
+      <p style="margin:0 0 14px;font-size:var(--fs-sm);color:var(--ink-3);line-height:1.5;">Schedule preventive work for <b style="color:var(--ink);">${esc(e.name || e.property_id)}</b> — ${riskLabel(e.predicted_risk)} forecast risk (${e.predicted_risk}%). This creates a scheduled work order in the Maintenance planner.</p>
+      ${OpsModal.field('Work type', 'work_type', 'select', 'silt_clearing', { options: [{ value: 'silt_clearing', label: 'Silt clearing' }, { value: 'inspection', label: 'Inspection' }, { value: 'node_repair', label: 'Node repair' }, { value: 'maintenance', label: 'General maintenance' }] })}
+      ${OpsModal.row([
+        OpsModal.field('Scheduled date', 'scheduled_date', 'date', tomorrow),
+        OpsModal.field('Priority', 'priority', 'select', 'high', { options: ['low', 'normal', 'high', 'urgent'] }),
+      ])}
+      ${OpsModal.field('Note (optional)', 'title', 'text', '', { required: false, placeholder: 'e.g. Pre-clean ahead of forecast rain' })}
+    `, [
+      { label: 'Cancel', class: 'btn-ghost', onclick: 'OpsModal.close()' },
+      { label: 'Create work order', class: 'btn-primary', onclick: `OpsForecast.confirmAct('${esc(e.property_id)}')`, id: 'modal-save-btn' },
+    ]);
+  }
+  async function confirmAct(pid) {
+    const d = OpsModal.getFormData();
+    if (!d.scheduled_date) { OpsModal.toast('Pick a scheduled date', 'warning'); return; }
+    OpsModal.setLoading('modal-save-btn', true);
+    try {
+      await OpsModal.apiPost('/tickets/planner', {
+        property_id: pid, work_type: d.work_type, priority: d.priority, scheduled_date: d.scheduled_date,
+        title: d.title || ('Preventive: ' + String(d.work_type || 'work').replace(/_/g, ' ')),
+      });
+      OpsModal.close();
+      OpsModal.toast('Preventive work order created', 'nominal');
+    } catch (err) {
+      OpsModal.setLoading('modal-save-btn', false);
+      OpsModal.toast(err.message || 'Failed to create work order', 'critical');
+    }
+  }
   function open(i) { const e = (_fc.estates || [])[i]; if (e && typeof fgOpen === 'function') fgOpen('properties', e.property_id); }
   function back() { render(_root); }
 
   const STYLES = `<style>
     .fcx { display:flex; flex-direction:column; gap:16px; }
     .fcx-loading { padding:60px; text-align:center; color:var(--ink-3); }
-    .fcx-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+    .fcx-header { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--sh-xs); padding:18px 22px; }
+    .fcx-titlerow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
     .fcx-title { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; }
+    .fcx-badge { font-size:var(--fs-2xs); font-weight:700; padding:4px 11px; border-radius:20px; background:rgba(28,184,232,.12); color:var(--blue-hi); }
     .fcx-sub { font-size:var(--fs-sm); color:var(--ink-3); margin-top:3px; }
     .fcx-controls { display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; }
     .fcx-ctl { display:flex; flex-direction:column; gap:4px; font-size:var(--fs-2xs); color:var(--ink-3); font-weight:600; }
@@ -495,8 +534,11 @@ const OpsForecast = (function () {
     .fcx-legend { position:absolute; bottom:14px; left:16px; z-index:410; display:flex; gap:12px; background:var(--surface); border:1px solid var(--border); border-radius:10px; box-shadow:var(--sh-xs); padding:8px 12px; }
     .fcx-legend span { display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-2xs); color:var(--ink-2); font-weight:600; }
     .fcx-legend .sw { width:9px; height:9px; border-radius:3px; }
-    .fcx-inspector { position:absolute; top:52px; right:16px; bottom:16px; z-index:410; width:250px; background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--sh-md); padding:15px; overflow-y:auto; }
-    .fcx-insp-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+    .fcx-inspector { position:absolute; top:52px; right:16px; bottom:16px; z-index:410; width:250px; max-height:calc(100% - 68px); background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--sh-md); padding:15px; display:flex; flex-direction:column; overflow:hidden; }
+    .fcx-insp-scroll { flex:1; min-height:0; overflow-y:auto; margin:0 -2px; padding:0 2px; }
+    .fcx-insp-foot { flex-shrink:0; padding-top:12px; margin-top:4px; border-top:1px solid var(--border); }
+    @media (max-width:560px){ .fcx-inspector { position:static; width:auto; max-height:none; margin:12px; } }
+    .fcx-insp-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-shrink:0; }
     .fcx-insp-name { font-size:var(--fs-sm); font-weight:700; color:var(--ink); flex:1; min-width:0; }
     .fcx-insp-x { color:var(--ink-3); cursor:pointer; font-size:16px; line-height:1; }
     .fcx-chip { font-size:var(--fs-2xs); font-weight:700; padding:3px 9px; border-radius:20px; }
@@ -599,6 +641,6 @@ const OpsForecast = (function () {
     .lv-status.low { background:rgba(31,157,91,.12); color:var(--ok); }
   </style>`;
 
-  return { render, setHorizon, layer, select, deselect, act, open, back };
+  return { render, setHorizon, layer, select, deselect, act, confirmAct, open, back };
 
 })();
