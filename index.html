@@ -1682,6 +1682,7 @@
 
   let _activeTab    = null;
   let _switching    = false; // debounce — prevents duplicate renders on rapid clicks
+  let _deepLinking  = false; // true only while fgOpen() is navigating to a record
   const _syncTimes  = {};    // tracks when each tab last fetched data
 
   function switchTab(name) {
@@ -1712,6 +1713,14 @@
     // Persist tab in URL hash — survives refresh without server roundtrip
     if (window.location.hash !== '#' + name) {
       history.replaceState(null, '', '#' + name);
+    }
+
+    // Returning to a module should show its list — not the last record you had
+    // open in it. Drop the rendered flag so renderTab rebuilds the module home.
+    // Skipped while deep-linking (fgOpen), which renders a specific detail next.
+    if (!_deepLinking) {
+      const c = document.getElementById(`content-${name}`);
+      if (c) c.removeAttribute('data-rendered');
     }
 
     renderTab(name);
@@ -2046,7 +2055,10 @@
       try { OpsModal.toast('You do not have access to that module', 'warning'); } catch (e) {}
       return;
     }
+    // Don't reset this tab to its list — we're about to open a specific record.
+    _deepLinking = true;
     switchTab(tab);
+    _deepLinking = false;
     const spec = FG_OPEN[tab];
     if (!spec) return;
     const [g, m] = spec;
