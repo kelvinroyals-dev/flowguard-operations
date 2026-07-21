@@ -366,7 +366,7 @@ const OpsSensors = (function () {
     return `
       <tr class="sn-row clickable" onclick="OpsSensors.viewSensor('${__sid(x.sensor_id)}')">
         <td onclick="event.stopPropagation()"><input type="checkbox" ${_selected.has(x.sensor_id) ? 'checked' : ''} onclick="OpsSensors.toggleSelect('${__sid(x.sensor_id)}', this.checked); event.stopPropagation()"></td>
-        <td class="sn-node-id">${esc(x.name || x.sensor_id)}${x.pending_commands ? `<span class="sn-cmd-badge" title="${x.pending_commands} command(s) queued">${x.pending_commands}</span>` : ''}</td>
+        <td class="sn-node-id" style="cursor:pointer;" title="Open full details" onclick="event.stopPropagation();OpsSensors.openFull('${__sid(x.sensor_id)}')"><span style="text-decoration:underline;text-decoration-color:var(--border-2);text-underline-offset:2px;">${esc(x.name || x.sensor_id)}</span>${x.pending_commands ? `<span class="sn-cmd-badge" title="${x.pending_commands} command(s) queued">${x.pending_commands}</span>` : ''}</td>
         <td>${esc(estateOf(x))}</td>
         <td class="sn-fw ${outdated ? 'outdated' : 'current'}">${x.firmware_version ? esc(x.firmware_version) : '—'}</td>
         <td>${vitBar(x.battery_percent)}</td>
@@ -438,6 +438,7 @@ const OpsSensors = (function () {
         </div>
         <div class="sn-drawer-body">
           <div class="sn-drawer-status"><span class="hbadge ${tier}">${tier}</span></div>
+          <button class="sn-act-row" style="justify-content:center;font-weight:700;color:var(--blue-hi,#0d7fa0);border:1px solid var(--blue-dim,#7fc8e0);margin-bottom:12px;" onclick="OpsSensors.openFull('${__sid(x.sensor_id)}')">Open full details →</button>
 
           ${metric(cap.water_level !== false, 'Water Level', x.level != null ? Math.round(x.level) : null, '%', levelColor(x.level))}
           ${metric(cap.flow_rate !== false, 'Flow Rate', x.flow_rate != null ? x.flow_rate.toFixed(1) : null, ' L/s')}
@@ -720,9 +721,174 @@ const OpsSensors = (function () {
 
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
+  // ══════════════════════════════════════════════════════════════
+  //  FULL DETAIL PAGE — the primary detail view for a Sentinel.
+  //  (The slide-over drawer is now the "quick view".) Built on the
+  //  shared detailShell so it matches Clients/Properties/Assets/etc.
+  // ══════════════════════════════════════════════════════════════
+  const SND_CSS = `<style id="snd-css">
+    .snd-tele{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+    @media(max-width:760px){.snd-tele{grid-template-columns:repeat(2,1fr);}}
+    .snd-tile{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;}
+    .snd-tile .l{font-size:var(--fs-2xs);color:var(--ink-3);margin-bottom:6px;}
+    .snd-tile .v{font-size:19px;font-weight:700;font-family:var(--ff-mono,monospace);color:var(--ink);line-height:1.1;}
+    .snd-tile .v .u{font-size:11px;color:var(--ink-3);font-family:var(--ff-b);font-weight:500;margin-left:2px;}
+    .snd-diag{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+    .snd-diag:last-child{border-bottom:none;}
+    .snd-diag .l{width:140px;flex-shrink:0;font-size:var(--fs-sm);color:var(--ink-2);}
+    .snd-diag .track{flex:1;height:8px;border-radius:5px;background:var(--surface-2);overflow:hidden;}
+    .snd-diag .track i{display:block;height:100%;border-radius:5px;}
+    .snd-diag .v{width:84px;text-align:right;font-size:var(--fs-sm);font-weight:700;font-family:var(--ff-mono,monospace);flex-shrink:0;color:var(--ink);}
+    .snd-cmd,.snd-ev{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--border);}
+    .snd-cmd:last-child,.snd-ev:last-child{border-bottom:none;}
+    .snd-cmd .st{font-size:var(--fs-2xs);font-weight:700;padding:3px 9px;border-radius:20px;flex-shrink:0;text-transform:capitalize;}
+    .snd-cmd .st.queued,.snd-cmd .st.pending{background:var(--surface-2);color:var(--ink-2);}
+    .snd-cmd .st.delivered{background:rgba(28,184,232,.12);color:#0d7fa0;}
+    .snd-cmd .st.acknowledged,.snd-cmd .st.completed{background:rgba(31,157,91,.12);color:var(--ok);}
+    .snd-cmd .st.failed,.snd-cmd .st.cancelled{background:rgba(217,70,60,.12);color:var(--err);}
+    .snd-cmd .t,.snd-ev .t{font-size:var(--fs-sm);font-weight:600;color:var(--ink);text-transform:capitalize;}
+    .snd-cmd .m,.snd-ev .m{font-size:var(--fs-2xs);color:var(--ink-3);margin-top:2px;}
+    .snd-ev .dot{width:9px;height:9px;border-radius:50%;background:var(--blue-hi,#0d7fa0);margin-top:5px;flex-shrink:0;}
+  </style>`;
+
+  const _cap = s => s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : s;
+  const _ago = d => { if (!d) return '—'; const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000); if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + 'm ago'; if (s < 86400) return Math.floor(s / 3600) + 'h ago'; return Math.floor(s / 86400) + 'd ago'; };
+
+  async function openFull(sensorId) {
+    if (!_container) return;
+    closeDrawer();
+    _container.innerHTML = `<div style="padding:60px;text-align:center;color:var(--ink-3);">Loading device…</div>`;
+    let x = _all.find(s => s.sensor_id === sensorId);
+    if (!x) { try { const r = await OpsModal.apiGet('/monitoring/sensors/all'); _all = r.data || []; x = _all.find(s => s.sensor_id === sensorId); } catch (_) {} }
+    if (!x) { _container.innerHTML = `<div style="padding:48px;text-align:center;"><div style="color:var(--err);font-weight:700;margin-bottom:8px;">Device not found</div><button class="fgd-btn" onclick="OpsSensors.back()">← Back to fleet</button></div>`; return; }
+    const [events, commands] = await Promise.all([
+      OpsModal.apiGet('/monitoring/sensors/' + sensorId + '/events').then(r => r.data || []).catch(() => []),
+      OpsModal.apiGet('/monitoring/sensors/' + sensorId + '/commands').then(r => r.data || []).catch(() => []),
+    ]);
+    renderFull(x, events, commands);
+  }
+
+  function back() { if (_container) render(_container); }
+
+  function renderFull(x, events, commands) {
+    const F = OpsModal.fact, L = OpsModal.link, E = OpsModal.emptyState;
+    const sid = __sid(x.sensor_id);
+    const tier = healthTier(x);
+    const chipCls = tier === 'healthy' ? 'ok' : tier === 'offline' ? 'danger' : 'warn';
+    const last = x.reading_time || x.last_ping;
+    const isBio = x.device_variant === 'bio_dispenser';
+    const primary = x.primary_asset || (x.assets || []).find(a => a.is_primary) || null;
+    const secondary = (x.assets || []).filter(a => !a.is_primary);
+
+    const tile = (l, v, unit, color) => `<div class="snd-tile"><div class="l">${l}</div><div class="v"${color ? ` style="color:${color}"` : ''}>${v == null ? '—' : v}${(v != null && unit) ? `<span class="u">${unit}</span>` : ''}</div></div>`;
+    const bar = (l, pct, color) => `<div class="snd-diag"><span class="l">${l}</span><span class="track"><i style="width:${pct != null ? Math.max(0, Math.min(100, pct)) : 0}%;background:${color}"></i></span><span class="v">${pct != null ? Math.round(pct) + '%' : '—'}</span></div>`;
+    const drow = (l, v) => `<div class="snd-diag"><span class="l">${l}</span><span style="flex:1"></span><span class="v" style="width:auto;font-family:var(--ff-b);font-weight:600;">${v == null || v === '' ? '—' : v}</span></div>`;
+
+    const overview = `<div class="snd-tele">
+      ${tile('Status', _cap(x.status || '—'), '', x.status === 'active' ? 'var(--ok)' : x.status === 'offline' ? 'var(--err)' : 'var(--warn)')}
+      ${tile('Last ping', last ? _ago(last) : null, '')}
+      ${tile('Firmware', x.firmware_version || null, '')}
+      ${tile('Calibration due', x.calibration_due_at ? OpsModal.fmtDate(x.calibration_due_at) : 'On schedule', '')}
+    </div>`;
+
+    const tele = `<div class="snd-tele">
+      ${tile('Water level', x.level != null ? Math.round(x.level) : null, '%', levelColor(x.level))}
+      ${tile('Level (volume)', x.level_liters != null ? Number(x.level_liters).toLocaleString() : null, 'L')}
+      ${tile('Inflow rate', x.flow_rate != null ? Number(x.flow_rate).toFixed(1) : null, 'L/s')}
+      ${tile('Outflow rate', x.outflow_rate != null ? Number(x.outflow_rate).toFixed(1) : null, 'L/s')}
+      ${tile('Temperature', x.temperature != null ? Math.round(x.temperature) : null, '°C')}
+      ${tile('Silt depth', x.silt_depth_mm != null ? x.silt_depth_mm : null, 'mm')}
+      ${tile('Rainfall', x.rainfall_mm != null ? x.rainfall_mm : null, 'mm')}
+      ${tile('Debris detected', x.debris_detected == null ? null : (x.debris_detected ? 'Yes' : 'No'), '', x.debris_detected ? 'var(--warn)' : null)}
+      ${tile('Water pH', x.water_quality_ph != null ? x.water_quality_ph : null, '')}
+      ${tile('Turbidity', x.turbidity_ntu != null ? x.turbidity_ntu : null, 'NTU')}
+    </div>`;
+
+    const diag = `
+      ${bar('Battery', x.battery_percent, OpsModal.vitalColor(x.battery_percent))}
+      ${bar('Signal strength', x.signal_strength, OpsModal.vitalColor(x.signal_strength))}
+      ${bar('Capacity used', x.level, levelColor(x.level))}
+      ${isBio ? bar('Enzyme level', x.enzyme_level_percent, x.enzyme_level_percent != null && x.enzyme_level_percent < 20 ? 'var(--err)' : 'var(--ok)') : ''}
+      ${drow('Last calibrated', x.last_calibrated_at ? OpsModal.fmtDate(x.last_calibrated_at) : '—')}
+      ${isBio ? drow('Cartridge status', x.cartridge_status ? _cap(String(x.cartridge_status).replace(/_/g, ' ')) : '—') : ''}`;
+
+    const install = `
+      ${F('Primary asset', primary ? L('assets', primary.property_id, esc(primary.name || primary.property_id)) : '—')}
+      ${F('Asset class', primary && primary.asset_class ? _cap(String(primary.asset_class).replace(/_/g, ' ')) : '—')}
+      ${F('Client', x.client_id ? L('clients', x.client_id, esc(x.client_name || 'Client')) : esc(x.client_name || '—'))}
+      ${F('Zone', esc(x.zone || '—'))}
+      ${F('Link type', esc(x.link_type || '—'))}
+      ${F('Variant', esc((x.device_variant || '—').replace(/_/g, ' ')))}
+      ${secondary.length ? F('Secondary coverage', secondary.map(a => L('assets', a.property_id, esc(a.name || a.property_id))).join(', ')) : ''}`;
+
+    const evList = Array.isArray(events) ? events : [];
+    const evRow = e => `<div class="snd-ev"><span class="dot"></span><div><div class="t">${esc((e.event_type || 'event').replace(/_/g, ' '))}</div><div class="m">${esc(e.detail || '')}${e.performed_by_name ? ' · ' + esc(e.performed_by_name) : ''} · ${OpsModal.fmtDateTime ? OpsModal.fmtDateTime(e.occurred_at) : esc(e.occurred_at)}</div></div></div>`;
+    const maintEv = evList.filter(e => /calibrat|battery|install|repair|swap|mount|decommission/i.test(e.event_type || ''));
+    const maintBody = maintEv.length ? maintEv.map(evRow).join('') : E('', 'No maintenance logged', 'Calibration, battery swaps and installs will appear here.');
+    const eventsBody = evList.length ? evList.map(evRow).join('') : E('', 'No events yet', 'Device events are recorded here as they happen.');
+
+    const cmdList = Array.isArray(commands) ? commands : [];
+    const cmdRow = c => { const st = String(c.status || 'queued').toLowerCase(); return `<div class="snd-cmd"><span class="st ${st}">${st}</span><div><div class="t">${esc((c.command_type || 'command').replace(/_/g, ' '))}</div><div class="m">${c.requested_by_name ? 'by ' + esc(c.requested_by_name) + ' · ' : ''}${OpsModal.fmtDateTime ? OpsModal.fmtDateTime(c.created_at) : esc(c.created_at)}${c.note ? ' · ' + esc(c.note) : ''}</div></div></div>`; };
+    const fwBody = `${F('Current firmware', esc(x.firmware_version || '—'))}${cmdList.length ? `<div style="margin-top:12px;">${cmdList.map(cmdRow).join('')}</div>` : `<div style="margin-top:8px;">${E('', 'No commands queued', 'Firmware pushes and other commands appear here.')}</div>`}`;
+
+    const sidebar = `
+      <div class="fgd-card"><div class="fgd-card-head"><h2>Quick facts</h2></div>
+        ${F('Device ID', `<span class="lv-mono">${esc(x.sensor_id)}</span>`)}
+        ${F('Variant', esc((x.device_variant || '—').replace(/_/g, ' ')))}
+        ${F('Zone', esc(x.zone || '—'))}
+        ${F('Client', x.client_id ? L('clients', x.client_id, esc(x.client_name || 'Client')) : esc(x.client_name || '—'))}
+        ${F('Firmware', esc(x.firmware_version || '—'))}
+        ${F('Battery', x.battery_percent != null ? x.battery_percent + '%' : '—')}
+        ${F('Signal', x.signal_strength != null ? x.signal_strength + '%' : '—')}
+        ${F('Last ping', last ? _ago(last) : '—')}
+      </div>
+      <div class="fgd-card"><div class="fgd-card-head"><h2>Actions</h2></div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button class="fgd-btn" onclick="OpsSensors.sendCommand('${sid}','firmware_update')">Push firmware (OTA)</button>
+          <button class="fgd-btn" onclick="OpsSensors.calibrate('${sid}')">Run calibration</button>
+          <button class="fgd-btn" onclick="OpsSensors.sendCommand('${sid}','reset')">Restart node</button>
+          <button class="fgd-btn" onclick="OpsSensors.coverage('${sid}')">Manage coverage</button>
+        </div>
+      </div>`;
+
+    _container.innerHTML = SND_CSS + OpsModal.detailShell({
+      back: 'OpsSensors.back()',
+      crumbRoot: 'Sentinel Devices',
+      title: esc(x.name || x.sensor_id),
+      avatar: { text: 'SN', bg: 'linear-gradient(135deg,#0d7fa0,#16a8d3)' },
+      chips: [
+        { cls: chipCls, dot: true, label: _cap(x.status || 'unknown') },
+        x.device_variant ? { cls: 'neutral', label: x.device_variant.replace(/_/g, ' ') } : null,
+      ].filter(Boolean),
+      meta: [['Zone', esc(x.zone || '—')], ['Primary asset', primary ? esc(primary.name || primary.property_id) : '—'], ['Client', esc(x.client_name || '—')], ['Link', esc(x.link_type || '—')]],
+      actions: `${primary && primary.property_id ? `<button class="fgd-btn" onclick="OpsNetwork.open('${__sid(primary.property_id)}')">View on map</button>` : ''}<button class="fgd-btn" style="background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;" onclick="OpsSensors.queueCommand('${sid}')">Queue command</button>`,
+      sections: [
+        { id: 'overview', title: 'Device overview', meta: last ? 'Last ping ' + _ago(last) : '', body: overview },
+        { id: 'telemetry', title: 'Live telemetry', body: tele },
+        { id: 'diagnostics', title: 'Diagnostics', body: diag },
+        { id: 'installation', title: 'Installation', body: install },
+        { id: 'maintenance', title: 'Maintenance', body: maintBody },
+        { id: 'firmware', title: 'Firmware', body: fwBody },
+        { id: 'events', title: 'Event history', body: eventsBody },
+        { id: 'photos', title: 'Photos', body: E('', 'No photos attached', 'Install and site photos can be attached once file storage exists.') },
+        { id: 'documents', title: 'Documents', body: E('', 'No documents attached', 'Datasheets and warranty docs can be attached once file storage exists.') },
+      ],
+      sidebar,
+    });
+  }
+
+  function queueCommand(sensorId) {
+    OpsModal.open('Queue a command', `<p style="margin:0 0 4px;font-size:var(--fs-sm);color:var(--ink-3);">Send a command to this Sentinel.</p>`, [
+      { label: 'Push firmware (OTA)', onclick: `OpsSensors.sendCommand('${__sid(sensorId)}','firmware_update')`, class: 'btn-primary' },
+      { label: 'Restart node', onclick: `OpsSensors.sendCommand('${__sid(sensorId)}','reset')` },
+      { label: 'Recalibrate', onclick: `OpsSensors.calibrate('${__sid(sensorId)}')` },
+      { label: 'Cancel', onclick: 'OpsModal.close()', class: 'btn-ghost' },
+    ]);
+  }
+
   return {
     render, setFilter, setQuery,
-    viewSensor, closeDrawer, decommission,
+    viewSensor, closeDrawer, decommission, openFull, back, queueCommand,
     coverage, saveCoverage, history, calibrate, confirmCalibrate, openAsset,
     toggleSelect, toggleSelectAll, clearSelection, bulkCommand, confirmBulkCommand,
     sendCommand, _toggleFwField, confirmSendCommand, commandHistory, cancelCommand,
