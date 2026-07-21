@@ -6,6 +6,7 @@
 // ============================================
 
 const OpsClients = (function () {
+  const canMng = () => !(window.Auth && Auth.can) || Auth.can('clients.manage');
   'use strict';
 
   const _isAdmin = (() => {
@@ -469,7 +470,7 @@ const OpsClients = (function () {
       </div>`;
 
     const actions = [
-      `<button class="cld-btn" onclick="OpsClients.editClient(${c.client_id})">Edit</button>`,
+      canMng() ? `<button class="cld-btn" onclick="OpsClients.editClient(${c.client_id})">Edit</button>` : '',
       _isAdmin ? `<button class="cld-btn danger" onclick="OpsClients.deleteClient(${c.client_id},'${(c.full_name || '').replace(/'/g, "\\'")}')">Delete</button>` : '',
     ].filter(Boolean).join('');
 

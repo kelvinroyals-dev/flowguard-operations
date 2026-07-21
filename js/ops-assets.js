@@ -7,6 +7,7 @@
    button, every list column also appears in the detail.
    ══════════════════════════════════════════════════════════════ */
 const OpsAssets = (function () {
+  const canMng = () => !(window.Auth && Auth.can) || Auth.can('assets.manage');
   const __sid = v => String(v == null ? '' : v).replace(/[^A-Za-z0-9_\-.:]/g, '');
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
   const dash = v => (v == null || v === '') ? '—' : v;
@@ -70,7 +71,7 @@ const OpsAssets = (function () {
           </div>
           <div class="lv-filters" id="as-chips"></div>
           <div class="lv-toolbar-right">
-            <button class="as-add" onclick="OpsAssets.add()">+ Register asset</button>
+            ${canMng() ? `<button class="as-add" onclick="OpsAssets.add()">+ Register asset</button>` : ''}
           </div>
         </div>
         <div id="as-body"><div style="padding:44px;text-align:center;color:var(--ink-3);"><div class="loading" style="margin:0 auto 12px;"></div>Loading assets…</div></div>

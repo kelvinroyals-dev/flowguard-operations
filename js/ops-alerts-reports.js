@@ -4,6 +4,7 @@
 // ============================================
 
 const OpsAlerts = (function () {
+  const canMng = () => !(window.Auth && Auth.can) || Auth.can('alerts.manage');
   'use strict';
 
   let _allAlerts = [];
@@ -643,9 +644,9 @@ const OpsAlerts = (function () {
       ? `<button class="ald-btn" onclick="fgOpen('maintenance','${String(a.ticket_id).replace(/'/g, "\\'")}')">View ticket</button>`
       : '';
     const actions = (isResolved
-      ? [ticketBtn, `<button class="ald-btn primary" onclick="OpsAlerts.reopenAlert('${id}')">Reopen</button>`]
-      : [`<button class="ald-btn primary" onclick="OpsAlerts.assignAlert('${id}')">Assign team</button>`,
-         `<button class="ald-btn" onclick="OpsAlerts.resolveAlert('${id}')">Resolve</button>`, ticketBtn]
+      ? [ticketBtn, canMng() ? `<button class="ald-btn primary" onclick="OpsAlerts.reopenAlert('${id}')">Reopen</button>` : '']
+      : [canMng() ? `<button class="ald-btn primary" onclick="OpsAlerts.assignAlert('${id}')">Assign team</button>` : '',
+         canMng() ? `<button class="ald-btn" onclick="OpsAlerts.resolveAlert('${id}')">Resolve</button>` : '', ticketBtn]
     ).filter(Boolean).join('');
 
     _container.innerHTML = `
@@ -822,6 +823,7 @@ const OpsAlerts = (function () {
 // ============================================
 
 const OpsReports = (function () {
+  const canMng = () => !(window.Auth && Auth.can) || Auth.can('reports.manage');
   'use strict';
 
   let _reports = [];
@@ -1061,6 +1063,7 @@ const OpsReports = (function () {
   }
 
   async function generate(type) {
+    if (!canMng()) return OpsModal.toast('You do not have permission to generate reports', 'critical');
     OpsModal.toast(`Generating ${type} report…`, 'watch');
     try {
       await OpsModal.apiPost('/reports/generate', { type });

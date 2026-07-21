@@ -8,6 +8,7 @@
 
 const OpsUserManagement = (function () {
   'use strict';
+  const canMng = () => !(window.Auth && Auth.can) || Auth.can('team-members.manage');
 
   let _users = [];
   let _teams = [];
@@ -104,10 +105,10 @@ const OpsUserManagement = (function () {
           <div class="um-header-title">Team Members</div>
           <div class="um-header-sub">Internal staff access, roles, and team assignments</div>
         </div>
-        <button class="btn-primary" onclick="OpsUserManagement.openInvite()">
+        ${canMng() ? `<button class="btn-primary" onclick="OpsUserManagement.openInvite()">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
           Invite Member
-        </button>
+        </button>` : ''}
       </div>
 
       <div class="lv-wrap">

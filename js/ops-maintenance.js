@@ -9,6 +9,7 @@
    which is where the client's outcome record actually gets written.
    ══════════════════════════════════════════════════════════════ */
 const OpsMaintenance = (function () {
+  const canMng = () => !(window.Auth && Auth.can) || Auth.can('maintenance.manage');
   let _jobs = [];
   let _teams = [];
   let _properties = [];
@@ -101,7 +102,7 @@ const OpsMaintenance = (function () {
     const board = document.getElementById('mp-board-body');
     if (!board) return;
     if (!_jobs.length) {
-      board.innerHTML = `<div class="mp-empty"><b>No scheduled work.</b><br>Jobs appear here once they carry a work type, a crew, or a scheduled date.<br><br><button class="mp-add" onclick="OpsMaintenance.newJob()">+ New Job</button></div>`;
+      board.innerHTML = `<div class="mp-empty"><b>No scheduled work.</b><br>Jobs appear here once they carry a work type, a crew, or a scheduled date.<br><br>${canMng() ? `<button class="mp-add" onclick="OpsMaintenance.newJob()">+ New Job</button>` : ''}</div>`;
       return;
     }
     let rows = _jobs.slice().sort((a, b) => new Date(a.scheduled_date || a.created_at) - new Date(b.scheduled_date || b.created_at));
@@ -173,7 +174,7 @@ const OpsMaintenance = (function () {
           <h2>Maintenance Planner</h2>
           <span>Scheduled field work across every crew and estate</span>
         </div>
-        <button class="mp-add" onclick="OpsMaintenance.newJob()">+ New Job</button>
+        ${canMng() ? `<button class="mp-add" onclick="OpsMaintenance.newJob()">+ New Job</button>` : ''}
       </div>
       <div id="mp-kpis" class="mp-kpis-wrap"></div>
       <div class="lv-wrap">

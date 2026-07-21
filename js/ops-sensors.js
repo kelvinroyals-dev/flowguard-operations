@@ -10,6 +10,7 @@
    still works — the Figma file is dark-only, this app isn't.
    ══════════════════════════════════════════════════════════════ */
 const OpsSensors = (function () {
+  const canMng = () => !(window.Auth && Auth.can) || Auth.can('devices.manage');
   const __sid = v => String(v == null ? '' : v).replace(/[^A-Za-z0-9_\-.:]/g, '');
 
   let _all = [];
@@ -261,9 +262,9 @@ const OpsSensors = (function () {
     bar.style.display = 'flex';
     bar.innerHTML = `
       <span class="sn-bulk-count">${_selected.size} selected</span>
-      <button class="btn-ghost" onclick="OpsSensors.bulkCommand('firmware_update')">Push firmware</button>
+      ${canMng() ? `<button class="btn-ghost" onclick="OpsSensors.bulkCommand('firmware_update')">Push firmware</button>
       <button class="btn-ghost" onclick="OpsSensors.bulkCommand('reset')">Remote reset</button>
-      <button class="btn-ghost" onclick="OpsSensors.bulkCommand('recalibrate')">Request recalibration</button>
+      <button class="btn-ghost" onclick="OpsSensors.bulkCommand('recalibrate')">Request recalibration</button>` : ''}
       <button class="sn-bulk-clear" onclick="OpsSensors.clearSelection()">Clear</button>
     `;
   }
@@ -842,14 +843,14 @@ const OpsSensors = (function () {
         ${F('Signal', x.signal_strength != null ? x.signal_strength + '%' : '—')}
         ${F('Last ping', last ? _ago(last) : '—')}
       </div>
-      <div class="fgd-card"><div class="fgd-card-head"><h2>Actions</h2></div>
+      ${canMng() ? `<div class="fgd-card"><div class="fgd-card-head"><h2>Actions</h2></div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <button class="fgd-btn" onclick="OpsSensors.sendCommand('${sid}','firmware_update')">Push firmware (OTA)</button>
           <button class="fgd-btn" onclick="OpsSensors.calibrate('${sid}')">Run calibration</button>
           <button class="fgd-btn" onclick="OpsSensors.sendCommand('${sid}','reset')">Restart node</button>
           <button class="fgd-btn" onclick="OpsSensors.coverage('${sid}')">Manage coverage</button>
         </div>
-      </div>`;
+      </div>` : ''}`;
 
     _container.innerHTML = SND_CSS + OpsModal.detailShell({
       back: 'OpsSensors.back()',
@@ -861,7 +862,7 @@ const OpsSensors = (function () {
         x.device_variant ? { cls: 'neutral', label: x.device_variant.replace(/_/g, ' ') } : null,
       ].filter(Boolean),
       meta: [['Zone', esc(x.zone || '—')], ['Primary asset', primary ? esc(primary.name || primary.property_id) : '—'], ['Client', esc(x.client_name || '—')], ['Link', esc(x.link_type || '—')]],
-      actions: `${primary && primary.property_id ? `<button class="fgd-btn" onclick="OpsNetwork.open('${__sid(primary.property_id)}')">View on map</button>` : ''}<button class="fgd-btn" style="background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;" onclick="OpsSensors.queueCommand('${sid}')">Queue command</button>`,
+      actions: `${primary && primary.property_id ? `<button class="fgd-btn" onclick="OpsNetwork.open('${__sid(primary.property_id)}')">View on map</button>` : ''}${canMng() ? `<button class="fgd-btn" style="background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;" onclick="OpsSensors.queueCommand('${sid}')">Queue command</button>` : ''}`,
       sections: [
         { id: 'overview', title: 'Device overview', meta: last ? 'Last ping ' + _ago(last) : '', body: overview },
         { id: 'telemetry', title: 'Live telemetry', body: tele },

@@ -6,6 +6,7 @@
 // ============================================
 
 const OpsProperties = (function () {
+  const canMng = () => !(window.Auth && Auth.can) || Auth.can('properties.manage');
   'use strict';
 
   let _all = [];
@@ -586,9 +587,9 @@ const OpsProperties = (function () {
       </div>`;
 
     const actions = [
-      `<button class="prd-btn" onclick="OpsProperties.editArea('${pid}')">Edit</button>`,
+      canMng() ? `<button class="prd-btn" onclick="OpsProperties.editArea('${pid}')">Edit</button>` : '',
       `<button class="prd-btn" onclick="OpsNetwork.open('${pid}')">Network</button>`,
-      a.status === 'submitted' ? `<button class="prd-btn primary" onclick="OpsProperties.scheduleInspection('${pid}','${(a.property_name || '').replace(/'/g, "\\'")}')">Schedule inspection</button>` : '',
+      (a.status === 'submitted' && canMng()) ? `<button class="prd-btn primary" onclick="OpsProperties.scheduleInspection('${pid}','${(a.property_name || '').replace(/'/g, "\\'")}')">Schedule inspection</button>` : '',
       _isAdmin ? `<button class="prd-btn danger" onclick="OpsProperties.deleteArea('${pid}','${(a.property_name || '').replace(/'/g, "\\'")}')">Delete</button>` : '',
     ].filter(Boolean).join('');
 

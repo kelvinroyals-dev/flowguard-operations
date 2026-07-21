@@ -14,6 +14,7 @@
 // ============================================
 
 window.OpsFieldReports = (function () {
+  const canMng = () => !(window.Auth && Auth.can) || Auth.can('field-reports.manage');
 
     // ── State ──────────────────────────────────────────────────────────────
 
@@ -267,10 +268,11 @@ window.OpsFieldReports = (function () {
     }
 
     function _renderReportModal(r) {
-        const canEdit   = ['submitted', 'under_review', 'approved'].includes(r.status);
-        const canSend   = r.status === 'approved';
-        const canReview = r.status === 'submitted';
-        const canApprove= r.status === 'under_review';
+        const _mng = canMng();
+        const canEdit   = _mng && ['submitted', 'under_review', 'approved'].includes(r.status);
+        const canSend   = _mng && r.status === 'approved';
+        const canReview = _mng && r.status === 'submitted';
+        const canApprove= _mng && r.status === 'under_review';
 
         const auditHtml = r.edit_history && r.edit_history.length > 0
             ? r.edit_history.map(e => `

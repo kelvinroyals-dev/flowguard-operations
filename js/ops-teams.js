@@ -7,6 +7,7 @@
 
 const OpsTeams = (function () {
   'use strict';
+  const canMng = () => !(window.Auth && Auth.can) || Auth.can('teams.manage');
 
   let _teams = [];
   let _pg    = null;
@@ -104,10 +105,10 @@ const OpsTeams = (function () {
           <div class="tm-header-title">Field Teams</div>
           <div class="tm-header-sub">Each team is a group of field staff. Manage members from each team card.</div>
         </div>
-        <button class="btn-primary" onclick="OpsTeams.createTeam()">
+        ${canMng() ? `<button class="btn-primary" onclick="OpsTeams.createTeam()">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
           Create Team
-        </button>
+        </button>` : ''}
       </div>
 
       <div class="tm-stats">
