@@ -1280,7 +1280,7 @@
         <span class="tnav-item" tabindex="0">Field ops</span>
         <div class="tnav-drop">
           <button class="tnav-link" id="nav-field-reports" onclick="switchTab('field-reports')">Field Reports<span class="nav-badge" id="nav-badge-field-reports" style="display:none;">0</span></button>
-          <button class="tnav-link" id="nav-support" onclick="switchTab('support')">Support</button>
+          <button class="tnav-link" id="nav-support" onclick="switchTab('support')">Support<span class="nav-badge" id="nav-badge-support" style="display:none;">0</span></button>
           <button class="tnav-link" id="nav-teams" onclick="switchTab('teams')">Teams</button>
           <button class="tnav-link" id="nav-team-members" onclick="switchTab('team-members')">Team Members</button>
         </div>
@@ -1871,6 +1871,21 @@
       if (badge) {
         if (pending > 0) { badge.textContent = pending; badge.style.display = 'inline-flex'; }
         else             { badge.style.display = 'none'; }
+      }
+    } catch { /* silent */ }
+
+    // Poll open client support tickets — update Support badge
+    try {
+      const token = Auth.getToken();
+      if (!token || (typeof Auth.can === 'function' && !Auth.can('support.view'))) return;
+      const res = await fetch(`${CONFIG.API_BASE}/tickets/support`, { headers: { 'Authorization': 'Bearer ' + token } });
+      if (!res.ok) return;
+      const rows = (await res.json()).data || [];
+      const open = rows.filter(t => !['resolved', 'closed'].includes(String(t.status || '').toLowerCase())).length;
+      const b = document.getElementById('nav-badge-support');
+      if (b) {
+        if (open > 0) { b.textContent = open; b.style.display = 'inline-flex'; }
+        else          { b.style.display = 'none'; }
       }
     } catch { /* silent */ }
   }
