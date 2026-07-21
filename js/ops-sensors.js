@@ -164,7 +164,7 @@ const OpsSensors = (function () {
   }
 
   function estateOf(x) {
-    return (x.primary_asset && x.primary_asset.name) || x.zone || x.client_name || '—';
+    return (x.primary_asset && x.primary_asset.name) || x.account_name || x.zone || '—';
   }
 
   // "outdated" firmware = doesn't match the fleet's most common version —
@@ -816,7 +816,8 @@ const OpsSensors = (function () {
     const install = `
       ${F('Primary asset', primary ? L('assets', primary.property_id, esc(primary.name || primary.property_id)) : '—')}
       ${F('Asset class', primary && primary.asset_class ? _cap(String(primary.asset_class).replace(/_/g, ' ')) : '—')}
-      ${F('Client', x.client_id ? L('clients', x.client_id, esc(x.client_name || 'Client')) : esc(x.client_name || '—'))}
+      ${F('Client', x.client_user_id ? L('clients', x.client_user_id, esc(x.client_name || 'Client')) : esc(x.client_name || '—'))}
+      ${x.account_name ? F('Estate / account', esc(x.account_name)) : ''}
       ${F('Zone', esc(x.zone || '—'))}
       ${F('Link type', esc(x.link_type || '—'))}
       ${F('Variant', esc((x.device_variant || '—').replace(/_/g, ' ')))}
@@ -837,7 +838,7 @@ const OpsSensors = (function () {
         ${F('Device ID', `<span class="lv-mono">${esc(x.sensor_id)}</span>`)}
         ${F('Variant', esc((x.device_variant || '—').replace(/_/g, ' ')))}
         ${F('Zone', esc(x.zone || '—'))}
-        ${F('Client', x.client_id ? L('clients', x.client_id, esc(x.client_name || 'Client')) : esc(x.client_name || '—'))}
+        ${F('Client', x.client_user_id ? L('clients', x.client_user_id, esc(x.client_name || 'Client')) : esc(x.client_name || '—'))}
         ${F('Firmware', esc(x.firmware_version || '—'))}
         ${F('Battery', x.battery_percent != null ? x.battery_percent + '%' : '—')}
         ${F('Signal', x.signal_strength != null ? x.signal_strength + '%' : '—')}
