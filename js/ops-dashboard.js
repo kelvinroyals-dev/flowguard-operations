@@ -311,7 +311,7 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
         </div>
         <div class="layer-pills">
           <div class="layer-pill active">Drainage</div>
-          <div class="layer-pill">Estates</div>
+          <div class="layer-pill">Properties</div>
           <div class="layer-pill">Crews</div>
           <div class="layer-pill">Incidents</div>
         </div>

@@ -160,7 +160,7 @@ const OpsNetwork = (function () {
 
     const assetsBody = assets.length
       ? `<div class="nw-tree">${assets.map(assetRow).join('')}</div>`
-      : OpsModal.emptyState('', 'No drainage assets registered', 'The canals, catch basins and pump stations that protect this estate live here. Register them so Sentinels can be assigned and work tracked against them.<br><button class="nw-add" style="margin-top:12px" onclick="switchTab(\'assets\')">Go to Assets →</button>');
+      : OpsModal.emptyState('', 'No drainage assets registered', 'The canals, catch basins and pump stations that protect this property live here. Register them so Sentinels can be assigned and work tracked against them.<br><button class="nw-add" style="margin-top:12px" onclick="switchTab(\'assets\')">Go to Assets →</button>');
 
     const activityBody = (oc && oc.recent_events && oc.recent_events.length)
       ? oc.recent_events.map(e => `<div class="nw-act-row"><span class="nw-act-type">${esc((e.event_type || '').replace(/_/g, ' '))}</span><span class="nw-act-desc">${esc(e.description || '—')}</span><span class="nw-act-time">${OpsModal.fmtDate(e.occurred_at)}</span></div>`).join('')

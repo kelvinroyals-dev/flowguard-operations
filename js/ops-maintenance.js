@@ -172,7 +172,7 @@ const OpsMaintenance = (function () {
       <div class="mp-head">
         <div class="mp-head-title">
           <h2>Maintenance Planner</h2>
-          <span>Scheduled field work across every crew and estate</span>
+          <span>Scheduled field work across every crew and property</span>
         </div>
         ${canMng() ? `<button class="mp-add" onclick="OpsMaintenance.newJob()">+ New Job</button>` : ''}
       </div>
@@ -282,7 +282,7 @@ const OpsMaintenance = (function () {
 
   // ── New job modal ──────────────────────────────────────────────
   function newJob() {
-    const propOpts = [{ value: '', label: 'No specific estate' }, ..._properties.map(p => ({ value: p.property_id, label: p.asset_code || p.property_name }))];
+    const propOpts = [{ value: '', label: 'No specific property' }, ..._properties.map(p => ({ value: p.property_id, label: p.asset_code || p.property_name }))];
     const teamOpts = [{ value: '', label: 'Unassigned' }, ..._teams.map(t => ({ value: t.team_id, label: t.team_name }))];
     const body = `
       ${OpsModal.field('Work Type', 'work_type', 'select', 'maintenance', { options: WORK_TYPES })}
@@ -292,7 +292,7 @@ const OpsMaintenance = (function () {
         OpsModal.field('Scheduled Date', 'scheduled_date', 'date', '', {}),
       ])}
       ${OpsModal.row([
-        OpsModal.field('Estate', 'property_id', 'select', '', { required: false, options: propOpts }),
+        OpsModal.field('Property', 'property_id', 'select', '', { required: false, options: propOpts }),
         OpsModal.field('Crew', 'assigned_team', 'select', '', { required: false, options: teamOpts }),
       ])}
       ${OpsModal.field('Estimated Hours (optional)', 'estimated_hours', 'number', '', { required: false, placeholder: 'e.g. 4' })}

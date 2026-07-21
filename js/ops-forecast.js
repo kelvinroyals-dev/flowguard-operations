@@ -162,7 +162,7 @@ const OpsForecast = (function () {
       </div>`;
 
     const kpis = `<div class="fcx-kpis">
-      ${kpi('Overall risk index', `<span style="color:${riskColor(overall)}">${riskLabel(overall)}</span>`, `${overall}/100`, `Peak across ${total} estate${total === 1 ? '' : 's'}`, riskVals, riskHex(overall), dRisk)}
+      ${kpi('Overall risk index', `<span style="color:${riskColor(overall)}">${riskLabel(overall)}</span>`, `${overall}/100`, `Peak across ${total} propert${total === 1 ? 'y' : 'ies'}`, riskVals, riskHex(overall), dRisk)}
       ${kpi('High-risk properties', high, '', `${med} medium · ${low} low`, est.map(e => e.predicted_risk), '#e08e12', null)}
       ${kpi('Rainfall forecast (24h)', rain24, 'mm', _fc.has_rainfall_data ? 'Open-Meteo · Lagos' : 'No live rainfall feed', rainVals, '#1cb8e8', null)}
       ${kpi(`Network capacity`, capacity, '%', `${liveN ? 'Measured on ' + liveN : 'Estimated'} · ${avgCur}% avg load`, riskVals.map(v => 100 - v), '#1f9d5b', null)}
@@ -209,7 +209,7 @@ const OpsForecast = (function () {
       <div class="fcx-card fcx-chart"><div class="fcx-card-head"><h3>Rainfall forecast</h3><span class="fcx-meta">mm</span></div><div class="fcx-chart-box">${barChart(rainVals, { yMax: rainMax, ticks: [rainMax * 0.25, rainMax * 0.5, rainMax * 0.75, rainMax].map(v => Math.round(v)), color: '#1cb8e8', xLabels: xl })}</div></div>
       <div class="fcx-card fcx-chart"><div class="fcx-card-head"><h3>Property risk distribution</h3><span class="fcx-meta">by level</span></div>
         <div class="fcx-donut">
-          ${donut([{ v: high, color: '#d9463c' }, { v: med, color: '#e08e12' }, { v: low, color: '#1f9d5b' }], total, 'Estates')}
+          ${donut([{ v: high, color: '#d9463c' }, { v: med, color: '#e08e12' }, { v: low, color: '#1f9d5b' }], total, 'Properties')}
           <div class="fcx-donut-legend">
             <div class="fcx-dl"><span><span class="sw" style="background:#d9463c"></span>High</span><span class="mono">${high} (${pct(high, total)}%)</span></div>
             <div class="fcx-dl"><span><span class="sw" style="background:#e08e12"></span>Medium</span><span class="mono">${med} (${pct(med, total)}%)</span></div>

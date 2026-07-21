@@ -540,7 +540,7 @@ const OpsProperties = (function () {
     // ── section nav + cards ────────────────────────────────────────────
     const SECTIONS = [
       ['overview', 'Overview', 'properties · asset_class: ' + (a.asset_class || 'customer_property'), overviewBody],
-      ['map', 'Estate map', 'lat/long + coverage', mapBody],
+      ['map', 'Property map', 'lat/long + coverage', mapBody],
       ['network', 'Drain network', 'child rows · drainage_asset', networkBody],
       ['devices', 'Devices', 'via sentinel_coverage', devicesBody],
       ['maintenance', 'Maintenance', 'tickets · work_type', maintenanceBody],
@@ -574,7 +574,7 @@ const OpsProperties = (function () {
         ${fact('Urgency', a.urgency_level || 'Standard')}
         ${fact('Status', `<span style="color:var(--${statusCls === 'ok' ? 'ok' : statusCls === 'danger' ? 'err' : 'warn'});">${statusLabel}</span>`)}
         ${fact('Client account', a.user_id ? clientLink : '<span style="color:var(--ink-3);">Not linked</span>')}
-        ${a.parent_property_id ? fact('Parent estate', L('properties', a.parent_property_id, a.parent_name || a.parent_property_id)) : ''}
+        ${a.parent_property_id ? fact('Parent property', L('properties', a.parent_property_id, a.parent_name || a.parent_property_id)) : ''}
         ${fact('Created', `<span class="prd-mono">${d1(a.created_at)}</span>`)}
       </div>
       <div class="prd-card">

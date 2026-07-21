@@ -163,8 +163,10 @@ const OpsSensors = (function () {
     return 'var(--ok)';
   }
 
-  function estateOf(x) {
-    return (x.primary_asset && x.primary_asset.name) || x.account_name || x.zone || '—';
+  // The Property a node belongs to. Prefer the resolved customer property;
+  // fall back to its primary asset or zone. NEVER the estate-account name.
+  function propertyOf(x) {
+    return x.property_name || (x.primary_asset && x.primary_asset.name) || x.zone || '—';
   }
 
   // "outdated" firmware = doesn't match the fleet's most common version —
@@ -195,7 +197,7 @@ const OpsSensors = (function () {
     const degraded = tiers.filter(t => t === 'degraded').length;
     const offline = tiers.filter(t => t === 'offline').length;
     const online = healthy + degraded;
-    const estates = new Set(_all.map(estateOf).filter(e => e && e !== '—')).size;
+    const properties = new Set(_all.map(propertyOf).filter(e => e && e !== '—')).size;
     const uptime = total ? Math.round(online / total * 100 * 10) / 10 : 0;
     const commonFw = fleetFirmware(_all);
     const battKnown = _all.some(x => x.battery_percent != null);
@@ -205,7 +207,7 @@ const OpsSensors = (function () {
     if (sub) sub.textContent = `${total} nodes · ${commonFw ? 'firmware ' + commonFw + ' · ' : ''}fleet management`;
 
     kp.innerHTML = OpsModal.kpiStrip([
-      { icon: ICON.cpu,     color: 'var(--blue-hi)', label: 'Total Nodes', value: total, sub: `Across ${estates} estate${estates === 1 ? '' : 's'}` },
+      { icon: ICON.cpu,     color: 'var(--blue-hi)', label: 'Total Nodes', value: total, sub: `Across ${properties} propert${properties === 1 ? 'y' : 'ies'}` },
       { icon: ICON.wifi,    color: 'var(--ok)',      label: 'Online',      value: online, sub: `${uptime}% fleet uptime`, subClass: 'ok' },
       { icon: ICON.pulse,   color: 'var(--warn)',    label: 'Degraded',    value: degraded, sub: 'Needs attention', subClass: degraded ? 'warn' : '' },
       { icon: ICON.wifiOff, color: 'var(--err)',     label: 'Offline',     value: offline, sub: 'Requires dispatch', subClass: offline ? 'err' : '' },
@@ -233,7 +235,7 @@ const OpsSensors = (function () {
     else if (_filter === 'unassigned') rows = rows.filter(r => !r.x.assets || !r.x.assets.length);
     if (_q) {
       const q = _q.toLowerCase();
-      rows = rows.filter(r => `${r.x.name || ''} ${r.x.sensor_id || ''} ${estateOf(r.x)}`.toLowerCase().includes(q));
+      rows = rows.filter(r => `${r.x.name || ''} ${r.x.sensor_id || ''} ${propertyOf(r.x)}`.toLowerCase().includes(q));
     }
     rows = rows.map(r => r.x);
 
@@ -337,7 +339,7 @@ const OpsSensors = (function () {
             <tr>
               <th style="width:26px;"><input type="checkbox" ${allChecked ? 'checked' : ''} onclick="OpsSensors.toggleSelectAll(this.checked)" title="Select all matching this filter"></th>
               <th>Node ID</th>
-              <th>Estate</th>
+              <th>Property</th>
               <th>Firmware</th>
               <th>Battery</th>
               <th>Signal</th>
@@ -368,7 +370,7 @@ const OpsSensors = (function () {
       <tr class="sn-row clickable" onclick="OpsSensors.viewSensor('${__sid(x.sensor_id)}')">
         <td onclick="event.stopPropagation()"><input type="checkbox" ${_selected.has(x.sensor_id) ? 'checked' : ''} onclick="OpsSensors.toggleSelect('${__sid(x.sensor_id)}', this.checked); event.stopPropagation()"></td>
         <td class="sn-node-id" style="cursor:pointer;" title="Open full details" onclick="event.stopPropagation();OpsSensors.openFull('${__sid(x.sensor_id)}')"><span style="text-decoration:underline;text-decoration-color:var(--border-2);text-underline-offset:2px;">${esc(x.name || x.sensor_id)}</span>${x.pending_commands ? `<span class="sn-cmd-badge" title="${x.pending_commands} command(s) queued">${x.pending_commands}</span>` : ''}</td>
-        <td>${esc(estateOf(x))}</td>
+        <td>${esc(propertyOf(x))}</td>
         <td class="sn-fw ${outdated ? 'outdated' : 'current'}">${x.firmware_version ? esc(x.firmware_version) : '—'}</td>
         <td>${vitBar(x.battery_percent)}</td>
         <td>${vitBar(x.signal_strength)}</td>
@@ -431,7 +433,7 @@ const OpsSensors = (function () {
         <div class="sn-drawer-head">
           <div>
             <div class="sn-drawer-title">${esc(x.name || x.sensor_id)}</div>
-            <div class="sn-drawer-sub">${esc(estateOf(x))}${x.sensor_id !== (x.name || x.sensor_id) ? ' · ' + esc(x.sensor_id) : ''}</div>
+            <div class="sn-drawer-sub">${esc(propertyOf(x))}${x.sensor_id !== (x.name || x.sensor_id) ? ' · ' + esc(x.sensor_id) : ''}</div>
           </div>
           <button class="sn-drawer-close" onclick="OpsSensors.closeDrawer()" aria-label="Close">
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -816,8 +818,7 @@ const OpsSensors = (function () {
     const install = `
       ${F('Primary asset', primary ? L('assets', primary.property_id, esc(primary.name || primary.property_id)) : '—')}
       ${F('Asset class', primary && primary.asset_class ? _cap(String(primary.asset_class).replace(/_/g, ' ')) : '—')}
-      ${F('Client', x.client_user_id ? L('clients', x.client_user_id, esc(x.client_name || 'Client')) : esc(x.client_name || '—'))}
-      ${x.account_name ? F('Estate / account', esc(x.account_name)) : ''}
+      ${F('Property', x.property_ref ? L('properties', x.property_ref, esc(x.property_name || 'Property')) : esc(x.property_name || '—'))}
       ${F('Zone', esc(x.zone || '—'))}
       ${F('Link type', esc(x.link_type || '—'))}
       ${F('Variant', esc((x.device_variant || '—').replace(/_/g, ' ')))}
@@ -838,7 +839,7 @@ const OpsSensors = (function () {
         ${F('Device ID', `<span class="lv-mono">${esc(x.sensor_id)}</span>`)}
         ${F('Variant', esc((x.device_variant || '—').replace(/_/g, ' ')))}
         ${F('Zone', esc(x.zone || '—'))}
-        ${F('Client', x.client_user_id ? L('clients', x.client_user_id, esc(x.client_name || 'Client')) : esc(x.client_name || '—'))}
+        ${F('Property', x.property_ref ? L('properties', x.property_ref, esc(x.property_name || 'Property')) : esc(x.property_name || '—'))}
         ${F('Firmware', esc(x.firmware_version || '—'))}
         ${F('Battery', x.battery_percent != null ? x.battery_percent + '%' : '—')}
         ${F('Signal', x.signal_strength != null ? x.signal_strength + '%' : '—')}
@@ -862,7 +863,7 @@ const OpsSensors = (function () {
         { cls: chipCls, dot: true, label: _cap(x.status || 'unknown') },
         x.device_variant ? { cls: 'neutral', label: x.device_variant.replace(/_/g, ' ') } : null,
       ].filter(Boolean),
-      meta: [['Zone', esc(x.zone || '—')], ['Primary asset', primary ? esc(primary.name || primary.property_id) : '—'], ['Client', esc(x.client_name || '—')], ['Link', esc(x.link_type || '—')]],
+      meta: [['Zone', esc(x.zone || '—')], ['Primary asset', primary ? esc(primary.name || primary.property_id) : '—'], ['Property', esc(x.property_name || '—')], ['Link', esc(x.link_type || '—')]],
       actions: `${primary && primary.property_id ? `<button class="fgd-btn" onclick="OpsNetwork.open('${__sid(primary.property_id)}')">View on map</button>` : ''}${canMng() ? `<button class="fgd-btn" style="background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;" onclick="OpsSensors.queueCommand('${sid}')">Queue command</button>` : ''}`,
       sections: [
         { id: 'overview', title: 'Device overview', meta: last ? 'Last ping ' + _ago(last) : '', body: overview },
