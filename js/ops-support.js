@@ -124,6 +124,9 @@ const OpsSupport = (function () {
       return `<div class="sup-bubble ${ops ? 'sup-ops' : 'sup-client'}"><div class="who">${esc(m.author_name || (ops ? 'FlowGuard' : 'Client'))}</div>${esc(m.message)}<div class="t">${OpsModal.fmtDateTime ? OpsModal.fmtDateTime(m.created_at) : esc(m.created_at)}</div></div>`;
     }).join('') : `<div class="sup-empty">No messages yet — the original request is below.</div>`;
     const F = OpsModal.fact;
+    // Payment-notification tickets reference an invoice — deep-link finance to it.
+    const invMatch = `${t.subject || ''} ${t.title || ''} ${t.description || ''}`.match(/INV-\d{4}-\d+/);
+    const invId = invMatch ? invMatch[0] : null;
     _container.innerHTML = CSS + `
       <div class="fgd-crumb"><span class="lnk" onclick="OpsSupport.back()">Support</span><span class="sep">/</span><span class="cur">${esc(t.ticket_id)}</span></div>
       <div class="sup-head">
@@ -151,7 +154,9 @@ const OpsSupport = (function () {
           ${F('Category', esc(t.type || 'general'))}
           ${F('Priority', esc(t.priority || 'normal'))}
           ${F('Opened', OpsModal.fmtDate ? OpsModal.fmtDate(t.created_at) : '—')}
+          ${invId ? F('Invoice', OpsModal.link('billing', invId, esc(invId))) : ''}
         </div>
+        ${invId ? `<div class="fgd-card" style="padding:16px;"><div class="fgd-card-head"><h2>Reconcile</h2></div><button class="fgd-btn" style="width:100%;background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;" onclick="fgOpen('billing','${esc(invId)}')">Open invoice ${esc(invId)} →</button></div>` : ''}
       </div>`;
   }
 
