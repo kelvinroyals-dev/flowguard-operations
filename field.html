@@ -1045,6 +1045,47 @@
     @media (prefers-reduced-motion:reduce) {
       .hero::before,.hero::after,.ring-1,.ring-2,.ab,.live-dot.con,.newjob-dot,.oa-icon,.spn,.gps-ico { animation:none!important; opacity:1; }
     }
+
+    /* ── Neon light auth (login + forgot) — matches the signup page ──────────
+       Scoped to the two auth screens so the dark field dashboard is untouched. */
+    #screen-login, #screen-forgot{
+      background:#ffffff;
+      background-image:
+        radial-gradient(at 0% 0%, hsla(174,77%,95%,1) 0, transparent 55%),
+        radial-gradient(at 50% 0%, hsla(187,60%,96%,1) 0, transparent 55%),
+        radial-gradient(at 100% 0%, hsla(174,77%,95%,1) 0, transparent 55%);
+      color:#151b22; justify-content:center; overflow-y:auto;
+    }
+    #screen-login .login-wrap, #screen-forgot .login-wrap{
+      width:100%; max-width:440px; margin:0 auto; padding:24px 22px 40px;
+      display:flex; flex-direction:column; justify-content:center; min-height:100%;
+    }
+    #screen-login .hero-hex, #screen-forgot .hero-hex{ display:none; }
+    #screen-login .hero, #screen-forgot .hero{ background:transparent; padding:8px 0 24px; }
+    #screen-login .ring, #screen-forgot .ring{ opacity:.22; }
+    #screen-login .hero-name, #screen-forgot .hero-name{ color:#12181f; }
+    #screen-login .hero-tag, #screen-forgot .hero-tag{ color:#0d9488; }
+    #screen-login .login-card, #screen-forgot .login-card{
+      background:#fff; border:1px solid #e7eaed; border-radius:22px;
+      box-shadow:0 1px 2px rgba(15,23,30,.04), 0 10px 30px rgba(15,23,30,.06); padding:28px 24px;
+    }
+    #screen-login .card-pull, #screen-forgot .card-pull{ display:none; }
+    #screen-login .form-title, #screen-forgot .form-title{ color:#151b22; font-weight:800; }
+    #screen-login .form-sub, #screen-forgot .form-sub{ color:#5b6670; }
+    #screen-login .field-label, #screen-forgot .field-label{ color:#151b22; font-weight:600; }
+    #screen-login .field-input, #screen-forgot .field-input{
+      background:#fff; border:1px solid #d7dbdf; color:#151b22; border-radius:12px;
+    }
+    #screen-login .field-input::placeholder, #screen-forgot .field-input::placeholder{ color:#98a2ab; }
+    #screen-login .field-input:focus, #screen-forgot .field-input:focus{
+      border-color:#0d9488; box-shadow:0 0 0 3px rgba(13,148,136,.14); background:#fff;
+    }
+    #screen-login .cta, #screen-forgot .cta{ background:#0d9488; color:#fff; border:none; border-radius:12px; }
+    #screen-login .cta:hover, #screen-forgot .cta:hover{ background:#0b7d72; }
+    #screen-login .cta-txt, #screen-forgot .cta-txt{ color:#fff; }
+    #screen-login .forgot-link, #screen-forgot .forgot-link{ color:#0d9488; }
+    #screen-login .form-msg.error, #screen-forgot .form-msg.error{ color:#c93d32; }
+    #screen-login .form-msg.success, #screen-forgot .form-msg.success{ color:#0f7a44; }
   </style>
 </head>
 <body>
@@ -1135,7 +1176,7 @@
 </div>
 
 <!-- ═══════════════ FORGOT ═══════════════ -->
-<div id="screen-forgot" class="screen" style="background:var(--deep);overflow-y:auto;">
+<div id="screen-forgot" class="screen">
   <div class="login-wrap">
     <div class="hero" style="padding:44px 0 38px;">
       <div class="hero-hex">
