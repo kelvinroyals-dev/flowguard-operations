@@ -434,9 +434,10 @@ const OpsUserManagement = (function () {
     if (!data.full_name) { OpsModal.toast('Full name is required', 'warning'); return; }
     OpsModal.setLoading('modal-save-btn', true);
     try {
-      await OpsModal.apiPost('/users/invite', data);
+      const res = await OpsModal.apiPost('/users/invite', data);
       OpsModal.close();
-      OpsModal.toast('Invitation sent', 'nominal');
+      const emailed = !res || !res.data || res.data.emailed !== false;
+      OpsModal.toast(emailed ? 'Invitation email sent' : 'Member added, but the invite email failed to send', emailed ? 'nominal' : 'warning');
       reloadTab('team-members');
     } catch (err) {
       OpsModal.toast('Failed: ' + err.message, 'critical');
