@@ -18,31 +18,32 @@
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
     :root {
-      --navy:      #0a2a3d;
-      --deep:      #061824;
-      --mid:       #0d3a54;
-      --raised:    #0f3d5c;
-      --blue:      #16a8d3;
-      --blue-hi:   #3dbfe8;
-      --teal:      #0d7fa0;
+      /* Dark field base, aligned to the neon brand palette (teal / cyan / green / red) */
+      --navy:      #0b2733;
+      --deep:      #06171f;
+      --mid:       #0e3547;
+      --raised:    #103d52;
+      --blue:      #16a8d3;   /* neon cyan */
+      --blue-hi:   #46c5ea;
+      --teal:      #0d9488;   /* neon primary teal */
       --amber:     #f5a623;
-      --ok:        #22c55e;
-      --warn:      #eab308;
+      --ok:        #1f9d5b;   /* neon green */
+      --warn:      #e0a913;
       --orange:    #f97316;
-      --red:       #ef4444;
+      --red:       #e5483c;   /* neon red */
       --ink:       #ffffff;
-      --ink-2:     rgba(255,255,255,.72);
-      --ink-3:     rgba(255,255,255,.42);
-      --ink-4:     rgba(255,255,255,.22);
+      --ink-2:     rgba(255,255,255,.74);
+      --ink-3:     rgba(255,255,255,.46);
+      --ink-4:     rgba(255,255,255,.24);
       --glass:     rgba(255,255,255,.06);
-      --glass-b:   rgba(255,255,255,.10);
-      --ff:        'Figtree', system-ui, sans-serif;
+      --glass-b:   rgba(255,255,255,.12);
+      --ff:        'Plus Jakarta Sans', system-ui, sans-serif;
       --mono:      'JetBrains Mono', monospace;
     }
 
@@ -465,8 +466,8 @@
     }
     .main-cta.go-enroute:hover:not(:disabled) { filter:brightness(1.08); }
     .main-cta.go-onsite {
-      background:linear-gradient(135deg,#0d7fa0 0%,#0e6a87 100%);
-      color:#fff; box-shadow:0 6px 24px rgba(22,168,211,.38);
+      background:linear-gradient(135deg,var(--teal) 0%,#0b7d72 100%);
+      color:#fff; box-shadow:0 6px 24px rgba(13,148,136,.38);
     }
     .main-cta.go-onsite:hover:not(:disabled) { filter:brightness(1.08); }
     .main-cta.go-complete {
