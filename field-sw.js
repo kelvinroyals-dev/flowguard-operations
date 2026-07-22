@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME  = 'fg-field-v5';
+const CACHE_NAME  = 'fg-field-v6';
 const SYNC_TAG    = 'fg-report-sync';
 const DRAFT_KEY   = 'fg_draft_queue';
 
@@ -137,8 +137,8 @@ self.addEventListener('push', event => {
   const title   = data.title || 'FlowGuard Field';
   const options = {
     body:    data.body    || 'New job dispatched to your team.',
-    icon:    '/icons/icon-192.png',
-    badge:   '/icons/icon-192.png',
+    icon:    '/favicon-180.png',
+    badge:   '/favicon-180.png',
     tag:     data.tag     || 'fg-dispatch',
     renotify: true,
     data:    { url: data.url || '/field.html' },
