@@ -13,9 +13,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="FG Field">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='160 60 360 260'><defs><clipPath id='fc'><circle cx='340' cy='182' r='108'/></clipPath></defs><circle cx='340' cy='182' r='108' fill='%230a2a3d'/><g clip-path='url(%23fc)'><rect x='232' y='214' width='216' height='90' fill='%230d7fa0'/><path d='M232 214 Q254 200 276 214 Q298 228 320 214 Q342 200 364 214 Q386 228 408 214 Q430 200 448 210 L448 216 Q430 202 408 216 Q386 230 364 216 Q342 202 320 216 Q298 230 276 216 Q254 202 232 216 Z' fill='%2316a8d3'/></g><path d='M340 110 C358 132 374 148 374 166 C374 186 358 202 340 202 C322 202 306 186 306 166 C306 148 322 132 340 110 Z' fill='%2316a8d3'/><path d='M340 128 C352 144 361 156 361 166 C361 180 352 191 340 191 C328 191 319 180 319 166 C319 156 328 144 340 128 Z' fill='%230d7fa0'/><circle cx='340' cy='110' r='6' fill='%23f5a623'/></svg>">
-  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
-  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -239,8 +240,7 @@
       position:relative; z-index:50;
     }
     .topbar-logo {
-      width:30px; height:30px; flex-shrink:0;
-      filter:drop-shadow(0 0 6px rgba(22,168,211,.3));
+      width:30px; height:30px; flex-shrink:0; object-fit:contain;
     }
     .topbar-id { flex:1; overflow:hidden; }
     .topbar-name {
@@ -1061,11 +1061,17 @@
       display:flex; flex-direction:column; justify-content:center; min-height:100%;
     }
     #screen-login .hero-hex, #screen-forgot .hero-hex{ display:none; }
-    #screen-login .hero, #screen-forgot .hero{ background:transparent; padding:8px 0 24px; }
-    #screen-login .ring, #screen-forgot .ring{ opacity:.22; }
-    #screen-login .hero-name, #screen-forgot .hero-name{ color:#12181f; }
+    /* kill the dark-theme hero glow bleed on the light background */
+    #screen-login .hero::before, #screen-login .hero::after,
+    #screen-forgot .hero::before, #screen-forgot .hero::after{ display:none; content:none; }
+    #screen-login .hero, #screen-forgot .hero{ background:transparent; padding:12px 0 22px; }
+    #screen-login .ring, #screen-forgot .ring{ opacity:.18; }
+    #screen-login .hero-name, #screen-forgot .hero-name{ color:#12181f; text-shadow:none; }
     #screen-login .hero-tag, #screen-forgot .hero-tag{ color:#0d9488; }
+    #screen-login .mark-svg, #screen-forgot .mark-svg{ width:88px; height:88px; object-fit:contain; filter:none; }
+    /* card must size to its content, not stretch full height (was flex:1) */
     #screen-login .login-card, #screen-forgot .login-card{
+      flex:0 0 auto; width:100%; margin:0 auto;
       background:#fff; border:1px solid #e7eaed; border-radius:22px;
       box-shadow:0 1px 2px rgba(15,23,30,.04), 0 10px 30px rgba(15,23,30,.06); padding:28px 24px;
     }
@@ -1080,8 +1086,9 @@
     #screen-login .field-input:focus, #screen-forgot .field-input:focus{
       border-color:#0d9488; box-shadow:0 0 0 3px rgba(13,148,136,.14); background:#fff;
     }
-    #screen-login .cta, #screen-forgot .cta{ background:#0d9488; color:#fff; border:none; border-radius:12px; }
+    #screen-login .cta, #screen-forgot .cta{ background:#0d9488; color:#fff; border:none; border-radius:12px; box-shadow:0 4px 14px rgba(13,148,136,.22); }
     #screen-login .cta:hover, #screen-forgot .cta:hover{ background:#0b7d72; }
+    #screen-login .cta-shine, #screen-forgot .cta-shine{ display:none; }
     #screen-login .cta-txt, #screen-forgot .cta-txt{ color:#fff; }
     #screen-login .forgot-link, #screen-forgot .forgot-link{ color:#0d9488; }
     #screen-login .form-msg.error, #screen-forgot .form-msg.error{ color:#c93d32; }
@@ -1111,33 +1118,7 @@
       <div class="hero-mark">
         <div class="ring ring-1"></div>
         <div class="ring ring-2"></div>
-        <svg class="mark-svg" viewBox="160 60 360 260" xmlns="http://www.w3.org/2000/svg">
-          <defs><clipPath id="mc"><circle cx="340" cy="182" r="108"/></clipPath></defs>
-          <circle cx="340" cy="182" r="148" fill="none" stroke="#16a8d3" stroke-width="1" opacity=".13"/>
-          <circle cx="340" cy="182" r="132" fill="none" stroke="#16a8d3" stroke-width="1.2" opacity=".22"/>
-          <circle cx="340" cy="182" r="118" fill="none" stroke="#1cb8e8" stroke-width="1.5" opacity=".32"/>
-          <circle cx="340" cy="182" r="108" fill="#0a2a3d"/>
-          <g clip-path="url(#mc)">
-            <rect x="232" y="214" width="216" height="90" fill="#0d7fa0"/>
-            <path d="M232 214 Q254 200 276 214 Q298 228 320 214 Q342 200 364 214 Q386 228 408 214 Q430 200 448 210 L448 216 Q430 202 408 216 Q386 230 364 216 Q342 202 320 216 Q298 230 276 216 Q254 202 232 216 Z" fill="#16a8d3"/>
-            <path d="M232 234 Q254 226 276 234 Q298 242 320 234 Q342 226 364 234 Q386 242 408 234 Q430 226 448 231" fill="none" stroke="#1cb8e8" stroke-width="1.5" opacity=".4"/>
-            <ellipse cx="284" cy="250" rx="12" ry="3" fill="#cceeff" opacity=".28"/>
-          </g>
-          <circle cx="340" cy="182" r="108" fill="none" stroke="#1cb8e8" stroke-width="2.5" opacity=".35"/>
-          <path d="M340 110 C358 132 374 148 374 166 C374 186 358 202 340 202 C322 202 306 186 306 166 C306 148 322 132 340 110 Z" fill="#16a8d3"/>
-          <path d="M340 120 C355 139 367 153 367 166 C367 183 355 196 340 196 C325 196 313 183 313 166 C313 153 325 139 340 120 Z" fill="#0a2a3d"/>
-          <path d="M340 128 C352 144 361 156 361 166 C361 180 352 191 340 191 C328 191 319 180 319 166 C319 156 328 144 340 128 Z" fill="#0d7fa0"/>
-          <ellipse cx="331" cy="146" rx="5" ry="8" fill="#cceeff" opacity=".48" transform="rotate(-18 331 146)"/>
-          <circle cx="340" cy="110" r="6" fill="#f5a623" class="ab"/>
-          <circle cx="340" cy="110" r="10" fill="none" stroke="#f5a623" stroke-width="1.5" opacity=".4" class="ab"/>
-          <circle cx="340" cy="110" r="15" fill="none" stroke="#f5a623" stroke-width="1" opacity=".18" class="ab"/>
-          <path d="M318 105 Q340 93 362 105" fill="none" stroke="#1cb8e8" stroke-width="2" stroke-linecap="round" opacity=".68"/>
-          <path d="M307 93 Q340 77 373 93" fill="none" stroke="#1cb8e8" stroke-width="1.5" stroke-linecap="round" opacity=".32"/>
-          <line x1="340" y1="72" x2="340" y2="62" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="448" y1="182" x2="458" y2="182" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="232" y1="182" x2="222" y2="182" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="340" y1="292" x2="340" y2="302" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"/>
-        </svg>
+        <img class="mark-svg" src="fg-logo-light.png" alt="FlowGuard">
       </div>
 
       <div class="hero-label">
@@ -1186,14 +1167,7 @@
         </svg>
       </div>
       <div style="position:relative;z-index:2;">
-        <svg style="width:72px;height:72px;filter:drop-shadow(0 0 14px rgba(22,168,211,.3));" viewBox="160 60 360 260" xmlns="http://www.w3.org/2000/svg">
-          <defs><clipPath id="fmc"><circle cx="340" cy="182" r="108"/></clipPath></defs>
-          <circle cx="340" cy="182" r="108" fill="#0a2a3d"/>
-          <g clip-path="url(#fmc)"><rect x="232" y="214" width="216" height="90" fill="#0d7fa0"/><path d="M232 214 Q254 200 276 214 Q298 228 320 214 Q342 200 364 214 Q386 228 408 214 Q430 200 448 210 L448 216 Q430 202 408 216 Q386 230 364 216 Q342 202 320 216 Q298 230 276 216 Q254 202 232 216 Z" fill="#16a8d3"/></g>
-          <path d="M340 110 C358 132 374 148 374 166 C374 186 358 202 340 202 C322 202 306 186 306 166 C306 148 322 132 340 110 Z" fill="#16a8d3"/>
-          <path d="M340 128 C352 144 361 156 361 166 C361 180 352 191 340 191 C328 191 319 180 319 166 C319 156 328 144 340 128 Z" fill="#0d7fa0"/>
-          <circle cx="340" cy="110" r="5" fill="#f5a623"/>
-        </svg>
+        <img src="fg-logo-light.png" alt="FlowGuard" style="width:64px;height:64px;object-fit:contain;">
       </div>
       <div class="hero-label">
         <span class="hero-name" style="font-size:1.3rem;">FlowGuard</span>
@@ -1227,14 +1201,7 @@
 <div id="screen-dash" class="screen">
 
   <div class="topbar">
-    <svg class="topbar-logo" viewBox="160 60 360 260" xmlns="http://www.w3.org/2000/svg">
-      <defs><clipPath id="hmc"><circle cx="340" cy="182" r="108"/></clipPath></defs>
-      <circle cx="340" cy="182" r="108" fill="#0a2a3d"/>
-      <g clip-path="url(#hmc)"><rect x="232" y="214" width="216" height="90" fill="#0d7fa0"/><path d="M232 214 Q254 200 276 214 Q298 228 320 214 Q342 200 364 214 Q386 228 408 214 Q430 200 448 210 L448 216 Q430 202 408 216 Q386 230 364 216 Q342 202 320 216 Q298 230 276 216 Q254 202 232 216 Z" fill="#16a8d3"/></g>
-      <path d="M340 110 C358 132 374 148 374 166 C374 186 358 202 340 202 C322 202 306 186 306 166 C306 148 322 132 340 110 Z" fill="#16a8d3"/>
-      <path d="M340 128 C352 144 361 156 361 166 C361 180 352 191 340 191 C328 191 319 180 319 166 C319 156 328 144 340 128 Z" fill="#0d7fa0"/>
-      <circle cx="340" cy="110" r="5" fill="#f5a623"/>
-    </svg>
+    <img class="topbar-logo" src="fg-logo-dark.png" alt="FlowGuard">
     <div class="topbar-id">
       <div class="topbar-name" id="hdr-name">Loading…</div>
       <div class="topbar-role">Field Technician</div>
@@ -1586,8 +1553,11 @@ async function checkSession() {
   const token=readToken(); if(!token) return false; S.token=token;
   try {
     const d=await api('GET','/auth/me');
-    if(!d.success||!['field_lead','field_team'].includes(d.data.role)){clearSession();return false;}
-    S.user={id:d.data.id,email:d.data.email,fullName:d.data.full_name,role:d.data.role}; return true;
+    // /auth/me returns { data: { user } } — read from .user (this mismatch was
+    // logging technicians out on every refresh).
+    const u=d.data&&(d.data.user||d.data);
+    if(!d.success||!u||!['field_lead','field_team'].includes(u.role)){clearSession();return false;}
+    S.user={id:u.id,email:u.email,fullName:u.fullName||u.full_name,role:u.role}; return true;
   } catch {clearSession();return false;}
 }
 
