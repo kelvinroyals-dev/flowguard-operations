@@ -1438,6 +1438,46 @@ function toast(msg, type='ok', ms=3000) {
   const el=$('toast'); el.textContent=msg; el.className=`toast show ${type}`;
   clearTimeout(el._t); el._t=setTimeout(()=>el.className='toast',ms);
 }
+
+/* ── OFFLINE DRAFT QUEUE ──────────────────────────────────────────────
+   Field techs work in basements and dead zones. A report must never be lost
+   to a dropped connection: if we're offline (or the POST fails), the report is
+   saved on the device and flushed automatically when connectivity returns —
+   via the 'online' event and the service-worker background-sync ping the SW
+   already emits (FG_FLUSH_DRAFTS / tag 'fg-report-sync'). */
+const DRAFT_KEY='fg_draft_queue';
+function loadDrafts(){ try{return JSON.parse(localStorage.getItem(DRAFT_KEY)||'[]');}catch{return[];} }
+function saveDrafts(a){ try{localStorage.setItem(DRAFT_KEY,JSON.stringify(a));}catch{} }
+function queueDraft(body){ const q=loadDrafts(); q.push({...body,_queuedAt:Date.now()}); saveDrafts(q); requestSync(); updateOfflineUI(); }
+async function requestSync(){ try{ if(S.swReg&&'sync'in S.swReg) await S.swReg.sync.register('fg-report-sync'); }catch{} }
+async function flushDrafts(){
+  let q=loadDrafts(); if(!q.length||!S.token||!navigator.onLine) return;
+  const keep=[]; let sent=0;
+  for(const d of q){ try{ const {_queuedAt,...body}=d; const res=await api('POST','/field-reports',body);
+    if(res&&res.success) sent++; else keep.push(d); }catch{ keep.push(d); } }
+  saveDrafts(keep);
+  if(sent) toast(`Synced ${sent} saved report${sent>1?'s':''}.`,'ok');
+  updateOfflineUI();
+}
+function offlineBanner(){
+  let b=$('offline-banner');
+  if(!b){ b=document.createElement('div'); b.id='offline-banner';
+    b.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:9999;padding:10px 16px;text-align:center;font-size:13px;font-weight:600;background:#12222b;color:#fff;transform:translateY(110%);transition:transform .25s ease;';
+    document.body.appendChild(b); }
+  return b;
+}
+function updateOfflineUI(){
+  const n=loadDrafts().length, off=!navigator.onLine, b=offlineBanner();
+  const show=off||n>0;
+  b.textContent = off ? '⚠ Offline — reports are saved on this device and will sync automatically.'
+                      : (n ? `Syncing ${n} saved report${n>1?'s':''}…` : '');
+  b.style.transform = show ? 'translateY(0)' : 'translateY(110%)';
+}
+window.addEventListener('online', ()=>{ updateOfflineUI(); flushDrafts(); });
+window.addEventListener('offline', updateOfflineUI);
+if('serviceWorker'in navigator){
+  navigator.serviceWorker.addEventListener('message', e=>{ if(e.data&&e.data.type==='FG_FLUSH_DRAFTS') flushDrafts(); });
+}
 function ageStr(ts) {
   if(!ts) return '';
   const m=Math.floor((Date.now()-new Date(ts))/60000);
@@ -1472,7 +1512,7 @@ async function doLogin() {
   try {
     const d=await fetch(`${CONFIG.API}/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})}).then(r=>r.json());
     if(!d.success){btn.disabled=false;btxt.textContent='Sign in';loginMsg(d.error||'Invalid credentials.','error');return;}
-    if(d.data.user.role!=='field_team'){btn.disabled=false;btxt.textContent='Sign in';loginMsg('This portal is for field technicians only.','error');return;}
+    if(!['field_lead','field_team'].includes(d.data.user.role)){btn.disabled=false;btxt.textContent='Sign in';loginMsg('This portal is for field technicians only.','error');return;}
     localStorage.setItem(CONFIG.TOKEN_KEY,d.data.token);
     S.token=d.data.token;
     S.user={id:d.data.user.id,email:d.data.user.email,fullName:d.data.user.fullName,role:d.data.user.role};
@@ -1504,7 +1544,7 @@ async function checkSession() {
   const token=readToken(); if(!token) return false; S.token=token;
   try {
     const d=await api('GET','/auth/me');
-    if(!d.success||d.data.role!=='field_team'){clearSession();return false;}
+    if(!d.success||!['field_lead','field_team'].includes(d.data.role)){clearSession();return false;}
     S.user={id:d.data.id,email:d.data.email,fullName:d.data.full_name,role:d.data.role}; return true;
   } catch {clearSession();return false;}
 }
@@ -1514,6 +1554,7 @@ async function initDashboard() {
   showScreen('screen-dash');
   if(S.user) $('hdr-name').textContent=S.user.fullName||S.user.email;
   initWS(); await loadData(); checkPush(); registerSW();
+  updateOfflineUI(); flushDrafts();   // surface offline state + sync anything saved on this device
 }
 
 async function loadData() {
@@ -2026,7 +2067,7 @@ on('complete-confirm','click',async()=>{
   btn.disabled=true; btn.textContent='Submitting…'; msg.className='sh-msg';
   try {
     if(completedAlert){
-      const r1=await api('PUT',`/alerts/${completedAlert.alert_id||completedAlert.id}`,{status:'resolved',...(notes?{notes}:{})});
+      const r1=await api('PUT',`/alerts/${completedAlert.alert_id||completedAlert.id}/resolve`,{});
       if(!r1.success)throw new Error(r1.error||'Failed to resolve alert');
     }
     if(completedInspection){
@@ -2068,8 +2109,8 @@ on('backup-confirm','click',async()=>{
   btn.disabled=true; btn.textContent='Sending…'; msg.className='sh-msg';
   try {
     const target=S.alert;
-    if(target){const d=await api('PUT',`/alerts/${target.alert_id||target.id}`,{notes:`BACKUP REQUESTED: ${notes}`});if(!d.success)throw new Error(d.error||'Failed');}
-    else{const d=await api('PUT',`/teams/${S.team.team_id}/status`,{notes:`BACKUP REQUESTED: ${notes}`});if(!d.success)throw new Error(d.error||'Failed');}
+    if(target){const d=await api('POST',`/alerts/${target.alert_id||target.id}/backup`,{notes});if(!d.success)throw new Error(d.error||'Failed');}
+    else{const d=await api('PUT',`/teams/${S.team.team_id}/status`,{status:S.team.status||'on_site'});if(!d.success)throw new Error(d.error||'Failed');}
     msg.className='sh-msg success'; msg.textContent='Backup request sent to Ops.'; btn.textContent='✓ Sent';
     setTimeout(()=>{$('sheet-backup').classList.remove('show');btn.disabled=false;btn.textContent='Send Backup Request';},1500);
   } catch(e){msg.className='sh-msg error';msg.textContent=e.message||'Failed to send. Try again.';btn.disabled=false;btn.textContent='Send Backup Request';}
@@ -2092,7 +2133,7 @@ function initWS(){
 on('njb-refresh','click',()=>{$('new-job-banner').classList.remove('show');loadData();});
 
 /* ── Push ── */
-function checkPush(){if(!('Notification'in window)||!('serviceWorker'in navigator))return;if(Notification.permission==='default')$('push-banner').classList.add('show');}
+function checkPush(){if(!CONFIG.VAPID_KEY)return;/* push not configured yet — don't prompt for a dead feature */if(!('Notification'in window)||!('serviceWorker'in navigator))return;if(Notification.permission==='default')$('push-banner').classList.add('show');}
 on('push-allow','click',async()=>{const perm=await Notification.requestPermission();$('push-banner').classList.remove('show');if(perm==='granted')await subscribePush();});
 on('push-dismiss','click',()=>$('push-banner').classList.remove('show'));
 async function subscribePush(){if(!S.swReg||!CONFIG.VAPID_KEY){console.warn('Push: SW not ready or VAPID_KEY empty');return;}try{const sub=await S.swReg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8Array(CONFIG.VAPID_KEY)});await api('POST','/push/subscribe',{subscription:sub.toJSON(),user_id:S.user?.id});console.log('✅ Push subscribed');}catch(e){console.warn('Push subscribe failed:',e);}}
@@ -2214,21 +2255,26 @@ const ReportWriter = (function() {
     db.disabled = sb.disabled = true;
     sb.textContent = 'Saving…';
     msg.className = 'sh-msg';
+    const body = {
+      report_type:   _type,
+      alert_id:      _activeAlert      ? (_activeAlert.alert_id      || String(_activeAlert.id))           : undefined,
+      inspection_id: _activeInspection ? (_activeInspection.inspection_id || String(_activeInspection.id)) : undefined,
+      property_id:   _activeInspection ? _activeInspection.property_id || null                             : undefined,
+      title,
+      summary,
+      findings:         ($('r-findings').value||'').trim(),
+      recommendations:  ($('r-recommendations').value||'').trim(),
+      materials_used:   ($('r-materials').value||'').trim() || undefined,
+      work_duration_min: parseInt($('r-duration').value)||undefined,
+      status
+    };
     try {
-      const body = {
-        report_type:   _type,
-        alert_id:      _activeAlert      ? (_activeAlert.alert_id      || String(_activeAlert.id))           : undefined,
-        inspection_id: _activeInspection ? (_activeInspection.inspection_id || String(_activeInspection.id)) : undefined,
-        property_id:   _activeInspection ? _activeInspection.property_id || null                             : undefined,
-        title,
-        summary,
-        findings:         ($('r-findings').value||'').trim(),
-        recommendations:  ($('r-recommendations').value||'').trim(),
-        materials_used:   ($('r-materials').value||'').trim() || undefined,
-        work_duration_min: parseInt($('r-duration').value)||undefined,
-        status
-      };
+      // Offline up-front: save on device, don't even attempt the network.
+      if (!navigator.onLine) { return savedOffline(); }
       const res = await api('POST', '/field-reports', body);
+      // The SW returns {success:false, error:'Offline…'} with 503 when the
+      // network is unreachable — treat that as an offline save, not a failure.
+      if (!res.success && /offline/i.test(res.error || '')) { return savedOffline(); }
       if (!res.success) throw new Error(res.error || 'Server error');
       msg.className = 'sh-msg success';
       msg.textContent = status === 'submitted' ? '✓ Report submitted to Ops.' : '✓ Draft saved.';
@@ -2239,10 +2285,24 @@ const ReportWriter = (function() {
         toast(status === 'submitted' ? 'Report submitted' : 'Draft saved', 'ok');
       }, 1300);
     } catch(e) {
+      // Network-class failure → queue it rather than lose the technician's work.
+      if (!navigator.onLine || /network|failed to fetch|load failed/i.test(e.message || '')) { return savedOffline(); }
       msg.className = 'sh-msg error';
       msg.textContent = e.message || 'Save failed. Check your connection.';
       db.disabled = sb.disabled = false;
       sb.textContent = 'Submit Report';
+    }
+
+    function savedOffline() {
+      queueDraft(body);
+      msg.className = 'sh-msg success';
+      msg.textContent = '✓ Saved on this device — it will sync automatically when you\'re back online.';
+      setTimeout(() => {
+        close();
+        db.disabled = sb.disabled = false;
+        sb.textContent = 'Submit Report';
+        toast('Saved offline — will sync later', 'ok');
+      }, 1500);
     }
   }
 
