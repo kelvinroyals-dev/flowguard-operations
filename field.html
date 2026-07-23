@@ -2619,15 +2619,22 @@ function acquireGPS() {
     if(!isDesktop()){ S.gpsLat=0; S.gpsLng=0; S.gpsAcc=null; if((S.onsiteStep||0)===0 && (S.alert||S.inspection)) renderGPSCheckin(); }
     gpsPaint();
   };
-  // Fast first fix: accept a recent cached position instantly (maximumAge) at coarse
-  // accuracy so we don't block on a cold GPS chip; then one high-accuracy attempt.
   try {
-    navigator.geolocation.getCurrentPosition(onOk, () => {
-      navigator.geolocation.getCurrentPosition(onOk, onFail, {enableHighAccuracy:true, timeout:15000, maximumAge:60000});
-    }, {enableHighAccuracy:false, timeout:7000, maximumAge:600000});
-    // Background refine so accuracy tightens without blocking.
-    if(!S._gpsWatch && navigator.geolocation.watchPosition){
-      S._gpsWatch = navigator.geolocation.watchPosition(onOk, ()=>{}, {enableHighAccuracy:true, timeout:25000, maximumAge:30000});
+    if(canFallback){
+      // Desktop overview map: ONE coarse request (accepts a cached fix), and on any
+      // failure fall back to network/IP. No high-accuracy retry, no continuous watch —
+      // a laptop has no GPS radio, so those only spam CoreLocation with
+      // kCLErrorLocationUnknown and drain battery for a dot we don't need precise.
+      navigator.geolocation.getCurrentPosition(onOk, onFail, {enableHighAccuracy:false, timeout:8000, maximumAge:600000});
+    } else {
+      // On-site check-in: precision matters. Fast coarse first, then high accuracy, plus
+      // a background watch to tighten the fix while the agent is on site.
+      navigator.geolocation.getCurrentPosition(onOk, () => {
+        navigator.geolocation.getCurrentPosition(onOk, onFail, {enableHighAccuracy:true, timeout:15000, maximumAge:60000});
+      }, {enableHighAccuracy:false, timeout:7000, maximumAge:600000});
+      if(!S._gpsWatch && navigator.geolocation.watchPosition){
+        S._gpsWatch = navigator.geolocation.watchPosition(onOk, ()=>{}, {enableHighAccuracy:true, timeout:25000, maximumAge:30000});
+      }
     }
   } catch(e){ S.gpsState='unavailable'; gpsPaint(); }
 }
