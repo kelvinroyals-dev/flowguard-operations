@@ -286,12 +286,29 @@ const OpsBilling = (function () {
          ${gap('No contracts table exists. The closest real record is the <span class="mono">service_quotes</span> row above — a quote is not a signed contract.')}`
       : `${OpsModal.emptyState('', 'No linked quote', 'No <span class="mono">service_quotes</span> row for this property.')}${gap('No contracts table exists anywhere in the schema.')}`;
 
+    const payments = Array.isArray(inv.payments) ? inv.payments : [];
+    const paidTotal = inv.paid_total != null ? Number(inv.paid_total) : paidSoFar;
+    const ledgerBal = Math.max(0, total - paidTotal);
+    const prettyMethod = m => String(m || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || '—';
+    const payChip = s => {
+      const m = { successful: ['var(--ok)', 'Successful'], pending: ['var(--warn)', 'Pending'], processing: ['var(--warn)', 'Processing'], failed: ['var(--err)', 'Failed'], refunded: ['var(--ink-3)', 'Refunded'] }[String(s || '').toLowerCase()] || ['var(--ink-3)', esc(s || '—')];
+      return `<span style="color:${m[0]};font-weight:600;">${m[1]}</span>`;
+    };
+    const ledgerTbl = payments.length
+      ? `<table class="bl-tbl"><thead><tr><th>Date</th><th>Method</th><th>Reference</th><th class="num">Amount</th><th>Status</th></tr></thead>
+         <tbody>${payments.map(p => `<tr>
+           <td>${fmtDate(p.payment_date || p.created_at)}</td>
+           <td>${esc(prettyMethod(p.payment_method))}</td>
+           <td class="lv-mono">${esc(p.transaction_reference || '—')}</td>
+           <td class="num">${NGN(p.amount)}</td>
+           <td>${payChip(p.status)}</td></tr>`).join('')}</tbody></table>`
+      : OpsModal.emptyState('', 'No payments recorded', 'Nothing in the <span class="mono">payments</span> ledger for this invoice yet.' + (canManage() ? ' Use <b>Record payment</b> to log one.' : ''));
+
     const paymentsBody = `
       ${F('Total amount', NGN(total))}
-      ${F('Paid so far (implied)', NGN(paidSoFar))}
-      ${F('Balance due', `<b style="color:${balance > 0 ? 'var(--err)' : 'var(--ok)'}">${NGN(balance)}</b>`)}
-      ${F('Payment method', '<span style="color:var(--ink-4);">Not captured — no column exists</span>')}
-      ${gap('No payment-ledger table — only the current <span class="mono">balance_due</span> / <span class="mono">payment_status</span> snapshot. Individual installments aren\'t recoverable.')}`;
+      ${F('Paid to date', `<b style="color:var(--ok)">${NGN(paidTotal)}</b>`)}
+      ${F('Balance due', `<b style="color:${ledgerBal > 0 ? 'var(--err)' : 'var(--ok)'}">${NGN(ledgerBal)}</b>`)}
+      <div style="margin-top:14px;">${ledgerTbl}</div>`;
 
     const sidebar = `
       <div class="fgd-card"><div class="fgd-card-head"><h2>Quick facts</h2></div>
@@ -320,7 +337,7 @@ const OpsBilling = (function () {
         { id: 'details', title: 'Invoice details', meta: 'invoices', body: detailsBody },
         { id: 'services', title: 'Services', meta: 'invoices.line_items (jsonb)', body: servicesBody },
         { id: 'contract', title: 'Contract', meta: 'service_quotes', body: contractBody },
-        { id: 'payments', title: 'Payments', meta: 'no ledger table', body: paymentsBody },
+        { id: 'payments', title: 'Payments', meta: 'payments ledger', body: paymentsBody },
         { id: 'credits', title: 'Credit notes', body: OpsModal.emptyState('', 'No credit notes table exists', 'Nothing in the schema stores adjustments, refunds, or waived charges. This tab needs new schema.') },
         { id: 'attachments', title: 'Attachments', body: OpsModal.emptyState('', 'No attachments table exists', 'A signed quote PDF or proof-of-payment can\'t be attached until file storage is added — the same gap as every module.') },
       ],
@@ -346,18 +363,53 @@ const OpsBilling = (function () {
     } catch (err) { OpsModal.toast('Failed to download PDF: ' + err.message, 'critical'); }
   }
 
-  function recordPayment(id) {
-    OpsModal.confirm(
-      `There's no payment-ledger table, so a partial payment can't be itemized. Recording payment here settles the invoice in full — balance due goes to ₦0 and status becomes paid. Continue?`,
-      async function () {
-        OpsModal.setLoading('modal-confirm-btn', true);
-        try {
-          await OpsModal.apiPost('/billing/invoices/' + id + '/mark-paid', {});
-          OpsModal.close();
-          OpsModal.toast('Invoice settled', 'nominal');
-          open(id);
-        } catch (err) { OpsModal.toast('Failed: ' + err.message, 'critical'); OpsModal.setLoading('modal-confirm-btn', false); }
-      });
+  async function recordPayment(id) {
+    if (!canManage()) return OpsModal.toast('You do not have permission to record payments', 'critical');
+    let inv;
+    try { inv = (await OpsModal.apiGet('/billing/invoices/' + id)).data; }
+    catch (err) { return OpsModal.toast('Failed to load invoice: ' + err.message, 'critical'); }
+    const total = Number(inv.total_amount) || 0;
+    const paid = inv.paid_total != null ? Number(inv.paid_total) : Math.max(0, total - (Number(inv.balance_due) || 0));
+    const bal = Math.max(0, total - paid);
+    const today = new Date().toISOString().slice(0, 10);
+    const body = `
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div style="font-size:var(--fs-sm);color:var(--ink-3);line-height:1.5;">Outstanding balance <b style="color:var(--ink);">${NGN(bal)}</b> of ${NGN(total)}. This writes a row to the <span class="mono">payments</span> ledger and recomputes the balance — partial payments are allowed.</div>
+        <label class="bl-field"><div class="bl-field-label">Amount (₦)</div><input class="bl-input" id="rp-amount" type="number" min="0" step="0.01" value="${bal || ''}"></label>
+        <label class="bl-field"><div class="bl-field-label">Method</div>
+          <select class="bl-input" id="rp-method">
+            <option value="bank_transfer">Bank transfer</option>
+            <option value="card">Card</option>
+            <option value="cash">Cash</option>
+            <option value="cheque">Cheque</option>
+            <option value="pos">POS</option>
+            <option value="other">Other</option>
+          </select></label>
+        <label class="bl-field"><div class="bl-field-label">Reference <span class="sub">optional</span></div><input class="bl-input" id="rp-ref" placeholder="Bank / transaction reference"></label>
+        <label class="bl-field" style="margin-bottom:0;"><div class="bl-field-label">Payment date</div><input class="bl-input" id="rp-date" type="date" value="${today}"></label>
+      </div>`;
+    OpsModal.open('Record payment — ' + id, body, [
+      { label: 'Cancel', class: 'btn-ghost', onclick: 'OpsModal.close()' },
+      { label: 'Record payment', class: 'btn-primary', onclick: `OpsBilling._submitPayment('${id}')`, id: 'rp-submit' },
+    ]);
+  }
+
+  async function _submitPayment(id) {
+    const amount = Number((document.getElementById('rp-amount') || {}).value);
+    if (!(amount > 0)) return OpsModal.toast('Enter a positive amount', 'critical');
+    const payload = {
+      amount,
+      payment_method: (document.getElementById('rp-method') || {}).value || 'bank_transfer',
+      transaction_reference: (document.getElementById('rp-ref') || {}).value || '',
+      payment_date: (document.getElementById('rp-date') || {}).value || undefined,
+    };
+    OpsModal.setLoading('rp-submit', true);
+    try {
+      await OpsModal.apiPost('/billing/invoices/' + id + '/payments', payload);
+      OpsModal.close();
+      OpsModal.toast('Payment recorded', 'nominal');
+      open(id);
+    } catch (err) { OpsModal.toast('Failed: ' + err.message, 'critical'); OpsModal.setLoading('rp-submit', false); }
   }
 
   // ────────────────────────────────────────────────── CREATE / EDIT
@@ -602,6 +654,6 @@ const OpsBilling = (function () {
 
   return {
     render, setFilter, search, open, back, exportCsv,
-    openCreate, openEdit, onProp, addItem, removeItem, editItem, recalc, confirmSave, recordPayment, downloadPdf, sendInvoiceEmail,
+    openCreate, openEdit, onProp, addItem, removeItem, editItem, recalc, confirmSave, recordPayment, _submitPayment, downloadPdf, sendInvoiceEmail,
   };
 })();
