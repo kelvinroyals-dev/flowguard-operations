@@ -1447,9 +1447,9 @@
         <button id="fdn-notifications" onclick="deskNav('notifications')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>Notifications</button>
       </nav>
       <div class="fd-side-foot">
-        <div class="fd-online">
-          <div class="dot" id="fd-online-dot"></div>
-          <div><b id="fd-online-lbl">You're Online</b><small id="fd-gps-lbl">GPS acquiring…</small></div>
+        <div class="fd-online" id="fd-online-chip" onclick="deskRequestGps()" style="cursor:pointer" title="Use my location">
+          <div class="dot off" id="fd-online-dot"></div>
+          <div><b id="fd-online-lbl">You're Online</b><small id="fd-gps-lbl">Tap to enable location</small></div>
           <span class="gps"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span>
         </div>
         <div class="fd-help">
@@ -2078,11 +2078,12 @@ function deskRefresh(){
   // Nav count + bell
   const pending=alerts.length+insp.length;
   const nc=$('fd-nav-count'); if(nc){ nc.textContent=pending; nc.style.display=pending>0?'':'none'; }
-  // Online / GPS labels
-  const od=$('fd-online-dot'), ol=$('fd-online-lbl'), gl=$('fd-gps-lbl');
-  if(od){ od.className='dot'+(navigator.onLine?'':' off'); }
+  // Online / GPS labels — GPS wording is driven by S.gpsState (gpsLabelText), so it
+  // never repaints a stale "acquiring…" after a request has actually finished.
+  const ol=$('fd-online-lbl'), gl=$('fd-gps-lbl');
   if(ol){ ol.textContent=navigator.onLine?"You're Online":'Offline'; }
-  if(gl){ gl.textContent = S.gpsLat ? ('GPS ±'+(S.gpsAcc?Math.round(S.gpsAcc)+'m':'locked')) : 'GPS acquiring…'; }
+  if(gl){ gl.textContent = gpsLabelText(); }
+  { const od=$('fd-online-dot'); if(od) od.className='dot'+((navigator.onLine && S.gpsState==='ok')?'':' off'); }
   // KPIs
   deskKPIs();
   // Dashboard cards
@@ -2550,32 +2551,66 @@ function renderGPSCheckin() {
   if(!S.gpsLat) acquireGPS();
 }
 
+// S.gpsState: 'locating' | 'ok' | 'denied' | 'unavailable' | 'timeout' | 'insecure' | 'unsupported'
 function acquireGPS() {
-  if(!navigator.geolocation) return;
+  if(!('geolocation' in navigator)){ S.gpsState='unsupported'; gpsPaint(); return; }
+  // Geolocation only works in a secure context (HTTPS or localhost). On plain HTTP
+  // the browser blocks it silently — surface that instead of spinning forever.
+  if(window.isSecureContext===false){ S.gpsState='insecure'; gpsPaint(); return; }
+  S.gpsState='locating'; gpsPaint();
+
   const onOk = pos => {
     S.gpsLat=pos.coords.latitude; S.gpsLng=pos.coords.longitude; S.gpsAcc=pos.coords.accuracy;
+    S.gpsState='ok';
     if((S.onsiteStep||0)===0 && $('onsite-area')) renderGPSCheckin();
-    if(isDesktop()) deskGpsResolved();
+    gpsPaint();
   };
-  const onFail = () => {
-    // On mobile the check-in needs a value to enable manual confirm; on desktop we
-    // leave it null so the map/sidebar just say "unavailable" rather than 0,0.
+  const onFail = err => {
+    const code = err && err.code;
+    S.gpsState = code===1 ? 'denied' : code===3 ? 'timeout' : 'unavailable';
+    // Mobile check-in still needs a value to enable manual confirm.
     if(!isDesktop()){ S.gpsLat=0; S.gpsLng=0; S.gpsAcc=null; if((S.onsiteStep||0)===0) renderGPSCheckin(); }
-    else deskGpsResolved();
+    gpsPaint();
   };
-  // Fast first fix — accept a recent cached position instantly (maximumAge) at coarse
-  // accuracy so we don't block on a cold GPS chip; then try once at high accuracy.
-  navigator.geolocation.getCurrentPosition(onOk, () => {
-    navigator.geolocation.getCurrentPosition(onOk, onFail, {enableHighAccuracy:true, timeout:12000, maximumAge:60000});
-  }, {enableHighAccuracy:false, timeout:6000, maximumAge:300000});
-  // Keep refining in the background so accuracy tightens without blocking the UI.
-  if(!S._gpsWatch && navigator.geolocation.watchPosition){
-    try{ S._gpsWatch = navigator.geolocation.watchPosition(onOk, ()=>{}, {enableHighAccuracy:true, timeout:20000, maximumAge:30000}); }catch(_){}
+  // Fast first fix: accept a recent cached position instantly (maximumAge) at coarse
+  // accuracy so we don't block on a cold GPS chip; then one high-accuracy attempt.
+  try {
+    navigator.geolocation.getCurrentPosition(onOk, () => {
+      navigator.geolocation.getCurrentPosition(onOk, onFail, {enableHighAccuracy:true, timeout:15000, maximumAge:60000});
+    }, {enableHighAccuracy:false, timeout:7000, maximumAge:600000});
+    // Background refine so accuracy tightens without blocking.
+    if(!S._gpsWatch && navigator.geolocation.watchPosition){
+      S._gpsWatch = navigator.geolocation.watchPosition(onOk, ()=>{}, {enableHighAccuracy:true, timeout:25000, maximumAge:30000});
+    }
+  } catch(e){ S.gpsState='unavailable'; gpsPaint(); }
+}
+
+// One place that decides the GPS wording, everywhere. Never lies "acquiring" once
+// a request has finished.
+function gpsLabelText(){
+  switch(S.gpsState){
+    case 'ok':          return S.gpsLat ? ('GPS ±'+(S.gpsAcc?Math.round(S.gpsAcc)+'m':'locked')) : 'Location set';
+    case 'locating':    return 'Locating…';
+    case 'denied':      return 'Location blocked — tap to allow';
+    case 'timeout':     return 'Timed out — tap to retry';
+    case 'unavailable': return 'Unavailable — tap to retry';
+    case 'insecure':    return 'Needs HTTPS to locate';
+    case 'unsupported': return 'Location not supported';
+    default:            return 'Tap to enable location';
   }
 }
-function deskGpsResolved(){
-  const gl=$('fd-gps-lbl'); if(gl) gl.textContent = S.gpsLat ? ('GPS ±'+(S.gpsAcc?Math.round(S.gpsAcc)+'m':'locked')) : 'Location unavailable';
+function gpsPaint(){
+  if(!isDesktop()) return;
+  const gl=$('fd-gps-lbl'); if(gl) gl.textContent = gpsLabelText();
+  const od=$('fd-online-dot'); if(od) od.className = 'dot' + (S.gpsState==='ok' ? '' : ' off');
   try{ deskMap(S.allAlerts||[], S.allInspections||[]); }catch(_){}
+}
+// User-gesture retry — most reliable way to (re)trigger the permission prompt,
+// exactly like tapping "use my location" in a maps app.
+function deskRequestGps(){
+  if(S.gpsState==='ok') return;
+  S._gpsKick=true; if(S._gpsWatch){ try{navigator.geolocation.clearWatch(S._gpsWatch);}catch(_){} S._gpsWatch=null; }
+  acquireGPS();
 }
 
 function confirmGPS() {

@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME  = 'fg-field-v11';
+const CACHE_NAME  = 'fg-field-v12';
 const SYNC_TAG    = 'fg-report-sync';
 const DRAFT_KEY   = 'fg_draft_queue';
 
