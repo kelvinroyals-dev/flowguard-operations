@@ -1504,6 +1504,7 @@
                   <div><span class="sw" style="background:#2f6bff"></span>Your Location</div>
                 </div>
               </div>
+              <div id="fd-map-note" style="font-size:.7rem;color:var(--l-ink3);margin-top:9px;"></div>
             </div>
           </div>
           <div class="fd-grid-3">
@@ -1924,9 +1925,17 @@ async function initDashboard() {
   if(S.user) $('hdr-name').textContent=S.user.fullName||S.user.email;
   initWS(); await loadData(); checkPush(); registerSW();
   updateOfflineUI(); flushDrafts();   // surface offline state + sync anything saved on this device
+  // Safety-net poll so the desktop dashboard stays fresh even if a socket event is
+  // missed. Skips while hidden or already loading; sockets do the instant updates.
+  clearInterval(S._poll);
+  S._poll = setInterval(() => { if(S.token && !document.hidden && !S._loading) loadData(); }, 60000);
+  clearInterval(S._tick);
+  S._tick = setInterval(() => { if(isDesktop()) deskSync(); }, 30000);   // keep "last sync" relative time live
 }
 
 async function loadData() {
+  if(S._loading) return;      // avoid overlapping poll + socket refreshes
+  S._loading = true;
   renderLoading();
   try {
     const tRes=await api('GET','/teams');
@@ -1962,10 +1971,12 @@ async function loadData() {
         } catch(_) { S.needsReport = []; }
       }
     }
+    S._lastSync = Date.now();     // real sync time, surfaced in the desktop header
     renderDashboard();
     _deskDoneToday=null;           // recompute "completed today" on each load
     if(isDesktop()) deskRefresh();
   } catch(err){console.error('loadData:',err);renderError(err.message);}
+  finally { S._loading = false; }
 }
 
 /* ══════════════════════════════════════
@@ -2173,7 +2184,7 @@ function deskWoRow(t){
   const cls=st==='completed'?'done':st==='in_progress'?'prog':'sched';
   const chip=st==='completed'?'<span class="fd-chip stat-done">Completed</span>':st==='in_progress'?'<span class="fd-chip stat-prog">In progress</span>':`<span class="fd-chip low">${escHtml((t.status||'Scheduled'))}</span>`;
   const title=escHtml(t.work_type?String(t.work_type).replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()):(t.ticket_id||'Work order'));
-  return `<div class="fd-wo"><div class="fd-wo-top"><div><div class="fd-wo-id">${escHtml(t.ticket_id||'—')}</div><div class="fd-wo-sub">${title}${t.property_name?' · '+escHtml(t.property_name):''}</div></div><div class="fd-wo-r">${chip}<span class="fd-wo-pct">${pct}%</span></div></div><div class="fd-bar"><i class="${cls}" style="width:${pct}%"></i></div></div>`;
+  return `<div class="fd-wo"><div class="fd-wo-top"><div><div class="fd-wo-id">${escHtml(t.ticket_id||'—')}</div><div class="fd-wo-sub">${title}${t.property_name?' · '+escHtml(t.property_name):''}</div></div><div class="fd-wo-r">${chip}<span class="fd-wo-pct" title="Estimated from job status — not a measured percentage">~${pct}%</span></div></div><div class="fd-bar"><i class="${cls}" style="width:${pct}%"></i></div></div>`;
 }
 
 async function deskKPIs(){
@@ -2217,9 +2228,10 @@ function deskMap(alerts, insp){
       L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(_deskMap); }
     _deskMarkers.forEach(m=>_deskMap.removeLayer(m)); _deskMarkers=[];
     const pts=[];
+    let missing=0;
     const me = S.gpsLat ? [S.gpsLat, S.gpsLng] : null;
     const add=(o,color,label)=>{
-      const c=deskCoord(o); if(!c) return;
+      const c=deskCoord(o); if(!c){ missing++; return; }
       const dest=c[0]+','+c[1];
       // Real turn-by-turn happens in the device's maps app; from current location if we have it.
       const dir = me ? `https://www.google.com/maps/dir/?api=1&origin=${me[0]},${me[1]}&destination=${dest}&travelmode=driving`
@@ -2237,11 +2249,22 @@ function deskMap(alerts, insp){
     if(pts.length===1) _deskMap.setView(pts[0],14);
     else if(pts.length>1) _deskMap.fitBounds(pts,{padding:[40,40],maxZoom:14});
     setTimeout(()=>{try{_deskMap.invalidateSize();}catch(_){}} ,120);
+    // Honest hint: some jobs' properties have no coordinates set, so they can't be plotted.
+    const note=$('fd-map-note');
+    if(note) note.textContent = missing>0 ? (missing+' job'+(missing>1?'s':'')+' not shown — property location not set yet.') : '';
     const fl=$('fd-map-full'); if(fl&&!fl._w){ fl._w=1; fl.addEventListener('click',e=>{e.preventDefault(); try{_deskMap.invalidateSize();}catch(_){}}); }
   }catch(e){ /* leave host as-is */ }
 }
 
-function deskSync(){ const e=$('fd-sync-lbl'); if(e) e.textContent='just now'; }
+function relTime(t){
+  if(!t) return 'just now';
+  const s=Math.floor((Date.now()-t)/1000);
+  if(s<45) return 'just now';
+  if(s<90) return '1 min ago';
+  if(s<3600) return Math.floor(s/60)+' min ago';
+  return new Date(t).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+function deskSync(){ const e=$('fd-sync-lbl'); if(e) e.textContent=relTime(S._lastSync); }
 async function deskBell(){
   try{ const r=await api('GET','/notifications'); const raw=(r&&r.data)||[]; const arr=Array.isArray(raw)?raw:(raw.items||[]);
     const unread=arr.filter(n=>!n.read&&!n.is_read).length; const b=$('fd-bell-badge'); if(b){ b.textContent=unread; b.style.display=unread>0?'':'none'; }
@@ -2504,6 +2527,9 @@ function openOnSite(kind, id) {
     S.alert      = null;
   }
   S.onsiteStep = 0; // 0=GPS, 1=step1, 2=step2, 3=step3
+  // If the dashboard had only an approximate (IP) location, discard it — a check-in
+  // needs a real GPS fix, which renderGPSCheckin will now re-acquire.
+  if(S.gpsApprox){ S.gpsLat=null; S.gpsLng=null; S.gpsAcc=null; S.gpsApprox=false; S.gpsState='idle'; }
   renderOnSitePanel();
   switchPanel('onsite');
 }
@@ -2559,6 +2585,9 @@ function acquireGPS() {
   // the browser blocks it silently — surface that instead of spinning forever.
   if(window.isSecureContext===false){ S.gpsState='insecure'; gpsPaint(); return; }
   S.gpsState='locating'; gpsPaint();
+  // Coarse network/IP location is ONLY acceptable for the desktop overview map. An
+  // on-site check-in must be a real GPS fix — never an IP guess that's miles off.
+  const canFallback = isDesktop() && !(S.alert||S.inspection);
 
   // Watchdog: some browsers never fire the success/error callback while a
   // permission prompt sits unanswered, or while a laptop does a slow Wi-Fi/IP
@@ -2567,8 +2596,8 @@ function acquireGPS() {
   clearTimeout(S._gpsWatchdog);
   S._gpsWatchdog = setTimeout(async () => {
     if(S.gpsState==='locating'){
-      // Precise lookup is hanging — try coarse network location so the map still works.
-      const ok = await gpsIpFallback();
+      // Precise lookup is hanging — try coarse network location, desktop map only.
+      const ok = canFallback ? await gpsIpFallback() : false;
       if(!ok && S.gpsState==='locating'){ S.gpsState='timeout'; gpsPaint(); }
     }
   }, 12000);
@@ -2583,8 +2612,9 @@ function acquireGPS() {
   const onFail = async err => {
     clearTimeout(S._gpsWatchdog);
     const code = err && err.code;
-    // Denied is a user choice — respect it. For timeout/unavailable, try coarse IP.
-    if(code!==1){ if(await gpsIpFallback()) return; }
+    // Denied is a user choice — respect it. For timeout/unavailable, try coarse IP
+    // ONLY on the desktop map (never as a mobile check-in coordinate).
+    if(code!==1 && canFallback){ if(await gpsIpFallback()) return; }
     S.gpsState = code===1 ? 'denied' : code===3 ? 'timeout' : 'unavailable';
     if(!isDesktop()){ S.gpsLat=0; S.gpsLng=0; S.gpsAcc=null; if((S.onsiteStep||0)===0 && (S.alert||S.inspection)) renderGPSCheckin(); }
     gpsPaint();
@@ -2628,6 +2658,7 @@ function gpsPaint(){
 // unavailable. Fall back to a coarse network/IP location (city-level) so the map
 // still centres near the user, clearly flagged as approximate. No permission needed.
 async function gpsIpFallback(){
+  if(S.alert||S.inspection) return false;   // never approximate a real on-site check-in
   if(S.gpsLat) return true;
   for(const u of ['https://get.geojs.io/v1/ip/geo.json','https://ipapi.co/json/']){
     try{
@@ -3079,7 +3110,7 @@ function initWS(){
   socket.on('disconnect',()=>wsStatus('err'));
   socket.on('connect_error',()=>wsStatus('err'));
   socket.on('team:status',data=>{if(S.team&&data.team_id===S.team.team_id){S.team.status=data.status;loadData();}});
-  socket.on('alert:new',data=>{if(!S.team)return;if(data.assigned_team===S.team.name){$('njb-text').textContent=`New job dispatched: ${data.alert_type||'Drainage Alert'}`;$('new-job-banner').classList.add('show');}});
+  socket.on('alert:new',data=>{if(!S.team)return;if(data.assigned_team===S.team.name){$('njb-text').textContent=`New job dispatched: ${data.alert_type||'Drainage Alert'}`;$('new-job-banner').classList.add('show');if(isDesktop())loadData();}});
   socket.on('alert:resolved',()=>loadData());
 }
 on('njb-refresh','click',()=>{$('new-job-banner').classList.remove('show');loadData();});
@@ -3093,6 +3124,7 @@ async function registerSW(){if(!('serviceWorker'in navigator))return;try{S.swReg
 
 /* ── Logout ── */
 on('btn-logout','click',()=>{
+  clearInterval(S._poll); clearInterval(S._tick); if(S._gpsWatch){try{navigator.geolocation.clearWatch(S._gpsWatch);}catch(_){}}
   if(S.socket)S.socket.disconnect();
   clearSession();
   S={token:null,user:null,team:null,alert:null,inspection:null,allAlerts:[],allInspections:[],socket:null,swReg:null,gpsLat:null,gpsLng:null,gpsAcc:null,onsiteStep:0,sensorsLoaded:false};
