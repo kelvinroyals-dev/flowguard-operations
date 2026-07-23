@@ -2233,7 +2233,7 @@ function deskMap(alerts, insp){
     (alerts||[]).forEach(a=>add(a, ['critical','high'].includes((a.severity||'').toLowerCase())?'#e5483c':'#f5a623', a.alert_type||a.site_name||'Incident'));
     (insp||[]).forEach(i=>add(i,'#f5a623', i.property_name||'Inspection'));
     (S.needsReport||[]).forEach(i=>add(i,'#1f9d5b', i.property_name||'Inspection'));
-    if(me){ const mk=L.circleMarker(me,{radius:9,color:'#fff',weight:3,fillColor:'#2f6bff',fillOpacity:1}).addTo(_deskMap).bindPopup('You are here'); _deskMarkers.push(mk); pts.push(me); }
+    if(me){ const mk=L.circleMarker(me,{radius:9,color:'#fff',weight:3,fillColor:'#2f6bff',fillOpacity:1}).addTo(_deskMap).bindPopup(S.gpsApprox?'Approx location (network)':'You are here'); _deskMarkers.push(mk); pts.push(me); }
     if(pts.length===1) _deskMap.setView(pts[0],14);
     else if(pts.length>1) _deskMap.fitBounds(pts,{padding:[40,40],maxZoom:14});
     setTimeout(()=>{try{_deskMap.invalidateSize();}catch(_){}} ,120);
@@ -2564,22 +2564,27 @@ function acquireGPS() {
   // lookup — the `timeout` option isn't honoured in that window. So we guarantee
   // the label resolves instead of spinning on "Locating…" forever.
   clearTimeout(S._gpsWatchdog);
-  S._gpsWatchdog = setTimeout(() => {
-    if(S.gpsState==='locating'){ S.gpsState='timeout'; gpsPaint(); }
-  }, 20000);
+  S._gpsWatchdog = setTimeout(async () => {
+    if(S.gpsState==='locating'){
+      // Precise lookup is hanging — try coarse network location so the map still works.
+      const ok = await gpsIpFallback();
+      if(!ok && S.gpsState==='locating'){ S.gpsState='timeout'; gpsPaint(); }
+    }
+  }, 12000);
 
   const onOk = pos => {
     clearTimeout(S._gpsWatchdog);
-    S.gpsLat=pos.coords.latitude; S.gpsLng=pos.coords.longitude; S.gpsAcc=pos.coords.accuracy;
+    S.gpsLat=pos.coords.latitude; S.gpsLng=pos.coords.longitude; S.gpsAcc=pos.coords.accuracy; S.gpsApprox=false;
     S.gpsState='ok';
     if((S.onsiteStep||0)===0 && $('onsite-area')) renderGPSCheckin();
     gpsPaint();
   };
-  const onFail = err => {
+  const onFail = async err => {
     clearTimeout(S._gpsWatchdog);
     const code = err && err.code;
+    // Denied is a user choice — respect it. For timeout/unavailable, try coarse IP.
+    if(code!==1){ if(await gpsIpFallback()) return; }
     S.gpsState = code===1 ? 'denied' : code===3 ? 'timeout' : 'unavailable';
-    // Mobile check-in still needs a value to enable manual confirm.
     if(!isDesktop()){ S.gpsLat=0; S.gpsLng=0; S.gpsAcc=null; if((S.onsiteStep||0)===0) renderGPSCheckin(); }
     gpsPaint();
   };
@@ -2600,7 +2605,7 @@ function acquireGPS() {
 // a request has finished.
 function gpsLabelText(){
   switch(S.gpsState){
-    case 'ok':          return S.gpsLat ? ('GPS ±'+(S.gpsAcc?Math.round(S.gpsAcc)+'m':'locked')) : 'Location set';
+    case 'ok':          return S.gpsApprox ? 'Approx area (network)' : (S.gpsLat ? ('GPS ±'+(S.gpsAcc?Math.round(S.gpsAcc)+'m':'locked')) : 'Location set');
     case 'locating':    return 'Locating…';
     case 'denied':      return 'Location blocked — tap to allow';
     case 'timeout':     return 'Timed out — tap to retry';
@@ -2610,11 +2615,27 @@ function gpsLabelText(){
     default:            return 'Tap to enable location';
   }
 }
+// Paint the desktop chip whenever GPS state changes — NOT gated on isDesktop(), so a
+// fix that arrives while the code is in a mobile context still updates the (hidden)
+// desktop chip, and it's correct the moment the user is on a wide screen.
 function gpsPaint(){
-  if(!isDesktop()) return;
   const gl=$('fd-gps-lbl'); if(gl) gl.textContent = gpsLabelText();
   const od=$('fd-online-dot'); if(od) od.className = 'dot' + (S.gpsState==='ok' ? '' : ' off');
-  try{ deskMap(S.allAlerts||[], S.allInspections||[]); }catch(_){}
+  if(isDesktop()){ try{ deskMap(S.allAlerts||[], S.allInspections||[]); }catch(_){} }
+}
+// Desktop laptops have no GPS radio; the browser's precise lookup can hang or be
+// unavailable. Fall back to a coarse network/IP location (city-level) so the map
+// still centres near the user, clearly flagged as approximate. No permission needed.
+async function gpsIpFallback(){
+  if(S.gpsLat) return true;
+  for(const u of ['https://get.geojs.io/v1/ip/geo.json','https://ipapi.co/json/']){
+    try{
+      const r=await fetch(u,{cache:'no-store'}); if(!r.ok) continue;
+      const j=await r.json(); const lat=Number(j.latitude), lng=Number(j.longitude);
+      if(isFinite(lat)&&isFinite(lng)&&(lat||lng)){ S.gpsLat=lat; S.gpsLng=lng; S.gpsAcc=null; S.gpsApprox=true; S.gpsState='ok'; gpsPaint(); return true; }
+    }catch(_){}
+  }
+  return false;
 }
 // User-gesture retry — most reliable way to (re)trigger the permission prompt,
 // exactly like tapping "use my location" in a maps app.
