@@ -1293,6 +1293,23 @@
         background:#fff; color:#0f2430; border:1px solid #e9eef2; border-radius:10px; padding:9px 14px;
         font-size:.8rem; font-weight:700; box-shadow:0 4px 14px rgba(0,0,0,.12); }
       #screen-dash.active.fdesk-job #fd-job-back { display:inline-flex; }
+
+      /* Report / complete / backup sheets recolored to the light system on desktop.
+         One submit path (ReportWriter) → identical record; only the skin changes. */
+      #sheet-report .sh-panel, #sheet-complete .sh-panel, #sheet-backup .sh-panel {
+        --deep:#ffffff; --navy:#ffffff; --mid:#f4f6f8; --raised:#eef2f5;
+        --ink:#0f2430; --ink-2:#5b7283; --ink-3:#93a6b2; --ink-4:#b7c4cd;
+        --glass:#f4f6f8; --glass-b:#e9eef2;
+        background:#ffffff; color:#0f2430; border-top:1px solid #e9eef2;
+      }
+      #sheet-report .rfield-input, #sheet-report .rfield-ta,
+      #sheet-complete .sh-textarea, #sheet-backup .sh-textarea {
+        background:#f7f9fb; border:1px solid #e1e8ee; color:#0f2430;
+      }
+      #sheet-report .rtype-pill { background:#f2f5f8; color:#5b7283; border:1px solid #e1e8ee; }
+      #sheet-report .sh-cancel, #sheet-complete .sh-cancel, #sheet-backup .sh-cancel {
+        background:#f2f5f8; color:#0f2430; border:1px solid #e1e8ee;
+      }
     }
   </style>
 </head>
@@ -1459,8 +1476,8 @@
             <div>Last sync<b id="fd-sync-lbl">just now</b></div>
           </div>
           <div class="fd-user">
-            <div class="av" id="fd-avatar">FE</div>
-            <div><b id="fd-user-name">Loading…</b><small id="fd-user-role">Field Engineer</small></div>
+            <div class="av" id="fd-avatar" onclick="deskShowProfile()" style="cursor:pointer" title="View profile">FE</div>
+            <div onclick="deskShowProfile()" style="cursor:pointer"><b id="fd-user-name">Loading…</b><small id="fd-user-role">Field Engineer</small></div>
             <button class="lo" id="fd-logout" aria-label="Sign out"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg></button>
           </div>
         </div>
@@ -1521,6 +1538,8 @@
         <div class="fd-view" id="fdv-incidents"><div class="fd-card"><div class="fd-card-hd"><h2>Incidents</h2></div><div id="fd-incidents-full"><div class="fd-empty">Loading…</div></div></div></div>
         <div class="fd-view" id="fdv-reports"><div class="fd-card"><div class="fd-card-hd"><h2>My Reports</h2></div><div id="fd-reports-full"><div class="fd-empty">Loading…</div></div></div></div>
         <div class="fd-view" id="fdv-notifications"><div class="fd-card"><div class="fd-card-hd"><h2>Notifications</h2></div><div id="fd-notif-full"><div class="fd-empty">Loading…</div></div></div></div>
+        <div class="fd-view" id="fdv-job"><div id="fd-job-body"></div></div>
+        <div class="fd-view" id="fdv-profile"><div id="fd-profile-body"></div></div>
       </div>
     </div>
   </div>
@@ -2111,7 +2130,7 @@ function deskAssignRows(list, full, limit){
     const site=isAlert?(job.site_name||job.client_name||job.property_name||'—'):(job.property_name||job.area_name||'—');
     const loc=[job.city,job.state].filter(Boolean).join(', ');
     const pri=deskPriority(job); const tl=deskTimeLabel(job);
-    return `<div class="fd-row ${pri==='HIGH'?'hi':''}" onclick="openOnSite('${kind}','${escHtml(String(id))}')">
+    return `<div class="fd-row ${pri==='HIGH'?'hi':''}" onclick="deskOpenJob('${kind}','${escHtml(String(id))}')">
       <div class="ric"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24">${deskIconFor(isAlert)}</svg></div>
       <div class="rb"><div class="rt">${escHtml(title)}${isAlert?'':' — '+escHtml(site)}</div><div class="rs">${escHtml(isAlert?site:(loc||'Inspection'))}${loc&&isAlert?' · '+escHtml(loc):''}</div></div>
       <div class="rr"><span class="fd-chip ${pri.toLowerCase()}">${pri}</span>${tl?`<span class="rtime">${escHtml(tl)}</span>`:''}<span class="chev"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span></div>
@@ -2128,8 +2147,7 @@ function deskInspRows(list, limit){
     const tl=deskTimeLabel(i);
     const ic=done?'<span class="ric" style="background:rgba(31,157,91,.1);color:#1f9d5b"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></span>'
       :'<span class="ric" style="background:rgba(245,166,35,.12);color:#b5790a"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span>';
-    const click=done?`writeReportFor('${id}')`:`openOnSite('inspection','${id}')`;
-    return `<div class="fd-row" onclick="${click}">${ic}<div class="rb"><div class="rt">${id||'Inspection'}</div><div class="rs">${site}${done?' · needs report':''}</div></div>${tl?`<div class="rr"><span class="rtime">${escHtml(tl)}</span></div>`:''}</div>`;
+    return `<div class="fd-row" onclick="deskOpenJob('inspection','${id}')">${ic}<div class="rb"><div class="rt">${id||'Inspection'}</div><div class="rs">${site}${done?' · needs report':''}</div></div>${tl?`<div class="rr"><span class="rtime">${escHtml(tl)}</span></div>`:''}</div>`;
   }).join('');
 }
 
@@ -2216,18 +2234,26 @@ async function deskBell(){
   }catch(_){}
 }
 
-function deskNav(view){
-  if(!isDesktop()) return;
-  ['dashboard','assignments','workorders','inspections','assets','incidents','reports','notifications'].forEach(v=>{
-    const b=$('fdn-'+v), p=$('fdv-'+v);
-    if(b) b.classList.toggle('active', v===view);
-    if(p) p.classList.toggle('active', v===view);
-  });
-  const titles={dashboard:'Field Engineer Portal',assignments:'My Assignments',workorders:'Work Orders',inspections:'Inspections',assets:'Assets & Sensors',incidents:'Incidents',reports:'My Reports',notifications:'Notifications'};
-  const t=$('fd-title'); if(t) t.textContent=titles[view]||'Field Engineer Portal';
-  $('fd-scroll') && ($('fd-scroll').scrollTop=0);
-  deskRenderView(view);
+// Canonical status vocabulary (field language). Mirrors backend statusVocab.js
+// so field wording maps to the same record every other portal reads.
+const FIELD_VOCAB={
+  inspection:{scheduled:'Scheduled',in_progress:'On site',completed:'Completed',cancelled:'Cancelled'},
+  report:{draft:'Draft',under_review:'Submitted',review:'Submitted',approved:'Approved',sent_to_client:'Sent',rejected:'Needs changes'},
+  alert:{active:'Open',dispatched:'Dispatched',acknowledged:'Acknowledged',resolved:'Resolved'},
+  work_order:{scheduled:'Scheduled',in_progress:'In progress',completed:'Completed',cancelled:'Cancelled'}
+};
+function vocab(entity,status){ const s=String(status||'').toLowerCase(); return (FIELD_VOCAB[entity]&&FIELD_VOCAB[entity][s])||(s?s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()):'—'); }
+
+const DESK_VIEWS=['dashboard','assignments','workorders','inspections','assets','incidents','reports','notifications','job','profile'];
+const DESK_TITLES={dashboard:'Field Engineer Portal',assignments:'My Assignments',workorders:'Work Orders',inspections:'Inspections',assets:'Assets & Sensors',incidents:'Incidents',reports:'My Reports',notifications:'Notifications',job:'Job detail',profile:'My Profile'};
+function deskActivate(view,titleOverride){
+  DESK_VIEWS.forEach(v=>{ const p=$('fdv-'+v); if(p) p.classList.toggle('active', v===view); });
+  // Sidebar highlight only applies to real nav items (job/profile aren't in the rail).
+  ['dashboard','assignments','workorders','inspections','assets','incidents','reports','notifications'].forEach(v=>{ const b=$('fdn-'+v); if(b) b.classList.toggle('active', v===view); });
+  const t=$('fd-title'); if(t) t.textContent=titleOverride||DESK_TITLES[view]||'Field Engineer Portal';
+  const sc=$('fd-scroll'); if(sc) sc.scrollTop=0;
 }
+function deskNav(view){ if(!isDesktop()) return; deskActivate(view); deskRenderView(view); }
 
 function deskRenderView(view){
   const alerts=S.allAlerts||[], insp=S.allInspections||[], needs=S.needsReport||[];
@@ -2281,6 +2307,110 @@ async function deskRenderNotifications(){
       : '<div class="fd-empty"><b>No notifications</b>You\'re all caught up.</div>';
     const unread=arr.filter(n=>!n.read&&!n.is_read).length; const b=$('fd-bell-badge'); if(b){ b.textContent=unread; b.style.display=unread>0?'':'none'; }
   }catch(e){ el.innerHTML='<div class="fd-empty"><b>Couldn\'t load</b>Notifications unavailable.</div>'; }
+}
+
+// ── Desktop light Job Detail — review + report + resolve. The physical on-site
+//    GPS/photo check-in stays on mobile (honest split); reports & resolves use
+//    the SAME endpoints every portal reads, so the record stays identical.
+function deskFindJob(kind,id){
+  if(kind==='alert') return (S.allAlerts||[]).find(a=>String(a.alert_id||a.id)===String(id))||null;
+  return (S.allInspections||[]).concat(S.needsReport||[]).find(i=>String(i.inspection_id||i.id)===String(id))||null;
+}
+function deskOpenJob(kind,id){
+  if(!isDesktop()){ openOnSite(kind,id); return; }
+  const job=deskFindJob(kind,id); if(!job){ toast('Could not open that job'); return; }
+  S._deskJob={kind,id,job};
+  const isAlert=kind==='alert';
+  const title=isAlert?(job.alert_type||'Drainage Alert'):'Drainage Inspection';
+  const site=isAlert?(job.site_name||job.client_name||job.property_name||'—'):(job.property_name||job.area_name||'—');
+  const loc=[job.city,job.state].filter(Boolean).join(', ');
+  const status=(job.status||'').toLowerCase();
+  const statusLbl=vocab(isAlert?'alert':'inspection',status);
+  const pri=deskPriority(job);
+  const done=!isAlert&&status==='completed';
+  const fact=(l,v)=>v?`<div style="padding:12px 0;border-bottom:1px solid var(--l-line)"><div style="font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;color:var(--l-ink3);font-weight:800">${l}</div><div style="font-size:.9rem;font-weight:600;color:var(--l-ink);margin-top:3px">${escHtml(String(v))}</div></div>`:'';
+  const sched=job.scheduled_date?new Date(job.scheduled_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+(job.scheduled_time_start?' · '+job.scheduled_time_start:''):'';
+  const actions=[];
+  actions.push(`<button class="fd-tool" style="flex-direction:row;justify-content:center;gap:9px;padding:13px 18px;border-color:var(--l-blue);color:#fff;background:var(--l-blue)" onclick="deskWriteReport()"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fff"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>${done?'Write report':'Write / file report'}</button>`);
+  if(isAlert && status!=='resolved'){
+    actions.push(`<button class="fd-tool" style="flex-direction:row;justify-content:center;gap:9px;padding:13px 18px;border-color:var(--l-green);color:var(--l-green)" onclick="deskResolveAlert()"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Mark resolved</button>`);
+  }
+  const mobileNote = (!done && (isAlert || status!=='completed'))
+    ? `<div style="display:flex;gap:11px;align-items:flex-start;background:var(--l-soft);border:1px solid var(--l-line);border-radius:12px;padding:14px 16px;margin-top:16px"><svg width="18" height="18" fill="none" stroke="var(--l-ink2)" stroke-width="1.8" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:1px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg><div style="font-size:.8rem;color:var(--l-ink2);line-height:1.5">GPS check-in and before/after photos are captured in the <b>FlowGuard mobile app</b> on site. From here you can review the job, file its report, and (for incidents) mark it resolved.</div></div>`
+    : '';
+  $('fd-job-body').innerHTML=`
+    <a onclick="deskNav('dashboard')" style="display:inline-flex;align-items:center;gap:6px;color:var(--l-blue);font-weight:700;font-size:.8rem;cursor:pointer;margin-bottom:16px"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>Back to dashboard</a>
+    <div class="fd-grid" style="grid-template-columns:7fr 5fr">
+      <div class="fd-card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+          <span class="fd-chip ${isAlert?'high':'low'}">${isAlert?'Incident':'Inspection'}</span>
+          <span class="fd-chip ${pri.toLowerCase()}">${pri}</span>
+          <span class="fd-chip ${status==='completed'||status==='resolved'?'stat-done':'stat-prog'}">${escHtml(statusLbl)}</span>
+        </div>
+        <div style="font-size:1.3rem;font-weight:800;color:var(--l-ink)">${escHtml(title)}</div>
+        <div style="font-size:.85rem;color:var(--l-ink2);margin-top:3px">${escHtml(site)}${loc?' · '+escHtml(loc):''}</div>
+        ${job.description?`<div style="margin-top:16px;font-size:.88rem;color:var(--l-ink);line-height:1.6">${escHtml(job.description)}</div>`:''}
+        ${mobileNote}
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px">${actions.join('')}</div>
+      </div>
+      <div class="fd-card">
+        <div class="fd-card-hd"><h2>Job facts</h2></div>
+        ${fact('Property',site)}
+        ${fact(isAlert?'Client':'Area', isAlert?(job.client_name):(job.area_name))}
+        ${fact('Location',loc)}
+        ${fact(isAlert?'Severity':'Priority', isAlert?(job.severity):(job.priority||pri))}
+        ${fact('Scheduled',sched)}
+        ${fact('Status',statusLbl)}
+        ${fact(isAlert?'Alert ID':'Inspection ID', isAlert?(job.alert_id||job.id):(job.inspection_id||job.id))}
+        <button class="fd-tool" style="flex-direction:row;justify-content:center;gap:8px;margin-top:16px" onclick="deskNav('assets')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>View sensors on this property</button>
+      </div>
+    </div>`;
+  deskActivate('job', title);
+}
+function deskWriteReport(){
+  const d=S._deskJob; if(!d) return;
+  if(d.kind==='alert') ReportWriter.open({completedAlert:d.job});
+  else ReportWriter.open({completedInspection:d.job});
+}
+async function deskResolveAlert(){
+  const d=S._deskJob; if(!d||d.kind!=='alert') return;
+  const id=d.job.alert_id||d.job.id;
+  toast('Resolving…','ok');
+  try{
+    const r=await api('PUT',`/alerts/${id}/resolve`,{});
+    if(!r.success) throw new Error(r.error||'Failed');
+    toast('Incident marked resolved','ok');
+    await loadData();
+    deskNav('dashboard');
+  }catch(e){ toast(e.message||'Could not resolve','err'); }
+}
+
+function deskShowProfile(){
+  if(!isDesktop()) return;
+  const u=S.user||{}, t=S.team||{};
+  const name=u.fullName||u.full_name||'Field Engineer';
+  const role=(u.role||'field').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+  const members=Array.isArray(t.members)?t.members:[];
+  const fact=(l,v)=>`<div style="padding:12px 0;border-bottom:1px solid var(--l-line)"><div style="font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;color:var(--l-ink3);font-weight:800">${l}</div><div style="font-size:.9rem;font-weight:600;color:var(--l-ink);margin-top:3px">${escHtml(String(v||'—'))}</div></div>`;
+  $('fd-profile-body').innerHTML=`
+    <a onclick="deskNav('dashboard')" style="display:inline-flex;align-items:center;gap:6px;color:var(--l-blue);font-weight:700;font-size:.8rem;cursor:pointer;margin-bottom:16px"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>Back to dashboard</a>
+    <div class="fd-grid" style="grid-template-columns:5fr 7fr">
+      <div class="fd-card">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div class="av" style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#153a4c,#0f2430);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem">${escHtml(name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase())}</div>
+          <div><div style="font-size:1.1rem;font-weight:800;color:var(--l-ink)">${escHtml(name)}</div><div style="font-size:.8rem;color:var(--l-ink3)">${escHtml(role)}</div></div>
+        </div>
+        ${fact('Email',u.email)}
+        ${fact('Team',t.name)}
+        ${fact('Team status',t.status?vocab('inspection',t.status)||t.status:'—')}
+        <button class="fd-tool" style="flex-direction:row;justify-content:center;gap:9px;margin-top:16px;border-color:var(--l-red);color:var(--l-red)" onclick="$('btn-logout').click()"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>Sign out</button>
+      </div>
+      <div class="fd-card">
+        <div class="fd-card-hd"><h2>My team</h2></div>
+        ${members.length?members.map(m=>`<div class="fd-row" style="cursor:default"><div class="ric">${escHtml((m.full_name||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase())}</div><div class="rb"><div class="rt">${escHtml(m.full_name||'Member')}</div><div class="rs">${escHtml((m.role||'field').replace(/_/g,' '))}</div></div></div>`).join(''):'<div class="fd-empty" style="padding:26px"><b>No teammates listed</b>Your team roster will show here.</div>'}
+      </div>
+    </div>`;
+  deskActivate('profile');
 }
 
 function nrCard(i){
@@ -2677,7 +2807,8 @@ async function renderHistoryPanel() {
     el.innerHTML='<div class="state-card"><div class="state-title">Couldn\'t load reports</div><div class="state-sub">'+escHtml(e.message||'Try again.')+'</div><button class="retry-btn" onclick="renderHistoryPanel()">Retry</button></div>';
   }
 }
-function histStatusText(s){ return ({draft:'Draft',under_review:'Submitted',review:'Submitted',approved:'Approved',sent_to_client:'Sent to client'})[s]||(s||'').replace(/_/g,' '); }
+// Field-language labels, aligned to backend/utils/statusVocab.js (report entity).
+function histStatusText(s){ return vocab('report', s); }
 function historyCard(r){
   const when=r.created_at?new Date(r.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
   return `<div class="hist-card" onclick="openHistory('${r.report_id}')">
@@ -2929,7 +3060,11 @@ const ReportWriter = (function() {
     $('sheet-report').classList.add('show');
   }
 
-  function close() { $('sheet-report').classList.remove('show'); }
+  function close() {
+    $('sheet-report').classList.remove('show');
+    // Desktop: reflect the new/updated report + counts immediately.
+    if (typeof isDesktop === 'function' && isDesktop() && typeof deskRefresh === 'function') { try { deskRefresh(); } catch(_){} }
+  }
 
   function selectType(t) {
     _type = t;
