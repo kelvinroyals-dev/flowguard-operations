@@ -113,7 +113,14 @@ const OpsNotify = (function () {
   async function go(id, link) {
     try { if (id) await api('PUT', '/notifications/' + encodeURIComponent(id) + '/read'); } catch (_) {}
     close();
-    if (link && link.charAt(0) === '#' && typeof switchTab === 'function') switchTab(link.slice(1));
+    // link is either '#tab' (open the module) or '#tab/RECORD-ID' (open the
+    // specific record straight away, not the list).
+    if (link && link.charAt(0) === '#') {
+      const rest = link.slice(1);
+      const slash = rest.indexOf('/');
+      if (slash > 0 && typeof fgOpen === 'function') fgOpen(rest.slice(0, slash), rest.slice(slash + 1));
+      else if (typeof switchTab === 'function') switchTab(rest.split('/')[0]);
+    }
     refreshBadge();
   }
 
