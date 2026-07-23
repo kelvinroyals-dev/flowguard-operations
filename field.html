@@ -1634,6 +1634,17 @@ async function loadData() {
     }
     if(iRes.success) {
       S.allInspections = iRes.data.filter(i=>teamMatch(i.assigned_team)&&ACTIVE_INSP.has(i.status));
+      // Completed inspections that never got a report are otherwise invisible —
+      // surface them so the agent can still file the report.
+      const done = iRes.data.filter(i=>teamMatch(i.assigned_team)&&i.status==='completed');
+      S.needsReport = [];
+      if(done.length){
+        try {
+          const rr = await api('GET','/field-reports?limit=200');
+          const reported = new Set((rr&&rr.success?rr.data:[]).filter(r=>r.inspection_id).map(r=>String(r.inspection_id)));
+          S.needsReport = done.filter(i=>!reported.has(String(i.inspection_id||i.id)));
+        } catch(_) { S.needsReport = []; }
+      }
     }
     renderDashboard();
   } catch(err){console.error('loadData:',err);renderError(err.message);}
@@ -1703,7 +1714,32 @@ function renderDashboard() {
     html+=scheduled.map(j=>j._kind==='alert'?taskCard(j,'alert','sched'):taskCard(j,'inspection','sched')).join('');
   }
 
+  // Completed jobs that still need a report filed
+  const needs = S.needsReport || [];
+  if(needs.length>0){
+    html+=`<div class="task-section-hd"><span class="task-section-lbl" style="color:var(--amber);">Needs report</span><div class="task-section-line"></div><span class="task-section-count">${needs.length}</span></div>`;
+    html+=needs.map(nrCard).join('');
+  }
+
   $('task-list-area').innerHTML=html;
+}
+
+function nrCard(i){
+  const site=escHtml(i.property_name||'Inspection');
+  const loc=[i.city,i.state].filter(Boolean).join(', ');
+  const iid=String(i.inspection_id||i.id||'');
+  return `<div style="display:flex;align-items:center;gap:12px;background:var(--glass);border:1px solid var(--glass-b);border-left:3px solid var(--amber);border-radius:14px;padding:14px 16px;margin-bottom:10px;">
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:.9rem;font-weight:700;color:var(--ink);">${site}</div>
+      <div style="font-size:.72rem;color:var(--ink-3);margin-top:3px;">Inspection complete · report not filed${loc?' · '+escHtml(loc):''}</div>
+    </div>
+    <button style="flex-shrink:0;padding:9px 14px;background:var(--amber);color:#12222b;border:none;border-radius:10px;font-size:.78rem;font-weight:800;min-height:44px;cursor:pointer;" onclick="writeReportFor('${iid}')">Write report</button>
+  </div>`;
+}
+function writeReportFor(iid){
+  const insp=(S.needsReport||[]).find(i=>String(i.inspection_id||i.id)===String(iid));
+  if(!insp){ toast('Could not open that job','err'); return; }
+  ReportWriter.open({ completedInspection: insp });
 }
 
 function taskCard(job, kind, urgencyClass) {
