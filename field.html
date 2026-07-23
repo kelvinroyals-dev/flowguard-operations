@@ -2073,6 +2073,7 @@ function deskFillHeader(){
 function deskRefresh(){
   if(!isDesktop()) return;
   deskFillHeader();
+  if(!S.gpsLat && !S._gpsKick){ S._gpsKick=true; acquireGPS(); }   // desktop never opened the mobile check-in, so start GPS here
   const alerts=S.allAlerts||[], insp=S.allInspections||[], needs=S.needsReport||[];
   // Nav count + bell
   const pending=alerts.length+insp.length;
@@ -2215,11 +2216,23 @@ function deskMap(alerts, insp){
       L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(_deskMap); }
     _deskMarkers.forEach(m=>_deskMap.removeLayer(m)); _deskMarkers=[];
     const pts=[];
-    const add=(o,color)=>{ const c=deskCoord(o); if(!c) return; const m=L.circleMarker(c,{radius:8,color:'#fff',weight:2,fillColor:color,fillOpacity:1}).addTo(_deskMap); _deskMarkers.push(m); pts.push(c); };
-    (alerts||[]).forEach(a=>add(a, ['critical','high'].includes((a.severity||'').toLowerCase())?'#e5483c':'#f5a623'));
-    (insp||[]).forEach(i=>add(i,'#f5a623'));
-    (S.needsReport||[]).forEach(i=>add(i,'#1f9d5b'));
-    if(S.gpsLat){ const me=L.circleMarker([S.gpsLat,S.gpsLng],{radius:9,color:'#fff',weight:3,fillColor:'#2f6bff',fillOpacity:1}).addTo(_deskMap).bindPopup('You are here'); _deskMarkers.push(me); pts.push([S.gpsLat,S.gpsLng]); }
+    const me = S.gpsLat ? [S.gpsLat, S.gpsLng] : null;
+    const add=(o,color,label)=>{
+      const c=deskCoord(o); if(!c) return;
+      const dest=c[0]+','+c[1];
+      // Real turn-by-turn happens in the device's maps app; from current location if we have it.
+      const dir = me ? `https://www.google.com/maps/dir/?api=1&origin=${me[0]},${me[1]}&destination=${dest}&travelmode=driving`
+                     : `https://www.google.com/maps/search/?api=1&query=${dest}`;
+      const m=L.circleMarker(c,{radius:8,color:'#fff',weight:2,fillColor:color,fillOpacity:1}).addTo(_deskMap)
+        .bindPopup(`<div style="font-weight:700;margin-bottom:4px">${String(label||'Job').replace(/</g,'&lt;')}</div><a href="${dir}" target="_blank" rel="noopener" style="color:#2f6bff;font-weight:700;text-decoration:none">Directions →</a>`);
+      _deskMarkers.push(m); pts.push(c);
+      // Straight-line connector from current location to the job (overview, not a driving route).
+      if(me){ const ln=L.polyline([me,c],{color:color,weight:2,opacity:.45,dashArray:'5,7'}).addTo(_deskMap); _deskMarkers.push(ln); }
+    };
+    (alerts||[]).forEach(a=>add(a, ['critical','high'].includes((a.severity||'').toLowerCase())?'#e5483c':'#f5a623', a.alert_type||a.site_name||'Incident'));
+    (insp||[]).forEach(i=>add(i,'#f5a623', i.property_name||'Inspection'));
+    (S.needsReport||[]).forEach(i=>add(i,'#1f9d5b', i.property_name||'Inspection'));
+    if(me){ const mk=L.circleMarker(me,{radius:9,color:'#fff',weight:3,fillColor:'#2f6bff',fillOpacity:1}).addTo(_deskMap).bindPopup('You are here'); _deskMarkers.push(mk); pts.push(me); }
     if(pts.length===1) _deskMap.setView(pts[0],14);
     else if(pts.length>1) _deskMap.fitBounds(pts,{padding:[40,40],maxZoom:14});
     setTimeout(()=>{try{_deskMap.invalidateSize();}catch(_){}} ,120);
@@ -2539,17 +2552,30 @@ function renderGPSCheckin() {
 
 function acquireGPS() {
   if(!navigator.geolocation) return;
-  navigator.geolocation.getCurrentPosition(pos=>{
-    S.gpsLat=pos.coords.latitude;
-    S.gpsLng=pos.coords.longitude;
-    S.gpsAcc=pos.coords.accuracy;
-    // Re-render if still on GPS screen
-    if((S.onsiteStep||0)===0) renderGPSCheckin();
-  }, ()=>{
-    // GPS denied - allow anyway with warning
-    S.gpsLat=0; S.gpsLng=0; S.gpsAcc=null;
-    if((S.onsiteStep||0)===0) renderGPSCheckin();
-  }, {enableHighAccuracy:true,timeout:10000});
+  const onOk = pos => {
+    S.gpsLat=pos.coords.latitude; S.gpsLng=pos.coords.longitude; S.gpsAcc=pos.coords.accuracy;
+    if((S.onsiteStep||0)===0 && $('onsite-area')) renderGPSCheckin();
+    if(isDesktop()) deskGpsResolved();
+  };
+  const onFail = () => {
+    // On mobile the check-in needs a value to enable manual confirm; on desktop we
+    // leave it null so the map/sidebar just say "unavailable" rather than 0,0.
+    if(!isDesktop()){ S.gpsLat=0; S.gpsLng=0; S.gpsAcc=null; if((S.onsiteStep||0)===0) renderGPSCheckin(); }
+    else deskGpsResolved();
+  };
+  // Fast first fix — accept a recent cached position instantly (maximumAge) at coarse
+  // accuracy so we don't block on a cold GPS chip; then try once at high accuracy.
+  navigator.geolocation.getCurrentPosition(onOk, () => {
+    navigator.geolocation.getCurrentPosition(onOk, onFail, {enableHighAccuracy:true, timeout:12000, maximumAge:60000});
+  }, {enableHighAccuracy:false, timeout:6000, maximumAge:300000});
+  // Keep refining in the background so accuracy tightens without blocking the UI.
+  if(!S._gpsWatch && navigator.geolocation.watchPosition){
+    try{ S._gpsWatch = navigator.geolocation.watchPosition(onOk, ()=>{}, {enableHighAccuracy:true, timeout:20000, maximumAge:30000}); }catch(_){}
+  }
+}
+function deskGpsResolved(){
+  const gl=$('fd-gps-lbl'); if(gl) gl.textContent = S.gpsLat ? ('GPS ±'+(S.gpsAcc?Math.round(S.gpsAcc)+'m':'locked')) : 'Location unavailable';
+  try{ deskMap(S.allAlerts||[], S.allInspections||[]); }catch(_){}
 }
 
 function confirmGPS() {
