@@ -120,7 +120,7 @@ const OpsSupport = (function () {
     const meta = _rows.find(r => r.ticket_id === t.ticket_id) || {};
     const msgs = t.messages || [];
     const bubbles = msgs.length ? msgs.map(m => {
-      const ops = m.author_type === 'ops';
+      const ops = m.author_type !== 'client';   // support/system/ops all render on the staff side
       return `<div class="sup-bubble ${ops ? 'sup-ops' : 'sup-client'}"><div class="who">${esc(m.author_name || (ops ? 'FlowGuard' : 'Client'))}</div>${esc(m.message)}<div class="t">${OpsModal.fmtDateTime ? OpsModal.fmtDateTime(m.created_at) : esc(m.created_at)}</div></div>`;
     }).join('') : `<div class="sup-empty">No messages yet — the original request is below.</div>`;
     const F = OpsModal.fact;
