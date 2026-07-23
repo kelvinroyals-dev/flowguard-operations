@@ -20,6 +20,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Leaflet (desktop "My Area" map). Degrades gracefully to a fallback panel if it fails to load (e.g. offline). -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
   <style>
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -1115,6 +1118,182 @@
     #screen-login .forgot-link, #screen-forgot .forgot-link{ color:#0d9488; }
     #screen-login .form-msg.error, #screen-forgot .form-msg.error{ color:#c93d32; }
     #screen-login .form-msg.success, #screen-forgot .form-msg.success{ color:#0f7a44; }
+    /* ═══════════════════════════════════════════════════════════════
+       DESKTOP FIELD DASHBOARD — responsive hybrid (mockup, light theme)
+       Shown only ≥1024px. Below that the mobile PWA (bottom-nav) stays.
+    ═══════════════════════════════════════════════════════════════ */
+    .fdesk { display:none; }
+    @media (min-width:1024px) {
+      #screen-dash.active > .topbar,
+      #screen-dash.active > .bottom-nav,
+      #screen-dash.active > .dash-panel { display:none !important; }
+      #screen-dash.active { display:block; height:100%; overflow:hidden; }
+
+      .fdesk {
+        display:flex; height:100%; width:100%;
+        --l-bg:#f4f6f8; --l-card:#fff; --l-line:#e9eef2; --l-soft:#f2f5f8;
+        --l-ink:#0f2430; --l-ink2:#5b7283; --l-ink3:#93a6b2;
+        --l-blue:#2f6bff; --l-red:#e5483c; --l-green:#1f9d5b; --l-amber:#f5a623; --l-teal:#0d9488;
+        background:var(--l-bg); color:var(--l-ink); font-family:var(--ff); font-size:14px;
+      }
+      .fdesk button { color:inherit; }
+
+      /* Sidebar */
+      .fd-side { width:250px; flex-shrink:0; background:#fff; border-right:1px solid var(--l-line); display:flex; flex-direction:column; padding:20px 14px; }
+      .fd-brand { display:flex; align-items:center; gap:11px; padding:4px 8px 22px; }
+      .fd-brand img { width:36px; height:36px; object-fit:contain; }
+      .fd-brand .bt b { font-size:1.02rem; font-weight:800; letter-spacing:-.01em; color:var(--l-ink); display:block; line-height:1; }
+      .fd-brand .bt span { font-size:.55rem; letter-spacing:.24em; color:var(--l-ink3); font-weight:700; }
+      .fd-nav { display:flex; flex-direction:column; gap:2px; flex:1; overflow-y:auto; }
+      .fd-nav button { display:flex; align-items:center; gap:12px; width:100%; padding:11px 12px; border-radius:11px; font-size:.86rem; font-weight:600; color:var(--l-ink2); text-align:left; transition:background .15s,color .15s; }
+      .fd-nav button svg { width:19px; height:19px; flex-shrink:0; stroke-width:1.9; }
+      .fd-nav button:hover { background:var(--l-soft); color:var(--l-ink); }
+      .fd-nav button.active { background:var(--l-ink); color:#fff; }
+      .fd-nav button.soon { opacity:.55; }
+      .fd-nav button.soon:hover { background:transparent; color:var(--l-ink2); cursor:not-allowed; }
+      .fd-nav .fd-count { margin-left:auto; background:var(--l-red); color:#fff; font-size:.64rem; font-weight:800; min-width:20px; height:20px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; padding:0 6px; }
+      .fd-nav button.active .fd-count { background:#fff; color:var(--l-ink); }
+      .fd-nav .soon-tag { margin-left:auto; font-size:.56rem; letter-spacing:.06em; font-weight:800; color:var(--l-ink3); border:1px solid var(--l-line); border-radius:6px; padding:2px 5px; text-transform:uppercase; }
+      .fd-side-foot { margin-top:12px; display:flex; flex-direction:column; gap:10px; }
+      .fd-online { display:flex; align-items:center; gap:10px; padding:11px 12px; border:1px solid var(--l-line); border-radius:12px; }
+      .fd-online .dot { width:9px; height:9px; border-radius:50%; background:var(--l-green); box-shadow:0 0 0 3px rgba(31,157,91,.16); flex-shrink:0; }
+      .fd-online .dot.off { background:var(--l-amber); box-shadow:0 0 0 3px rgba(245,166,35,.16); }
+      .fd-online b { font-size:.78rem; font-weight:700; color:var(--l-ink); }
+      .fd-online small { display:block; font-size:.64rem; color:var(--l-ink3); }
+      .fd-online .gps { margin-left:auto; color:var(--l-ink3); }
+      .fd-help { padding:11px 12px; border:1px solid var(--l-line); border-radius:12px; display:flex; align-items:center; gap:10px; }
+      .fd-help b { font-size:.76rem; display:block; color:var(--l-ink); }
+      .fd-help a { font-size:.7rem; color:var(--l-blue); font-weight:700; }
+
+      /* Main column */
+      .fd-main { flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden; }
+      .fd-top { display:flex; align-items:center; gap:20px; padding:18px 30px; border-bottom:1px solid var(--l-line); background:#fff; flex-shrink:0; }
+      .fd-top h1 { font-size:1.3rem; font-weight:800; color:var(--l-ink); line-height:1.1; }
+      .fd-top .sub { font-size:.82rem; color:var(--l-ink2); margin-top:3px; }
+      .fd-top-r { margin-left:auto; display:flex; align-items:center; gap:18px; }
+      .fd-bell { position:relative; width:42px; height:42px; border-radius:12px; border:1px solid var(--l-line); display:flex; align-items:center; justify-content:center; color:var(--l-ink2); }
+      .fd-bell:hover { background:var(--l-soft); }
+      .fd-bell .b { position:absolute; top:-6px; right:-6px; background:var(--l-red); color:#fff; font-size:.6rem; font-weight:800; min-width:18px; height:18px; padding:0 4px; border-radius:9px; display:flex; align-items:center; justify-content:center; border:2px solid #fff; }
+      .fd-sync { display:flex; align-items:center; gap:9px; font-size:.72rem; color:var(--l-ink2); padding-left:18px; border-left:1px solid var(--l-line); }
+      .fd-sync svg { width:16px; height:16px; color:var(--l-ink3); }
+      .fd-sync b { color:var(--l-ink); font-weight:700; display:block; }
+      .fd-user { display:flex; align-items:center; gap:10px; padding-left:18px; border-left:1px solid var(--l-line); }
+      .fd-user .av { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#153a4c,#0f2430); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:.82rem; }
+      .fd-user b { font-size:.82rem; color:var(--l-ink); }
+      .fd-user small { display:block; font-size:.66rem; color:var(--l-ink3); }
+      .fd-user .lo { margin-left:6px; color:var(--l-ink3); width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; }
+      .fd-user .lo:hover { background:var(--l-soft); color:var(--l-red); }
+      .fd-scroll { flex:1; overflow-y:auto; padding:24px 30px 40px; }
+      .fd-view { display:none; } .fd-view.active { display:block; }
+
+      /* KPI cards */
+      .fd-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:18px; margin-bottom:22px; }
+      .fd-kpi { background:#fff; border:1px solid var(--l-line); border-radius:16px; padding:18px 20px; display:flex; align-items:center; gap:15px; }
+      .fd-kpi .ic { width:52px; height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+      .fd-kpi .ic svg { width:24px; height:24px; stroke-width:1.9; }
+      .fd-kpi .n { font-size:1.65rem; font-weight:800; color:var(--l-ink); line-height:1; }
+      .fd-kpi .n small { font-size:.9rem; font-weight:700; color:var(--l-ink2); }
+      .fd-kpi .l { font-size:.78rem; color:var(--l-ink2); margin-top:6px; font-weight:600; }
+      .fd-kpi .s { font-size:.68rem; margin-top:4px; font-weight:700; }
+      .fd-kpi.soon { position:relative; }
+      .fd-kpi.soon .n { color:var(--l-ink3); }
+      .ic-red { background:rgba(229,72,60,.1); color:var(--l-red); }
+      .ic-green { background:rgba(31,157,91,.1); color:var(--l-green); }
+      .ic-teal { background:rgba(13,148,136,.1); color:var(--l-teal); }
+      .ic-blue { background:rgba(47,107,255,.1); color:var(--l-blue); }
+      .ic-gray { background:var(--l-soft); color:var(--l-ink3); }
+      .t-red { color:var(--l-red); } .t-green { color:var(--l-green); } .t-teal { color:var(--l-teal); } .t-ink3 { color:var(--l-ink3); }
+
+      /* Card grid */
+      .fd-grid { display:grid; grid-template-columns:5fr 7fr; gap:18px; margin-bottom:18px; }
+      .fd-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; }
+      .fd-card { background:#fff; border:1px solid var(--l-line); border-radius:16px; padding:20px; }
+      .fd-card-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+      .fd-card-hd h2 { font-size:.98rem; font-weight:800; color:var(--l-ink); }
+      .fd-card-hd a { font-size:.76rem; color:var(--l-blue); font-weight:700; display:inline-flex; align-items:center; gap:4px; }
+
+      /* Assignment / list rows */
+      .fd-row { display:flex; align-items:center; gap:13px; padding:13px 6px; border-bottom:1px solid var(--l-line); cursor:pointer; transition:background .12s; border-radius:8px; }
+      .fd-row:last-child { border-bottom:none; }
+      .fd-row:hover { background:var(--l-soft); }
+      .fd-row.hi { position:relative; }
+      .fd-row.hi::before { content:''; position:absolute; left:-2px; top:8px; bottom:8px; width:3px; border-radius:2px; background:var(--l-red); }
+      .fd-row .ric { width:38px; height:38px; border-radius:11px; background:var(--l-soft); color:var(--l-ink2); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+      .fd-row .ric svg { width:19px; height:19px; }
+      .fd-row .rb { flex:1; min-width:0; }
+      .fd-row .rt { font-size:.86rem; font-weight:700; color:var(--l-ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .fd-row .rs { font-size:.72rem; color:var(--l-ink3); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .fd-row .rr { display:flex; align-items:center; gap:12px; flex-shrink:0; }
+      .fd-row .rtime { font-size:.72rem; color:var(--l-ink2); font-weight:600; }
+      .fd-row .chev { color:var(--l-ink3); }
+      .fd-chip { font-size:.62rem; font-weight:800; letter-spacing:.03em; padding:4px 9px; border-radius:7px; text-transform:uppercase; }
+      .fd-chip.high { background:rgba(229,72,60,.12); color:var(--l-red); }
+      .fd-chip.medium { background:rgba(245,166,35,.14); color:#b5790a; }
+      .fd-chip.low { background:rgba(13,148,136,.12); color:var(--l-teal); }
+      .fd-chip.stat-prog { background:rgba(245,166,35,.14); color:#b5790a; }
+      .fd-chip.stat-done { background:rgba(31,157,91,.12); color:var(--l-green); }
+
+      /* Work order rows w/ progress */
+      .fd-wo { padding:14px 4px; border-bottom:1px solid var(--l-line); }
+      .fd-wo:last-child { border-bottom:none; }
+      .fd-wo-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; }
+      .fd-wo-id { font-size:.84rem; font-weight:800; color:var(--l-ink); }
+      .fd-wo-sub { font-size:.72rem; color:var(--l-ink3); margin-top:1px; }
+      .fd-wo-r { display:flex; align-items:center; gap:12px; }
+      .fd-wo-pct { font-size:.76rem; font-weight:800; color:var(--l-ink2); }
+      .fd-bar { height:7px; border-radius:4px; background:var(--l-soft); overflow:hidden; }
+      .fd-bar > i { display:block; height:100%; border-radius:4px; }
+      .fd-bar > i.prog { background:var(--l-amber); }
+      .fd-bar > i.done { background:var(--l-green); }
+      .fd-bar > i.sched { background:var(--l-ink3); }
+
+      /* Map */
+      #fd-map { height:330px; border-radius:12px; overflow:hidden; border:1px solid var(--l-line); background:var(--l-soft); }
+      .fd-map-wrap { position:relative; }
+      .fd-map-legend { position:absolute; right:12px; bottom:12px; z-index:500; background:#fff; border:1px solid var(--l-line); border-radius:10px; padding:9px 11px; box-shadow:0 4px 14px rgba(15,36,48,.08); }
+      .fd-map-legend div { display:flex; align-items:center; gap:7px; font-size:.68rem; color:var(--l-ink2); font-weight:600; margin:3px 0; }
+      .fd-map-legend .sw { width:9px; height:9px; border-radius:50%; }
+      .fd-map-fallback { height:330px; border-radius:12px; border:1px solid var(--l-line); background:var(--l-soft); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--l-ink3); text-align:center; padding:20px; }
+
+      /* Tools grid */
+      .fd-tools { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+      .fd-tool { border:1px solid var(--l-line); border-radius:13px; padding:16px 10px; display:flex; flex-direction:column; align-items:center; gap:9px; font-size:.74rem; font-weight:700; color:var(--l-ink); transition:border-color .15s,background .15s; text-align:center; }
+      .fd-tool:hover { border-color:var(--l-blue); background:var(--l-soft); }
+      .fd-tool svg { width:22px; height:22px; color:var(--l-ink2); stroke-width:1.8; }
+      .fd-tool.soon { opacity:.5; cursor:not-allowed; }
+      .fd-tool.soon:hover { border-color:var(--l-line); background:transparent; }
+      .fd-tool .soonlbl { font-size:.54rem; letter-spacing:.06em; color:var(--l-ink3); font-weight:800; text-transform:uppercase; }
+
+      /* Alert banner */
+      .fd-alert { display:flex; align-items:center; gap:14px; background:rgba(229,72,60,.06); border:1px solid rgba(229,72,60,.2); border-radius:14px; padding:16px 20px; margin-top:18px; }
+      .fd-alert .aic { width:38px; height:38px; border-radius:11px; background:rgba(229,72,60,.12); color:var(--l-red); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+      .fd-alert .ab { flex:1; }
+      .fd-alert .at { font-size:.84rem; font-weight:800; color:var(--l-red); }
+      .fd-alert .as { font-size:.76rem; color:var(--l-ink2); margin-top:2px; }
+      .fd-alert .abtn { background:var(--l-red); color:#fff; font-size:.78rem; font-weight:700; padding:10px 18px; border-radius:10px; display:inline-flex; align-items:center; gap:7px; flex-shrink:0; }
+
+      /* generic empty + coming-soon panel */
+      .fd-empty { text-align:center; padding:50px 20px; color:var(--l-ink3); }
+      .fd-empty svg { width:44px; height:44px; margin-bottom:12px; stroke-width:1.3; }
+      .fd-empty b { display:block; font-size:.95rem; color:var(--l-ink2); font-weight:700; margin-bottom:5px; }
+      .fd-soon-panel { max-width:520px; margin:40px auto; text-align:center; background:#fff; border:1px solid var(--l-line); border-radius:18px; padding:44px 32px; }
+      .fd-soon-panel .badge { display:inline-block; font-size:.6rem; letter-spacing:.1em; font-weight:800; text-transform:uppercase; color:var(--l-blue); background:rgba(47,107,255,.1); border-radius:20px; padding:5px 12px; margin-bottom:16px; }
+      .fd-soon-panel h2 { font-size:1.25rem; font-weight:800; margin-bottom:8px; }
+      .fd-soon-panel p { font-size:.86rem; color:var(--l-ink2); line-height:1.55; }
+      .fd-section-t { font-size:.72rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--l-ink3); margin:22px 2px 12px; }
+
+      /* On-site job flow reused as a centered overlay on desktop (real working flow) */
+      #screen-dash.active.fdesk-job .fdesk { display:none !important; }
+      #screen-dash.active.fdesk-job > #panel-onsite.dash-panel {
+        display:flex !important; flex-direction:column; position:fixed; inset:0; z-index:40;
+        width:100%; max-width:560px; margin:0 auto; background:var(--deep);
+        box-shadow:0 0 80px rgba(0,0,0,.4); overflow-y:auto; padding-bottom:30px;
+      }
+      #fd-job-back { display:none; position:fixed; top:16px; left:16px; z-index:60; align-items:center; gap:7px;
+        background:#fff; color:#0f2430; border:1px solid #e9eef2; border-radius:10px; padding:9px 14px;
+        font-size:.8rem; font-weight:700; box-shadow:0 4px 14px rgba(0,0,0,.12); }
+      #screen-dash.active.fdesk-job #fd-job-back { display:inline-flex; }
+    }
   </style>
 </head>
 <body>
@@ -1229,6 +1408,124 @@
 
 <!-- ═══════════════ DASHBOARD ═══════════════ -->
 <div id="screen-dash" class="screen">
+
+  <!-- ══════ DESKTOP SHELL (≥1024px) — mockup layout, light theme ══════ -->
+  <div class="fdesk">
+    <!-- Sidebar -->
+    <aside class="fd-side">
+      <div class="fd-brand">
+        <img src="fg-logo-light.png" alt="FlowGuard">
+        <div class="bt"><b>FLOWGUARD</b><span>SOLUTIONS</span></div>
+      </div>
+      <nav class="fd-nav" id="fd-nav">
+        <button id="fdn-dashboard" class="active" onclick="deskNav('dashboard')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>Dashboard</button>
+        <button id="fdn-assignments" onclick="deskNav('assignments')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>My Assignments<span class="fd-count" id="fd-nav-count" style="display:none">0</span></button>
+        <button id="fdn-workorders" onclick="deskNav('workorders')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>Work Orders</button>
+        <button id="fdn-inspections" onclick="deskNav('inspections')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Inspections</button>
+        <button id="fdn-assets" onclick="deskNav('assets')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>Assets</button>
+        <button id="fdn-incidents" onclick="deskNav('incidents')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>Incidents</button>
+        <button id="fdn-reports" onclick="deskNav('reports')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6h13M9 17H5a2 2 0 01-2-2V5a2 2 0 012-2h4m0 14a2 2 0 002 2h9M9 7h6"/></svg>Reports</button>
+        <button id="fdn-kb" class="soon" title="Coming soon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>Knowledge Base<span class="soon-tag">Soon</span></button>
+        <button id="fdn-teamchat" class="soon" title="Coming soon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>Team Chat<span class="soon-tag">Soon</span></button>
+        <button id="fdn-notifications" onclick="deskNav('notifications')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>Notifications</button>
+      </nav>
+      <div class="fd-side-foot">
+        <div class="fd-online">
+          <div class="dot" id="fd-online-dot"></div>
+          <div><b id="fd-online-lbl">You're Online</b><small id="fd-gps-lbl">GPS acquiring…</small></div>
+          <span class="gps"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span>
+        </div>
+        <div class="fd-help">
+          <svg width="18" height="18" fill="none" stroke="var(--l-ink2)" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          <div><b>Need Help?</b><a href="mailto:support@flowguard.ng">Contact Support</a></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="fd-main">
+      <header class="fd-top">
+        <div>
+          <h1 id="fd-title">Field Engineer Portal</h1>
+          <div class="sub" id="fd-greeting">Welcome back 👋</div>
+        </div>
+        <div class="fd-top-r">
+          <button class="fd-bell" id="fd-bell" onclick="deskNav('notifications')" aria-label="Notifications">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            <span class="b" id="fd-bell-badge" style="display:none">0</span>
+          </button>
+          <div class="fd-sync">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            <div>Last sync<b id="fd-sync-lbl">just now</b></div>
+          </div>
+          <div class="fd-user">
+            <div class="av" id="fd-avatar">FE</div>
+            <div><b id="fd-user-name">Loading…</b><small id="fd-user-role">Field Engineer</small></div>
+            <button class="lo" id="fd-logout" aria-label="Sign out"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg></button>
+          </div>
+        </div>
+      </header>
+
+      <div class="fd-scroll" id="fd-scroll">
+        <!-- DASHBOARD -->
+        <div class="fd-view active" id="fdv-dashboard">
+          <div class="fd-kpis" id="fd-kpis"></div>
+          <div class="fd-grid">
+            <div class="fd-card">
+              <div class="fd-card-hd"><h2>My Assignments</h2><a onclick="deskNav('assignments')">View all →</a></div>
+              <div id="fd-assign"><div class="fd-empty">Loading…</div></div>
+            </div>
+            <div class="fd-card">
+              <div class="fd-card-hd"><h2>My Area</h2><a id="fd-map-full" href="#">View full map ↗</a></div>
+              <div class="fd-map-wrap">
+                <div id="fd-map"></div>
+                <div class="fd-map-legend">
+                  <div><span class="sw" style="background:#e5483c"></span>Pending Task</div>
+                  <div><span class="sw" style="background:#f5a623"></span>In Progress</div>
+                  <div><span class="sw" style="background:#1f9d5b"></span>Completed</div>
+                  <div><span class="sw" style="background:#0d9488"></span>Asset / Sensor</div>
+                  <div><span class="sw" style="background:#2f6bff"></span>Your Location</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="fd-grid-3">
+            <div class="fd-card">
+              <div class="fd-card-hd"><h2>Work Orders</h2><a onclick="deskNav('workorders')">View all →</a></div>
+              <div id="fd-wo"><div class="fd-empty">Loading…</div></div>
+            </div>
+            <div class="fd-card">
+              <div class="fd-card-hd"><h2>Recent Inspections</h2><a onclick="deskNav('inspections')">View all →</a></div>
+              <div id="fd-insp"><div class="fd-empty">Loading…</div></div>
+            </div>
+            <div class="fd-card">
+              <div class="fd-card-hd"><h2>Tools &amp; Quick Actions</h2></div>
+              <div class="fd-tools">
+                <button class="fd-tool" onclick="deskNav('inspections')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>New Inspection</button>
+                <button class="fd-tool" onclick="deskNav('incidents')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>Report Issue</button>
+                <button class="fd-tool soon" title="Needs file storage — coming soon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Capture Photo<span class="soonlbl">Soon</span></button>
+                <button class="fd-tool soon" title="No asset-tag system yet — coming soon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>Scan QR / NFC<span class="soonlbl">Soon</span></button>
+                <button class="fd-tool" id="fd-tool-sync" onclick="flushDrafts();deskSync();"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Sync Data</button>
+                <button class="fd-tool" onclick="deskNav('assets')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>View Assets</button>
+              </div>
+            </div>
+          </div>
+          <div id="fd-alert-slot"></div>
+        </div>
+
+        <!-- Simple list views -->
+        <div class="fd-view" id="fdv-assignments"><div class="fd-card"><div class="fd-card-hd"><h2>My Assignments</h2></div><div id="fd-assign-full"><div class="fd-empty">Loading…</div></div></div></div>
+        <div class="fd-view" id="fdv-workorders"><div class="fd-card"><div class="fd-card-hd"><h2>Work Orders</h2></div><div id="fd-wo-full"><div class="fd-empty">Loading…</div></div></div></div>
+        <div class="fd-view" id="fdv-inspections"><div class="fd-card"><div class="fd-card-hd"><h2>Inspections</h2></div><div id="fd-insp-full"><div class="fd-empty">Loading…</div></div></div></div>
+        <div class="fd-view" id="fdv-assets"><div class="fd-card"><div class="fd-card-hd"><h2>Assets &amp; Sensors</h2></div><div id="fd-assets-full"><div class="fd-empty">Loading…</div></div></div></div>
+        <div class="fd-view" id="fdv-incidents"><div class="fd-card"><div class="fd-card-hd"><h2>Incidents</h2></div><div id="fd-incidents-full"><div class="fd-empty">Loading…</div></div></div></div>
+        <div class="fd-view" id="fdv-reports"><div class="fd-card"><div class="fd-card-hd"><h2>My Reports</h2></div><div id="fd-reports-full"><div class="fd-empty">Loading…</div></div></div></div>
+        <div class="fd-view" id="fdv-notifications"><div class="fd-card"><div class="fd-card-hd"><h2>Notifications</h2></div><div id="fd-notif-full"><div class="fd-empty">Loading…</div></div></div></div>
+      </div>
+    </div>
+  </div>
+  <!-- ══════ END DESKTOP SHELL ══════ -->
+  <button id="fd-job-back" onclick="switchPanel('tasks')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>Back to dashboard</button>
 
   <div class="topbar">
     <img class="topbar-logo" src="fg-logo-dark.png" alt="FlowGuard">
@@ -1647,6 +1944,8 @@ async function loadData() {
       }
     }
     renderDashboard();
+    _deskDoneToday=null;           // recompute "completed today" on each load
+    if(isDesktop()) deskRefresh();
   } catch(err){console.error('loadData:',err);renderError(err.message);}
 }
 
@@ -1661,7 +1960,16 @@ function switchPanel(name) {
   if(name==='sensor' && !S.sensorsLoaded) renderSensorPanel();
   if(name==='profile') renderProfilePanel();
   if(name==='history') renderHistoryPanel();
+  // Desktop: the on-site job flow is shown as a centered overlay. Opening a job
+  // (openOnSite → switchPanel('onsite')) shows it; any other panel closes it and
+  // returns to the dashboard, refreshing live data.
+  if (isDesktop()) {
+    const sd = $('screen-dash');
+    if (name === 'onsite') { sd.classList.add('fdesk-job'); }
+    else { sd.classList.remove('fdesk-job'); deskRefresh(); }
+  }
 }
+function isDesktop(){ return window.matchMedia('(min-width:1024px)').matches; }
 
 /* ══════════════════════════════════════
    TASK LIST PANEL
@@ -1722,6 +2030,257 @@ function renderDashboard() {
   }
 
   $('task-list-area').innerHTML=html;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   DESKTOP DASHBOARD (≥1024px) — reads the same S.* data as mobile.
+   Everything here is backed by real endpoints; the only "coming soon"
+   items are the ones with no data source yet (SLA%, avg response,
+   QR/NFC, photo capture, KB, team chat).
+══════════════════════════════════════════════════════════════════ */
+let _deskInit=false, _deskMap=null, _deskMarkers=[], _deskWO=[], _deskDoneToday=null;
+
+function deskFillHeader(){
+  const u=S.user||{}; const name=u.fullName||u.full_name||'Field Engineer';
+  const role=(u.role||'field').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+  const initials=name.split(' ').filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase()||'FE';
+  const hr=new Date().getHours(); const greet=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
+  const set=(id,v)=>{const e=$(id); if(e) e.textContent=v;};
+  set('fd-user-name',name); set('fd-user-role',role); set('fd-avatar',initials);
+  set('fd-greeting',`${greet}, ${name.split(' ')[0]} 👋`);
+  const lo=$('fd-logout'); if(lo&&!lo._w){ lo._w=1; lo.addEventListener('click',()=>$('btn-logout').click()); }
+}
+
+function deskRefresh(){
+  if(!isDesktop()) return;
+  deskFillHeader();
+  const alerts=S.allAlerts||[], insp=S.allInspections||[], needs=S.needsReport||[];
+  // Nav count + bell
+  const pending=alerts.length+insp.length;
+  const nc=$('fd-nav-count'); if(nc){ nc.textContent=pending; nc.style.display=pending>0?'':'none'; }
+  // Online / GPS labels
+  const od=$('fd-online-dot'), ol=$('fd-online-lbl'), gl=$('fd-gps-lbl');
+  if(od){ od.className='dot'+(navigator.onLine?'':' off'); }
+  if(ol){ ol.textContent=navigator.onLine?"You're Online":'Offline'; }
+  if(gl){ gl.textContent = S.gpsLat ? ('GPS ±'+(S.gpsAcc?Math.round(S.gpsAcc)+'m':'locked')) : 'GPS acquiring…'; }
+  // KPIs
+  deskKPIs();
+  // Dashboard cards
+  $('fd-assign').innerHTML = deskAssignRows([...deskSortAlerts(alerts),...insp], false, 4);
+  $('fd-insp').innerHTML   = deskInspRows([...insp,...needs], 4);
+  deskAlertBanner(alerts);
+  deskLoadWorkOrders();          // async → fills #fd-wo
+  deskMap(alerts, insp);
+  deskSync();
+  deskBell();
+  // Re-render whichever full view is open
+  const active=document.querySelector('.fd-view.active'); if(active) deskRenderView(active.id.replace('fdv-',''));
+}
+
+function deskSortAlerts(a){ const hi=x=>x.severity==='critical'||x.severity==='high'?0:x.severity==='medium'?1:2; return [...a].sort((x,y)=>hi(x)-hi(y)); }
+
+function deskPriority(job){
+  if(job._kind==='wo'||job.work_type){ return 'MEDIUM'; }
+  const s=(job.severity||'').toLowerCase();
+  if(job.inspection_id||job.area_name!==undefined&&!job.severity){ // inspection
+    const p=(job.priority||'').toLowerCase(); return p==='high'||p==='critical'?'HIGH':p==='low'?'LOW':'MEDIUM';
+  }
+  return s==='critical'||s==='high'?'HIGH':s==='medium'?'MEDIUM':'LOW';
+}
+function deskTimeLabel(job){
+  const d = job.scheduled_date || job.created_at || job.reported_at;
+  if(!d) return '';
+  const dt=new Date(d); if(isNaN(dt)) return '';
+  const today=new Date(); const same=dt.toDateString()===today.toDateString();
+  const tm=(job.scheduled_time_start)||dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  return (same?'Today':dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'}))+', '+tm;
+}
+function deskIconFor(isAlert){
+  return isAlert
+    ? '<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>'
+    : '<path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>';
+}
+function deskAssignRows(list, full, limit){
+  if(!list||!list.length) return '<div class="fd-empty"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><b>All clear</b>No active assignments for your team right now.</div>';
+  const items=(limit?list.slice(0,limit):list);
+  return items.map(job=>{
+    const isAlert=!!(job.alert_id||job.severity)&&!job.inspection_id;
+    const kind=isAlert?'alert':'inspection';
+    const id=isAlert?(job.alert_id||String(job.id)):(job.inspection_id||String(job.id));
+    const title=isAlert?(job.alert_type||'Drainage Alert'):'Drainage Inspection';
+    const site=isAlert?(job.site_name||job.client_name||job.property_name||'—'):(job.property_name||job.area_name||'—');
+    const loc=[job.city,job.state].filter(Boolean).join(', ');
+    const pri=deskPriority(job); const tl=deskTimeLabel(job);
+    return `<div class="fd-row ${pri==='HIGH'?'hi':''}" onclick="openOnSite('${kind}','${escHtml(String(id))}')">
+      <div class="ric"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24">${deskIconFor(isAlert)}</svg></div>
+      <div class="rb"><div class="rt">${escHtml(title)}${isAlert?'':' — '+escHtml(site)}</div><div class="rs">${escHtml(isAlert?site:(loc||'Inspection'))}${loc&&isAlert?' · '+escHtml(loc):''}</div></div>
+      <div class="rr"><span class="fd-chip ${pri.toLowerCase()}">${pri}</span>${tl?`<span class="rtime">${escHtml(tl)}</span>`:''}<span class="chev"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span></div>
+    </div>`;
+  }).join('');
+}
+function deskInspRows(list, limit){
+  if(!list||!list.length) return '<div class="fd-empty" style="padding:26px"><b>No inspections</b>None assigned to your team yet.</div>';
+  const items=(limit?list.slice(0,limit):list);
+  return items.map(i=>{
+    const id=escHtml(String(i.inspection_id||i.id||''));
+    const done=i.status==='completed';
+    const site=escHtml(i.property_name||i.area_name||'Inspection');
+    const tl=deskTimeLabel(i);
+    const ic=done?'<span class="ric" style="background:rgba(31,157,91,.1);color:#1f9d5b"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></span>'
+      :'<span class="ric" style="background:rgba(245,166,35,.12);color:#b5790a"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span>';
+    const click=done?`writeReportFor('${id}')`:`openOnSite('inspection','${id}')`;
+    return `<div class="fd-row" onclick="${click}">${ic}<div class="rb"><div class="rt">${id||'Inspection'}</div><div class="rs">${site}${done?' · needs report':''}</div></div>${tl?`<div class="rr"><span class="rtime">${escHtml(tl)}</span></div>`:''}</div>`;
+  }).join('');
+}
+
+function deskWoPct(status){ status=(status||'').toLowerCase(); return status==='completed'?100:status==='in_progress'?45:status==='scheduled'?5:0; }
+async function deskLoadWorkOrders(){
+  try{
+    const r=await api('GET','/tickets/planner');
+    const teamId=(S.team&&(S.team.team_id||'')).toString().toLowerCase(), teamName=(S.team&&(S.team.name||'')).trim().toLowerCase();
+    const mine=(r&&r.success?r.data:[]).filter(t=>{
+      const v=String(t.assigned_team||'').trim().toLowerCase(); return v&&(v===teamId||v===teamName);
+    });
+    _deskWO=mine;
+    const rows = mine.length ? mine.slice(0,4).map(deskWoRow).join('')
+      : '<div class="fd-empty" style="padding:26px"><b>No work orders</b>No maintenance jobs assigned to your team.</div>';
+    const el=$('fd-wo'); if(el) el.innerHTML=rows;
+    const fe=$('fd-wo-full'); if(fe) fe.innerHTML = mine.length ? mine.map(deskWoRow).join('') : rows;
+  }catch(e){ const el=$('fd-wo'); if(el) el.innerHTML='<div class="fd-empty" style="padding:26px"><b>Couldn\'t load</b>Work orders unavailable.</div>'; }
+}
+function deskWoRow(t){
+  const pct=deskWoPct(t.status); const st=(t.status||'').toLowerCase();
+  const cls=st==='completed'?'done':st==='in_progress'?'prog':'sched';
+  const chip=st==='completed'?'<span class="fd-chip stat-done">Completed</span>':st==='in_progress'?'<span class="fd-chip stat-prog">In progress</span>':`<span class="fd-chip low">${escHtml((t.status||'Scheduled'))}</span>`;
+  const title=escHtml(t.work_type?String(t.work_type).replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()):(t.ticket_id||'Work order'));
+  return `<div class="fd-wo"><div class="fd-wo-top"><div><div class="fd-wo-id">${escHtml(t.ticket_id||'—')}</div><div class="fd-wo-sub">${title}${t.property_name?' · '+escHtml(t.property_name):''}</div></div><div class="fd-wo-r">${chip}<span class="fd-wo-pct">${pct}%</span></div></div><div class="fd-bar"><i class="${cls}" style="width:${pct}%"></i></div></div>`;
+}
+
+async function deskKPIs(){
+  const alerts=S.allAlerts||[], insp=S.allInspections||[];
+  const pending=alerts.length+insp.length;
+  const highP=alerts.filter(a=>['critical','high'].includes((a.severity||'').toLowerCase())).length
+             +insp.filter(i=>['critical','high'].includes((i.priority||'').toLowerCase())).length;
+  // Completed today — real: reports I filed today
+  if(_deskDoneToday===null){
+    try{ const r=await api('GET','/field-reports?mine=1'); const t=new Date().toDateString();
+      _deskDoneToday=(r&&r.success?r.data:[]).filter(x=>{const d=new Date(x.created_at||x.submitted_at||x.updated_at); return !isNaN(d)&&d.toDateString()===t;}).length;
+    }catch(_){ _deskDoneToday='—'; }
+  }
+  const kpi=(ic,icon,n,l,s,scls)=>`<div class="fd-kpi${scls==='soon'?' soon':''}"><div class="ic ${ic}"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24">${icon}</svg></div><div><div class="n">${n}</div><div class="l">${l}</div>${s?`<div class="s ${scls||''}">${s}</div>`:''}</div></div>`;
+  const el=$('fd-kpis'); if(!el) return;
+  el.innerHTML=[
+    kpi('ic-red','<path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>',pending,'Pending Tasks', highP>0?`${highP} High Priority`:'None urgent', highP>0?'t-red':'t-ink3'),
+    kpi('ic-green','<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>', _deskDoneToday, 'Completed Today', 'Reports filed today','t-green'),
+    kpi('ic-gray','<path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>','—','Avg Response Time','Coming soon','t-ink3'),
+    kpi('ic-gray','<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>','—','SLA Compliance','Coming soon','t-ink3')
+  ].join('');
+}
+
+function deskAlertBanner(alerts){
+  const slot=$('fd-alert-slot'); if(!slot) return;
+  const urgent=(alerts||[]).filter(a=>['critical','high'].includes((a.severity||'').toLowerCase()));
+  if(!urgent.length){ slot.innerHTML=''; return; }
+  const a=urgent[0]; const site=escHtml(a.site_name||a.client_name||a.property_name||'a site');
+  slot.innerHTML=`<div class="fd-alert"><div class="aic"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></div><div class="ab"><div class="at">High Priority Alert</div><div class="as">${escHtml(a.alert_type||'Urgent alert')} at ${site} — ${urgent.length} urgent task${urgent.length!==1?'s':''} need attention.</div></div><button class="abtn" onclick="deskNav('incidents')">View Alerts <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button></div>`;
+}
+
+function deskCoord(o){
+  const lat=Number(o.latitude??o.lat??o.property_lat??o.gps_lat), lng=Number(o.longitude??o.lng??o.property_lng??o.gps_lng);
+  return (isFinite(lat)&&isFinite(lng)&&lat!==0&&lng!==0)?[lat,lng]:null;
+}
+function deskMap(alerts, insp){
+  const host=$('fd-map'); if(!host) return;
+  if(typeof L==='undefined'){ host.outerHTML='<div class="fd-map-fallback" id="fd-map"><svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg><div>Map unavailable offline</div></div>'; return; }
+  try{
+    if(!_deskMap){ _deskMap=L.map(host,{zoomControl:true,attributionControl:false}).setView([6.45,3.42],11);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(_deskMap); }
+    _deskMarkers.forEach(m=>_deskMap.removeLayer(m)); _deskMarkers=[];
+    const pts=[];
+    const add=(o,color)=>{ const c=deskCoord(o); if(!c) return; const m=L.circleMarker(c,{radius:8,color:'#fff',weight:2,fillColor:color,fillOpacity:1}).addTo(_deskMap); _deskMarkers.push(m); pts.push(c); };
+    (alerts||[]).forEach(a=>add(a, ['critical','high'].includes((a.severity||'').toLowerCase())?'#e5483c':'#f5a623'));
+    (insp||[]).forEach(i=>add(i,'#f5a623'));
+    (S.needsReport||[]).forEach(i=>add(i,'#1f9d5b'));
+    if(S.gpsLat){ const me=L.circleMarker([S.gpsLat,S.gpsLng],{radius:9,color:'#fff',weight:3,fillColor:'#2f6bff',fillOpacity:1}).addTo(_deskMap).bindPopup('You are here'); _deskMarkers.push(me); pts.push([S.gpsLat,S.gpsLng]); }
+    if(pts.length===1) _deskMap.setView(pts[0],14);
+    else if(pts.length>1) _deskMap.fitBounds(pts,{padding:[40,40],maxZoom:14});
+    setTimeout(()=>{try{_deskMap.invalidateSize();}catch(_){}} ,120);
+    const fl=$('fd-map-full'); if(fl&&!fl._w){ fl._w=1; fl.addEventListener('click',e=>{e.preventDefault(); try{_deskMap.invalidateSize();}catch(_){}}); }
+  }catch(e){ /* leave host as-is */ }
+}
+
+function deskSync(){ const e=$('fd-sync-lbl'); if(e) e.textContent='just now'; }
+async function deskBell(){
+  try{ const r=await api('GET','/notifications'); const raw=(r&&r.data)||[]; const arr=Array.isArray(raw)?raw:(raw.items||[]);
+    const unread=arr.filter(n=>!n.read&&!n.is_read).length; const b=$('fd-bell-badge'); if(b){ b.textContent=unread; b.style.display=unread>0?'':'none'; }
+  }catch(_){}
+}
+
+function deskNav(view){
+  if(!isDesktop()) return;
+  ['dashboard','assignments','workorders','inspections','assets','incidents','reports','notifications'].forEach(v=>{
+    const b=$('fdn-'+v), p=$('fdv-'+v);
+    if(b) b.classList.toggle('active', v===view);
+    if(p) p.classList.toggle('active', v===view);
+  });
+  const titles={dashboard:'Field Engineer Portal',assignments:'My Assignments',workorders:'Work Orders',inspections:'Inspections',assets:'Assets & Sensors',incidents:'Incidents',reports:'My Reports',notifications:'Notifications'};
+  const t=$('fd-title'); if(t) t.textContent=titles[view]||'Field Engineer Portal';
+  $('fd-scroll') && ($('fd-scroll').scrollTop=0);
+  deskRenderView(view);
+}
+
+function deskRenderView(view){
+  const alerts=S.allAlerts||[], insp=S.allInspections||[], needs=S.needsReport||[];
+  if(view==='assignments'){ $('fd-assign-full').innerHTML=deskAssignRows([...deskSortAlerts(alerts),...insp],true); }
+  else if(view==='inspections'){ $('fd-insp-full').innerHTML=deskInspRows([...insp,...needs]); }
+  else if(view==='incidents'){ $('fd-incidents-full').innerHTML=deskAssignRows(deskSortAlerts(alerts),true) ; if(!alerts.length) $('fd-incidents-full').innerHTML='<div class="fd-empty"><b>No incidents</b>No active alerts for your team.</div>'; }
+  else if(view==='workorders'){ if(!_deskWO.length) deskLoadWorkOrders(); else $('fd-wo-full').innerHTML=_deskWO.map(deskWoRow).join(''); }
+  else if(view==='assets'){ deskRenderAssets(); }
+  else if(view==='reports'){ deskRenderReports(); }
+  else if(view==='notifications'){ deskRenderNotifications(); }
+}
+
+async function deskRenderAssets(){
+  const el=$('fd-assets-full'); if(!el) return; el.innerHTML='<div class="fd-empty">Loading…</div>';
+  // Uses the same per-property endpoint the mobile sensor panel uses (field-scoped).
+  const props=[...(S.allAlerts||[]),...(S.allInspections||[]),...(S.needsReport||[])];
+  const pids=[...new Set(props.map(p=>p.property_id).filter(Boolean))];
+  if(!pids.length){ el.innerHTML='<div class="fd-empty"><b>No assets</b>No properties with sensors are linked to your active jobs.</div>'; return; }
+  try{
+    const results=await Promise.all(pids.slice(0,12).map(pid=>api('GET',`/properties/${pid}/assets`).then(r=>r&&r.success?(r.data||[]):[]).catch(()=>[])));
+    const list=[].concat(...results);
+    el.innerHTML = list.length ? list.map(s=>`<div class="fd-row"><div class="ric"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg></div><div class="rb"><div class="rt">${escHtml(s.sensor_id||s.device_id||s.asset_code||'Sensor')}</div><div class="rs">${escHtml(s.property_name||s.site_name||'—')}${s.status?' · '+escHtml(s.status):''}</div></div></div>`).join('')
+      : '<div class="fd-empty"><b>No sensors found</b>No Sentinel nodes registered on your job properties.</div>';
+  }catch(e){ el.innerHTML='<div class="fd-empty"><b>Couldn\'t load assets</b>Please try again.</div>'; }
+}
+async function deskRenderReports(){
+  const el=$('fd-reports-full'); if(!el) return; el.innerHTML='<div class="fd-empty">Loading…</div>';
+  try{ const r=await api('GET','/field-reports?mine=1'); const list=(r&&r.success?r.data:[])||[]; S._history=list;
+    el.innerHTML = list.length ? list.map(x=>{ const when=x.created_at?new Date(x.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+      const st=(x.status||'').toLowerCase(); const done=['approved','sent_to_client'].includes(st);
+      const chip=`<span class="fd-chip ${done?'stat-done':'stat-prog'}">${escHtml(histStatusText(st))}</span>`;
+      return `<div class="fd-row" onclick="deskOpenReport('${escHtml(String(x.report_id||''))}')"><div class="ric"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><div class="rb"><div class="rt">${escHtml(x.title||x.report_id||'Report')}</div><div class="rs">${escHtml(x.property_name||'—')}${when?' · '+when:''}</div></div><div class="rr">${chip}</div></div>`; }).join('')
+      : '<div class="fd-empty"><b>No reports yet</b>Reports you file will appear here.</div>';
+  }catch(e){ el.innerHTML='<div class="fd-empty"><b>Couldn\'t load reports</b>Please try again.</div>'; }
+}
+function deskOpenReport(id){
+  const r=(S._history||[]).find(x=>String(x.report_id)===String(id)); if(!r) return;
+  const el=$('fd-reports-full'); if(!el) return;
+  const row=(l,v)=>v?`<div class="fd-row" style="cursor:default"><div class="rb"><div class="rs" style="text-transform:uppercase;letter-spacing:.05em;font-size:.62rem">${l}</div><div class="rt" style="white-space:normal;font-weight:600">${escHtml(String(v))}</div></div></div>`:'';
+  const when=r.created_at?new Date(r.created_at).toLocaleString('en-GB'):'';
+  el.innerHTML=`<a onclick="deskRenderReports()" style="display:inline-flex;align-items:center;gap:6px;color:var(--l-blue);font-weight:700;font-size:.8rem;cursor:pointer;margin-bottom:14px;"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>All reports</a>
+    <div style="font-size:1.1rem;font-weight:800;margin-bottom:4px;">${escHtml(r.title||'Report')}</div>
+    <div style="font-size:.76rem;color:var(--l-ink3);margin-bottom:14px;">${escHtml(histStatusText((r.status||'').toLowerCase()))}${when?' · '+when:''}</div>
+    ${row('Property',r.property_name)}${row('Summary',r.summary)}${row('Findings',r.findings)}${row('Recommendations',r.recommendations)}${row('Materials used',r.materials_used)}${row('Time on site',r.work_duration_min?r.work_duration_min+' min':'')}`;
+}
+async function deskRenderNotifications(){
+  const el=$('fd-notif-full'); if(!el) return; el.innerHTML='<div class="fd-empty">Loading…</div>';
+  try{ const r=await api('GET','/notifications'); const list=(r&&r.data)||(r&&r.success&&r.data)||[];
+    const arr=Array.isArray(list)?list:(list.items||[]);
+    el.innerHTML = arr.length ? arr.slice(0,40).map(n=>`<div class="fd-row"><div class="ric"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5"/></svg></div><div class="rb"><div class="rt">${escHtml(n.title||'Notification')}</div><div class="rs">${escHtml(n.message||'')}</div></div></div>`).join('')
+      : '<div class="fd-empty"><b>No notifications</b>You\'re all caught up.</div>';
+    const unread=arr.filter(n=>!n.read&&!n.is_read).length; const b=$('fd-bell-badge'); if(b){ b.textContent=unread; b.style.display=unread>0?'':'none'; }
+  }catch(e){ el.innerHTML='<div class="fd-empty"><b>Couldn\'t load</b>Notifications unavailable.</div>'; }
 }
 
 function nrCard(i){
