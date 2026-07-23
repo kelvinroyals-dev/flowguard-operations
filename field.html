@@ -2521,6 +2521,7 @@ function renderOnSitePanel() {
 
 function renderGPSCheckin() {
   const a=S.alert, ins=S.inspection;
+  if(!a && !ins) return;   // no job open (e.g. GPS resolved on the desktop dashboard) — nothing to render
   const jobName = a ? (a.alert_type||'Drainage Alert')+' — '+(a.site_name||a.client_name||'') : 'Inspection — '+(ins.property_name||ins.area_name||'');
   const lat=S.gpsLat?S.gpsLat.toFixed(4):'Acquiring…';
   const lng=S.gpsLng?S.gpsLng.toFixed(4):'Acquiring…';
@@ -2576,7 +2577,7 @@ function acquireGPS() {
     clearTimeout(S._gpsWatchdog);
     S.gpsLat=pos.coords.latitude; S.gpsLng=pos.coords.longitude; S.gpsAcc=pos.coords.accuracy; S.gpsApprox=false;
     S.gpsState='ok';
-    if((S.onsiteStep||0)===0 && $('onsite-area')) renderGPSCheckin();
+    if((S.onsiteStep||0)===0 && (S.alert||S.inspection) && $('onsite-area')) renderGPSCheckin();
     gpsPaint();
   };
   const onFail = async err => {
@@ -2585,7 +2586,7 @@ function acquireGPS() {
     // Denied is a user choice — respect it. For timeout/unavailable, try coarse IP.
     if(code!==1){ if(await gpsIpFallback()) return; }
     S.gpsState = code===1 ? 'denied' : code===3 ? 'timeout' : 'unavailable';
-    if(!isDesktop()){ S.gpsLat=0; S.gpsLng=0; S.gpsAcc=null; if((S.onsiteStep||0)===0) renderGPSCheckin(); }
+    if(!isDesktop()){ S.gpsLat=0; S.gpsLng=0; S.gpsAcc=null; if((S.onsiteStep||0)===0 && (S.alert||S.inspection)) renderGPSCheckin(); }
     gpsPaint();
   };
   // Fast first fix: accept a recent cached position instantly (maximumAge) at coarse
