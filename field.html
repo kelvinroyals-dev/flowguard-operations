@@ -1042,6 +1042,28 @@
     .history-title { font-size:.86rem; font-weight:600; color:var(--ink-2); line-height:1.3; }
     .history-meta  { font-family:var(--mono); font-size:.62rem; color:var(--ink-4); margin-top:3px; }
 
+    /* My Reports / job-history panel */
+    .hist-hd { font-size:.6rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-4); margin:4px 0 12px; }
+    .hist-card { background:var(--glass); border:1px solid var(--glass-b); border-radius:14px; padding:14px 16px; margin-bottom:10px; cursor:pointer; transition:.15s; }
+    .hist-card:active { transform:scale(.99); }
+    .hist-top { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .hist-title { font-size:.9rem; font-weight:700; color:var(--ink); }
+    .hist-sub { font-size:.72rem; color:var(--ink-3); margin-top:4px; }
+    .hist-status { font-size:.56rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; padding:3px 8px; border-radius:6px; white-space:nowrap; background:rgba(255,255,255,.08); color:var(--ink-2); }
+    .hist-status.draft { background:rgba(245,166,35,.16); color:var(--amber); }
+    .hist-status.under_review, .hist-status.review { background:rgba(22,168,211,.16); color:var(--blue); }
+    .hist-status.approved, .hist-status.sent_to_client { background:rgba(31,157,91,.16); color:var(--ok); }
+    .hist-back { background:none; border:none; color:var(--blue); font-size:.8rem; font-weight:700; padding:4px 0 14px; cursor:pointer; }
+    .hist-detail { background:var(--glass); border:1px solid var(--glass-b); border-radius:16px; padding:18px; }
+    .hist-detail-title { font-size:1.05rem; font-weight:800; color:var(--ink); }
+    .hist-detail-meta { font-size:.72rem; color:var(--ink-3); margin:8px 0 14px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .hist-row { padding:11px 0; border-top:1px solid rgba(255,255,255,.06); }
+    .hist-row-l { font-size:.56rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-4); margin-bottom:4px; }
+    .hist-row-v { font-size:.86rem; color:var(--ink-2); line-height:1.5; white-space:pre-wrap; }
+    .hist-edit { width:100%; margin-top:18px; padding:13px; border:none; border-radius:12px; background:var(--blue); color:#fff; font-family:inherit; font-size:.9rem; font-weight:800; cursor:pointer; }
+    .hist-edit:disabled { opacity:.6; }
+    .hist-locked { margin-top:16px; font-size:.76rem; color:var(--ink-3); background:rgba(255,255,255,.04); border-radius:10px; padding:12px 14px; }
+
     @media (prefers-reduced-motion:reduce) {
       .hero::before,.hero::after,.ring-1,.ring-2,.ab,.live-dot.con,.newjob-dot,.oa-icon,.spn,.gps-ico { animation:none!important; opacity:1; }
     }
@@ -1264,6 +1286,13 @@
     </div>
   </div>
 
+  <!-- ── HISTORY PANEL ── -->
+  <div class="scroll-body dash-panel" id="panel-history">
+    <div id="history-area">
+      <div class="state-spin"><div class="spn"></div>Loading your reports…</div>
+    </div>
+  </div>
+
   <!-- ── PROFILE PANEL ── -->
   <div class="scroll-body dash-panel" id="panel-profile">
     <div id="profile-area">
@@ -1285,6 +1314,10 @@
     <button class="bnav-item" id="bnav-sensor" onclick="switchPanel('sensor')">
       <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
       Sensors
+    </button>
+    <button class="bnav-item" id="bnav-history" onclick="switchPanel('history')">
+      <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      History
     </button>
     <button class="bnav-item" id="bnav-profile" onclick="switchPanel('profile')">
       <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
@@ -1610,12 +1643,13 @@ async function loadData() {
    PANEL SWITCHING
 ══════════════════════════════════════ */
 function switchPanel(name) {
-  ['tasks','onsite','sensor','profile'].forEach(p=>{
+  ['tasks','onsite','sensor','profile','history'].forEach(p=>{
     $('panel-'+p).classList.toggle('active', p===name);
     $('bnav-'+p).classList.toggle('active', p===name);
   });
   if(name==='sensor' && !S.sensorsLoaded) renderSensorPanel();
   if(name==='profile') renderProfilePanel();
+  if(name==='history') renderHistoryPanel();
 }
 
 /* ══════════════════════════════════════
@@ -2029,6 +2063,84 @@ function pingSensor(id, btn) {
 /* ══════════════════════════════════════
    PROFILE PANEL
 ══════════════════════════════════════ */
+/* ══════════════════════════════════════
+   HISTORY PANEL — the agent's submitted reports (review + edit any time)
+══════════════════════════════════════ */
+async function renderHistoryPanel() {
+  const el=$('history-area');
+  el.innerHTML='<div class="state-spin"><div class="spn"></div>Loading your reports…</div>';
+  try {
+    const r=await api('GET','/field-reports?mine=1');
+    const list=(r&&r.success&&Array.isArray(r.data))?r.data:[];
+    S._history=list;
+    if(!list.length){
+      el.innerHTML='<div class="state-card"><div class="state-icon"><svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><div class="state-title">No reports yet</div><div class="state-sub">Reports you submit after completing a job will appear here to review any time.</div></div>';
+      return;
+    }
+    el.innerHTML='<div class="hist-hd">Your reports</div>'+list.map(historyCard).join('');
+  } catch(e){
+    el.innerHTML='<div class="state-card"><div class="state-title">Couldn\'t load reports</div><div class="state-sub">'+escHtml(e.message||'Try again.')+'</div><button class="retry-btn" onclick="renderHistoryPanel()">Retry</button></div>';
+  }
+}
+function histStatusText(s){ return ({draft:'Draft',under_review:'Submitted',review:'Submitted',approved:'Approved',sent_to_client:'Sent to client'})[s]||(s||'').replace(/_/g,' '); }
+function historyCard(r){
+  const when=r.created_at?new Date(r.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+  return `<div class="hist-card" onclick="openHistory('${r.report_id}')">
+    <div class="hist-top"><div class="hist-title">${escHtml(r.title||r.summary||'Report')}</div><span class="hist-status ${r.status||''}">${escHtml(histStatusText(r.status))}</span></div>
+    <div class="hist-sub">${escHtml(r.property_name||'—')}${when?' · '+when:''}</div>
+  </div>`;
+}
+function openHistory(id){
+  const r=(S._history||[]).find(x=>String(x.report_id)===String(id)); if(!r) return;
+  const row=(l,v)=>v?`<div class="hist-row"><div class="hist-row-l">${l}</div><div class="hist-row-v">${escHtml(v)}</div></div>`:'';
+  const editable=['draft','under_review','review'].includes(r.status);
+  $('history-area').innerHTML=`
+    <button class="hist-back" onclick="renderHistoryPanel()">← All reports</button>
+    <div class="hist-detail">
+      <div class="hist-detail-title">${escHtml(r.title||'Report')}</div>
+      <div class="hist-detail-meta"><span class="hist-status ${r.status||''}">${escHtml(histStatusText(r.status))}</span> · ${r.created_at?new Date(r.created_at).toLocaleString('en-GB'):''}</div>
+      ${row('Property', r.property_name)}
+      ${row('Summary', r.summary)}
+      ${row('Findings', r.findings)}
+      ${row('Recommendations', r.recommendations)}
+      ${row('Materials used', r.materials_used)}
+      ${row('Time on site', r.work_duration_min?r.work_duration_min+' min':'')}
+      ${editable
+        ? `<button class="hist-edit" onclick="editHistory('${r.report_id}')">Edit report</button>`
+        : `<div class="hist-locked">This report has been reviewed by ops and can no longer be edited.</div>`}
+    </div>`;
+}
+function editHistory(id){
+  const r=(S._history||[]).find(x=>String(x.report_id)===String(id)); if(!r) return;
+  $('history-area').innerHTML=`
+    <button class="hist-back" onclick="openHistory('${id}')">← Cancel</button>
+    <div class="hist-detail">
+      <label class="rfield-label">Title</label><input id="eh-title" class="rfield-input" value="${escHtml(r.title||'')}">
+      <label class="rfield-label">Summary</label><textarea id="eh-summary" class="rfield-ta">${escHtml(r.summary||'')}</textarea>
+      <label class="rfield-label">Findings</label><textarea id="eh-findings" class="rfield-ta">${escHtml(r.findings||'')}</textarea>
+      <label class="rfield-label">Recommendations</label><textarea id="eh-recs" class="rfield-ta">${escHtml(r.recommendations||'')}</textarea>
+      <label class="rfield-label">Materials used</label><input id="eh-materials" class="rfield-input" value="${escHtml(r.materials_used||'')}">
+      <div id="eh-msg" class="sh-msg"></div>
+      <button class="hist-edit" id="eh-save" onclick="saveHistory('${id}')">Save changes</button>
+    </div>`;
+}
+async function saveHistory(id){
+  const btn=$('eh-save'), msg=$('eh-msg');
+  btn.disabled=true; btn.textContent='Saving…'; msg.className='sh-msg';
+  const body={
+    title:$('eh-title').value.trim(), summary:$('eh-summary').value.trim(),
+    findings:$('eh-findings').value.trim(), recommendations:$('eh-recs').value.trim(),
+    materials_used:$('eh-materials').value.trim()
+  };
+  try{
+    const r=await api('PUT','/field-reports/'+encodeURIComponent(id), body);
+    if(!r||!r.success) throw new Error((r&&r.error)||'Save failed');
+    const idx=(S._history||[]).findIndex(x=>String(x.report_id)===String(id));
+    if(idx>=0) S._history[idx]={...S._history[idx],...body};
+    toast('Report updated','ok'); openHistory(id);
+  }catch(e){ msg.className='sh-msg error'; msg.textContent=e.message||'Save failed. Check your connection.'; btn.disabled=false; btn.textContent='Save changes'; }
+}
+
 function renderProfilePanel() {
   const u=S.user||{};
   const name=u.full_name||u.name||u.email||'Field Technician';
