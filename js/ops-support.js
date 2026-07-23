@@ -127,37 +127,47 @@ const OpsSupport = (function () {
     // Payment-notification tickets reference an invoice — deep-link finance to it.
     const invMatch = `${t.subject || ''} ${t.title || ''} ${t.description || ''}`.match(/INV-\d{4}-\d+/);
     const invId = invMatch ? invMatch[0] : null;
-    _container.innerHTML = CSS + `
-      <div class="fgd-crumb"><span class="lnk" onclick="OpsSupport.back()">Support</span><span class="sep">/</span><span class="cur">${esc(t.ticket_id)}</span></div>
-      <div class="sup-head">
-        <div><h1>${esc(t.subject || t.title || 'Support ticket')}</h1>
-          <div class="sub">${esc(t.ticket_id)} · <span class="lv-status ${statusCls(t.status)}">${esc(t.status || 'new')}</span></div></div>
-        ${canManage() && openStatus(t.status) ? `<button class="sup-btn primary" style="margin-left:auto;" onclick="OpsSupport.resolve('${t.ticket_id}')">Mark resolved</button>` : ''}
-        ${canManage() && !openStatus(t.status) ? `<button class="sup-btn" style="margin-left:auto;" onclick="OpsSupport.reopen('${t.ticket_id}')">Reopen</button>` : ''}
+    const primaryBtn = 'style="background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;"';
+    const open_ = openStatus(t.status);
+
+    const convo = `
+      <div class="sup-msgs">
+        ${t.description ? `<div class="sup-bubble sup-client"><div class="who">${esc(meta.client_name || 'Client')} · original request</div>${esc(t.description)}<div class="t">${OpsModal.fmtDateTime ? OpsModal.fmtDateTime(t.created_at) : ''}</div></div>` : ''}
+        ${bubbles}
       </div>
-      <div class="sup-thread">
-        <div>
-          <div class="sup-msgs">
-            ${t.description ? `<div class="sup-bubble sup-client"><div class="who">${esc(meta.client_name || 'Client')} · original request</div>${esc(t.description)}<div class="t">${OpsModal.fmtDateTime ? OpsModal.fmtDateTime(t.created_at) : ''}</div></div>` : ''}
-            ${bubbles}
-          </div>
-          ${canManage() ? `<div class="sup-reply">
-            <textarea id="sup-reply-txt" placeholder="Write a reply to the client…"></textarea>
-            <div class="sup-reply-bar"><button class="sup-btn primary" id="sup-reply-btn" onclick="OpsSupport.reply('${t.ticket_id}')">Send reply</button></div>
-          </div>` : `<div class="sup-empty" style="padding:14px;">You have read-only access to support.</div>`}
-        </div>
-        <div class="fgd-card" style="padding:16px;">
-          <div class="fgd-card-head"><h2>Details</h2></div>
-          ${F('Client', meta.client_name ? esc(meta.client_name) : '—')}
-          ${F('Email', meta.client_email ? esc(meta.client_email) : '—')}
-          ${F('Property', meta.property_name ? OpsModal.link('properties', t.property_id, esc(meta.property_name)) : (t.property_id ? esc(t.property_id) : '—'))}
-          ${F('Category', esc(t.type || 'general'))}
-          ${F('Priority', esc(t.priority || 'normal'))}
-          ${F('Opened', OpsModal.fmtDate ? OpsModal.fmtDate(t.created_at) : '—')}
-          ${invId ? F('Invoice', OpsModal.link('billing', invId, esc(invId))) : ''}
-        </div>
-        ${invId ? `<div class="fgd-card" style="padding:16px;"><div class="fgd-card-head"><h2>Reconcile</h2></div><button class="fgd-btn" style="width:100%;background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;" onclick="fgOpen('billing','${esc(invId)}')">Open invoice ${esc(invId)} →</button></div>` : ''}
-      </div>`;
+      ${canManage() ? `<div class="sup-reply">
+        <textarea id="sup-reply-txt" placeholder="Write a reply to the client…"></textarea>
+        <div class="sup-reply-bar"><button class="fgd-btn" ${primaryBtn} id="sup-reply-btn" onclick="OpsSupport.reply('${t.ticket_id}')">Send reply</button></div>
+      </div>` : `<div class="sup-empty" style="padding:14px;">You have read-only access to support.</div>`}`;
+
+    const sidebar = `
+      <div class="fgd-card"><div class="fgd-card-head"><h2>Details</h2></div>
+        ${F('Client', meta.client_name ? esc(meta.client_name) : '—')}
+        ${F('Email', meta.client_email ? esc(meta.client_email) : '—')}
+        ${F('Property', meta.property_name ? OpsModal.link('properties', t.property_id, esc(meta.property_name)) : (t.property_id ? esc(t.property_id) : '—'))}
+        ${F('Category', esc(t.type || 'general'))}
+        ${F('Priority', esc(t.priority || 'normal'))}
+        ${F('Opened', OpsModal.fmtDate ? OpsModal.fmtDate(t.created_at) : '—')}
+        ${invId ? F('Invoice', OpsModal.link('billing', invId, esc(invId))) : ''}
+      </div>
+      ${invId ? `<div class="fgd-card"><div class="fgd-card-head"><h2>Reconcile</h2></div><button class="fgd-btn" style="width:100%;background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;" onclick="fgOpen('billing','${esc(invId)}')">Open invoice ${esc(invId)} →</button></div>` : ''}`;
+
+    _container.innerHTML = CSS + OpsModal.detailShell({
+      back: 'OpsSupport.back()',
+      crumbRoot: 'Support',
+      title: esc(t.subject || t.title || 'Support ticket'),
+      avatar: { text: 'ST', bg: 'linear-gradient(135deg,#16a8d3,#0d7fa0)' },
+      chips: [
+        { cls: open_ ? 'warn' : 'ok', dot: true, label: t.status || 'new' },
+        t.priority ? { cls: 'neutral', label: t.priority } : null,
+      ].filter(Boolean),
+      meta: [['Ticket', esc(t.ticket_id)], ['Category', esc(t.type || 'general')], ['Opened', OpsModal.fmtDate ? OpsModal.fmtDate(t.created_at) : '—']],
+      actions: `${canManage() && open_ ? `<button class="fgd-btn" ${primaryBtn} onclick="OpsSupport.resolve('${t.ticket_id}')">Mark resolved</button>` : ''}${canManage() && !open_ ? `<button class="fgd-btn" onclick="OpsSupport.reopen('${t.ticket_id}')">Reopen</button>` : ''}`,
+      sections: [
+        { id: 'conversation', title: 'Conversation', body: convo },
+      ],
+      sidebar,
+    });
   }
 
   async function reply(id) {
