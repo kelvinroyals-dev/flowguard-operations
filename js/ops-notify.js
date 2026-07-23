@@ -40,9 +40,26 @@ const OpsNotify = (function () {
     if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + 'm ago';
     if (s < 86400) return Math.floor(s / 3600) + 'h ago'; return Math.floor(s / 86400) + 'd ago';
   }
-  const api = (m, p, b) => (window.OpsModal && OpsModal.apiGet)
-    ? (m === 'GET' ? OpsModal.apiGet(p) : OpsModal.apiPut(p, b || {}))
-    : fetch(`${CONFIG.API_BASE}${p}`, { method: m, headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }, ...(b ? { body: JSON.stringify(b) } : {}) }).then(r => r.json());
+  // Deliberately uses XHR, NOT fetch: the app installs a global fetch 401
+  // interceptor that force-logs-out on any 401. A background notification poll
+  // must never be able to trigger that — a real session expiry is caught by the
+  // actual data-loading calls. So we bypass the patched fetch entirely and just
+  // fail quietly (badge doesn't update) if the request errors.
+  function api(m, p, b) {
+    return new Promise(resolve => {
+      try {
+        const base = (typeof CONFIG !== 'undefined' && CONFIG.API_BASE) ? CONFIG.API_BASE : '/api/v1';
+        const xhr = new XMLHttpRequest();
+        xhr.open(m, base + p);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        const tok = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+        if (tok) xhr.setRequestHeader('Authorization', 'Bearer ' + tok);
+        xhr.onload = () => { try { resolve(JSON.parse(xhr.responseText || '{}')); } catch (_) { resolve({ success: false }); } };
+        xhr.onerror = () => resolve({ success: false });
+        xhr.send(b ? JSON.stringify(b) : null);
+      } catch (_) { resolve({ success: false }); }
+    });
+  }
 
   function ensure() {
     if (_built) return;
