@@ -2559,13 +2559,24 @@ function acquireGPS() {
   if(window.isSecureContext===false){ S.gpsState='insecure'; gpsPaint(); return; }
   S.gpsState='locating'; gpsPaint();
 
+  // Watchdog: some browsers never fire the success/error callback while a
+  // permission prompt sits unanswered, or while a laptop does a slow Wi-Fi/IP
+  // lookup — the `timeout` option isn't honoured in that window. So we guarantee
+  // the label resolves instead of spinning on "Locating…" forever.
+  clearTimeout(S._gpsWatchdog);
+  S._gpsWatchdog = setTimeout(() => {
+    if(S.gpsState==='locating'){ S.gpsState='timeout'; gpsPaint(); }
+  }, 20000);
+
   const onOk = pos => {
+    clearTimeout(S._gpsWatchdog);
     S.gpsLat=pos.coords.latitude; S.gpsLng=pos.coords.longitude; S.gpsAcc=pos.coords.accuracy;
     S.gpsState='ok';
     if((S.onsiteStep||0)===0 && $('onsite-area')) renderGPSCheckin();
     gpsPaint();
   };
   const onFail = err => {
+    clearTimeout(S._gpsWatchdog);
     const code = err && err.code;
     S.gpsState = code===1 ? 'denied' : code===3 ? 'timeout' : 'unavailable';
     // Mobile check-in still needs a value to enable manual confirm.
