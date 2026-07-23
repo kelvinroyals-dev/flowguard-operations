@@ -37,6 +37,10 @@ const OpsSupport = (function () {
     .sup-btn { font-size:var(--fs-sm); font-weight:600; padding:9px 16px; border-radius:10px; cursor:pointer; border:1px solid var(--border-2); background:var(--surface); color:var(--ink-2); }
     .sup-btn.primary { background:linear-gradient(135deg,#16a8d3,#0d7fa0); color:#fff; border:none; }
     .sup-empty { padding:40px; text-align:center; color:var(--ink-3); }
+    .sup-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--blue); margin-right:7px; vertical-align:middle; box-shadow:0 0 6px rgba(22,168,211,.6); }
+    .lv-table tr.sup-unread { background:rgba(22,168,211,.05); }
+    .lv-table tr.sup-unread td { font-weight:600; }
+    .lv-table tr.sup-unread td.strong { color:var(--ink); }
   </style>`;
 
   function render(container) {
@@ -91,8 +95,8 @@ const OpsSupport = (function () {
     const L = OpsModal.link;
     el.innerHTML = `<div class="lv-scroll"><table class="lv-table">
       <thead><tr><th>Ticket</th><th>Client</th><th>Subject</th><th>Category</th><th>Priority</th><th>Status</th><th>Last activity</th></tr></thead>
-      <tbody>${rows.map(r => `<tr class="clickable" onclick="OpsSupport.open('${r.ticket_id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsSupport.open('${r.ticket_id}')}">
-        <td class="lv-mono" style="color:var(--ink);font-weight:700;">${esc(r.ticket_id)}</td>
+      <tbody>${rows.map(r => `<tr class="clickable${r.needs_response ? ' sup-unread' : ''}" onclick="OpsSupport.open('${r.ticket_id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsSupport.open('${r.ticket_id}')}">
+        <td class="lv-mono" style="color:var(--ink);font-weight:700;">${r.needs_response ? '<span class="sup-dot" title="Awaiting your response"></span>' : ''}${esc(r.ticket_id)}</td>
         <td>${r.user_id ? L('clients', r.user_id, r.client_name || 'Client') : esc(r.client_name || '—')}</td>
         <td class="strong">${esc(r.title || '—')}</td>
         <td>${esc((r.category || 'general'))}</td>

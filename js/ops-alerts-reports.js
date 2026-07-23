@@ -23,6 +23,8 @@ const OpsAlerts = (function () {
       <style>
         .ops-table tbody tr.clickable { cursor:pointer; transition:background .12s; }
         .ops-table tbody tr.clickable:hover { background:var(--surface-2,#f2f8fb); }
+        .alert-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--err,#e5483c); margin-right:7px; vertical-align:middle; box-shadow:0 0 6px rgba(229,72,60,.55); }
+        .ops-table tbody tr.alert-unread td { font-weight:600; }
         .al-back { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:8px 13px; cursor:pointer; }
         .al-detail-top { display:flex; align-items:center; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
         .al-detail-name { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; }
@@ -438,8 +440,9 @@ const OpsAlerts = (function () {
               const type = a.alert_type || a.type || 'System Alert';
               const location = a.location || a.property || a.property_name || a.site_name || '—';
               const status = a.status || 'active';
-              return `<tr class="clickable" onclick="OpsAlerts.open('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsAlerts.open('${id}')}">
-                <td style="font-family:var(--ff-m);font-size:var(--fs-sm);" class="bright">${id}</td>
+              const unread = ['active', 'new'].includes(String(status).toLowerCase());
+              return `<tr class="clickable${unread ? ' alert-unread' : ''}" onclick="OpsAlerts.open('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsAlerts.open('${id}')}">
+                <td style="font-family:var(--ff-m);font-size:var(--fs-sm);" class="bright">${unread ? '<span class="alert-dot" title="Not yet acknowledged"></span>' : ''}${id}</td>
                 <td>${type}</td>
                 <td style="font-size:var(--fs-sm);">${_dash(location)}</td>
                 <td style="font-size:var(--fs-sm);">${_dash(a.sensor_name || a.device_name)}</td>
