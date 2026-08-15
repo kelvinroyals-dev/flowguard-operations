@@ -1369,7 +1369,7 @@
       '| tabs: dashboard, alerts, clients, properties, assets, sentinel, network, teams');
   </script>
   <script src="js/config.js?v=sec3"></script>
-<script src="js/auth.js?v=sec5"></script>
+<script src="js/auth.js?v=sec6"></script>
 <script src="js/ops-modal.js?v=sec10"></script>
 <script src="js/fg-paginator.js?v=sec2"></script>
 <script src="js/ops-dashboard.js?v=sec9"></script>
@@ -1392,7 +1392,14 @@
 <script src="js/ops-notify.js?v=sec3"></script>
 
 <script>
-  if (typeof Auth === 'undefined' || !Auth.isAuthenticated()) window.location.href = 'login.html';
+  if (typeof Auth === 'undefined' || !Auth.isAuthenticated()) {
+    window.location.href = 'login.html';
+  } else if (!Auth.isInternal()) {
+    // Neon is staff-only. A non-internal account (e.g. a client) must never
+    // hold an ops session — clear it and bounce to the login page. This catches
+    // any client who still has a token from before the login-time guard shipped.
+    Auth.logout();
+  }
   Auth.install401Interceptor();
 
   const TAB_META = {

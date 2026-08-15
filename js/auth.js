@@ -1,5 +1,5 @@
 /**
- * FlowGuard Operations Center — Authentication Module v3.3.0
+ * FlowGuard Operations Center — Authentication Module v3.4.0
  * ─────────────────────────────────────────────────────────────
  * Changes:
  *  • getToken() / getUser() check sessionStorage FIRST, then localStorage
@@ -63,6 +63,13 @@ const Auth = (function () {
 
   function getRole() {
     return normalizeRole(getUser()?.role);
+  }
+
+  // Neon is a staff-only portal. isInternal() is the single check for "is this
+  // an internal FlowGuard account" — used to keep client (and any non-internal)
+  // sessions out of the ops app entirely, not just off the login form.
+  function isInternal() {
+    return (getUser()?.user_type) === 'internal';
   }
 
   // ── AUTH STATE ─────────────────────────────────────────────────────────
@@ -194,7 +201,7 @@ const Auth = (function () {
 
   return {
     getToken, getUser, getRole,
-    isAuthenticated, hasNavAccess, getDefaultTab,
+    isAuthenticated, isInternal, hasNavAccess, getDefaultTab,
     loadPermissions, can,
     logout, install401Interceptor,
     updateUserInfo, getGreeting, getPersonalizedGreeting,
