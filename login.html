@@ -228,9 +228,12 @@
         // for portal:'ops', but guard here too so a client can never be stored
         // into the ops session even if this page loads before the API deploy.
         if (d.data.user.user_type !== 'internal') {
+          // Never confirm these are valid client creds — show the SAME generic
+          // failure as a bad login. (Fallback for the pre-deploy window; the API
+          // itself returns a generic 401 for non-staff on the ops portal.)
           btn.disabled = false;
           btxt.textContent = 'Sign in to Operations Center';
-          showMsg('This portal is for FlowGuard staff. Please sign in on the client portal instead.', 'error');
+          showMsg('Invalid credentials. Please try again.', 'error');
           return;
         }
         const store = remember ? localStorage : sessionStorage;
