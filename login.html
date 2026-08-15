@@ -220,17 +220,26 @@
     try {
       const r = await fetch('https://api.flowguard.ng/api/v1/auth/login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password, portal: 'ops' })
       });
       const d = await r.json();
       if (d.success) {
+        // Staff-only portal. The server already rejects non-internal accounts
+        // for portal:'ops', but guard here too so a client can never be stored
+        // into the ops session even if this page loads before the API deploy.
+        if (d.data.user.user_type !== 'internal') {
+          btn.disabled = false;
+          btxt.textContent = 'Sign in to Operations Center';
+          showMsg('This portal is for FlowGuard staff. Please sign in on the client portal instead.', 'error');
+          return;
+        }
         const store = remember ? localStorage : sessionStorage;
         store.setItem('token', d.data.token);
         store.setItem('user', JSON.stringify(d.data.user));
         if (!remember) { localStorage.removeItem('token'); localStorage.removeItem('user'); }
         btxt.innerHTML = '✓ &nbsp;Access granted';
         showMsg('Authenticated. Loading your workspace…', 'success');
-        const dest = d.data.user.role === 'field_team' ? 'field.html' : 'index.html';
+        const dest = String(d.data.user.role || '').trim().toLowerCase().replace(/[\s-]+/g, '_') === 'field_team' ? 'field.html' : 'index.html';
         setTimeout(() => window.location.href = dest, 800);
       } else {
         btn.disabled = false;
