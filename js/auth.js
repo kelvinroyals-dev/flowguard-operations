@@ -1,5 +1,5 @@
 /**
- * FlowGuard Operations Center — Authentication Module v3.2.1
+ * FlowGuard Operations Center — Authentication Module v3.3.0
  * ─────────────────────────────────────────────────────────────
  * Changes:
  *  • getToken() / getUser() check sessionStorage FIRST, then localStorage
@@ -28,8 +28,41 @@ const Auth = (function () {
     }
   }
 
+  // Canonical internal role keys must match CONFIG.NAV_ACCESS / ROLE_LABELS.
+  // Older accounts and invites sometimes stored a role in a different shape
+  // ("Operations Manager", "ops_manager", stray caps/spaces). Without this,
+  // CONFIG.NAV_ACCESS[role] misses, falls back to [], and the user logs in to
+  // an empty portal with zero tabs. normalizeRole() canonicalises the string so
+  // a legitimate role never silently falls through.
+  //
+  // ROLE_ALIASES only maps KNOWN synonyms. It never fuzzy-matches, so an
+  // unknown/unauthorised role stays unknown rather than being promoted into a
+  // privileged one.
+  const ROLE_ALIASES = {
+    administrator:        'admin',
+    superadmin:           'super_admin',
+    super_administrator:  'super_admin',
+    ops_manager:          'operations_manager',
+    opsmanager:           'operations_manager',
+    operationsmanager:    'operations_manager',
+    operations_mgr:       'operations_manager',
+    ops_mgr:              'operations_manager',
+    operation_manager:    'operations_manager',
+    fieldlead:            'field_lead',
+    fieldteam:            'field_team',
+  };
+
+  // lower-case, trim, and collapse spaces/hyphens to underscores, then apply
+  // the alias table. "Operations Manager", "operations-manager", " OPERATIONS_MANAGER "
+  // all resolve to "operations_manager".
+  function normalizeRole(raw) {
+    if (!raw || typeof raw !== 'string') return null;
+    const key = raw.trim().toLowerCase().replace(/[\s-]+/g, '_');
+    return ROLE_ALIASES[key] || key;
+  }
+
   function getRole() {
-    return getUser()?.role || null;
+    return normalizeRole(getUser()?.role);
   }
 
   // ── AUTH STATE ─────────────────────────────────────────────────────────
@@ -135,7 +168,7 @@ const Auth = (function () {
     const fullName  = user.fullName || user.full_name || 'User';
     const firstName = fullName.split(' ')[0];
     const initials  = fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-    const role      = user.role || 'unknown';
+    const role      = getRole() || 'unknown';
     const roleLabel = CONFIG.ROLE_LABELS[role] || role.replace(/_/g, ' ');
 
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
