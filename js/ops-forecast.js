@@ -12,6 +12,7 @@ const OpsForecast = (function () {
   'use strict';
 
   let _root = null, _fc = null, _kpis = null, _md = null, _map = null, _horizon = 'today', _sel = null, _layers = {}, _tiles = null, _themeObs = null;
+  let _hz = new Map(), _portfolio = null;   // real now/+1h/+3h/+6h horizon data + portfolio triage (GET /forecast/horizons)
 
   const esc = v => (v == null ? '' : String(v)).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
   const riskColor = v => v >= 70 ? 'var(--err)' : v >= 40 ? 'var(--warn)' : 'var(--ok)';
@@ -105,14 +106,17 @@ const OpsForecast = (function () {
     _root = container;
     container.innerHTML = STYLES + `<div class="fcx"><div class="fcx-loading"><div class="loading" style="margin:0 auto 12px;"></div>Building the risk forecast…</div></div>`;
     try {
-      const [fcRes, kpiRes, mdRes] = await Promise.all([
+      const [fcRes, kpiRes, mdRes, hzRes] = await Promise.all([
         OpsModal.apiGet(`/forecast?horizon=${_horizon}`),
         OpsModal.apiGet('/analytics/kpis').catch(() => ({ data: {} })),
         OpsModal.apiGet('/analytics/map-data').catch(() => ({ data: {} })),
+        OpsModal.apiGet('/forecast/horizons').catch(() => ({ data: {} })),   // real now/+1h/+3h/+6h
       ]);
       _fc = fcRes.data || {};
       _kpis = kpiRes.data || {};
       _md = mdRes.data || {};
+      _hz = new Map(((hzRes.data && hzRes.data.estates) || []).map(e => [String(e.property_id), e]));
+      _portfolio = (hzRes.data && hzRes.data.portfolio) || null;
       if (!_sel && (_fc.estates || []).length) _sel = _fc.estates[0];
       draw();
       await loadLeaflet();
@@ -308,11 +312,55 @@ const OpsForecast = (function () {
       <div class="fcx-insp-scroll">
         <div class="fcx-insp-b"><div class="fcx-insp-l">Property${e.geo_approx ? ' · approx. location' : ''}</div><div class="fcx-pf"><div><span class="k">Client</span><span class="v">${esc(e.client_name || 'Unlinked')}</span></div><div><span class="k">Last cleaned</span><span class="v">${months(e.last_cleaning || e.last_inspection)}</span></div><div><span class="k">Open incidents</span><span class="v">${e.open_incidents || 0}</span></div><div><span class="k">Flood history</span><span class="v">${e.flood_events || 0}</span></div></div></div>
         <div class="fcx-insp-b"><div class="fcx-insp-l">Current risk</div><div class="fcx-gauge"><span class="big" style="color:${riskColor(cur)}">${cur}</span>${ringMini(cur, riskHex(cur))}</div></div>
-        <div class="fcx-insp-b"><div class="fcx-insp-l">Forecast risk</div><div class="fcx-hours"><div class="fcx-h"><div class="h">6h</div><div class="v" style="color:${riskColor(at(.25))}">${at(.25)}%</div></div><div class="fcx-h"><div class="h">12h</div><div class="v" style="color:${riskColor(at(.5))}">${at(.5)}%</div></div><div class="fcx-h"><div class="h">24h</div><div class="v" style="color:${riskColor(pred)}">${pred}%</div></div></div></div>
+        ${horizonBlock(e)}
         ${liveBlock}
         <div class="fcx-insp-b"><div class="fcx-insp-l">Recommended action</div><div class="fcx-act">${e.recommendation_level === 'ok' ? '✓' : '!'} ${esc(e.recommendation || 'Monitor as usual')}</div></div>
+        <div class="fcx-insp-b"><div class="fcx-insp-l">AI briefing</div><button class="fcx-btn" style="width:100%;" onclick="OpsForecast.explain('${esc(e.property_id)}')" id="fcx-brief-btn">Explain this score</button><div id="fcx-brief" class="fcx-brief"></div></div>
       </div>
       <div class="fcx-insp-foot"><button class="fcx-btn primary" style="width:100%;" onclick="OpsForecast.act()">Create preventive action</button></div>`;
+  }
+
+  // Real multi-horizon block (now / +1h / +3h / +6h) from GET /forecast/horizons,
+  // with the critical-window time and any blockage anomaly. Falls back to the
+  // simple projection if the horizons endpoint hasn't returned this estate.
+  function horizonBlock(e) {
+    const hz = _hz.get(String(e.property_id));
+    if (hz && hz.horizons) {
+      const h = hz.horizons;
+      const cell = (lbl, v) => `<div class="fcx-h"><div class="h">${lbl}</div><div class="v" style="color:${riskColor(v)}">${v}</div></div>`;
+      const cw = hz.critical_window
+        ? `<div style="margin-top:9px;font-size:var(--fs-xs);font-weight:600;color:var(--err);">${hz.critical_window.in_hours === 0 ? '● Critical now' : '● Likely critical ~' + esc(hz.critical_window.label)}</div>`
+        : '';
+      const an = hz.anomaly ? `<div style="margin-top:6px;font-size:var(--fs-xs);color:var(--warn);line-height:1.4;">⚠ ${esc(hz.anomaly.note)}</div>` : '';
+      return `<div class="fcx-insp-b"><div class="fcx-insp-l">Forecast risk <span style="color:var(--ink-4);font-weight:400;">· next 6h</span></div>
+        <div class="fcx-hours">${cell('Now', h.now)}${cell('+1h', h.h1)}${cell('+3h', h.h3)}${cell('+6h', h.h6)}</div>${cw}${an}</div>`;
+    }
+    const cur = e.current_risk, pred = e.predicted_risk;
+    const at = f => Math.round(cur + (pred - cur) * f);
+    return `<div class="fcx-insp-b"><div class="fcx-insp-l">Forecast risk</div><div class="fcx-hours"><div class="fcx-h"><div class="h">6h</div><div class="v" style="color:${riskColor(at(.25))}">${at(.25)}%</div></div><div class="fcx-h"><div class="h">12h</div><div class="v" style="color:${riskColor(at(.5))}">${at(.5)}%</div></div><div class="fcx-h"><div class="h">24h</div><div class="v" style="color:${riskColor(pred)}">${pred}%</div></div></div></div>`;
+  }
+
+  // "Explain this score" — asks the backend LLM layer (/ai/brief) to phrase the
+  // real numbers as a plain-language briefing. Works even with no API key (the
+  // endpoint returns a deterministic template flagged as such).
+  async function explain(id) {
+    const slot = document.getElementById('fcx-brief');
+    const btn = document.getElementById('fcx-brief-btn');
+    if (!slot) return;
+    if (btn) { btn.disabled = true; btn.textContent = 'Thinking…'; }
+    slot.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;color:var(--ink-3);font-size:var(--fs-sm);"><span class="loading" style="width:15px;height:15px;"></span> Generating briefing…</div>';
+    try {
+      const r = await OpsModal.apiPost('/ai/brief', { property_id: id });
+      const d = (r && r.data) || {};
+      const tag = d.ai
+        ? `<div style="margin-top:7px;font-size:var(--fs-2xs);color:var(--ink-4);">${esc(d.provider || 'ai')}${d.model ? ' · ' + esc(d.model) : ''}</div>`
+        : `<div style="margin-top:7px;font-size:var(--fs-2xs);color:var(--ink-4);">template — set LLM_API_KEY on the server for AI-written briefings</div>`;
+      slot.innerHTML = `<div style="margin-top:10px;font-size:var(--fs-sm);line-height:1.55;color:var(--ink-2);white-space:pre-wrap;">${esc(d.briefing || 'No briefing available.')}</div>${tag}`;
+    } catch (err) {
+      slot.innerHTML = `<div style="margin-top:10px;font-size:var(--fs-sm);color:var(--err);">Couldn't generate a briefing: ${esc(err.message || 'error')}</div>`;
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Regenerate'; }
+    }
   }
 
   // Prediction inputs — the explainability panel: why the model reached its
@@ -699,6 +747,6 @@ const OpsForecast = (function () {
     .lv-status.low { background:rgba(31,157,91,.12); color:var(--ok); }
   </style>`;
 
-  return { render, setHorizon, layer, select, deselect, act, confirmAct, open, back };
+  return { render, setHorizon, layer, select, deselect, act, confirmAct, open, back, explain };
 
 })();
