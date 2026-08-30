@@ -735,13 +735,17 @@ const OpsProperties = (function () {
   let _leafletP = null;
   function ensureLeaflet() {
     return _leafletP || (_leafletP = new Promise(res => {
-      if (window.L) return res();
-      if (!document.getElementById('fg-leaflet-css')) {
-        const c = document.createElement('link'); c.id = 'fg-leaflet-css'; c.rel = 'stylesheet';
-        c.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(c);
-      }
-      const s = document.createElement('script'); s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      s.onload = res; document.head.appendChild(s);
+      function css(href, id) { if (id && document.getElementById(id)) return; var c = document.createElement('link'); if (id) c.id = id; c.rel = 'stylesheet'; c.href = href; document.head.appendChild(c); }
+      function js(src) { return new Promise(r => { var s = document.createElement('script'); s.src = src; s.onload = r; s.onerror = r; document.head.appendChild(s); }); }
+      css('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'fg-leaflet-css');
+      css('https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css', 'fg-maplibre-css');
+      var pre = [];
+      if (!window.L) pre.push(js('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'));
+      if (!window.maplibregl) pre.push(js('https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js'));
+      Promise.all(pre).then(function () {
+        if (window.L && window.L.maplibreGL) return res();
+        js('https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js').then(res);
+      });
     }));
   }
 
@@ -771,7 +775,7 @@ const OpsProperties = (function () {
     const holder = document.getElementById('plm-map');
     if (!holder || !window.L) return;
     const map = L.map(holder, { center: [lat0, lon0], zoom: hasC ? 15 : 11, attributionControl: false });
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, maxNativeZoom: 16, attribution: '&copy; Esri' }).addTo(map);
+    L.maplibreGL({ style: 'https://tiles.openfreemap.org/styles/positron', attribution: '&copy; <a href="https://openfreemap.org">OpenFreeMap</a> &copy; OSM' }).addTo(map);
     const mk = L.marker([lat0, lon0], { draggable: true }).addTo(map);
     const latI = document.getElementById('plm-lat'), lonI = document.getElementById('plm-lon');
     const sync = ll => { latI.value = ll.lat.toFixed(6); lonI.value = ll.lng.toFixed(6); };

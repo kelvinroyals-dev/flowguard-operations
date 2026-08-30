@@ -540,18 +540,20 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
     });
   }
 
-  // ── Leaflet loader (CSP allows unpkg) ──
+  // ── Leaflet + MapLibre GL + maplibre-gl-leaflet bridge (OpenFreeMap vector basemap) ──
   function loadLeaflet() {
     return new Promise(resolve => {
-      if (window.L) return resolve();
-      const css = document.createElement('link');
-      css.rel = 'stylesheet';
-      css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(css);
-      const js = document.createElement('script');
-      js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      js.onload = resolve;
-      document.head.appendChild(js);
+      function css(href, id) { if (id && document.getElementById(id)) return; var c = document.createElement('link'); if (id) c.id = id; c.rel = 'stylesheet'; c.href = href; document.head.appendChild(c); }
+      function js(src) { return new Promise(r => { var s = document.createElement('script'); s.src = src; s.onload = r; s.onerror = r; document.head.appendChild(s); }); }
+      css('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'fg-leaflet-css');
+      css('https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css', 'fg-maplibre-css');
+      var pre = [];
+      if (!window.L) pre.push(js('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'));
+      if (!window.maplibregl) pre.push(js('https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js'));
+      Promise.all(pre).then(function () {
+        if (window.L && window.L.maplibreGL) return resolve();
+        js('https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js').then(resolve);
+      });
     });
   }
   function ensureFont() {
@@ -565,11 +567,11 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
   function themeDark() {
     return document.documentElement.getAttribute('data-theme') === 'dark';
   }
-  function tileUrl() {
-    // Keyless Esri gray canvas — CARTO now requires an API key on basemaps.cartocdn.com.
+  function styleUrl() {
+    // OpenFreeMap vector styles — keyless & free (same basemap as the DaaS flood map).
     return themeDark()
-      ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
-      : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+      ? 'https://tiles.openfreemap.org/styles/dark'
+      : 'https://tiles.openfreemap.org/styles/positron';
   }
   function dot(color, size, pulse) {
     const s = size || 12;
@@ -593,9 +595,9 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
     }
     map = L.map(q('#fg-map'), { center: [6.5244, 3.3792], zoom: 11, zoomControl: false, attributionControl: true });
     L.control.zoom({ position: 'bottomright' }).addTo(map);
-    baseTiles = L.tileLayer(tileUrl(), {
-      maxZoom: 19, maxNativeZoom: 16,
-      attribution: '&copy; <a href="https://www.esri.com">Esri</a>',
+    baseTiles = L.maplibreGL({
+      style: styleUrl(),
+      attribution: '&copy; <a href="https://openfreemap.org">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org">OSM</a>',
     }).addTo(map);
     layers = { sensors: L.layerGroup().addTo(map), areas: L.layerGroup().addTo(map),
                sites: L.layerGroup().addTo(map), alerts: L.layerGroup().addTo(map) };

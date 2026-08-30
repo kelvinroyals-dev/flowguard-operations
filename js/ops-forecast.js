@@ -383,17 +383,25 @@ const OpsForecast = (function () {
   // ── map ──────────────────────────────────────────────────────────────
   function loadLeaflet() {
     return new Promise(resolve => {
-      if (window.L) return resolve();
-      const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(css);
-      const js = document.createElement('script'); js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; js.onload = resolve; document.head.appendChild(js);
+      function css(href, id) { if (id && document.getElementById(id)) return; var c = document.createElement('link'); if (id) c.id = id; c.rel = 'stylesheet'; c.href = href; document.head.appendChild(c); }
+      function js(src) { return new Promise(r => { var s = document.createElement('script'); s.src = src; s.onload = r; s.onerror = r; document.head.appendChild(s); }); }
+      css('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'fg-leaflet-css');
+      css('https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css', 'fg-maplibre-css');
+      var pre = [];
+      if (!window.L) pre.push(js('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'));
+      if (!window.maplibregl) pre.push(js('https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js'));
+      Promise.all(pre).then(function () {
+        if (window.L && window.L.maplibreGL) return resolve();
+        js('https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js').then(resolve);
+      });
     });
   }
-  function tileUrl() {
+  function styleUrl() {
     const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-    // Keyless Esri gray canvas — CARTO now requires an API key.
+    // OpenFreeMap vector styles — keyless & free.
     return dark
-      ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
-      : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+      ? 'https://tiles.openfreemap.org/styles/dark'
+      : 'https://tiles.openfreemap.org/styles/positron';
   }
   function initMap() {
     const holder = document.getElementById('fcx-map');
@@ -402,7 +410,7 @@ const OpsForecast = (function () {
     const est = (_fc.estates || []).filter(e => e.latitude && e.longitude);
     _map = L.map(holder, { center: [6.5244, 3.3792], zoom: 11, zoomControl: false, attributionControl: false });
     L.control.zoom({ position: 'bottomright' }).addTo(_map);
-    _tiles = L.tileLayer(tileUrl(), { maxZoom: 19, maxNativeZoom: 16, attribution: '&copy; Esri' }).addTo(_map);
+    _tiles = L.maplibreGL({ style: styleUrl(), attribution: '&copy; <a href="https://openfreemap.org">OpenFreeMap</a> &copy; OSM' }).addTo(_map);
     // Live-swap the basemap (and re-tint the inspector) when the theme toggles.
     if (_themeObs) _themeObs.disconnect();
     _themeObs = new MutationObserver(() => {
