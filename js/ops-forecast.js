@@ -352,9 +352,14 @@ const OpsForecast = (function () {
     try {
       const r = await OpsModal.apiPost('/ai/brief', { property_id: id });
       const d = (r && r.data) || {};
-      const tag = d.ai
-        ? `<div style="margin-top:7px;font-size:var(--fs-2xs);color:var(--ink-4);">${esc(d.provider || 'ai')}${d.model ? ' · ' + esc(d.model) : ''}</div>`
-        : `<div style="margin-top:7px;font-size:var(--fs-2xs);color:var(--ink-4);">template — set LLM_API_KEY on the server for AI-written briefings</div>`;
+      let note;
+      if (d.ai) note = `${esc(d.provider || 'ai')}${d.model ? ' · ' + esc(d.model) : ''}`;
+      else if (d.reason === 'no_key') note = 'template — set LLM_API_KEY on the server for AI briefings';
+      else if (d.reason === 'api_error' && d.status === 404) note = 'template — model not found; set LLM_MODEL to a current one (e.g. openai/gpt-oss-20b)';
+      else if (d.reason === 'api_error') note = `template — LLM error ${d.status || ''}${d.detail ? ': ' + esc(String(d.detail).slice(0, 120)) : ''}`;
+      else if (d.reason === 'network') note = 'template — LLM unreachable from the server';
+      else note = 'template briefing';
+      const tag = `<div style="margin-top:7px;font-size:var(--fs-2xs);color:var(--ink-4);">${note}</div>`;
       slot.innerHTML = `<div style="margin-top:10px;font-size:var(--fs-sm);line-height:1.55;color:var(--ink-2);white-space:pre-wrap;">${esc(d.briefing || 'No briefing available.')}</div>${tag}`;
     } catch (err) {
       slot.innerHTML = `<div style="margin-top:10px;font-size:var(--fs-sm);color:var(--err);">Couldn't generate a briefing: ${esc(err.message || 'error')}</div>`;
