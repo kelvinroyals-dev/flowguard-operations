@@ -341,11 +341,11 @@ const OpsForecast = (function () {
       return;
     }
     const when = d.generated_at ? new Date(d.generated_at).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-    const tag = d.ai ? `${esc(d.provider || 'AI')} · ${esc(d.model || '')}` : 'template — set LLM_API_KEY for AI-written briefings';
+    const foot = d.ai ? when : `${when ? when + ' · ' : ''}Set LLM_API_KEY / LLM_MODEL on the server for AI-written briefings`;
     el.innerHTML = `<div class="fcx-card" style="margin-bottom:16px;">
       <div class="fcx-card-head"><h3>Morning briefing</h3><button class="fcx-btn" onclick="OpsForecast.runDaily(this)">Regenerate</button></div>
       <div style="font-size:var(--fs-sm);line-height:1.55;color:var(--ink-2);white-space:pre-wrap;padding:2px 0;">${esc(d.briefing)}</div>
-      <div style="margin-top:8px;font-size:var(--fs-2xs);color:var(--ink-4);">${when ? when + ' · ' : ''}${tag}</div>
+      ${foot ? `<div style="margin-top:8px;font-size:var(--fs-2xs);color:var(--ink-4);">${foot}</div>` : ''}
     </div>`;
   }
 
@@ -422,14 +422,16 @@ const OpsForecast = (function () {
     try {
       const r = await OpsModal.apiPost('/ai/brief', { property_id: id });
       const d = (r && r.data) || {};
-      let note;
-      if (d.ai) note = `${esc(d.provider || 'ai')}${d.model ? ' · ' + esc(d.model) : ''}`;
-      else if (d.reason === 'no_key') note = 'template — set LLM_API_KEY on the server for AI briefings';
-      else if (d.reason === 'api_error' && d.status === 404) note = 'template — model not found; set LLM_MODEL to a current one (e.g. openai/gpt-oss-20b)';
-      else if (d.reason === 'api_error') note = `template — LLM error ${d.status || ''}${d.detail ? ': ' + esc(String(d.detail).slice(0, 120)) : ''}`;
-      else if (d.reason === 'network') note = 'template — LLM unreachable from the server';
-      else note = 'template briefing';
-      const tag = `<div style="margin-top:7px;font-size:var(--fs-2xs);color:var(--ink-4);">${note}</div>`;
+      // No provider/model name is ever surfaced. On success: no tag. On the
+      // template fallback: a config-only diagnostic (never the provider name).
+      let note = '';
+      if (!d.ai) {
+        if (d.reason === 'no_key') note = 'Set LLM_API_KEY on the server for AI briefings';
+        else if (d.reason === 'api_error' && d.status === 404) note = 'Set LLM_MODEL to a current model on the server';
+        else if (d.reason === 'api_error') note = `LLM error ${d.status || ''} — check server config`;
+        else if (d.reason === 'network') note = 'LLM unreachable from the server';
+      }
+      const tag = note ? `<div style="margin-top:7px;font-size:var(--fs-2xs);color:var(--ink-4);">${note}</div>` : '';
       slot.innerHTML = `<div style="margin-top:10px;font-size:var(--fs-sm);line-height:1.55;color:var(--ink-2);white-space:pre-wrap;">${esc(d.briefing || 'No briefing available.')}</div>${tag}`;
     } catch (err) {
       slot.innerHTML = `<div style="margin-top:10px;font-size:var(--fs-sm);color:var(--err);">Couldn't generate a briefing: ${esc(err.message || 'error')}</div>`;
