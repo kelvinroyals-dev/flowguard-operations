@@ -282,10 +282,51 @@ const OpsForecast = (function () {
         </div>
         ${charts}
         ${table}
+        <div id="fcx-interventions"></div>
       </div>`;
 
     renderInspector();
     loadDaily();
+    loadInterventions();
+  }
+
+  // "Does maintenance actually reduce risk?" — before/after sensor deltas per
+  // intervention type (GET /analytics/interventions). A negative delta = a win.
+  const _iTypeLabel = { silt_clearing: 'Silt clearing', enzyme_refill: 'Bio-enzyme refill', maintenance: 'Maintenance', node_repair: 'Node repair', dispatch: 'Dispatch', incident_prevented: 'Incident prevented' };
+  function _deltaCell(v, unit) {
+    if (v == null) return '<span style="color:var(--ink-4);">—</span>';
+    const good = v < 0;
+    const col = good ? '#1f9d5b' : v > 0 ? '#d9463c' : 'var(--ink-3)';
+    return `<span style="color:${col};font-weight:600;">${v > 0 ? '+' : ''}${v}${unit}</span>`;
+  }
+  async function loadInterventions() {
+    const el = document.getElementById('fcx-interventions');
+    if (!el) return;
+    let d = null;
+    try { const r = await OpsModal.apiGet('/analytics/interventions'); d = r && r.data; } catch (_) { el.innerHTML = ''; return; }
+    if (!d || !d.by_type || !d.by_type.length) {
+      el.innerHTML = `<div class="fcx-card" style="margin-top:16px;"><div class="fcx-card-head"><h3>Intervention effectiveness</h3></div><div style="padding:4px 0;color:var(--ink-3);font-size:var(--fs-sm);">Not enough logged interventions with before/after sensor data yet.</div></div>`;
+      return;
+    }
+    const headline = d.avg_primary_delta != null
+      ? `Across ${d.total_measured} measured intervention${d.total_measured === 1 ? '' : 's'}, the primary risk signal moved ${_deltaCell(d.avg_primary_delta, '')} on average — ${d.improved_pct}% improved.`
+      : `${d.total_interventions} interventions logged.`;
+    const rows = d.by_type.map(t => `<tr>
+      <td>${esc(_iTypeLabel[t.event_type] || t.event_type)}</td>
+      <td style="text-align:center;">${t.count}</td>
+      <td style="text-align:center;">${_deltaCell(t.avg_water_level_delta, '%')}</td>
+      <td style="text-align:center;">${_deltaCell(t.avg_silt_delta, 'mm')}</td>
+      <td style="text-align:center;">${t.improved_pct == null ? '—' : t.improved_pct + '%'}</td>
+    </tr>`).join('');
+    el.innerHTML = `<div class="fcx-card fcx-tablecard" style="margin-top:16px;">
+      <div class="fcx-card-head"><h3>Intervention effectiveness</h3><span class="fcx-meta">Before/after · ${d.window_days}-day window · last ${d.lookback_days}d</span></div>
+      <div style="font-size:var(--fs-sm);color:var(--ink-2);line-height:1.55;margin:2px 0 12px;">${headline}</div>
+      <div class="lv-scroll"><table class="lv-table">
+        <thead><tr><th>Intervention</th><th>Count</th><th>Δ water level</th><th>Δ silt</th><th>Improved</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+      <div style="margin-top:10px;font-size:var(--fs-2xs);color:var(--ink-4);">${esc(d.note)}</div>
+    </div>`;
   }
 
   // This morning's stored portfolio briefing (from the daily batch job). Shown
