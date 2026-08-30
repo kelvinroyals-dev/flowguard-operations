@@ -262,6 +262,7 @@ const OpsForecast = (function () {
           </div>
         </div>
         ${kpis}
+        <div id="fcx-daily"></div>
         <div class="fcx-map-row">
           <div class="fcx-map-wrap">
             <div class="fcx-map-head"><h2>Risk heatmap</h2><span class="fcx-meta">${total} propert${total === 1 ? 'y' : 'ies'} scored${est.filter(e => e.geo_approx).length ? ` · ${est.filter(e => e.geo_approx).length} to verify` : ''} · Lagos</span></div>
@@ -284,6 +285,34 @@ const OpsForecast = (function () {
       </div>`;
 
     renderInspector();
+    loadDaily();
+  }
+
+  // This morning's stored portfolio briefing (from the daily batch job). Shown
+  // as a compact banner; a "Regenerate" button reruns it on demand.
+  async function loadDaily() {
+    const el = document.getElementById('fcx-daily');
+    if (!el) return;
+    let d = null;
+    try { const r = await OpsModal.apiGet('/ai/daily'); d = r && r.data; } catch (_) { el.innerHTML = ''; return; }
+    if (!d || !d.briefing) {
+      el.innerHTML = `<div class="fcx-card" style="margin-bottom:16px;"><div class="fcx-card-head"><h3>Morning briefing</h3><button class="fcx-btn" onclick="OpsForecast.runDaily(this)">Generate now</button></div><div style="padding:2px 0 4px;color:var(--ink-3);font-size:var(--fs-sm);">No briefing generated yet today.</div></div>`;
+      return;
+    }
+    const when = d.generated_at ? new Date(d.generated_at).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+    const tag = d.ai ? `${esc(d.provider || 'AI')} · ${esc(d.model || '')}` : 'template — set LLM_API_KEY for AI-written briefings';
+    el.innerHTML = `<div class="fcx-card" style="margin-bottom:16px;">
+      <div class="fcx-card-head"><h3>Morning briefing</h3><button class="fcx-btn" onclick="OpsForecast.runDaily(this)">Regenerate</button></div>
+      <div style="font-size:var(--fs-sm);line-height:1.55;color:var(--ink-2);white-space:pre-wrap;padding:2px 0;">${esc(d.briefing)}</div>
+      <div style="margin-top:8px;font-size:var(--fs-2xs);color:var(--ink-4);">${when ? when + ' · ' : ''}${tag}</div>
+    </div>`;
+  }
+
+  async function runDaily(btn) {
+    if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+    try { await OpsModal.apiPost('/ai/daily/run', {}); } catch (_) {}
+    if (btn) { btn.disabled = false; btn.textContent = 'Regenerate'; }
+    loadDaily();
   }
 
   function renderInspector() {
@@ -752,6 +781,6 @@ const OpsForecast = (function () {
     .lv-status.low { background:rgba(31,157,91,.12); color:var(--ok); }
   </style>`;
 
-  return { render, setHorizon, layer, select, deselect, act, confirmAct, open, back, explain };
+  return { render, setHorizon, layer, select, deselect, act, confirmAct, open, back, explain, runDaily };
 
 })();
