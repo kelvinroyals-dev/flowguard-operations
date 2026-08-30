@@ -387,7 +387,7 @@ const OpsForecast = (function () {
         <div class="fcx-insp-b"><div class="fcx-insp-l">Recommended action</div><div class="fcx-act">${e.recommendation_level === 'ok' ? '✓' : '!'} ${esc(e.recommendation || 'Monitor as usual')}</div></div>
         <div class="fcx-insp-b"><div class="fcx-insp-l">AI briefing</div><button class="fcx-btn" style="width:100%;" onclick="OpsForecast.explain('${esc(e.property_id)}')" id="fcx-brief-btn">Explain this score</button><div id="fcx-brief" class="fcx-brief"></div></div>
       </div>
-      <div class="fcx-insp-foot"><button class="fcx-btn primary" style="width:100%;" onclick="OpsForecast.act()">Create preventive action</button></div>`;
+      <div class="fcx-insp-foot" style="display:flex;flex-direction:column;gap:8px;"><button class="fcx-btn primary" style="width:100%;" onclick="OpsForecast.act()">Create preventive action</button><button class="fcx-btn" style="width:100%;" onclick="OpsForecast.logIncident('${esc(e.property_id)}')">Log flood incident</button></div>`;
   }
 
   // Real multi-horizon block (now / +1h / +3h / +6h) from GET /forecast/horizons,
@@ -659,6 +659,40 @@ const OpsForecast = (function () {
       OpsModal.toast(err.message || 'Failed to create work order', 'critical');
     }
   }
+  // Ground-truth labelling: record that an estate actually flooded. These
+  // flood_incident labels are the target variable the Phase 2 ML model trains on.
+  function logIncident(pid) {
+    const e = (_fc.estates || []).find(x => String(x.property_id) === String(pid)) || _sel;
+    const name = e ? (e.name || e.property_id) : pid;
+    const today = new Date().toISOString().slice(0, 10);
+    OpsModal.open('Log flood incident', `
+      <p style="margin:0 0 14px;font-size:var(--fs-sm);color:var(--ink-3);line-height:1.5;">Record a confirmed flood at <b style="color:var(--ink);">${esc(name)}</b>. This becomes a labelled outcome the risk model learns from — log real incidents, including historical ones.</p>
+      ${OpsModal.row([
+        OpsModal.field('Date it flooded', 'occurred_at', 'date', today),
+        OpsModal.field('Severity', 'severity', 'select', 'moderate', { options: ['minor', 'moderate', 'major', 'severe'] }),
+      ])}
+      ${OpsModal.field('Note (optional)', 'description', 'text', '', { required: false, placeholder: 'e.g. Surface flooding after 40mm in 2h; access road cut off' })}
+    `, [
+      { label: 'Cancel', class: 'btn-ghost', onclick: 'OpsModal.close()' },
+      { label: 'Log incident', class: 'btn-primary', onclick: `OpsForecast.confirmIncident('${esc(pid)}')`, id: 'modal-save-btn' },
+    ]);
+  }
+  async function confirmIncident(pid) {
+    const d = OpsModal.getFormData();
+    if (!d.occurred_at) { OpsModal.toast('Pick the date it flooded', 'warning'); return; }
+    OpsModal.setLoading('modal-save-btn', true);
+    try {
+      await OpsModal.apiPost('/labels/flood-incident', {
+        property_id: pid, occurred_at: d.occurred_at, severity: d.severity, description: d.description || '',
+      });
+      OpsModal.close();
+      OpsModal.toast('Flood incident logged', 'nominal');
+    } catch (err) {
+      OpsModal.setLoading('modal-save-btn', false);
+      OpsModal.toast(err.message || 'Failed to log incident', 'critical');
+    }
+  }
+
   function open(i) { const e = (_fc.estates || [])[i]; if (e && typeof fgOpen === 'function') fgOpen('properties', e.property_id); }
   function back() { render(_root); }
 
@@ -822,6 +856,6 @@ const OpsForecast = (function () {
     .lv-status.low { background:rgba(31,157,91,.12); color:var(--ok); }
   </style>`;
 
-  return { render, setHorizon, layer, select, deselect, act, confirmAct, open, back, explain, runDaily };
+  return { render, setHorizon, layer, select, deselect, act, confirmAct, open, back, explain, runDaily, logIncident, confirmIncident };
 
 })();
