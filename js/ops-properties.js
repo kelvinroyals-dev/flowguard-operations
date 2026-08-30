@@ -771,7 +771,7 @@ const OpsProperties = (function () {
     const holder = document.getElementById('plm-map');
     if (!holder || !window.L) return;
     const map = L.map(holder, { center: [lat0, lon0], zoom: hasC ? 15 : 11, attributionControl: false });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 19 }).addTo(map);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, maxNativeZoom: 16, attribution: '&copy; Esri' }).addTo(map);
     const mk = L.marker([lat0, lon0], { draggable: true }).addTo(map);
     const latI = document.getElementById('plm-lat'), lonI = document.getElementById('plm-lon');
     const sync = ll => { latI.value = ll.lat.toFixed(6); lonI.value = ll.lng.toFixed(6); };

@@ -390,7 +390,10 @@ const OpsForecast = (function () {
   }
   function tileUrl() {
     const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-    return `https://{s}.basemaps.cartocdn.com/${dark ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`;
+    // Keyless Esri gray canvas — CARTO now requires an API key.
+    return dark
+      ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
+      : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
   }
   function initMap() {
     const holder = document.getElementById('fcx-map');
@@ -399,7 +402,7 @@ const OpsForecast = (function () {
     const est = (_fc.estates || []).filter(e => e.latitude && e.longitude);
     _map = L.map(holder, { center: [6.5244, 3.3792], zoom: 11, zoomControl: false, attributionControl: false });
     L.control.zoom({ position: 'bottomright' }).addTo(_map);
-    _tiles = L.tileLayer(tileUrl(), { subdomains: 'abcd', maxZoom: 19 }).addTo(_map);
+    _tiles = L.tileLayer(tileUrl(), { maxZoom: 19, maxNativeZoom: 16, attribution: '&copy; Esri' }).addTo(_map);
     // Live-swap the basemap (and re-tint the inspector) when the theme toggles.
     if (_themeObs) _themeObs.disconnect();
     _themeObs = new MutationObserver(() => {

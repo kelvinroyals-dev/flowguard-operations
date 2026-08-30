@@ -566,7 +566,10 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
     return document.documentElement.getAttribute('data-theme') === 'dark';
   }
   function tileUrl() {
-    return `https://{s}.basemaps.cartocdn.com/${themeDark() ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`;
+    // Keyless Esri gray canvas — CARTO now requires an API key on basemaps.cartocdn.com.
+    return themeDark()
+      ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
+      : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
   }
   function dot(color, size, pulse) {
     const s = size || 12;
@@ -591,8 +594,8 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
     map = L.map(q('#fg-map'), { center: [6.5244, 3.3792], zoom: 11, zoomControl: false, attributionControl: true });
     L.control.zoom({ position: 'bottomright' }).addTo(map);
     baseTiles = L.tileLayer(tileUrl(), {
-      subdomains: 'abcd', maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org">OSM</a> &copy; <a href="https://carto.com">CARTO</a>',
+      maxZoom: 19, maxNativeZoom: 16,
+      attribution: '&copy; <a href="https://www.esri.com">Esri</a>',
     }).addTo(map);
     layers = { sensors: L.layerGroup().addTo(map), areas: L.layerGroup().addTo(map),
                sites: L.layerGroup().addTo(map), alerts: L.layerGroup().addTo(map) };
