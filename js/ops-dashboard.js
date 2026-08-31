@@ -39,13 +39,13 @@ const OpsDashboard = (function () {
     --blur:18px;
   }
 html[data-theme="dark"] .neon-dash {
-    --bg:#08161d;
-    --bg-2:#0b1c24;
-    --panel-a:rgba(18,45,58,0.55);
-    --panel-b:rgba(18,45,58,0.38);
-    --panel-solid:#0e2733;
-    --border:rgba(160,210,225,0.10);
-    --border-strong:rgba(160,210,225,0.18);
+    --bg:#101216;
+    --bg-2:#14171c;
+    --panel-a:rgba(255,255,255,0.05);
+    --panel-b:rgba(255,255,255,0.035);
+    --panel-solid:#1b1e24;
+    --border:rgba(255,255,255,0.10);
+    --border-strong:rgba(255,255,255,0.18);
     --text-1:#e7f4f9;
     --text-2:#9ec1cf;
     --text-3:#5f818e;

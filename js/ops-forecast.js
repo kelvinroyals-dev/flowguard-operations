@@ -396,7 +396,7 @@ const OpsForecast = (function () {
     // warm tint at the top when risk is high, cool at the bottom.
     const tint = pred >= 70 ? '217,70,60' : pred >= 40 ? '224,142,18' : '31,157,91';
     const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const base = dark ? '16,26,38' : '255,255,255';       // --surface rgb per theme
+    const base = dark ? '24,27,32' : '255,255,255';       // --surface rgb per theme
     const baseA = dark ? '.86' : '.76';
     el.style.background = `linear-gradient(165deg, rgba(${tint},${dark ? '.24' : '.16'}), rgba(${base},${baseA}) 42%, rgba(${base},${baseA}) 72%, rgba(28,184,232,.07))`;
     const at = f => Math.round(cur + (pred - cur) * f);

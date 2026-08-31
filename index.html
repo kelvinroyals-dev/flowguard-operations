@@ -50,14 +50,14 @@
       --amber:      #fbbf24;
       --teal:       #0e7490;
 
-      /* ── Canvas & surfaces (night mode = true black) ── */
-      --canvas:     #000000;
-      --surface:    #0c0d10;
-      --surface-2:  #060708;
-      --surface-3:  #131519;
-      --surface-h:  #1b1e24;
-      --border:     #1e2126;
-      --border-2:   #2b2f36;
+      /* ── Canvas & surfaces (night mode = soft neutral black) ── */
+      --canvas:     #101216;
+      --surface:    #181b20;
+      --surface-2:  #121418;
+      --surface-3:  #1f232a;
+      --surface-h:  #262a32;
+      --border:     #262a31;
+      --border-2:   #333842;
 
       /* ── Text ── */
       --ink:        #e8f1f8;
@@ -1175,7 +1175,7 @@
       background:#eef3f6;
       background-image:radial-gradient(900px 500px at 12% -8%,rgba(28,184,232,.10),transparent),radial-gradient(700px 420px at 100% 0%,rgba(31,157,91,.06),transparent);
     }
-    html[data-theme="dark"] .app-neon{ background:#000; }
+    html[data-theme="dark"] .app-neon{ background:#101216; }
     /* Left vertical sidebar (was the horizontal top bar). Permanently dark. */
     .app-neon > .tnav{ width:var(--sw); flex-shrink:0; position:relative; z-index:60; height:100vh; }
     .app-neon > .content{ flex:1; min-width:0; padding:0 !important; background:transparent !important; position:relative; z-index:1; display:flex; flex-direction:column; overflow-y:auto; }
@@ -1192,7 +1192,7 @@
       font-family:'Plus Jakarta Sans','Inter',system-ui,sans-serif;
       overflow-y:auto; overflow-x:visible;
     }
-    html[data-theme="dark"] .tnav{ --pa:#050608; --bd:rgba(255,255,255,0.07); }
+    html[data-theme="dark"] .tnav{ --pa:#0a0c10; --bd:rgba(255,255,255,0.07); }
     .tnav-brand{ display:flex; align-items:center; gap:11px; flex-shrink:0; padding:2px 8px 6px; }
     .tnav-mark{ width:32px; height:32px; object-fit:contain; flex-shrink:0; }
     /* Sidebar is always dark, so always use the light (on-dark) logo. */
@@ -1400,7 +1400,7 @@
 <script src="js/auth.js?v=sec6"></script>
 <script src="js/ops-modal.js?v=sec10"></script>
 <script src="js/fg-paginator.js?v=sec2"></script>
-<script src="js/ops-dashboard.js?v=sec9"></script>
+<script src="js/ops-dashboard.js?v=sec10"></script>
 <script src="js/ops-user-management.js?v=sec11"></script>
 <script src="js/ops-clients.js?v=sec11"></script>
 <script src="js/ops-properties.js?v=sec15"></script>
@@ -1412,7 +1412,7 @@
 <script src="js/ops-field-reports.js?v=sec8"></script>
 <script src="js/ops-maintenance.js?v=sec11"></script>
 <script src="js/ops-support.js?v=sec5"></script>
-<script src="js/ops-forecast.js?v=sec24"></script>
+<script src="js/ops-forecast.js?v=sec25"></script>
 <script src="js/ops-billing.js?v=sec17"></script>
 <script src="js/ops-sla.js?v=sec6"></script>
 <script src="js/ops-audit.js?v=sec7"></script>
