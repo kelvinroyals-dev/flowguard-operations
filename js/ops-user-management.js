@@ -25,13 +25,13 @@ const OpsUserManagement = (function () {
   })();
 
   const ROLE_CONFIG = {
-    admin:              { label:'Admin',             color:'#0a2a3d', bg:'rgba(10,42,61,.08)',   perms:['Full system access, all modules and configuration'] },
-    super_admin:        { label:'Super Admin',       color:'#0a2a3d', bg:'rgba(10,42,61,.08)',   perms:['Full system access, all modules and configuration'] },
-    operations_manager: { label:'Ops Manager',       color:'#16a8d3', bg:'rgba(22,168,211,.09)', perms:['Client management','Team management','Alert handling','Reports'] },
-    dispatcher:         { label:'Dispatcher',        color:'#b45309', bg:'rgba(180,83,9,.08)',   perms:['View alerts','Assign teams','Dispatch operations'] },
-    field_lead:         { label:'Field Lead',        color:'#0a8a6a', bg:'rgba(10,138,106,.08)', perms:['View own alerts','Update job status'] },
-    analyst:            { label:'Analyst',           color:'#7c3aed', bg:'rgba(124,58,237,.08)', perms:['View reports','Export data'] },
-    finance:            { label:'Finance',           color:'#0d7fa0', bg:'rgba(13,127,160,.09)', perms:['View billing','Manage invoices','Revenue reports'] },
+    admin:              { label:'Admin',             color:'#f87171', bg:'rgba(248,113,113,.13)', perms:['Full system access, all modules and configuration'] },
+    super_admin:        { label:'Super Admin',       color:'#f87171', bg:'rgba(248,113,113,.13)', perms:['Full system access, all modules and configuration'] },
+    operations_manager: { label:'Ops Manager',       color:'#22c3e6', bg:'rgba(34,195,230,.13)',  perms:['Client management','Team management','Alert handling','Reports'] },
+    dispatcher:         { label:'Dispatcher',        color:'#f0a92a', bg:'rgba(240,169,42,.13)',  perms:['View alerts','Assign teams','Dispatch operations'] },
+    field_lead:         { label:'Field Lead',        color:'#a78bfa', bg:'rgba(167,139,250,.15)', perms:['View own alerts','Update job status'] },
+    analyst:            { label:'Analyst',           color:'#f472b6', bg:'rgba(244,114,182,.13)', perms:['View reports','Export data'] },
+    finance:            { label:'Finance',           color:'#2dd4bf', bg:'rgba(45,212,191,.13)',  perms:['View billing','Manage invoices','Revenue reports'] },
   };
 
   const ROLE_OPTIONS = [
@@ -103,7 +103,7 @@ const OpsUserManagement = (function () {
       <div class="um-header">
         <div>
           <div class="um-header-title">Team Members</div>
-          <div class="um-header-sub">Internal staff access, roles, and team assignments</div>
+          <div class="um-header-sub">Manage internal staff access levels, operational roles, and rapid response team assignments.</div>
         </div>
         ${canMng() ? `<button class="btn-primary" onclick="OpsUserManagement.openInvite()">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
@@ -270,7 +270,7 @@ const OpsUserManagement = (function () {
               return `<tr class="clickable" onclick="OpsUserManagement.open('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsUserManagement.open('${id}')}">
                 <td>
                   <div class="lv-name-cell">
-                    <div class="lv-avatar" style="background:${avatarColor(name)};">${initials(name)}</div>
+                    <div class="lv-avatar" style="background:var(--surface-3);color:var(--ink-2);border:1px solid var(--border);">${initials(name)}</div>
                     <div style="min-width:0;"><div class="lv-name">${name}</div><span class="lv-source">${u.email || ''}</span></div>
                   </div>
                 </td>
