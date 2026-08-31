@@ -225,8 +225,10 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
 .neon-dash .inspector{z-index:1200;}
 .neon-dash .leaflet-control-container{z-index:1100;}
 .neon-dash .leaflet-control-zoom a{border-radius:8px !important;color:var(--text-2) !important;background:var(--panel-solid) !important;border:1px solid var(--border) !important;}
-.neon-dash .leaflet-popup-content-wrapper{background:var(--panel-solid);color:var(--text-1);border-radius:12px;box-shadow:var(--shadow-2);}
-.neon-dash .leaflet-popup-tip{background:var(--panel-solid);}
+.neon-dash .leaflet-popup-content-wrapper{background:var(--panel-solid);color:var(--text-1);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-2);}
+.neon-dash .leaflet-popup-content-wrapper *{color:var(--text-1) !important;}
+.neon-dash .leaflet-popup-tip{background:var(--panel-solid);border:1px solid var(--border);}
+.neon-dash .leaflet-popup-close-button{color:var(--text-3) !important;}
 .neon-dash .leaflet-container{background:var(--bg-2);font-family:'Plus Jakarta Sans',sans-serif;}
 /* Incident queue: contained + scrolls internally (lists all incidents without growing the page) */
 .neon-dash .incident-scroll{max-height:288px;overflow-y:auto;margin:0 -4px;padding:0 4px;}
