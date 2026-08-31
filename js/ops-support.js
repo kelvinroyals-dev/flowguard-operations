@@ -19,9 +19,10 @@ const OpsSupport = (function () {
   };
 
   const CSS = `<style id="sup-css">
-    .sup-head { display:flex; align-items:center; gap:16px; margin-bottom:16px; flex-wrap:wrap; }
-    .sup-head h1 { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); }
-    .sup-head .sub { font-size:var(--fs-sm); color:var(--ink-3); margin-top:2px; }
+    .sup-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:20px; flex-wrap:wrap; }
+    .sup-title { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:800; color:var(--ink); letter-spacing:-.02em; }
+    .sup-sub { font-size:var(--fs-base); color:var(--ink-3); margin-top:3px; }
+    .sup-pill { display:inline-flex; align-items:center; padding:3px 10px; border-radius:20px; font-size:var(--fs-2xs); font-weight:700; white-space:nowrap; text-transform:capitalize; }
     .sup-thread { display:grid; grid-template-columns:1fr 300px; gap:16px; align-items:start; }
     @media (max-width:900px){ .sup-thread{ grid-template-columns:1fr; } }
     .sup-msgs { background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--sh-xs); padding:18px; display:flex; flex-direction:column; gap:12px; }
@@ -47,7 +48,10 @@ const OpsSupport = (function () {
     _container = container; _cur = null;
     container.innerHTML = CSS + `
       <div class="sup-head">
-        <div><h1>Support</h1><div class="sub" id="sup-count">Loading…</div></div>
+        <div>
+          <div class="sup-title">Support</div>
+          <div class="sup-sub">Client support tickets — questions, requests and payment notifications from your accounts. <span id="sup-count"></span></div>
+        </div>
       </div>
       <div class="lv-wrap">
         <div class="lv-toolbar">
@@ -70,7 +74,7 @@ const OpsSupport = (function () {
       _rows = res.data || [];
       const c = document.getElementById('sup-count');
       const open = _rows.filter(r => openStatus(r.status)).length;
-      if (c) c.textContent = `${_rows.length} ticket${_rows.length === 1 ? '' : 's'} · ${open} open`;
+      if (c) c.textContent = `· ${open} open of ${_rows.length}`;
       applyFilter();
     } catch (err) {
       const b = document.getElementById('sup-body');
@@ -89,6 +93,12 @@ const OpsSupport = (function () {
     renderTable(rows);
   }
 
+  function prioPill(p) {
+    const k = String(p || 'normal').toLowerCase();
+    const c = k === 'urgent' ? '#f87171' : k === 'high' ? '#f0a92a' : k === 'low' ? '#7d8fa3' : '#22c3e6';
+    return `<span class="sup-pill" style="background:${c}22;color:${c};">${esc(k)}</span>`;
+  }
+
   function renderTable(rows) {
     const el = document.getElementById('sup-body'); if (!el) return;
     if (!rows.length) { el.innerHTML = `<div class="sup-empty">No support tickets ${_filter === 'open' ? 'open' : 'here'}. A quiet inbox is a good sign.</div>`; return; }
@@ -99,8 +109,8 @@ const OpsSupport = (function () {
         <td class="lv-mono" style="color:var(--ink);font-weight:700;">${r.needs_response ? '<span class="sup-dot" title="Awaiting your response"></span>' : ''}${esc(r.ticket_id)}</td>
         <td>${r.user_id ? L('clients', r.user_id, r.client_name || 'Client') : esc(r.client_name || '—')}</td>
         <td class="strong">${esc(r.title || '—')}</td>
-        <td>${esc((r.category || 'general'))}</td>
-        <td>${esc(r.priority || 'normal')}</td>
+        <td><span class="sup-pill" style="background:var(--surface-3);color:var(--ink-2);">${esc(r.category || 'general')}</span></td>
+        <td>${prioPill(r.priority)}</td>
         <td><span class="lv-status ${statusCls(r.status)}">${esc(r.status || 'new')}</span></td>
         <td class="lv-mono">${timeAgo(r.last_message_at || r.created_at)}</td>
       </tr>`).join('')}</tbody></table></div>`;

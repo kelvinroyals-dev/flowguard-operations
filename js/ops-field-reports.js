@@ -173,38 +173,36 @@ window.OpsFieldReports = (function () {
         }
 
         const statusMeta = {
-            draft: { label: 'Draft', cls: 'badge-off' }, submitted: { label: 'Awaiting Review', cls: 'badge-warn' },
-            under_review: { label: 'Under Review', cls: 'badge-watch' }, approved: { label: 'Approved', cls: 'badge-ok' },
-            sent_to_client: { label: 'Sent to Client', cls: 'badge-sent' }, rejected: { label: 'Rejected', cls: 'badge-err' },
+            draft: { label: 'Draft', color: '#7d8fa3' }, submitted: { label: 'Awaiting review', color: '#f0a92a' },
+            under_review: { label: 'Under review', color: '#22c3e6' }, approved: { label: 'Approved', color: '#34d399' },
+            sent_to_client: { label: 'Sent to client', color: '#2dd4bf' }, rejected: { label: 'Rejected', color: '#f87171' },
         };
         const typeMeta = {
-            incident: { label: 'Incident' }, inspection: { label: 'Inspection' }, general: { label: 'General' }, backup_request: { label: 'Backup Request' },
+            incident: { label: 'Incident', color: '#f87171' }, inspection: { label: 'Inspection', color: '#22c3e6' },
+            general: { label: 'General', color: '#7d8fa3' }, backup_request: { label: 'Backup request', color: '#f0a92a' },
         };
         const fmt = d => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
-        // Columns per spec: Report ID, Engineer, Property, Visit Date, Report Type, Status
+        const initials = n => (n || '—').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '—';
+        const pill = (label, c) => `<span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:var(--fs-2xs);font-weight:700;white-space:nowrap;background:${c}22;color:${c};">${label}</span>`;
         list.innerHTML = `
-          <style>.ops-table tbody tr.clickable{cursor:pointer;transition:background .12s;} .ops-table tbody tr.clickable:hover{background:var(--surface-2,#f2f8fb);}</style>
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r,14px);overflow:hidden;box-shadow:var(--sh-xs);">
-            <div style="overflow-x:auto;">
-              <table class="ops-table">
-                <thead><tr><th>Report ID</th><th>Engineer</th><th>Property</th><th>Visit Date</th><th>Report Type</th><th>Status</th></tr></thead>
-                <tbody>
-                  ${filtered.map(r => {
-                    const sm = statusMeta[r.status] || { label: r.status, cls: 'badge-off' };
-                    const tm = typeMeta[r.report_type] || { label: r.report_type || '—' };
-                    return `<tr class="clickable" onclick="OpsFieldReports.openReport('${r.report_id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsFieldReports.openReport('${r.report_id}')}">
-                      <td style="font-family:var(--ff-m);font-size:var(--fs-sm);" class="bright">${r.report_id}</td>
-                      <td style="font-size:var(--fs-sm);">${_esc(r.submitted_by_name || '—')}</td>
-                      <td style="font-size:var(--fs-sm);">${_esc(r.property_name || r.site_name || '—')}</td>
-                      <td style="font-size:var(--fs-sm);font-family:var(--ff-m);">${fmt(r.visit_date || r.created_at)}</td>
-                      <td style="font-size:var(--fs-sm);">${tm.label}</td>
-                      <td><span class="fg-status-badge ${sm.cls}">${sm.label}</span></td>
-                    </tr>`;
-                  }).join('')}
-                </tbody>
-              </table>
-            </div>
-          </div>`;
+          <div class="lv-scroll"><table class="lv-table">
+            <thead><tr><th>Report</th><th>Engineer</th><th>Property</th><th>Visit date</th><th>Type</th><th>Status</th></tr></thead>
+            <tbody>
+              ${filtered.map(r => {
+                const sm = statusMeta[r.status] || { label: r.status || '—', color: '#7d8fa3' };
+                const tm = typeMeta[r.report_type] || { label: r.report_type || '—', color: '#7d8fa3' };
+                const eng = r.submitted_by_name || '—';
+                return `<tr class="clickable" onclick="OpsFieldReports.openReport('${r.report_id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsFieldReports.openReport('${r.report_id}')}">
+                  <td class="lv-mono" style="color:var(--ink);font-weight:700;">${r.report_id}</td>
+                  <td><div class="lv-name-cell"><div class="lv-avatar" style="background:var(--surface-3);color:var(--ink-2);border:1px solid var(--border);">${initials(eng)}</div><div style="min-width:0;"><div class="lv-name">${_esc(eng)}</div>${r.team_name ? `<span class="lv-source">${_esc(r.team_name)}</span>` : ''}</div></div></td>
+                  <td>${_esc(r.property_name || r.site_name || '—')}</td>
+                  <td class="lv-mono">${fmt(r.visit_date || r.created_at)}</td>
+                  <td>${pill(tm.label, tm.color)}</td>
+                  <td>${pill(sm.label, sm.color)}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table></div>`;
     }
 
     function _reportCard(r) {
