@@ -123,13 +123,13 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
 .neon-dash .icon-btn svg {width:17px;height:17px;}
 .neon-dash /* ---------------- Story strip ---------------- */
   .story-strip {display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
-.neon-dash .story-card {padding:18px 20px;}
-.neon-dash .story-top {display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-.neon-dash .story-label {font-size:11.5px;color:var(--text-2);font-weight:600;}
-.neon-dash .story-icon {width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;}
-.neon-dash .story-icon svg {width:15px;height:15px;}
-.neon-dash .story-value {font-size:22px;font-weight:700;letter-spacing:-0.3px;}
-.neon-dash .story-sub {font-size:11.5px;color:var(--text-3);margin-top:5px;}
+.neon-dash .story-card {padding:20px 22px;}
+.neon-dash .story-top {display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;}
+.neon-dash .story-label {font-size:12.5px;color:var(--text-2);font-weight:600;padding-top:6px;}
+.neon-dash .story-icon {width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.neon-dash .story-icon svg {width:22px;height:22px;}
+.neon-dash .story-value {font-size:30px;font-weight:700;letter-spacing:-0.5px;line-height:1.1;}
+.neon-dash .story-sub {font-size:12px;color:var(--text-3);margin-top:6px;}
 .neon-dash /* ---------------- Main grid ---------------- */
   .main-grid {display:grid;grid-template-columns:1fr 320px;gap:18px;align-items:start;}
 .neon-dash /* Map hero */

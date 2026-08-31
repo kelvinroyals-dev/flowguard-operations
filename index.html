@@ -1215,6 +1215,9 @@
     .tnav-item.active, .tnav-grp.active > .tnav-item{ background:var(--ps); color:var(--t1); }
     /* Hover flyout — pops the group's items out to the right of the rail. */
     .tnav-drop{ position:absolute; top:-4px; left:calc(100% + 8px); min-width:190px; background:#ffffff; border:1px solid var(--bd); border-radius:14px; box-shadow:var(--sh); padding:6px; display:none; z-index:1200; }
+    /* Invisible bridge across the 8px gap so moving the cursor from the group
+       into the flyout doesn't drop the hover and close it. */
+    .tnav-drop::before{ content:""; position:absolute; top:0; bottom:0; left:-12px; width:12px; }
     html[data-theme="dark"] .tnav-drop{ background:#14171c; }
     .tnav-grp:hover .tnav-drop{ display:block; }
     .tnav-link{ display:flex; align-items:center; gap:8px; width:100%; text-align:left; font-size:12.5px; font-weight:600; color:var(--t2); padding:9px 11px; border-radius:9px; cursor:pointer; background:transparent; border:none; font-family:inherit; white-space:nowrap; }
@@ -1277,7 +1280,7 @@
     }
   </style>
 </head>
-<body data-build="cmd11">
+<body data-build="cmd12">
 
 <div class="app-neon">
   <aside class="tnav">
@@ -1404,7 +1407,7 @@
 <script src="js/auth.js?v=sec6"></script>
 <script src="js/ops-modal.js?v=sec10"></script>
 <script src="js/fg-paginator.js?v=sec2"></script>
-<script src="js/ops-dashboard.js?v=sec12"></script>
+<script src="js/ops-dashboard.js?v=sec13"></script>
 <script src="js/ops-user-management.js?v=sec11"></script>
 <script src="js/ops-clients.js?v=sec11"></script>
 <script src="js/ops-properties.js?v=sec15"></script>
