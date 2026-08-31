@@ -1224,6 +1224,16 @@
     .tnav-link:hover{ background:var(--pb); color:var(--t1); }
     .tnav-link.active{ background:var(--ps); color:var(--t1); }
 
+    /* Profile row pinned to the bottom of the sidebar (moved from the top bar). */
+    .tnav-user{ margin-top:auto; display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:12px; cursor:pointer; position:relative; border-top:1px solid var(--bd); }
+    .tnav-user:hover{ background:var(--pb); }
+    .tnav-user .fg-av{ width:34px; height:34px; }
+    .tnav-user-info{ flex:1; min-width:0; }
+    .tnav-user .user-name{ font-size:13px; font-weight:600; color:var(--t1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .tnav-user .user-role-el{ font-size:11px; color:var(--t3); margin-top:1px; }
+    .tnav-user-cx{ width:16px; height:16px; color:var(--t3); flex-shrink:0; }
+    .tnav .tb-user-menu{ top:auto; bottom:calc(100% + 8px); left:8px; right:8px; }
+
     /* Slim top bar in the content column — holds the utility controls. */
     .opsbar{
       --pa:rgba(255,255,255,0.86); --pb:rgba(10,42,61,0.06); --ps:#ffffff;
@@ -1280,7 +1290,7 @@
     }
   </style>
 </head>
-<body data-build="cmd13">
+<body data-build="cmd14">
 
 <div class="app-neon">
   <aside class="tnav">
@@ -1329,6 +1339,15 @@
         </div>
       </div>
     </nav>
+    <div class="tnav-user" onclick="toggleUserMenu(event)" role="button" tabindex="0">
+      <span class="fg-av" id="user-avatar">--</span>
+      <div class="tnav-user-info"><div class="user-name" id="user-name">—</div><div class="user-role-el" id="user-role">—</div></div>
+      <svg class="tnav-user-cx" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+      <div class="tb-user-menu" id="tb-user-menu">
+        <button id="nav-settings" onclick="event.stopPropagation();switchTab('settings');closeUserMenu()">Administration</button>
+        <button class="danger" onclick="event.stopPropagation();handleLogout()">Sign out</button>
+      </div>
+    </div>
   </aside>
   <div class="content">
     <header class="opsbar">
@@ -1346,17 +1365,9 @@
           <span class="tb-badge" id="ntf-badge" style="display:none">0</span>
         </button>
       </div>
-      <div class="tb-user" id="tb-user">
-        <button class="fg-av" id="user-avatar" onclick="toggleUserMenu(event)">--</button>
-        <div class="tb-user-menu" id="tb-user-menu">
-          <button id="nav-settings" onclick="switchTab('settings');closeUserMenu()">Administration</button>
-          <button class="danger" onclick="handleLogout()">Sign out</button>
-        </div>
-      </div>
       <div style="display:none" aria-hidden="true">
         <div id="tb-storm" style="display:none"><b id="tb-storm-t"></b><i id="tb-storm-s"></i></div>
         <div class="tb-search" id="tb-search-wrap"><input id="tb-search" type="text" autocomplete="off"><div class="tb-search-drop" id="tb-search-drop"></div></div>
-        <span id="user-name"></span><span id="user-role"></span>
         <span id="tb-temp"></span><span id="tb-cond"></span><span id="tb-rain"></span><span id="current-time"></span>
         <span id="topbar-module"></span><span id="topbar-title"></span>
       </div>
@@ -1410,7 +1421,7 @@
 <script src="js/ops-modal.js?v=sec10"></script>
 <script src="js/fg-paginator.js?v=sec2"></script>
 <script src="js/ops-dashboard.js?v=sec15"></script>
-<script src="js/ops-situation.js?v=sec2"></script>
+<script src="js/ops-situation.js?v=sec3"></script>
 <script src="js/ops-user-management.js?v=sec11"></script>
 <script src="js/ops-clients.js?v=sec11"></script>
 <script src="js/ops-properties.js?v=sec15"></script>

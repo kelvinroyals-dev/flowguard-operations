@@ -164,7 +164,7 @@ const OpsSituation = (function () {
     const status = M.critical ? `${M.critical} critical` : bad ? `${bad} active incident${bad > 1 ? 's' : ''}` : 'All systems normal';
     const date = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     return `<div class="sit-head">
-      <div><h1>Situation</h1><div class="sit-sub">Real-time view of incidents, risks and notable events across your network.</div></div>
+      <div><div class="sit-sub">Real-time view of incidents, risks and notable events across your network.</div></div>
       <div class="sit-head-r">
         <span class="sit-status ${tone}"><i></i>${esc(status)}</span>
         <span class="sit-date">${svg('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>', 15)} ${date}</span>
