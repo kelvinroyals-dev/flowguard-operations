@@ -222,7 +222,7 @@ const OpsSituation = (function () {
     if (window.ResizeObserver) new ResizeObserver(() => { try { map.invalidateSize(); } catch (_) {} }).observe(document.getElementById('sit-map'));
   }
   function popup(title, rows) {
-    return `<div style="min-width:180px"><div style="font-weight:700;font-size:13px;color:#0e2c3d;margin-bottom:4px">${esc(title)}</div>${rows.filter(Boolean).map(r => `<div style="font-size:12px;color:#4d6d7d;line-height:1.6">${r}</div>`).join('')}</div>`;
+    return `<div style="min-width:180px"><div style="font-weight:700;font-size:13px;color:var(--ink);margin-bottom:4px">${esc(title)}</div>${rows.filter(Boolean).map(r => `<div style="font-size:12px;color:var(--ink-2);line-height:1.6">${r}</div>`).join('')}</div>`;
   }
   function plot() {
     if (!map) return;

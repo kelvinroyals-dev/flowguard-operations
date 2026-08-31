@@ -1271,6 +1271,11 @@
     .app-neon .content .neon-dash > .wrap{ max-width:none !important; margin:0 !important; }
     /* Content gutter now that the outer page padding is gone (opsbar stays flush). */
     .app-neon > .content > .tab-content{ padding:20px 24px 28px; }
+    /* Map popups follow the theme (were hardcoded light text → invisible on the dark popup). */
+    .leaflet-popup-content-wrapper{ background:var(--surface) !important; color:var(--ink) !important; border:1px solid var(--border); box-shadow:var(--sh-md); }
+    .leaflet-popup-tip{ background:var(--surface) !important; border:1px solid var(--border); }
+    .leaflet-popup-close-button{ color:var(--ink-3) !important; }
+    .leaflet-popup-content a{ color:var(--blue-hi); }
 
     /* On narrow screens the sidebar becomes a horizontal scrolling strip. */
     @media (max-width:820px){
@@ -1420,8 +1425,8 @@
 <script src="js/auth.js?v=sec6"></script>
 <script src="js/ops-modal.js?v=sec10"></script>
 <script src="js/fg-paginator.js?v=sec2"></script>
-<script src="js/ops-dashboard.js?v=sec16"></script>
-<script src="js/ops-situation.js?v=sec3"></script>
+<script src="js/ops-dashboard.js?v=sec17"></script>
+<script src="js/ops-situation.js?v=sec4"></script>
 <script src="js/ops-user-management.js?v=sec11"></script>
 <script src="js/ops-clients.js?v=sec11"></script>
 <script src="js/ops-properties.js?v=sec15"></script>

@@ -619,8 +619,8 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
   }
 
   function popup(title, rows) {
-    const body = rows.filter(Boolean).map(r => `<div style="font-size:12px;color:#4d6d7d;line-height:1.6">${esc(r)}</div>`).join('');
-    return `<div style="min-width:170px"><div style="font-weight:700;font-size:13px;color:#0e2c3d;margin-bottom:4px">${esc(title)}</div>${body}</div>`;
+    const body = rows.filter(Boolean).map(r => `<div style="font-size:12px;color:var(--ink-2);line-height:1.6">${esc(r)}</div>`).join('');
+    return `<div style="min-width:170px"><div style="font-weight:700;font-size:13px;color:var(--ink);margin-bottom:4px">${esc(title)}</div>${body}</div>`;
   }
 
   function plot(md) {
