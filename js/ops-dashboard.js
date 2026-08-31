@@ -123,13 +123,13 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
 .neon-dash .icon-btn svg {width:17px;height:17px;}
 .neon-dash /* ---------------- Story strip ---------------- */
   .story-strip {display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
-.neon-dash .story-card {padding:20px 22px;}
-.neon-dash .story-top {display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;}
-.neon-dash .story-label {font-size:12.5px;color:var(--text-2);font-weight:600;padding-top:6px;}
-.neon-dash .story-icon {width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.neon-dash .story-icon svg {width:22px;height:22px;}
-.neon-dash .story-value {font-size:30px;font-weight:700;letter-spacing:-0.5px;line-height:1.1;}
-.neon-dash .story-sub {font-size:12px;color:var(--text-3);margin-top:6px;}
+.neon-dash .story-card {padding:20px 22px;display:flex;align-items:center;gap:16px;}
+.neon-dash .story-body {min-width:0;}
+.neon-dash .story-label {font-size:12.5px;color:var(--text-2);font-weight:600;display:block;margin-bottom:3px;}
+.neon-dash .story-icon {width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.neon-dash .story-icon svg {width:24px;height:24px;}
+.neon-dash .story-value {font-size:30px;font-weight:700;letter-spacing:-0.5px;line-height:1.05;}
+.neon-dash .story-sub {font-size:12px;color:var(--text-3);margin-top:5px;}
 .neon-dash /* ---------------- Main grid ---------------- */
   .main-grid {display:grid;grid-template-columns:1fr 320px;gap:18px;align-items:start;}
 .neon-dash /* Map hero */
@@ -257,47 +257,47 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
 <!-- STORY STRIP -->
   <div class="story-strip">
     <div class="glass story-card">
-      <div class="story-top">
+      <div class="story-icon" style="background:rgba(31,157,91,0.12);color:var(--green);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10l9-7 9 7"/><path d="M5 9v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V9"/></svg>
+      </div>
+      <div class="story-body">
         <span class="story-label">Properties monitored</span>
-        <div class="story-icon" style="background:rgba(31,157,91,0.12);color:var(--green);">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10l9-7 9 7"/><path d="M5 9v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V9"/></svg>
-        </div>
+        <div class="story-value">—</div>
+        <div class="story-sub">Loading…</div>
       </div>
-      <div class="story-value">—</div>
-      <div class="story-sub">Loading…</div>
     </div>
 
     <div class="glass story-card">
-      <div class="story-top">
+      <div class="story-icon" style="background:rgba(28,184,232,0.12);color:var(--cyan);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h4l2-7 4 14 2-7h8"/></svg>
+      </div>
+      <div class="story-body">
         <span class="story-label">Network health</span>
-        <div class="story-icon" style="background:rgba(28,184,232,0.12);color:var(--cyan);">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h4l2-7 4 14 2-7h8"/></svg>
-        </div>
+        <div class="story-value">—</div>
+        <div class="story-sub">Loading…</div>
       </div>
-      <div class="story-value">—</div>
-      <div class="story-sub">Loading…</div>
     </div>
 
     <div class="glass story-card">
-      <div class="story-top">
+      <div class="story-icon" style="background:rgba(224,142,18,0.12);color:var(--amber);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M8 8V6a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+      </div>
+      <div class="story-body">
         <span class="story-label">Open work orders</span>
-        <div class="story-icon" style="background:rgba(224,142,18,0.12);color:var(--amber);">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M8 8V6a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-        </div>
+        <div class="story-value">—</div>
+        <div class="story-sub">Loading…</div>
       </div>
-      <div class="story-value">—</div>
-      <div class="story-sub">Loading…</div>
     </div>
 
     <div class="glass story-card">
-      <div class="story-top">
-        <span class="story-label">Active incidents</span>
-        <div class="story-icon" style="background:rgba(217,70,60,0.12);color:var(--danger);">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2.6 17.5a1.5 1.5 0 001.3 2.3h16.2a1.5 1.5 0 001.3-2.3L13.7 3.9a1.5 1.5 0 00-2.6 0z"/></svg>
-        </div>
+      <div class="story-icon" style="background:rgba(217,70,60,0.12);color:var(--danger);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2.6 17.5a1.5 1.5 0 001.3 2.3h16.2a1.5 1.5 0 001.3-2.3L13.7 3.9a1.5 1.5 0 00-2.6 0z"/></svg>
       </div>
-      <div class="story-value">—</div>
-      <div class="story-sub">Loading…</div>
+      <div class="story-body">
+        <span class="story-label">Active incidents</span>
+        <div class="story-value">—</div>
+        <div class="story-sub">Loading…</div>
+      </div>
     </div>
   </div>
 
