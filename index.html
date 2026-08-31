@@ -1280,7 +1280,7 @@
     }
   </style>
 </head>
-<body data-build="cmd12">
+<body data-build="cmd13">
 
 <div class="app-neon">
   <aside class="tnav">
@@ -1291,6 +1291,7 @@
     </div>
     <nav class="tnav-menu">
       <button class="tnav-item" id="nav-dashboard" onclick="switchTab('dashboard')">Overview</button>
+      <button class="tnav-item" id="nav-situation" onclick="switchTab('situation')">Situation</button>
       <div class="tnav-grp">
         <span class="tnav-item" tabindex="0">Network</span>
         <div class="tnav-drop">
@@ -1362,6 +1363,7 @@
     </div>
     </header>
       <div id="content-dashboard"    class="tab-content active"></div>
+      <div id="content-situation"    class="tab-content"></div>
       <div id="content-clients"      class="tab-content"></div>
       <div id="content-properties"   class="tab-content"></div>
       <div id="content-assets"       class="tab-content"></div>
@@ -1403,11 +1405,12 @@
     console.log('%c FlowGuard Ops ' + FG_BUILD + ' ', 'background:#22d3ee;color:#04222b;font-weight:700;border-radius:3px',
       '| tabs: dashboard, alerts, clients, properties, assets, sentinel, network, teams');
   </script>
-  <script src="js/config.js?v=sec3"></script>
+  <script src="js/config.js?v=sec4"></script>
 <script src="js/auth.js?v=sec6"></script>
 <script src="js/ops-modal.js?v=sec10"></script>
 <script src="js/fg-paginator.js?v=sec2"></script>
 <script src="js/ops-dashboard.js?v=sec15"></script>
+<script src="js/ops-situation.js?v=sec1"></script>
 <script src="js/ops-user-management.js?v=sec11"></script>
 <script src="js/ops-clients.js?v=sec11"></script>
 <script src="js/ops-properties.js?v=sec15"></script>
@@ -1439,6 +1442,7 @@
 
   const TAB_META = {
     dashboard:        { module:'Dashboard',    title:'Operations Overview'         },
+    situation:        { module:'Operations',   title:'Situation'                   },
     clients:          { module:'Clients',      title:'Client Accounts'             },
     properties:       { module:'Properties',   title:'Asset Registry'              },
     assets:           { module:'Operations',   title:'Drainage Assets'             },
@@ -1799,6 +1803,7 @@
 
     const MODS = {
       dashboard:        () => typeof OpsDashboard      !== 'undefined' ? OpsDashboard      : null,
+      situation:        () => typeof OpsSituation      !== 'undefined' ? OpsSituation      : null,
       clients:          () => typeof OpsClients        !== 'undefined' ? OpsClients        : null,
       properties:       () => typeof OpsProperties     !== 'undefined' ? OpsProperties     : null,
       assets:           () => typeof OpsAssets         !== 'undefined' ? OpsAssets         : null,
