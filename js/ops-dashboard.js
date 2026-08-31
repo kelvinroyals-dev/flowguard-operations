@@ -312,9 +312,9 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
           <div class="meta">Lagos region &middot; digital twin</div>
         </div>
         <div class="layer-pills">
-          <div class="layer-pill active">Drainage</div>
-          <div class="layer-pill">Properties</div>
-          <div class="layer-pill">Crews</div>
+          <div class="layer-pill active">Properties</div>
+          <div class="layer-pill">Devices</div>
+          <div class="layer-pill active">Risk</div>
           <div class="layer-pill">Incidents</div>
         </div>
       </div>
@@ -594,8 +594,11 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
       style: styleUrl(),
       attribution: '&copy; <a href="https://openfreemap.org">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org">OSM</a>',
     }).addTo(map);
-    layers = { sensors: L.layerGroup().addTo(map), areas: L.layerGroup().addTo(map),
-               sites: L.layerGroup().addTo(map), alerts: L.layerGroup().addTo(map) };
+    // Overview map = a curated network snapshot. Default on: Properties + Risk;
+    // Devices + Incidents are toggles. (Field teams aren't plotted — this payload
+    // has no team coordinates; that lives on the Network Map.)
+    layers = { areas: L.layerGroup().addTo(map), sensors: L.layerGroup(),
+               risk: L.layerGroup().addTo(map), alerts: L.layerGroup() };
     wireLayerPills();
     if (window.ResizeObserver) new ResizeObserver(() => { try { map.invalidateSize(); } catch (_) {} }).observe(q('#fg-map'));
     if (window.MutationObserver) new MutationObserver(() => { if (baseTiles) baseTiles.setUrl(tileUrl()); })
@@ -603,7 +606,7 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
   }
 
   function wireLayerPills() {
-    const keys = ['sensors', 'areas', 'sites', 'alerts']; // Drainage, Estates, Crews, Incidents
+    const keys = ['areas', 'sensors', 'risk', 'alerts']; // Properties, Devices, Risk, Incidents
     qa('.layer-pills .layer-pill').forEach((p, i) => {
       const key = keys[i]; if (!key) return;
       p.style.cursor = 'pointer';
@@ -629,12 +632,13 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
       m.bindPopup(popup(a.property_name || 'Area', [(a.status || '').replace(/_/g, ' '), a.city, a.client_name]));
       layers.areas.addLayer(m);
     });
-    (md.sites || []).forEach(s => {
-      const lat = parseFloat(s.latitude), lng = parseFloat(s.longitude); if (!lat || !lng) return;
-      const online = parseInt(s.sensors_online) || 0, total = parseInt(s.sensor_count) || 0;
-      const m = L.marker([lat, lng], { icon: dot(C.cyan, 14, false) });
-      m.bindPopup(popup('⚡ ' + (s.name || 'Site'), [s.location, online + '/' + total + ' sensors online', s.tier ? s.tier + ' tier' : '']));
-      layers.sites.addLayer(m);
+    (md.flood_risk || []).forEach(e => {
+      const lat = parseFloat(e.latitude), lng = parseFloat(e.longitude); if (!lat || !lng) return;
+      const r = e.risk_index;
+      const col = r >= 70 ? C.danger : r >= 50 ? C.warnAmber : r >= 30 ? C.amber : C.green;
+      const m = L.marker([lat, lng], { icon: dot(col, r >= 70 ? 15 : 13, r >= 70) });
+      m.bindPopup(popup(e.name || 'Estate', ['Risk ' + r + '/100', (e.flood_risk_level || '') + ' risk']));
+      layers.risk.addLayer(m);
     });
     (md.sensors || []).forEach(s => {
       const lat = parseFloat(s.latitude), lng = parseFloat(s.longitude); if (!lat || !lng) return;
@@ -653,7 +657,7 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
       layers.alerts.addLayer(m);
     });
     const pts = [];
-    ['areas', 'sites', 'sensors', 'alerts'].forEach(k => (md[k] || []).forEach(i => {
+    ['areas', 'flood_risk', 'sensors', 'alerts'].forEach(k => (md[k] || []).forEach(i => {
       if (i.latitude && i.longitude) pts.push([parseFloat(i.latitude), parseFloat(i.longitude)]);
     }));
     if (pts.length) { try { map.fitBounds(L.latLngBounds(pts).pad(0.15)); } catch (_) {} }
@@ -767,15 +771,29 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
   function renderPortfolio(md) {
     const grid = q('.portfolio-grid'); if (!grid) return;
     const grads = ['linear-gradient(135deg,var(--teal),var(--cyan))', 'linear-gradient(135deg,var(--danger),var(--amber))', 'linear-gradient(135deg,var(--green),var(--teal))'];
-    const items = (md.sites && md.sites.length ? md.sites : md.areas || []).slice(0, 3);
+    // Prefer real per-estate risk (flood_risk = scoreProperties), sorted so the
+    // properties that need attention surface first. Fall back to sites/areas.
+    const fr = (md.flood_risk || []).slice();
+    let items;
+    if (fr.length) {
+      items = fr.sort((a, b) => (b.risk_index || 0) - (a.risk_index || 0)).slice(0, 3)
+        .map(e => ({ name: e.name, risk: e.risk_index, loc: null }));
+    } else {
+      items = (md.sites && md.sites.length ? md.sites : md.areas || []).slice(0, 3)
+        .map(s => ({ name: s.name || s.property_name || 'Property', risk: null, loc: s.location || s.city || null }));
+    }
     if (!items.length) return;
+    const statusOf = r => r == null ? null
+      : r >= 60 ? { t: 'At risk', c: 'var(--danger)', bg: 'rgba(217,70,60,0.16)' }
+      : r >= 35 ? { t: 'Watch',   c: 'var(--amber)',  bg: 'rgba(224,142,18,0.16)' }
+      :           { t: 'Healthy', c: 'var(--green)',  bg: 'rgba(31,157,91,0.16)' };
     grid.innerHTML = items.map((s, i) => {
-      const name = s.name || s.property_name || 'Property';
-      const loc = s.location || s.city || '—';
-      const sensors = s.sensor_count != null ? s.sensor_count : (s.sensors_online != null ? s.sensors_online : '—');
-      const tier = s.tier || (s.status === 'active' ? 'A' : null);
-      const tierHTML = tier ? `<span class="tier">${esc(tier)}</span>` : `<span class="tier unlinked">No billing linked</span>`;
-      return `<div class="glass-soft portfolio-card"><div class="portfolio-thumb" style="background:${grads[i % 3]};">${tierHTML}</div><div class="portfolio-name">${esc(name)}</div><div class="portfolio-meta">${esc(loc)} &middot; ${esc(String(sensors))} sensors</div></div>`;
+      const st = statusOf(s.risk);
+      const chip = st
+        ? `<span class="tier" style="background:${st.bg};color:${st.c};">${st.t}</span>`
+        : `<span class="tier unlinked">—</span>`;
+      const meta = s.risk != null ? `Risk ${s.risk}/100` : (s.loc ? esc(s.loc) : '');
+      return `<div class="glass-soft portfolio-card"><div class="portfolio-thumb" style="background:${grads[i % 3]};">${chip}</div><div class="portfolio-name">${esc(s.name)}</div><div class="portfolio-meta">${meta}</div></div>`;
     }).join('');
   }
 
