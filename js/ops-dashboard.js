@@ -123,7 +123,7 @@ html[data-theme="dark"] .neon-dash .toggle .knob {left:20px;}
 .neon-dash .icon-btn svg {width:17px;height:17px;}
 .neon-dash /* ---------------- Story strip ---------------- */
   .story-strip {display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
-.neon-dash .story-card {padding:20px 22px;display:flex;align-items:center;gap:16px;}
+.neon-dash .story-card {padding:20px 22px;display:flex;align-items:flex-start;gap:16px;}
 .neon-dash .story-body {min-width:0;}
 .neon-dash .story-label {font-size:12.5px;color:var(--text-2);font-weight:600;display:block;margin-bottom:3px;}
 .neon-dash .story-icon {width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
