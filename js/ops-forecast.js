@@ -263,6 +263,14 @@ const OpsForecast = (function () {
         </div>
         ${kpis}
         <div id="fcx-daily"></div>
+        <div class="fcx-card" style="margin-bottom:16px;" id="fcx-ask-card">
+          <div class="fcx-card-head"><h3>Ask FlowGuard</h3></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <input id="fcx-ask-input" type="text" placeholder="e.g. Which estates need action before tonight's rain?" style="flex:1;min-width:220px;font-size:var(--fs-sm);padding:9px 12px;border-radius:9px;border:1px solid var(--border-2);background:var(--surface);color:var(--ink);" onkeydown="if(event.key==='Enter')OpsForecast.ask()">
+            <button class="fcx-btn primary" onclick="OpsForecast.ask()" id="fcx-ask-btn">Ask</button>
+          </div>
+          <div id="fcx-ask-answer"></div>
+        </div>
         <div class="fcx-map-row">
           <div class="fcx-map-wrap">
             <div class="fcx-map-head"><h2>Risk heatmap</h2><span class="fcx-meta">${total} propert${total === 1 ? 'y' : 'ies'} scored${est.filter(e => e.geo_approx).length ? ` · ${est.filter(e => e.geo_approx).length} to verify` : ''} · Lagos</span></div>
@@ -347,6 +355,26 @@ const OpsForecast = (function () {
       <div style="font-size:var(--fs-sm);line-height:1.55;color:var(--ink-2);white-space:pre-wrap;padding:2px 0;">${esc(d.briefing)}</div>
       ${foot ? `<div style="margin-top:8px;font-size:var(--fs-2xs);color:var(--ink-4);">${foot}</div>` : ''}
     </div>`;
+  }
+
+  async function ask() {
+    const input = document.getElementById('fcx-ask-input');
+    const out = document.getElementById('fcx-ask-answer');
+    const btn = document.getElementById('fcx-ask-btn');
+    if (!input || !out) return;
+    const q = input.value.trim();
+    if (!q) { input.focus(); return; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Thinking…'; }
+    out.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-top:12px;color:var(--ink-3);font-size:var(--fs-sm);"><span class="loading" style="width:15px;height:15px;"></span> Consulting the live forecast…</div>';
+    try {
+      const r = await OpsModal.apiPost('/ai/ask', { question: q });
+      const d = (r && r.data) || {};
+      out.innerHTML = `<div style="margin-top:12px;font-size:var(--fs-sm);line-height:1.6;color:var(--ink-2);white-space:pre-wrap;border-left:2px solid var(--border-2);padding:2px 0 2px 12px;">${esc(d.answer || 'No answer.')}</div>`;
+    } catch (err) {
+      out.innerHTML = `<div style="margin-top:12px;font-size:var(--fs-sm);color:var(--err);">Couldn't answer: ${esc(err.message || 'error')}</div>`;
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Ask'; }
+    }
   }
 
   async function runDaily(btn) {
@@ -858,6 +886,6 @@ const OpsForecast = (function () {
     .lv-status.low { background:rgba(31,157,91,.12); color:var(--ok); }
   </style>`;
 
-  return { render, setHorizon, layer, select, deselect, act, confirmAct, open, back, explain, runDaily, logIncident, confirmIncident };
+  return { render, setHorizon, layer, select, deselect, act, confirmAct, open, back, explain, runDaily, ask, logIncident, confirmIncident };
 
 })();
