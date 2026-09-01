@@ -404,7 +404,7 @@ const OpsNetwork = (function () {
     .nw-lyr span{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
     .nw-lyr input{accent-color:var(--blue);}
     /* drawer */
-    .nw-drawer{position:absolute;top:0;right:0;height:100%;width:340px;max-width:88%;background:var(--surface);border:1px solid var(--border-2);border-radius:16px;box-shadow:var(--sh-lg);padding:16px 18px;overflow-y:auto;transform:translateX(calc(100% + 20px));transition:transform .22s ease;z-index:700;}
+    .nw-drawer{position:fixed;top:60px;right:0;height:calc(100vh - 60px);width:360px;max-width:92vw;background:var(--surface);border:1px solid var(--border-2);border-right:none;border-radius:16px 0 0 16px;box-shadow:var(--sh-lg);padding:16px 18px;overflow-y:auto;transform:translateX(calc(100% + 24px));transition:transform .22s ease;z-index:1500;}
     .nw-drawer.open{transform:translateX(0);}
     .nw-dr-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;}
     .nw-dr-name{font-family:var(--ff-d);font-size:var(--fs-lg);font-weight:800;color:var(--ink);}
