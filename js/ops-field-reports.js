@@ -170,8 +170,13 @@ window.OpsFieldReports = (function () {
                 const tm = typeMeta[r.report_type] || { label: r.report_type || '—', color: '#7d8fa3' };
                 const eng = r.submitted_by_name || '—';
                 return `<tr class="clickable" onclick="OpsFieldReports.openReport('${r.report_id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsFieldReports.openReport('${r.report_id}')}">
-                  <td class="lv-mono" style="color:var(--ink);font-weight:700;">${r.report_id}</td>
-                  <td><div class="lv-name-cell"><div class="lv-avatar" style="background:var(--surface-3);color:var(--ink-2);border:1px solid var(--border);">${initials(eng)}</div><div style="min-width:0;"><div class="lv-name">${_esc(eng)}</div>${r.team_name ? `<span class="lv-source">${_esc(r.team_name)}</span>` : ''}</div></div></td>
+                  <td>
+                    <div class="lv-name-cell">
+                      <div class="lv-avatar" style="background:var(--surface-3);color:var(--ink-3);border:1px solid var(--border);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></div>
+                      <div style="min-width:0;"><div class="lv-name lv-mono">${r.report_id}</div>${r.title ? `<span class="lv-source">${_esc(r.title)}</span>` : ''}</div>
+                    </div>
+                  </td>
+                  <td><div class="lv-name" style="font-weight:500;">${_esc(eng)}</div>${r.team_name ? `<div class="lv-source">${_esc(r.team_name)}</div>` : ''}</td>
                   <td>${_esc(r.property_name || r.site_name || '—')}</td>
                   <td class="lv-mono">${fmt(r.visit_date || r.created_at)}</td>
                   <td>${pill(tm.label, tm.color)}</td>
