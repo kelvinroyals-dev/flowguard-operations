@@ -1003,13 +1003,15 @@ const OpsReports = (function () {
               const tc = typeConfig[r.type] || typeConfig.daily;
               const date = r.generated_at ? new Date(r.generated_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
               const propCell = r.property_id ? OpsModal.link('properties', r.property_id, r.property_name || r.property_id) : _d(r.property_name);
+              // The report TYPE is the meaningful identifier; show the period
+              // (r.name, e.g. "monthly") only as a sub-line when it adds info.
               const label = tc.label;
-              const name = r.name && r.name !== label ? r.name : label;
+              const period = r.name && r.name.toLowerCase() !== label.toLowerCase() ? r.name : '';
               return `<tr class="clickable" onclick="OpsReports.open(${i})" tabindex="0" onkeydown="if(event.key==='Enter'){OpsReports.open(${i})}">
                 <td>
                   <div class="lv-name-cell">
                     <div class="lv-avatar" style="background:var(--surface-3);color:var(--ink-3);border:1px solid var(--border);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 17v-2m3 2v-4m3 4v-6"/></svg></div>
-                    <div style="min-width:0;"><div class="lv-name" style="text-transform:capitalize;">${name}</div><span class="lv-source">${label}</span></div>
+                    <div style="min-width:0;"><div class="lv-name">${label}</div>${period ? `<span class="lv-source" style="text-transform:capitalize;">${period}</span>` : ''}</div>
                   </div>
                 </td>
                 <td>${propCell}</td>
