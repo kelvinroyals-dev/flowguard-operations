@@ -106,7 +106,7 @@ const OpsAssets = (function () {
       ['monitored', `Monitored (${_assets.length - unmonitored})`],
       ['unmonitored', `No Sentinel (${unmonitored})`],
     ];
-    if (chipsEl) chipsEl.innerHTML = chips.map(([k, l]) => `<div class="lv-filter ${_filter === k ? 'active' : ''}" onclick="OpsAssets.setFilter('${__sid(k)}')">${l}</div>`).join('');
+    if (chipsEl) chipsEl.innerHTML = `<select class="um-filter" onchange="OpsAssets.setFilter(this.value)">${chips.map(([k, l]) => `<option value="${k}" ${_filter === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
 
     let rows = _assets;
     if (_filter === 'monitored') rows = rows.filter(a => Number(a.node_count) > 0);

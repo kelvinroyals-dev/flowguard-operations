@@ -143,23 +143,19 @@ const OpsClients = (function () {
           <div class="fg-page-sub">People and organisations who submitted properties for drainage management</div>
         </div>
       </div>
-      <div id="cl-stats"></div>
       <div class="lv-wrap">
         <div class="lv-toolbar">
           <div class="lv-search">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
             <input id="cl-search" placeholder="Search clients…" oninput="OpsClients.search(this.value)">
           </div>
-          <div class="lv-filters">
-            <div class="lv-filter active" id="clf-all" onclick="OpsClients.setFilter('all')">All</div>
-            <div class="lv-filter" id="clf-active" onclick="OpsClients.setFilter('active')">Active</div>
-            <div class="lv-filter" id="clf-billing" onclick="OpsClients.setFilter('billing')">Has billing</div>
-            <div class="lv-filter" id="clf-inactive" onclick="OpsClients.setFilter('inactive')">Inactive</div>
-          </div>
           <div class="lv-toolbar-right">
-            <div class="lv-icon-btn" title="Reload" onclick="reloadTab('clients')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0114.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0020.5 15"/></svg>
-            </div>
+            <select class="um-filter" onchange="OpsClients.setFilter(this.value)">
+              <option value="all">All clients</option>
+              <option value="active">Active</option>
+              <option value="billing">Has billing</option>
+              <option value="inactive">Inactive</option>
+            </select>
           </div>
         </div>
         <div class="lv-legend">

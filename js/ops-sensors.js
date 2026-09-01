@@ -206,12 +206,7 @@ const OpsSensors = (function () {
 
     if (sub) sub.textContent = `${total} nodes · ${commonFw ? 'firmware ' + commonFw + ' · ' : ''}fleet management`;
 
-    kp.innerHTML = OpsModal.kpiStrip([
-      { icon: ICON.cpu,     color: 'var(--blue-hi)', label: 'Total Nodes', value: total, sub: `Across ${properties} propert${properties === 1 ? 'y' : 'ies'}` },
-      { icon: ICON.wifi,    color: 'var(--ok)',      label: 'Online',      value: online, sub: `${uptime}% fleet uptime`, subClass: 'ok' },
-      { icon: ICON.pulse,   color: 'var(--warn)',    label: 'Degraded',    value: degraded, sub: 'Needs attention', subClass: degraded ? 'warn' : '' },
-      { icon: ICON.wifiOff, color: 'var(--err)',     label: 'Offline',     value: offline, sub: 'Requires dispatch', subClass: offline ? 'err' : '' },
-    ]);
+    if (kp) kp.innerHTML = '';
 
     const chips = [
       ['all', `All (${total})`], ['healthy', `Healthy (${healthy})`],
@@ -224,8 +219,8 @@ const OpsSensors = (function () {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
         <input placeholder="Search Sentinels…" value="${_q.replace(/"/g, '&quot;')}" oninput="OpsSensors.setQuery(this.value)">
       </div>
-      <div class="lv-filters">${chips.map(([k, l]) =>
-        `<div class="lv-filter ${_filter === k ? 'active' : ''}" onclick="OpsSensors.setFilter('${__sid(k)}')">${l}</div>`).join('')}</div>`;
+      <div class="lv-toolbar-right"><select class="um-filter" onchange="OpsSensors.setFilter(this.value)">${chips.map(([k, l]) =>
+        `<option value="${k}" ${_filter === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`;
 
     let rows = _all.map((x, i) => ({ x, tier: tiers[i] }));
     if (_filter === 'healthy') rows = rows.filter(r => r.tier === 'healthy');

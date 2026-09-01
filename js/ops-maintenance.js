@@ -176,18 +176,19 @@ const OpsMaintenance = (function () {
         </div>
         ${canMng() ? `<button class="mp-add" onclick="OpsMaintenance.newJob()">+ New Job</button>` : ''}
       </div>
-      <div id="mp-kpis" class="mp-kpis-wrap"></div>
       <div class="lv-wrap">
         <div class="lv-toolbar">
           <div class="lv-search">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
             <input id="mp-search" placeholder="Search work orders…" oninput="OpsMaintenance.search(this.value)">
           </div>
-          <div class="lv-filters">
-            <div class="lv-filter active" id="mpf-all" onclick="OpsMaintenance.filterStatus('all')">All</div>
-            <div class="lv-filter" id="mpf-scheduled" onclick="OpsMaintenance.filterStatus('scheduled')">Scheduled</div>
-            <div class="lv-filter" id="mpf-in_progress" onclick="OpsMaintenance.filterStatus('in_progress')">In progress</div>
-            <div class="lv-filter" id="mpf-resolved" onclick="OpsMaintenance.filterStatus('resolved')">Complete</div>
+          <div class="lv-toolbar-right">
+            <select class="um-filter" onchange="OpsMaintenance.filterStatus(this.value)">
+              <option value="all">All statuses</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="in_progress">In progress</option>
+              <option value="resolved">Complete</option>
+            </select>
           </div>
         </div>
         <div id="mp-board-body"><div class="mp-empty">Loading the planner…</div></div>

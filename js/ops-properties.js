@@ -146,24 +146,20 @@ const OpsProperties = (function () {
           <div class="fg-page-sub">Properties moving through inspection, quoting, and activation</div>
         </div>
       </div>
-      <div id="pr-pipeline"></div>
       <div class="lv-wrap">
         <div class="lv-toolbar">
           <div class="lv-search">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
             <input id="pr-search" placeholder="Search properties…" oninput="OpsProperties.search(this.value)">
           </div>
-          <div class="lv-filters">
-            <div class="lv-filter active" id="prf-all" onclick="OpsProperties.filterStage('all')">All</div>
-            <div class="lv-filter" id="prf-submitted" onclick="OpsProperties.filterStage('submitted')">Awaiting review</div>
-            <div class="lv-filter" id="prf-inspection" onclick="OpsProperties.filterStage('inspection')">In inspection</div>
-            <div class="lv-filter" id="prf-billing" onclick="OpsProperties.filterStage('billing')">Quote / payment</div>
-            <div class="lv-filter" id="prf-active" onclick="OpsProperties.filterStage('active')">Active</div>
-          </div>
           <div class="lv-toolbar-right">
-            <div class="lv-icon-btn" title="Reload" onclick="reloadTab('properties')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0114.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0020.5 15"/></svg>
-            </div>
+            <select class="um-filter" onchange="OpsProperties.filterStage(this.value)">
+              <option value="all">All stages</option>
+              <option value="submitted">Awaiting review</option>
+              <option value="inspection">In inspection</option>
+              <option value="billing">Quote / payment</option>
+              <option value="active">Active</option>
+            </select>
           </div>
         </div>
         <div id="pr-table-body">

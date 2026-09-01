@@ -33,6 +33,13 @@ const OpsModal = (function () {
       .lv-filter:hover { border-color:var(--border-2); }
       .lv-filter.active { background:var(--ink); color:var(--surface); border-color:var(--ink); }
       .lv-toolbar-right { display:flex; gap:8px; align-items:center; margin-left:auto; }
+      /* Shared dropdown filter (global so every module matches without redefining). */
+      .um-filter { padding:7px 12px; border:1px solid var(--border); border-radius:var(--rs,9px); background:var(--surface-2); font-family:var(--ff-b); font-size:var(--fs-base); color:var(--ink); outline:none; cursor:pointer; }
+      .um-filter:focus { border-color:var(--blue,#16a8d3); }
+      /* Shared page header (title + subtitle + action) — one source of truth. */
+      .lv-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:20px; flex-wrap:wrap; }
+      .lv-head-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink); letter-spacing:-.02em; margin-bottom:3px; }
+      .lv-head-sub { font-size:var(--fs-base); color:var(--ink-3); }
       .lv-icon-btn { width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; color:var(--ink-2); border:1px solid var(--border); background:var(--surface); cursor:pointer; flex-shrink:0; }
       .lv-icon-btn:hover { border-color:var(--border-2); color:var(--ink); }
       .lv-icon-btn svg { width:15px; height:15px; }

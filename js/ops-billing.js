@@ -117,19 +117,20 @@ const OpsBilling = (function () {
           ${canManage() ? `<button class="bl-btn primary" onclick="OpsBilling.openCreate()">+ New invoice</button>` : ''}
         </div>
       </div>
-      <div id="bl-story" class="bl-story"></div>
       <div class="lv-wrap">
         <div class="lv-toolbar">
           <div class="lv-search">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
             <input id="bl-search" placeholder="Search invoices…" oninput="OpsBilling.search(this.value)">
           </div>
-          <div class="lv-filters">
-            <div class="lv-filter active" id="blf-all"     onclick="OpsBilling.setFilter('all')">All</div>
-            <div class="lv-filter"        id="blf-paid"    onclick="OpsBilling.setFilter('paid')">Paid</div>
-            <div class="lv-filter"        id="blf-pending" onclick="OpsBilling.setFilter('pending')">Pending</div>
-            <div class="lv-filter"        id="blf-overdue" onclick="OpsBilling.setFilter('overdue')">Overdue</div>
-            <div class="lv-filter"        id="blf-partial" onclick="OpsBilling.setFilter('partial')">Partially paid</div>
+          <div class="lv-toolbar-right">
+            <select class="um-filter" onchange="OpsBilling.setFilter(this.value)">
+              <option value="all">All invoices</option>
+              <option value="paid">Paid</option>
+              <option value="pending">Pending</option>
+              <option value="overdue">Overdue</option>
+              <option value="partial">Partially paid</option>
+            </select>
           </div>
         </div>
         <div id="bl-table-body"><div style="padding:48px;text-align:center;color:var(--ink-3);">Loading invoices…</div></div>
