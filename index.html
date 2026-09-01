@@ -1209,7 +1209,8 @@
 
     .tnav-menu{ display:flex; flex-direction:column; align-items:stretch; gap:2px; }
     .tnav-grp{ position:relative; }
-    .tnav-item{ display:flex; align-items:center; gap:8px; width:100%; font-size:13px; font-weight:600; color:var(--t2); padding:10px 12px; border-radius:9px; cursor:pointer; background:transparent; border:none; font-family:inherit; white-space:nowrap; text-align:left; }
+    .tnav-item{ display:flex; align-items:center; gap:11px; width:100%; font-size:13px; font-weight:600; color:var(--t2); padding:10px 12px; border-radius:9px; cursor:pointer; background:transparent; border:none; font-family:inherit; white-space:nowrap; text-align:left; }
+    .tnav-ic{ width:18px; height:18px; flex-shrink:0; }
     .tnav-grp > .tnav-item::after{ content:"›"; margin-left:auto; font-size:15px; color:var(--t3); }
     .tnav-item:hover{ color:var(--t1); background:var(--pb); }
     .tnav-item.active, .tnav-grp.active > .tnav-item{ background:var(--ps); color:var(--t1); }
@@ -1295,7 +1296,7 @@
     }
   </style>
 </head>
-<body data-build="cmd15">
+<body data-build="cmd16">
 
 <div class="app-neon">
   <aside class="tnav">
@@ -1305,11 +1306,11 @@
       <div><div class="tnav-name">FlowGuard</div><div class="tnav-sub">Neon Center</div></div>
     </div>
     <nav class="tnav-menu">
-      <button class="tnav-item" id="nav-dashboard" onclick="switchTab('dashboard')">Overview</button>
-      <button class="tnav-item" id="nav-situation" onclick="switchTab('situation')">Situation</button>
-      <button class="tnav-item" id="nav-forecast" onclick="switchTab('forecast')">AI Forecast</button>
+      <button class="tnav-item" id="nav-dashboard" onclick="switchTab('dashboard')"><svg class="tnav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>Overview</button>
+      <button class="tnav-item" id="nav-situation" onclick="switchTab('situation')"><svg class="tnav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Situation</button>
+      <button class="tnav-item" id="nav-forecast" onclick="switchTab('forecast')"><svg class="tnav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>AI Forecast</button>
       <div class="tnav-grp">
-        <span class="tnav-item" tabindex="0">Network</span>
+        <span class="tnav-item" tabindex="0"><svg class="tnav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 010 20 15.3 15.3 0 010-20z"/></svg>Network</span>
         <div class="tnav-drop">
           <button class="tnav-link" id="nav-network" onclick="switchTab('network')">Network Map</button>
           <button class="tnav-link" id="nav-maintenance" onclick="switchTab('maintenance')">Maintenance Planner</button>
@@ -1317,7 +1318,7 @@
         </div>
       </div>
       <div class="tnav-grp">
-        <span class="tnav-item" tabindex="0">Assets</span>
+        <span class="tnav-item" tabindex="0"><svg class="tnav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 11v6c0 1.66 4 3 9 3s9-1.34 9-3v-6"/></svg>Assets</span>
         <div class="tnav-drop">
           <button class="tnav-link" id="nav-assets" onclick="switchTab('assets')">Assets</button>
           <button class="tnav-link" id="nav-properties" onclick="switchTab('properties')">Properties</button>
@@ -1326,7 +1327,7 @@
         </div>
       </div>
       <div class="tnav-grp">
-        <span class="tnav-item" tabindex="0">Field ops</span>
+        <span class="tnav-item" tabindex="0"><svg class="tnav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>Field ops</span>
         <div class="tnav-drop">
           <button class="tnav-link" id="nav-field-reports" onclick="switchTab('field-reports')">Field Reports<span class="nav-badge" id="nav-badge-field-reports" style="display:none;">0</span></button>
           <button class="tnav-link" id="nav-support" onclick="switchTab('support')">Support<span class="nav-badge" id="nav-badge-support" style="display:none;">0</span></button>
@@ -1334,9 +1335,9 @@
           <button class="tnav-link" id="nav-team-members" onclick="switchTab('team-members')">Team Members</button>
         </div>
       </div>
-      <button class="tnav-item" id="nav-sensors" onclick="switchTab('sensors')">Devices</button>
+      <button class="tnav-item" id="nav-sensors" onclick="switchTab('sensors')"><svg class="tnav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>Devices</button>
       <div class="tnav-grp">
-        <span class="tnav-item" tabindex="0">Reports</span>
+        <span class="tnav-item" tabindex="0"><svg class="tnav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>Reports</span>
         <div class="tnav-drop">
           <button class="tnav-link" id="nav-reports" onclick="switchTab('reports')">Reports</button>
           <button class="tnav-link" id="nav-sla" onclick="switchTab('sla')">SLA Tracker</button>
