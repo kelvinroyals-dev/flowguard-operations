@@ -5,7 +5,7 @@
    ══════════════════════════════════════════════════════════════ */
 const OpsSupport = (function () {
   'use strict';
-  let _container = null, _rows = [], _filter = 'open', _term = '', _cur = null;
+  let _container = null, _rows = [], _filter = 'all', _term = '', _cur = null;
 
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const canManage = () => (typeof Auth !== 'undefined' && Auth.can) ? Auth.can('support.manage') : true;
@@ -61,9 +61,9 @@ const OpsSupport = (function () {
             <input id="sup-search" placeholder="Search tickets…" oninput="OpsSupport.search(this.value)"></div>
           <div class="lv-toolbar-right">
             <select class="um-filter" onchange="OpsSupport.setFilter(this.value)">
-              <option value="open" selected>Open</option>
+              <option value="all" selected>All statuses</option>
+              <option value="open">Open</option>
               <option value="resolved">Resolved</option>
-              <option value="all">All statuses</option>
             </select>
           </div>
         </div>
