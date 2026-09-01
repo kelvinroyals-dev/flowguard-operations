@@ -22,7 +22,7 @@ const OpsSupport = (function () {
     .sup-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:20px; flex-wrap:wrap; }
     .sup-title { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:800; color:var(--ink); letter-spacing:-.02em; }
     .sup-sub { font-size:var(--fs-base); color:var(--ink-3); margin-top:3px; }
-    .sup-pill { display:inline-flex; align-items:center; padding:3px 10px; border-radius:20px; font-size:var(--fs-2xs); font-weight:700; white-space:nowrap; text-transform:capitalize; }
+    .sup-pill { display:inline-flex; align-items:center; padding:3px 10px; border-radius:20px; font-size:var(--fs-xs); font-weight:700; white-space:nowrap; text-transform:capitalize; }
     .sup-thread { display:grid; grid-template-columns:1fr 300px; gap:16px; align-items:start; }
     @media (max-width:900px){ .sup-thread{ grid-template-columns:1fr; } }
     .sup-msgs { background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--sh-xs); padding:18px; display:flex; flex-direction:column; gap:12px; }

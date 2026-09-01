@@ -183,7 +183,7 @@ window.OpsFieldReports = (function () {
         };
         const fmt = d => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
         const initials = n => (n || '—').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '—';
-        const pill = (label, c) => `<span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:var(--fs-2xs);font-weight:700;white-space:nowrap;background:${c}22;color:${c};">${label}</span>`;
+        const pill = (label, c) => `<span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:var(--fs-xs);font-weight:700;white-space:nowrap;background:${c}22;color:${c};">${label}</span>`;
         list.innerHTML = `
           <div class="lv-scroll"><table class="lv-table">
             <thead><tr><th>Report</th><th>Engineer</th><th>Property</th><th>Visit date</th><th>Type</th><th>Status</th></tr></thead>
@@ -668,7 +668,7 @@ window.OpsAlerts = (function () {
     style.textContent = `
       .fg-module { }
       .fg-module-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; gap:12px; flex-wrap:wrap; }
-      .fg-module-title  { font-size:var(--fs-xl); font-weight:700; color:var(--ink,#0a1f2e); letter-spacing:-.02em; margin-bottom:3px; }
+      .fg-module-title  { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#0a1f2e); letter-spacing:-.02em; margin-bottom:3px; }
       .fg-module-sub    { font-size:var(--fs-base); color:var(--ink-3,#6b8fa3); }
 
       .fg-stat-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px; margin-bottom:18px; }
