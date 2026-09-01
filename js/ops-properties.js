@@ -298,7 +298,7 @@ const OpsProperties = (function () {
               return `<tr class="clickable" onclick="OpsProperties.open('${pid}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsProperties.open('${pid}')}">
                 <td>
                   <div class="lv-name-cell">
-                    <div class="lv-avatar" style="background:linear-gradient(135deg,#16a8d3,#0d7fa0);">${initials(a.property_name)}</div>
+                    <div class="lv-avatar" style="background:var(--surface-3);color:var(--ink-2);border:1px solid var(--border);">${initials(a.property_name)}</div>
                     <div style="min-width:0;">
                       <div class="lv-name">${a.property_name || '—'}</div>
                       ${loc ? `<span class="lv-source">${loc}</span>` : ''}

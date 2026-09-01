@@ -205,7 +205,12 @@ const OpsBilling = (function () {
         const client = inv.user_id ? L('clients', inv.user_id, inv.client_name || 'Client') : '<span style="color:var(--ink-4);">Unlinked</span>';
         const prop = inv.property_id ? L('properties', inv.property_id, inv.property_name || inv.property_id) : dash(inv.property_name);
         return `<tr class="clickable" onclick="OpsBilling.open('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsBilling.open('${id}')}">
-          <td class="lv-mono" style="color:var(--ink);font-weight:700;">${esc(id)}</td>
+          <td>
+            <div class="lv-name-cell">
+              <div class="lv-avatar" style="background:var(--surface-3);color:var(--ink-3);border:1px solid var(--border);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 3 2V2l-3 2-3-2-3 2-3-2-3 2z"/><path d="M8 8h8M8 12h5"/></svg></div>
+              <div style="min-width:0;"><div class="lv-name lv-mono">${esc(id)}</div></div>
+            </div>
+          </td>
           <td>${client}</td>
           <td>${prop}</td>
           <td class="lv-mono" style="font-weight:700;color:${overdue ? 'var(--err)' : 'var(--ink)'};">${NGN(inv.total_amount)}</td>

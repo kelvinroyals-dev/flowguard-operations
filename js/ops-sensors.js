@@ -364,7 +364,12 @@ const OpsSensors = (function () {
     return `
       <tr class="sn-row clickable" onclick="OpsSensors.viewSensor('${__sid(x.sensor_id)}')">
         <td onclick="event.stopPropagation()"><input type="checkbox" ${_selected.has(x.sensor_id) ? 'checked' : ''} onclick="OpsSensors.toggleSelect('${__sid(x.sensor_id)}', this.checked); event.stopPropagation()"></td>
-        <td class="sn-node-id" style="cursor:pointer;" title="Open full details" onclick="event.stopPropagation();OpsSensors.openFull('${__sid(x.sensor_id)}')"><span style="text-decoration:underline;text-decoration-color:var(--border-2);text-underline-offset:2px;">${esc(x.name || x.sensor_id)}</span>${x.pending_commands ? `<span class="sn-cmd-badge" title="${x.pending_commands} command(s) queued">${x.pending_commands}</span>` : ''}</td>
+        <td class="sn-node-id" style="cursor:pointer;" title="Open full details" onclick="event.stopPropagation();OpsSensors.openFull('${__sid(x.sensor_id)}')">
+          <div class="lv-name-cell">
+            <div class="lv-avatar" style="background:var(--surface-3);color:var(--ink-3);border:1px solid var(--border);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg></div>
+            <div style="min-width:0;"><div class="lv-name">${esc(x.name || x.sensor_id)}</div>${x.pending_commands ? `<span class="lv-source" style="color:var(--blue-hi);">${x.pending_commands} queued</span>` : ''}</div>
+          </div>
+        </td>
         <td>${esc(propertyOf(x))}</td>
         <td class="sn-fw ${outdated ? 'outdated' : 'current'}">${x.firmware_version ? esc(x.firmware_version) : '—'}</td>
         <td>${vitBar(x.battery_percent)}</td>

@@ -141,7 +141,7 @@ const OpsAssets = (function () {
               <tr class="clickable" onclick="OpsAssets.open('${__sid(a.property_id)}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsAssets.open('${__sid(a.property_id)}')}">
                 <td>
                   <div class="lv-name-cell">
-                    <div class="lv-avatar" style="background:linear-gradient(135deg,#0d7fa0,#1f9d5b);">${initials(a.asset_code || a.property_name)}</div>
+                    <div class="lv-avatar" style="background:var(--surface-3);color:var(--ink-2);border:1px solid var(--border);">${initials(a.asset_code || a.property_name)}</div>
                     <div style="min-width:0;">
                       <div class="lv-name">${esc(a.asset_code || a.property_name || '—')}</div>
                       <span class="lv-source">${esc(catLabel(a.property_type))}</span>

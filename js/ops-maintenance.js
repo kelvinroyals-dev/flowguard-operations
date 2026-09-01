@@ -126,7 +126,12 @@ const OpsMaintenance = (function () {
               const propCell = j.property_id ? L('properties', j.property_id, j.property_name || j.property_id) : esc(_dash(j.property_name));
               const teamCell = j.assigned_team ? L('teams', j.assigned_team, j.team_name || j.assigned_team) : (j.team_name ? esc(j.team_name) : '<span class="lv-dash">Unassigned</span>');
               return `<tr class="clickable" onclick="OpsMaintenance.openJob('${OpsModal.sid(j.ticket_id)}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsMaintenance.openJob('${OpsModal.sid(j.ticket_id)}')}">
-                <td class="lv-mono" style="color:var(--ink);font-weight:700;">${esc(j.ticket_id)}</td>
+                <td>
+                  <div class="lv-name-cell">
+                    <div class="lv-avatar" style="background:var(--surface-3);color:var(--ink-3);border:1px solid var(--border);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 01-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 015.4-5.4l-2.6 2.6-1.7-1.7 2.6-2.6z"/></svg></div>
+                    <div style="min-width:0;"><div class="lv-name lv-mono">${esc(j.ticket_id)}</div></div>
+                  </div>
+                </td>
                 <td>${propCell}</td>
                 <td>${esc(j.title || WORK_TYPE_LABEL[j.work_type] || (j.work_type || '').replace(/_/g, ' ') || '—')}</td>
                 <td><span style="color:${pc(j.priority)};background:${pc(j.priority)}18;padding:2px 8px;border-radius:5px;font-size:var(--fs-2xs);font-weight:700;">${esc(j.priority || 'normal')}</span></td>

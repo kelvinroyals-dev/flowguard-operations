@@ -284,7 +284,7 @@ const OpsClients = (function () {
               <tr class="clickable" onclick="OpsClients.open(${c.client_id})" tabindex="0" onkeydown="if(event.key==='Enter'){OpsClients.open(${c.client_id})}">
                 <td>
                   <div class="lv-name-cell">
-                    <div class="lv-avatar" style="background:${avatarColor(c.full_name)};">${initials(c.full_name)}</div>
+                    <div class="lv-avatar" style="background:var(--surface-3);color:var(--ink-2);border:1px solid var(--border);">${initials(c.full_name)}</div>
                     <div style="min-width:0;">
                       <div class="lv-name">${c.full_name || '—'}</div>
                       ${src}
