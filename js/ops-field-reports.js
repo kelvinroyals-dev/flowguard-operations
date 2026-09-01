@@ -23,6 +23,7 @@ window.OpsFieldReports = (function () {
     let _teams      = [];
     let _filterStatus = 'all';
     let _filterType   = 'all';
+    let _searchTerm   = '';
     let _wsSocket     = null;
 
     // ── Render entry point ────────────────────────────────────────────────
@@ -57,58 +58,33 @@ window.OpsFieldReports = (function () {
             </div>
           </div>
 
-          <!-- Counters -->
-          <div class="fg-stat-row" id="fgr-stats">
-            <div class="fg-stat-card" data-filter-status="submitted">
-              <div class="fg-stat-label">Awaiting Review</div>
-              <div class="fg-stat-value" id="fgr-ct-submitted">—</div>
+          <div class="lv-wrap">
+            <div class="lv-toolbar">
+              <div class="lv-search">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+                <input id="fgr-search" placeholder="Search reports…" oninput="OpsFieldReports.search(this.value)">
+              </div>
+              <div class="lv-toolbar-right">
+                <select class="um-filter" id="fgr-filter-status">
+                  <option value="all">All statuses</option>
+                  <option value="submitted">Awaiting review</option>
+                  <option value="under_review">Under review</option>
+                  <option value="approved">Approved</option>
+                  <option value="sent_to_client">Sent to client</option>
+                  <option value="draft">Draft</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+                <select class="um-filter" id="fgr-filter-type">
+                  <option value="all">All types</option>
+                  <option value="incident">Incident</option>
+                  <option value="inspection">Inspection</option>
+                  <option value="general">General</option>
+                  <option value="backup_request">Backup request</option>
+                </select>
+              </div>
             </div>
-            <div class="fg-stat-card" data-filter-status="under_review">
-              <div class="fg-stat-label">Under Review</div>
-              <div class="fg-stat-value" id="fgr-ct-review">—</div>
-            </div>
-            <div class="fg-stat-card" data-filter-status="approved">
-              <div class="fg-stat-label">Approved</div>
-              <div class="fg-stat-value" id="fgr-ct-approved">—</div>
-            </div>
-            <div class="fg-stat-card" data-filter-status="sent_to_client">
-              <div class="fg-stat-label">Sent to Client</div>
-              <div class="fg-stat-value" id="fgr-ct-sent">—</div>
-            </div>
-            <div class="fg-stat-card" data-filter-status="draft">
-              <div class="fg-stat-label">Drafts</div>
-              <div class="fg-stat-value" id="fgr-ct-draft">—</div>
-            </div>
+            <div id="fgr-list"></div>
           </div>
-
-          <!-- Filters -->
-          <div class="fg-filter-bar" id="fgr-filters">
-            <div class="fg-filter-group">
-              <label class="fg-filter-label">Status</label>
-              <select class="fg-filter-select" id="fgr-filter-status">
-                <option value="all">All Statuses</option>
-                <option value="submitted">Awaiting Review</option>
-                <option value="under_review">Under Review</option>
-                <option value="approved">Approved</option>
-                <option value="sent_to_client">Sent to Client</option>
-                <option value="draft">Draft</option>
-                <option value="rejected">Rejected</option>
-              </select>
-            </div>
-            <div class="fg-filter-group">
-              <label class="fg-filter-label">Type</label>
-              <select class="fg-filter-select" id="fgr-filter-type">
-                <option value="all">All Types</option>
-                <option value="incident">Incident</option>
-                <option value="inspection">Inspection</option>
-                <option value="general">General</option>
-                <option value="backup_request">Backup Request</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- List -->
-          <div id="fgr-list"></div>
 
         </div>`;
     }
@@ -157,6 +133,7 @@ window.OpsFieldReports = (function () {
         let filtered = _reports.filter(r => {
             if (_filterStatus !== 'all' && r.status !== _filterStatus) return false;
             if (_filterType   !== 'all' && r.report_type !== _filterType) return false;
+            if (_searchTerm && !(`${r.report_id} ${r.submitted_by_name || ''} ${r.property_name || r.site_name || ''} ${r.title || ''}`.toLowerCase().includes(_searchTerm))) return false;
             return true;
         });
 
@@ -508,7 +485,8 @@ window.OpsFieldReports = (function () {
 
     // ── Public ────────────────────────────────────────────────────────────
 
-    return { render, refresh, openReport, back, saveEdits, updateStatus, sendToClient };
+    function search(v) { _searchTerm = (v || '').trim().toLowerCase(); _renderList(); }
+    return { render, refresh, search, openReport, back, saveEdits, updateStatus, sendToClient };
 
 })();
 
@@ -670,6 +648,8 @@ window.OpsAlerts = (function () {
       .fg-module-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; gap:12px; flex-wrap:wrap; }
       .fg-module-title  { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#0a1f2e); letter-spacing:-.02em; margin-bottom:3px; }
       .fg-module-sub    { font-size:var(--fs-base); color:var(--ink-3,#6b8fa3); }
+      .um-filter { padding:7px 12px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:var(--fs-base); color:var(--ink,#0a1f2e); outline:none; cursor:pointer; }
+      .um-filter:focus { border-color:var(--blue,#16a8d3); }
 
       .fg-stat-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px; margin-bottom:18px; }
       .fg-stat-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); padding:14px 16px; cursor:pointer; transition:border-color .2s, box-shadow .2s; }

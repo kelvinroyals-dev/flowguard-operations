@@ -46,6 +46,8 @@ const OpsTeams = (function () {
         .tm-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
         .tm-header-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#0a1f2e); letter-spacing:-.02em; margin-bottom:3px; }
         .tm-header-sub { font-size:var(--fs-base); color:var(--ink-3,#6b8fa3); }
+        .um-filter { padding:7px 12px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:var(--fs-base); color:var(--ink,#0a1f2e); outline:none; cursor:pointer; }
+        .um-filter:focus { border-color:var(--blue,#16a8d3); }
 
         .tm-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
         .tm-stat { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); padding:16px 18px; box-shadow:var(--sh-xs); position:relative; overflow:hidden; transition:all .2s; }
@@ -111,24 +113,19 @@ const OpsTeams = (function () {
         </button>` : ''}
       </div>
 
-      <div class="tm-stats">
-        <div class="tm-stat onsite"><div class="tm-stat-label">On Site</div><div class="tm-stat-val green" id="tm-onsite">—</div></div>
-        <div class="tm-stat enroute"><div class="tm-stat-label">En Route</div><div class="tm-stat-val amber" id="tm-enroute">—</div></div>
-        <div class="tm-stat idle"><div class="tm-stat-label">Idle</div><div class="tm-stat-val" id="tm-idle">—</div></div>
-        <div class="tm-stat total"><div class="tm-stat-label">Total Teams</div><div class="tm-stat-val" id="tm-total">—</div></div>
-      </div>
-
       <div class="lv-wrap">
         <div class="lv-toolbar">
           <div class="lv-search">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
             <input id="tm-search" placeholder="Search teams…" oninput="OpsTeams.searchTeams(this.value)">
           </div>
-          <div class="lv-filters">
-            <div class="lv-filter active" id="tmf-all" onclick="OpsTeams.filterStatus('all')">All</div>
-            <div class="lv-filter" id="tmf-on_site" onclick="OpsTeams.filterStatus('on_site')">On site</div>
-            <div class="lv-filter" id="tmf-en_route" onclick="OpsTeams.filterStatus('en_route')">En route</div>
-            <div class="lv-filter" id="tmf-idle" onclick="OpsTeams.filterStatus('idle')">Idle</div>
+          <div class="lv-toolbar-right">
+            <select class="um-filter" onchange="OpsTeams.filterStatus(this.value)">
+              <option value="all">All statuses</option>
+              <option value="on_site">On site</option>
+              <option value="en_route">En route</option>
+              <option value="idle">Idle</option>
+            </select>
           </div>
         </div>
         <div id="tm-body">
@@ -269,7 +266,7 @@ const OpsTeams = (function () {
               return `<tr class="clickable" onclick="OpsTeams.viewTeam('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsTeams.viewTeam('${id}')}">
                 <td>
                   <div class="lv-name-cell">
-                    <div class="lv-avatar" style="background:${teamColor(name)};">${initials(name)}</div>
+                    <div class="lv-avatar" style="background:var(--surface-3);color:var(--ink-2);border:1px solid var(--border);">${initials(name)}</div>
                     <div style="min-width:0;"><div class="lv-name">${name}</div><span class="lv-source">${id}</span></div>
                   </div>
                 </td>
