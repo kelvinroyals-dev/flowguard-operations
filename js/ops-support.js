@@ -23,6 +23,8 @@ const OpsSupport = (function () {
     .sup-title { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:800; color:var(--ink); letter-spacing:-.02em; }
     .sup-sub { font-size:var(--fs-base); color:var(--ink-3); margin-top:3px; }
     .sup-pill { display:inline-flex; align-items:center; padding:3px 10px; border-radius:20px; font-size:var(--fs-xs); font-weight:700; white-space:nowrap; text-transform:capitalize; }
+    .um-filter { padding:7px 12px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:var(--fs-base); color:var(--ink,#0a1f2e); outline:none; cursor:pointer; }
+    .um-filter:focus { border-color:var(--blue,#16a8d3); }
     .sup-thread { display:grid; grid-template-columns:1fr 300px; gap:16px; align-items:start; }
     @media (max-width:900px){ .sup-thread{ grid-template-columns:1fr; } }
     .sup-msgs { background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--sh-xs); padding:18px; display:flex; flex-direction:column; gap:12px; }
@@ -57,10 +59,12 @@ const OpsSupport = (function () {
         <div class="lv-toolbar">
           <div class="lv-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
             <input id="sup-search" placeholder="Search tickets…" oninput="OpsSupport.search(this.value)"></div>
-          <div class="lv-filters">
-            <div class="lv-filter active" id="supf-open" onclick="OpsSupport.setFilter('open')">Open</div>
-            <div class="lv-filter" id="supf-resolved" onclick="OpsSupport.setFilter('resolved')">Resolved</div>
-            <div class="lv-filter" id="supf-all" onclick="OpsSupport.setFilter('all')">All</div>
+          <div class="lv-toolbar-right">
+            <select class="um-filter" onchange="OpsSupport.setFilter(this.value)">
+              <option value="open" selected>Open</option>
+              <option value="resolved">Resolved</option>
+              <option value="all">All statuses</option>
+            </select>
           </div>
         </div>
         <div id="sup-body"><div class="sup-empty">Loading support tickets…</div></div>
@@ -106,7 +110,14 @@ const OpsSupport = (function () {
     el.innerHTML = `<div class="lv-scroll"><table class="lv-table">
       <thead><tr><th>Ticket</th><th>Client</th><th>Subject</th><th>Category</th><th>Priority</th><th>Status</th><th>Last activity</th></tr></thead>
       <tbody>${rows.map(r => `<tr class="clickable${r.needs_response ? ' sup-unread' : ''}" onclick="OpsSupport.open('${r.ticket_id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsSupport.open('${r.ticket_id}')}">
-        <td class="lv-mono" style="color:var(--ink);font-weight:700;">${r.needs_response ? '<span class="sup-dot" title="Awaiting your response"></span>' : ''}${esc(r.ticket_id)}</td>
+        <td>
+          <div class="lv-name-cell">
+            <div class="lv-avatar" style="background:${r.needs_response ? 'rgba(22,168,211,.15)' : 'var(--surface-3)'};color:${r.needs_response ? 'var(--blue,#16a8d3)' : 'var(--ink-3)'};border:1px solid var(--border);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+            </div>
+            <div style="min-width:0;"><div class="lv-name lv-mono">${esc(r.ticket_id)}</div>${r.needs_response ? '<span class="lv-source" style="color:var(--blue,#16a8d3);">Awaiting response</span>' : ''}</div>
+          </div>
+        </td>
         <td>${r.user_id ? L('clients', r.user_id, r.client_name || 'Client') : esc(r.client_name || '—')}</td>
         <td class="strong">${esc(r.title || '—')}</td>
         <td><span class="sup-pill" style="background:var(--surface-3);color:var(--ink-2);">${esc(r.category || 'general')}</span></td>
