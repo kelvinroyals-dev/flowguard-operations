@@ -12,6 +12,7 @@ const OpsAlerts = (function () {
   let _pg        = null;
   let _container = null;
   const _dash = v => (v == null || v === '') ? '—' : v;
+  const _esc = s => (window.OpsModal && OpsModal.escape) ? OpsModal.escape(s) : String(s == null ? '' : s);
 
   function getToken() {
     return localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -318,8 +319,11 @@ const OpsAlerts = (function () {
       });
       if (!res.ok) throw new Error(`${res.status}`);
       const data   = await res.json();
-      _allAlerts   = Array.isArray(data.data) ? data.data
+      const _raw   = Array.isArray(data.data) ? data.data
                    : Array.isArray(data.alerts) ? data.alerts : [];
+      // "Active Incidents" means unresolved — resolved/closed alerts must not
+      // appear in the feed nor inflate the severity counts or Total Active.
+      _allAlerts   = _raw.filter(a => !['resolved', 'closed', 'dismissed'].includes(String(a.status || 'active').toLowerCase()));
       updateStats(_allAlerts);
       _pg = FGPaginator.create(_allAlerts, { pageSize: 20, containerId: 'al-feed-card' });
       _pg.render((items) => renderFeed(items, _filter));
@@ -426,35 +430,36 @@ const OpsAlerts = (function () {
       return;
     }
 
-    // Columns per spec: Alert ID, Alert Type, Property, Device, Severity, Trigger Time, Status, Assigned To
+    const sevPill = { critical: 'danger', high: 'danger', moderate: 'warn', minor: 'neutral' };
+    const sevTile = { critical: 'var(--err)', high: 'var(--caut)', moderate: 'var(--warn)', minor: 'var(--ink-3)' };
+    const stPill = { active: 'warn', new: 'warn', dispatched: 'ok', acknowledged: 'ok', in_progress: 'ok' };
+    const TRI = '<path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/>';
     feed.innerHTML = `
-      <div style="overflow-x:auto;">
-        <table class="ops-table">
-          <thead><tr>
-            <th>Alert ID</th><th>Alert Type</th><th>Property</th><th>Device</th>
-            <th>Severity</th><th>Trigger Time</th><th>Status</th><th>Assigned To</th>
-          </tr></thead>
-          <tbody>
-            ${alerts.map(a => {
-              const id = a.alert_id || a.id;
-              const type = a.alert_type || a.type || 'System Alert';
-              const location = a.location || a.property || a.property_name || a.site_name || '—';
-              const status = a.status || 'active';
-              const unread = ['active', 'new'].includes(String(status).toLowerCase());
-              return `<tr class="clickable${unread ? ' alert-unread' : ''}" onclick="OpsAlerts.open('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsAlerts.open('${id}')}">
-                <td style="font-family:var(--ff-m);font-size:var(--fs-sm);" class="bright">${unread ? '<span class="alert-dot" title="Not yet acknowledged"></span>' : ''}${id}</td>
-                <td>${type}</td>
-                <td style="font-size:var(--fs-sm);">${_dash(location)}</td>
-                <td style="font-size:var(--fs-sm);">${_dash(a.sensor_name || a.device_name)}</td>
-                <td><span class="status-badge ${severityBadgeClass(a.severity)}">${severityLabel(a.severity)}</span></td>
-                <td style="font-size:var(--fs-sm);font-family:var(--ff-m);">${formatTime(a.timestamp || a.created_at)}</td>
-                <td><span class="status-badge ${status === 'resolved' ? 'nominal' : severityBadgeClass(a.severity)}">${status}</span></td>
-                <td style="font-size:var(--fs-sm);">${a.assigned_team || '<span style="color:var(--ink-4);">Unassigned</span>'}</td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>`;
+      <div class="lv-scroll"><table class="lv-table">
+        <thead><tr>
+          <th>Alert ID</th><th>Alert type</th><th>Property</th><th>Device</th>
+          <th>Severity</th><th>Trigger time</th><th>Status</th><th>Assigned to</th>
+        </tr></thead>
+        <tbody>
+          ${alerts.map(a => {
+            const id = a.alert_id || a.id;
+            const type = a.alert_type || a.type || 'System Alert';
+            const location = a.location || a.property || a.property_name || a.site_name || '—';
+            const status = String(a.status || 'active').toLowerCase();
+            const sc = severityClass(a.severity);
+            return `<tr class="clickable" onclick="OpsAlerts.open('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsAlerts.open('${id}')}">
+              <td><div class="lv-name-cell"><div class="lv-avatar" style="background:var(--surface-3);color:${sevTile[sc] || 'var(--ink-3)'};border:1px solid var(--border);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${TRI}</svg></div><div style="min-width:0;"><div class="lv-name lv-mono">${_esc(id)}</div></div></div></td>
+              <td>${_esc(type)}</td>
+              <td>${_dash(location)}</td>
+              <td>${_dash(a.sensor_name || a.device_name)}</td>
+              <td><span class="lv-status ${sevPill[sc] || 'neutral'}">${severityLabel(a.severity)}</span></td>
+              <td class="lv-mono">${formatTime(a.timestamp || a.created_at)}</td>
+              <td><span class="lv-status ${stPill[status] || 'neutral'}">${_esc(a.status || 'active')}</span></td>
+              <td>${a.assigned_team ? _esc(a.assigned_team) : '<span class="lv-dash">Unassigned</span>'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table></div>`;
   }
 
   function formatTime(ds) {
