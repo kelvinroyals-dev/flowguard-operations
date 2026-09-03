@@ -604,21 +604,21 @@ const OpsSensors = (function () {
     });
   }
   function threeReady() { return !!(window.THREE && THREE.GLTFLoader && THREE.DRACOLoader && THREE.OrbitControls); }
+  // three.js is loaded ONCE via deferred <script> tags in index.html. We only
+  // WAIT for it here — never inject a second copy (that caused "multiple
+  // instances of three.js" and broke rendering).
   function loadThree() {
     if (_threePromise) return _threePromise;
-    if (threeReady()) { _threePromise = Promise.resolve(); return _threePromise; } // parsed via deferred <script> tags
-    _threePromise = (async () => {
-      console.time('[3d] libs');
-      // three core first; its add-ons only depend on the THREE global, so load
-      // them in parallel. All served same-origin from vendor/three/.
-      await loadScript(THREE_LIB + 'three.min.js');
-      await Promise.all([
-        loadScript(THREE_LIB + 'GLTFLoader.js'),
-        loadScript(THREE_LIB + 'DRACOLoader.js'),
-        loadScript(THREE_LIB + 'OrbitControls.js'),
-      ]);
-      console.timeEnd('[3d] libs');
-    })().catch(e => { _threePromise = null; throw e; });
+    _threePromise = new Promise((resolve, reject) => {
+      if (threeReady()) return resolve();
+      console.time('[3d] libs-wait');
+      let waited = 0;
+      const iv = setInterval(() => {
+        if (threeReady()) { clearInterval(iv); console.timeEnd('[3d] libs-wait'); return resolve(); }
+        waited += 40;
+        if (waited >= 8000) { clearInterval(iv); reject(new Error('three.js not available')); }
+      }, 40);
+    });
     return _threePromise;
   }
 
