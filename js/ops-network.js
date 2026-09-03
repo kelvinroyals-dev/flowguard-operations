@@ -428,6 +428,7 @@ const OpsNetwork = (function () {
         <button class="nw-act" onclick="OpsSensors.openFull('${sid}')"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>Open full details</button>
       </div>`;
     showInspector();
+    console.log('[3d] openDevice → S?', !!S, 'mount3D?', !!(S && S.mount3D));
     if (S && S.mount3D) S.mount3D('nw-3d');   // model is preloaded → near-instant, runs in parallel
     // If we only had the light map-data point, fetch the full record in the
     // background and refresh just the telemetry cards.
