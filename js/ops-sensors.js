@@ -512,6 +512,7 @@ const OpsSensors = (function () {
   // drawer is first opened), renders models/node.glb into #sn-3d,
   // auto-centres/scales it, and slow-spins with drag-to-orbit.
   const MODEL_URL = 'models/node.glb';
+  const DRACO_PATH = 'models/draco/'; // decoder hosted same-origin (CSP connect-src 'self')
   const THREE_BASE = 'https://unpkg.com/three@0.128.0';
   let _threePromise = null;
   let _viewer = null; // { renderer, raf, controls, onResize }
@@ -529,6 +530,7 @@ const OpsSensors = (function () {
     _threePromise = (async () => {
       await loadScript(THREE_BASE + '/build/three.min.js');
       await loadScript(THREE_BASE + '/examples/js/loaders/GLTFLoader.js');
+      await loadScript(THREE_BASE + '/examples/js/loaders/DRACOLoader.js');
       await loadScript(THREE_BASE + '/examples/js/controls/OrbitControls.js');
     })().catch(e => { _threePromise = null; throw e; });
     return _threePromise;
@@ -540,6 +542,7 @@ const OpsSensors = (function () {
       cancelAnimationFrame(_viewer.raf);
       window.removeEventListener('resize', _viewer.onResize);
       if (_viewer.controls) _viewer.controls.dispose();
+      if (_viewer.draco) _viewer.draco.dispose();
       if (_viewer.renderer) { _viewer.renderer.dispose(); const c = _viewer.renderer.domElement; if (c && c.parentNode) c.parentNode.removeChild(c); }
     } catch (_) { /* noop */ }
     _viewer = null;
@@ -579,7 +582,12 @@ const OpsSensors = (function () {
     const viewer = { renderer, controls, raf: 0, onResize: null };
     _viewer = viewer;
 
-    new THREE.GLTFLoader().load(MODEL_URL, (gltf) => {
+    const dracoLoader = new THREE.DRACOLoader();
+    dracoLoader.setDecoderPath(DRACO_PATH);
+    const gltfLoader = new THREE.GLTFLoader();
+    gltfLoader.setDRACOLoader(dracoLoader);
+    viewer.draco = dracoLoader;
+    gltfLoader.load(MODEL_URL, (gltf) => {
       if (_viewer !== viewer) return; // superseded/closed
       const model = gltf.scene;
       // centre + scale to fit the frame
