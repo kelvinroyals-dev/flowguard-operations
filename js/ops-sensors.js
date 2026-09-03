@@ -168,6 +168,7 @@ const OpsSensors = (function () {
       const r = await OpsModal.apiGet('/monitoring/sensors/all');
       _all = r.data || [];
       draw();
+      preload3D(); // warm three.js + decoded model so the first drawer is instant
     } catch (err) {
       if (_container) _container.innerHTML = STYLES + `<div class="sn-empty">Couldn't load the fleet — ${esc(err.message || 'network error')}.</div>`;
     }
@@ -590,6 +591,8 @@ const OpsSensors = (function () {
   const THREE_BASE = 'https://unpkg.com/three@0.128.0';
   let _threePromise = null;
   let _viewer = null; // { renderer, raf, controls, onResize }
+  let _dracoLoader = null;  // shared across mounts — decoder/worker created once
+  let _modelPromise = null; // resolves to the decoded scene, cached & cloned per mount
 
   function loadScript(src) {
     return new Promise((resolve, reject) => {
@@ -610,14 +613,33 @@ const OpsSensors = (function () {
     return _threePromise;
   }
 
+  // Shared Draco decoder — created once, reused for every mount so we don't
+  // re-spawn a worker + re-instantiate the wasm on each open.
+  function getDraco() {
+    if (!_dracoLoader) { _dracoLoader = new THREE.DRACOLoader(); _dracoLoader.setDecoderPath(DRACO_PATH); }
+    return _dracoLoader;
+  }
+  // Fetch + Draco-decode the model ONCE; later mounts clone the cached scene
+  // (no network, no decode).
+  function loadModel() {
+    if (_modelPromise) return _modelPromise;
+    _modelPromise = new Promise((resolve, reject) => {
+      const g = new THREE.GLTFLoader(); g.setDRACOLoader(getDraco());
+      g.load(MODEL_URL, gltf => resolve(gltf.scene), undefined, err => { _modelPromise = null; reject(err); });
+    });
+    return _modelPromise;
+  }
+  // Warm the pipeline (libs + decoded model) ahead of first use.
+  function preload3D() { return loadThree().then(loadModel).catch(() => {}); }
+
   function disposeViewer() {
     if (!_viewer) return;
     try {
       cancelAnimationFrame(_viewer.raf);
       window.removeEventListener('resize', _viewer.onResize);
       if (_viewer.controls) _viewer.controls.dispose();
-      if (_viewer.draco) _viewer.draco.dispose();
       if (_viewer.renderer) { _viewer.renderer.dispose(); const c = _viewer.renderer.domElement; if (c && c.parentNode) c.parentNode.removeChild(c); }
+      // NB: the shared Draco loader and cached model are intentionally kept.
     } catch (_) { /* noop */ }
     _viewer = null;
   }
@@ -656,14 +678,9 @@ const OpsSensors = (function () {
     const viewer = { renderer, controls, raf: 0, onResize: null };
     _viewer = viewer;
 
-    const dracoLoader = new THREE.DRACOLoader();
-    dracoLoader.setDecoderPath(DRACO_PATH);
-    const gltfLoader = new THREE.GLTFLoader();
-    gltfLoader.setDRACOLoader(dracoLoader);
-    viewer.draco = dracoLoader;
-    gltfLoader.load(MODEL_URL, (gltf) => {
+    loadModel().then((cached) => {
       if (_viewer !== viewer) return; // superseded/closed
-      const model = gltf.scene;
+      const model = cached.clone(true); // clone shares geometry/materials — no re-decode
       // centre + scale to fit the frame
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
@@ -679,7 +696,7 @@ const OpsSensors = (function () {
       camera.position.set(0, 0.6, 3.4);
       controls.target.set(0, 0, 0); controls.update();
       if (stateEl) stateEl.style.display = 'none';
-    }, undefined, () => {
+    }).catch(() => {
       if (stateEl) stateEl.innerHTML = 'Model unavailable.';
     });
 
@@ -1097,6 +1114,7 @@ const OpsSensors = (function () {
     loadAll: async () => { try { const r = await OpsModal.apiGet('/monitoring/sensors/all'); _all = r.data || []; } catch (_) {} return _all; },
     mount3D: (hostId) => mountModelViewer(hostId, (hostId || 'sn-3d') + '-state'),
     dispose3D: () => disposeViewer(),
+    preload3D: () => preload3D(),
     coverage, saveCoverage, history, calibrate, confirmCalibrate, openAsset,
     toggleSelect, toggleSelectAll, clearSelection, bulkCommand, confirmBulkCommand,
     sendCommand, _toggleFwField, confirmSendCommand, commandHistory, cancelCommand,

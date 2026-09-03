@@ -99,7 +99,7 @@ const OpsNetwork = (function () {
     }
   }
 
-  let _byId = {}, _wbId = {}, _snById = {}, _filter = null;
+  let _byId = {}, _wbId = {}, _snById = {}, _filter = null, _devSel = null;
 
   function paint() {
     const s = _g.summary || {};
@@ -157,6 +157,9 @@ const OpsNetwork = (function () {
     _traceLayer = L.layerGroup().addTo(map);
     ['primary', 'secondary', 'tertiary', 'culvert', 'structure', 'outfall', 'property', 'sensor', 'waterbody'].forEach(k => { _layers[k] = L.layerGroup().addTo(map); });
     plot();
+    // Warm the 3D pipeline (three.js + decoded model) so the first device
+    // pop-out is instant.
+    if (window.OpsSensors && OpsSensors.preload3D) OpsSensors.preload3D();
     if (window.ResizeObserver) new ResizeObserver(() => { try { map.invalidateSize(); } catch (_) {} }).observe(document.getElementById('nw-map'));
   }
 
@@ -362,20 +365,8 @@ const OpsNetwork = (function () {
   // module (3D model, status tokens, command action bar, Telemetry/Actions
   // tabs, metric cards), rendered into the side inspector, never overlaying
   // the map. Reuses OpsSensors data, 3D viewer and command functions.
-  async function openDevice(id) {
-    _sel = null;
-    const dr = document.getElementById('nw-drawer'); if (!dr) return;
-    const S = window.OpsSensors;
-    // Prefer the rich device record (battery/signal/level/firmware…); fall
-    // back to the lighter map-data point.
-    let x = (S && S.getSensor) ? S.getSensor(id) : null;
-    if (!x && S && S.loadAll) { dr.innerHTML = '<div class="nw-dload">Loading device…</div>'; showInspector(); await S.loadAll(); x = S.getSensor(id); }
-    x = x || _snById[id] || { sensor_id: id };
-    const sid = String(id).replace(/[^A-Za-z0-9_\-.:]/g, '');
+  function nwDeviceTele(x) {
     const cap = x.capabilities || {};
-    const online = (x.status || 'active') === 'active';
-    const stCls = online ? 'ok' : x.status === 'maintenance' ? 'warn' : 'err';
-    const stLbl = online ? 'CONNECTED' : String(x.status || 'offline').toUpperCase();
     const vital = v => (window.OpsModal && OpsModal.vitalColor) ? OpsModal.vitalColor(v) : 'var(--ink)';
     const lvlCol = v => v == null ? 'var(--ink)' : v >= 80 ? '#d9463c' : v >= 60 ? '#e0a012' : '#1f9d5b';
     const dash = '<span style="color:var(--ink-4)">—</span>';
@@ -390,6 +381,21 @@ const OpsNetwork = (function () {
       card('Temperature', x.temperature != null ? `${Math.round(x.temperature)}°C` : dash),
       card('Firmware', x.firmware_version ? `<span style="font-size:var(--fs-sm)">${esc(x.firmware_version)}</span>` : dash),
     ].join('');
+    return `${readings ? `<div class="nw-sec">Readings</div><div class="nw-cards">${readings}</div>` : ''}<div class="nw-sec">Device</div><div class="nw-cards">${device}</div>`;
+  }
+
+  async function openDevice(id) {
+    const dr = document.getElementById('nw-drawer'); if (!dr) return;
+    _sel = null; _devSel = id;
+    const S = window.OpsSensors;
+    // Render immediately with the best data we already have (map-data point or
+    // cached Sentinel record) so the 3D can mount right away; enrich later.
+    const rich = (S && S.getSensor) ? S.getSensor(id) : null;
+    const x = rich || _snById[id] || { sensor_id: id };
+    const sid = String(id).replace(/[^A-Za-z0-9_\-.:]/g, '');
+    const online = (x.status || 'active') === 'active';
+    const stCls = online ? 'ok' : x.status === 'maintenance' ? 'warn' : 'err';
+    const stLbl = online ? 'CONNECTED' : String(x.status || 'offline').toUpperCase();
 
     dr.innerHTML = `
       <div class="nw-dr-head">
@@ -413,10 +419,7 @@ const OpsNetwork = (function () {
         <button class="nw-dtab active" data-dtab="telemetry" onclick="OpsNetwork.deviceTab('telemetry')">Telemetry</button>
         <button class="nw-dtab" data-dtab="actions" onclick="OpsNetwork.deviceTab('actions')">Actions</button>
       </div>
-      <div class="nw-dpanel" data-dpanel="telemetry">
-        ${readings ? `<div class="nw-sec">Readings</div><div class="nw-cards">${readings}</div>` : ''}
-        <div class="nw-sec">Device</div><div class="nw-cards">${device}</div>
-      </div>
+      <div class="nw-dpanel" data-dpanel="telemetry" id="nw-tele">${nwDeviceTele(x)}</div>
       <div class="nw-dpanel" data-dpanel="actions" style="display:none">
         <button class="nw-act" onclick="OpsSensors.sendCommand('${sid}','firmware_update')"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 0l-6 6m6-6l6 6"/></svg>Push Firmware OTA</button>
         <button class="nw-act" onclick="OpsSensors.sendCommand('${sid}','reset')"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Restart Node</button>
@@ -425,7 +428,16 @@ const OpsNetwork = (function () {
         <button class="nw-act" onclick="OpsSensors.openFull('${sid}')"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>Open full details</button>
       </div>`;
     showInspector();
-    if (S && S.mount3D) S.mount3D('nw-3d');
+    if (S && S.mount3D) S.mount3D('nw-3d');   // model is preloaded → near-instant, runs in parallel
+    // If we only had the light map-data point, fetch the full record in the
+    // background and refresh just the telemetry cards.
+    if (!rich && S && S.loadAll) {
+      S.loadAll().then(() => {
+        if (_devSel !== id) return; // user opened another entity meanwhile
+        const r = S.getSensor(id), tele = document.getElementById('nw-tele');
+        if (r && tele) tele.innerHTML = nwDeviceTele(r);
+      });
+    }
   }
 
   function deviceTab(name) {
@@ -457,7 +469,7 @@ const OpsNetwork = (function () {
   }
   function resizeMapSoon() { setTimeout(() => { try { if (map) map.invalidateSize(); } catch (_) {} }, 260); }
 
-  function closeDrawer() { hideInspector(); _sel = null; clearTrace(); }
+  function closeDrawer() { hideInspector(); _sel = null; _devSel = null; clearTrace(); }
   function clearTrace() { if (_traceLayer) _traceLayer.clearLayers(); }
 
   // ════════════ list view ════════════
