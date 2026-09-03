@@ -622,9 +622,9 @@ const OpsSensors = (function () {
     _viewer = null;
   }
 
-  async function mountModelViewer() {
-    const host = document.getElementById('sn-3d');
-    const stateEl = document.getElementById('sn-3d-state');
+  async function mountModelViewer(hostId, stateId) {
+    const host = document.getElementById(hostId || 'sn-3d');
+    const stateEl = document.getElementById(stateId || 'sn-3d-state');
     if (!host) return;
     disposeViewer();
     try {
@@ -1093,6 +1093,10 @@ const OpsSensors = (function () {
   return {
     render, setFilter, setQuery,
     viewSensor, closeDrawer, decommission, openFull, back, queueCommand, drawerTab,
+    getSensor: (id) => _all.find(s => s.sensor_id === id),
+    loadAll: async () => { try { const r = await OpsModal.apiGet('/monitoring/sensors/all'); _all = r.data || []; } catch (_) {} return _all; },
+    mount3D: (hostId) => mountModelViewer(hostId, (hostId || 'sn-3d') + '-state'),
+    dispose3D: () => disposeViewer(),
     coverage, saveCoverage, history, calibrate, confirmCalibrate, openAsset,
     toggleSelect, toggleSelectAll, clearSelection, bulkCommand, confirmBulkCommand,
     sendCommand, _toggleFwField, confirmSendCommand, commandHistory, cancelCommand,

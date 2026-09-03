@@ -30,7 +30,27 @@ const OpsNetwork = (function () {
   const typeInfo = t => TYPE[t] || { grp: 'secondary', label: (t || 'asset').replace(/_/g, ' ') };
   const condColor = c => ({ Good: '#1f9d5b', Fair: '#e0a012', Poor: '#e8720e', Critical: '#d9463c' }[c] || '#7d8fa3');
   const riskColor = r => ({ low: '#1f9d5b', moderate: '#e0a012', medium: '#e0a012', high: '#d9463c', critical: '#a11313' }[(r || '').toLowerCase()] || '#7d8fa3');
-  const GRP_COLOR = { primary: '#16a8d3', secondary: '#22c3e6', tertiary: '#7c6cf0', culvert: '#e0a012', structure: '#8aa2ae', outfall: '#d9463c' };
+  const GRP_COLOR = { primary: '#16a8d3', secondary: '#22c3e6', tertiary: '#7c6cf0', culvert: '#e0a012', structure: '#8aa2ae', outfall: '#d9463c', property: '#0d7fa0', sensor: '#16b364', waterbody: '#2563eb' };
+  // Per-type glyphs (all rendered at the same badge size, distinct colours)
+  const GLYPH = {
+    property:  '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/><path d="M9.5 20v-5h5v5"/>',
+    primary:   '<path d="M2 8c2.5 2 4.5-2 7 0s4.5-2 7 0 4.5-2 6 0"/><path d="M2 14c2.5 2 4.5-2 7 0s4.5-2 7 0 4.5-2 6 0"/>',
+    secondary: '<path d="M2 9c2.5 2 4.5-2 7 0s4.5-2 7 0 4.5-2 6 0"/><path d="M2 15c2.5 2 4.5-2 7 0s4.5-2 7 0 4.5-2 6 0"/>',
+    tertiary:  '<circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16"/>',
+    culvert:   '<path d="M4 20V12a8 8 0 0 1 16 0v8"/><path d="M4 20h16"/><path d="M9 20v-8M15 20v-8"/>',
+    structure: '<rect x="5" y="4" width="14" height="16" rx="1"/><path d="M9 8h.01M12 8h.01M15 8h.01M9 12h.01M12 12h.01M15 12h.01"/>',
+    outfall:   '<path d="M3 12h11"/><path d="M10 7l5 5-5 5"/><path d="M20 5v14"/>',
+    sensor:    '<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/>',
+    waterbody: '<path d="M12 3s6 6.5 6 10.5a6 6 0 1 1-12 0C6 9.5 12 3 12 3z"/>',
+  };
+  function pin(kind, color, opts) {
+    opts = opts || {};
+    const S = 30; // uniform badge size for every marker
+    const glyph = GLYPH[kind] || GLYPH.secondary;
+    const ring = opts.attention ? `box-shadow:0 0 0 3px ${color}55,0 1px 5px rgba(10,42,61,.5);` : 'box-shadow:0 1px 5px rgba(10,42,61,.45);';
+    return L.divIcon({ className: 'nw-pin', iconSize: [S, S], iconAnchor: [S / 2, S / 2],
+      html: `<div style="width:${S}px;height:${S}px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.92);${ring}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${glyph}</svg></div>` });
+  }
   const fmtDate = d => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
   // ── map libs ──
@@ -159,22 +179,22 @@ const OpsNetwork = (function () {
     (_g.assets || []).forEach(a => {
       const c = coord(a); if (!c) return;
       const grp = a.is_outfall ? 'outfall' : typeInfo(a.property_type).grp;
-      const col = a.needs_attention ? riskColor(a.risk_level) || '#d9463c' : (GRP_COLOR[grp] || '#7d8fa3');
-      const m = L.marker(c, { icon: marker(a.is_outfall ? '#d9463c' : col, a.is_outfall ? 15 : 12, a.needs_attention) });
+      const col = a.needs_attention ? (riskColor(a.risk_level) || '#d9463c') : (GRP_COLOR[grp] || '#7d8fa3');
+      const m = L.marker(c, { icon: pin(grp, col, { attention: a.needs_attention }) });
       m.on('click', () => openAsset(a.property_id));
       (_layers[grp] || _layers.secondary).addLayer(m); pts.push(c);
     });
     // Properties
     (_g.properties || []).forEach(p => {
       const c = coord(p); if (!c) return;
-      const m = L.marker(c, { icon: marker('#0d7fa0', 10) });
+      const m = L.marker(c, { icon: pin('property', '#0d7fa0') });
       m.on('click', () => openAsset(p.property_id));
       _layers.property.addLayer(m); pts.push(c);
     });
     // Water bodies
     (_g.water_bodies || []).forEach(w => {
       const c = coord(w); if (!c) return;
-      const m = L.marker(c, { icon: marker('#2563eb', 16) });
+      const m = L.marker(c, { icon: pin('waterbody', '#2563eb') });
       m.on('click', () => openWaterBody(w.water_body_id));
       _layers.waterbody.addLayer(m); pts.push(c);
     });
@@ -183,8 +203,8 @@ const OpsNetwork = (function () {
     (_md.sensors || []).forEach(sn => {
       _snById[sn.sensor_id] = sn;
       const c = coord(sn); if (!c) return;
-      const col = sn.status === 'active' ? '#8aa2ae' : sn.status === 'maintenance' ? '#e0a012' : '#d9463c';
-      const m = L.marker(c, { icon: marker(col, 8) });
+      const col = sn.status === 'active' ? '#16b364' : sn.status === 'maintenance' ? '#e0a012' : '#d9463c';
+      const m = L.marker(c, { icon: pin('sensor', col) });
       m.on('click', () => openDevice(sn.sensor_id));
       _layers.sensor.addLayer(m); pts.push(c);
     });
@@ -338,38 +358,80 @@ const OpsNetwork = (function () {
     showInspector();
   }
 
-  // A Sentinel device clicked on the map — same look as the Devices drawer,
-  // rendered into the side inspector (never overlaying the map).
-  function openDevice(id) {
+  // A Sentinel device clicked on the map — the SAME pop-out as the Devices
+  // module (3D model, status tokens, command action bar, Telemetry/Actions
+  // tabs, metric cards), rendered into the side inspector, never overlaying
+  // the map. Reuses OpsSensors data, 3D viewer and command functions.
+  async function openDevice(id) {
     _sel = null;
-    const sn = _snById[id]; if (!sn) return;
     const dr = document.getElementById('nw-drawer'); if (!dr) return;
-    const online = sn.status === 'active';
-    const statusClass = online ? 'ok' : sn.status === 'maintenance' ? 'warn' : 'err';
-    const statusLabel = online ? 'CONNECTED' : String(sn.status || 'offline').toUpperCase();
-    const last = sn.last_ping ? fmtDate(sn.last_ping) : '—';
+    const S = window.OpsSensors;
+    // Prefer the rich device record (battery/signal/level/firmware…); fall
+    // back to the lighter map-data point.
+    let x = (S && S.getSensor) ? S.getSensor(id) : null;
+    if (!x && S && S.loadAll) { dr.innerHTML = '<div class="nw-dload">Loading device…</div>'; showInspector(); await S.loadAll(); x = S.getSensor(id); }
+    x = x || _snById[id] || { sensor_id: id };
+    const sid = String(id).replace(/[^A-Za-z0-9_\-.:]/g, '');
+    const cap = x.capabilities || {};
+    const online = (x.status || 'active') === 'active';
+    const stCls = online ? 'ok' : x.status === 'maintenance' ? 'warn' : 'err';
+    const stLbl = online ? 'CONNECTED' : String(x.status || 'offline').toUpperCase();
+    const vital = v => (window.OpsModal && OpsModal.vitalColor) ? OpsModal.vitalColor(v) : 'var(--ink)';
+    const lvlCol = v => v == null ? 'var(--ink)' : v >= 80 ? '#d9463c' : v >= 60 ? '#e0a012' : '#1f9d5b';
+    const dash = '<span style="color:var(--ink-4)">—</span>';
+    const card = (k, v) => `<div class="nw-card"><div class="nw-card-k">${k}</div><div class="nw-card-v">${v}</div></div>`;
+    const readings = [
+      cap.water_level !== false ? card('Water Level', x.level != null ? `<span style="color:${lvlCol(x.level)}">${Math.round(x.level)}%</span>` : dash) : '',
+      cap.flow_rate !== false ? card('Flow Rate', x.flow_rate != null ? `${(+x.flow_rate).toFixed(1)} L/s` : dash) : '',
+    ].filter(Boolean).join('');
+    const device = [
+      card('Battery', x.battery_percent != null ? `<span style="color:${vital(x.battery_percent)}">${x.battery_percent}%</span>` : dash),
+      card('Signal', x.signal_strength != null ? `<span style="color:${vital(x.signal_strength)}">${x.signal_strength}%</span>` : dash),
+      card('Temperature', x.temperature != null ? `${Math.round(x.temperature)}°C` : dash),
+      card('Firmware', x.firmware_version ? `<span style="font-size:var(--fs-sm)">${esc(x.firmware_version)}</span>` : dash),
+    ].join('');
+
     dr.innerHTML = `
       <div class="nw-dr-head">
         <div style="min-width:0">
-          <div class="nw-crumb">Devices <span>›</span> ${esc(sn.site_name || sn.zone || 'Network')}</div>
-          <div class="nw-dr-name">${esc(sn.name || sn.sensor_id)}</div>
+          <div class="nw-crumb">Devices <span>›</span> ${esc(x.site_name || x.zone || 'Network')}</div>
+          <div class="nw-dr-name">${esc(x.name || x.sensor_id)}</div>
           <div class="nw-status-line">
-            <span class="nw-tok id">${esc(sn.sensor_id)}</span><span class="sep">·</span>
-            <span class="nw-tok ${statusClass}"><span class="tdot"></span>${statusLabel}</span>
+            <span class="nw-tok id">${esc(x.sensor_id)}</span><span class="sep">·</span>
+            <span class="nw-tok ${stCls}"><span class="tdot"></span>${stLbl}</span>
           </div>
         </div>
         <button class="nw-dr-x" onclick="OpsNetwork.closeDrawer()">&times;</button>
       </div>
-      <div class="nw-cards">
-        <div class="nw-card"><div class="nw-card-k">Status</div><div class="nw-card-v" style="color:var(--${statusClass === 'ok' ? 'ok' : statusClass === 'warn' ? 'warn' : 'err'})">${esc(sn.status || 'offline')}</div></div>
-        <div class="nw-card"><div class="nw-card-k">Zone</div><div class="nw-card-v" style="font-size:var(--fs-sm)">${esc(sn.zone || '—')}</div></div>
-        <div class="nw-card"><div class="nw-card-k">Site</div><div class="nw-card-v" style="font-size:var(--fs-sm)">${esc(sn.site_name || '—')}</div></div>
-        <div class="nw-card"><div class="nw-card-k">Last ping</div><div class="nw-card-v" style="font-size:var(--fs-sm)">${last}</div></div>
+      <div class="nw-3d" id="nw-3d"><div class="nw-3d-state" id="nw-3d-state"><span class="nw-3d-spin"></span>Loading 3D model…</div><div class="nw-3d-hint">Drag to rotate · scroll to zoom</div></div>
+      <div class="nw-abar">
+        <button class="nw-ab-ic" title="Restart node" onclick="OpsSensors.sendCommand('${sid}','reset')"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
+        <button class="nw-ab-main" onclick="OpsNetwork.openInDevices('${sid}')">Open in Devices <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+        <button class="nw-ab-ic" title="Command history" onclick="OpsSensors.commandHistory('${sid}')"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></button>
       </div>
-      <div class="nw-dr-actions" style="margin-top:14px">
-        <button class="nw-btn" onclick="OpsNetwork.openInDevices('${esc(sn.sensor_id)}')">Open in Devices →</button>
+      <div class="nw-dtabs">
+        <button class="nw-dtab active" data-dtab="telemetry" onclick="OpsNetwork.deviceTab('telemetry')">Telemetry</button>
+        <button class="nw-dtab" data-dtab="actions" onclick="OpsNetwork.deviceTab('actions')">Actions</button>
+      </div>
+      <div class="nw-dpanel" data-dpanel="telemetry">
+        ${readings ? `<div class="nw-sec">Readings</div><div class="nw-cards">${readings}</div>` : ''}
+        <div class="nw-sec">Device</div><div class="nw-cards">${device}</div>
+      </div>
+      <div class="nw-dpanel" data-dpanel="actions" style="display:none">
+        <button class="nw-act" onclick="OpsSensors.sendCommand('${sid}','firmware_update')"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 0l-6 6m6-6l6 6"/></svg>Push Firmware OTA</button>
+        <button class="nw-act" onclick="OpsSensors.sendCommand('${sid}','reset')"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Restart Node</button>
+        <button class="nw-act" onclick="OpsSensors.calibrate('${sid}')"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Run Calibration</button>
+        <button class="nw-act" onclick="OpsSensors.history('${sid}')"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2"/></svg>View Diagnostics Log</button>
+        <button class="nw-act" onclick="OpsSensors.openFull('${sid}')"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>Open full details</button>
       </div>`;
     showInspector();
+    if (S && S.mount3D) S.mount3D('nw-3d');
+  }
+
+  function deviceTab(name) {
+    const root = _root; if (!root) return;
+    root.querySelectorAll('.nw-dtab').forEach(b => b.classList.toggle('active', b.dataset.dtab === name));
+    root.querySelectorAll('.nw-dpanel').forEach(p => { p.style.display = (p.dataset.dpanel === name) ? '' : 'none'; });
   }
 
   // Jump to the Sentinel Devices module and open this device's full drawer.
@@ -390,6 +452,7 @@ const OpsNetwork = (function () {
   function hideInspector() {
     const m = _root && _root.querySelector('.nw-main'); if (m) m.classList.remove('split');
     const dr = document.getElementById('nw-drawer'); if (dr) dr.classList.remove('open');
+    if (window.OpsSensors && OpsSensors.dispose3D) OpsSensors.dispose3D();
     resizeMapSoon();
   }
   function resizeMapSoon() { setTimeout(() => { try { if (map) map.invalidateSize(); } catch (_) {} }, 260); }
@@ -480,7 +543,31 @@ const OpsNetwork = (function () {
     .nw-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:14px;}
     .nw-card{background:var(--surface-2);border:1px solid var(--border);border-radius:11px;padding:12px 13px;min-width:0;}
     .nw-card-k{font-size:var(--fs-2xs);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);}
-    .nw-card-v{margin-top:6px;font-family:var(--ff-m);font-size:var(--fs-lg);font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:capitalize;}
+    .nw-card-v{margin-top:6px;font-family:var(--ff-m);font-size:var(--fs-lg);font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .nw-dload{padding:30px 10px;text-align:center;color:var(--ink-3);font-size:var(--fs-sm);}
+    /* device 3D viewer */
+    .nw-3d{position:relative;width:100%;height:200px;border-radius:12px;overflow:hidden;background:radial-gradient(120% 120% at 50% 20%, var(--surface-2), var(--surface));border:1px solid var(--border);margin:4px 0 12px;}
+    .nw-3d canvas{display:block;width:100% !important;height:100% !important;outline:none;cursor:grab;}
+    .nw-3d canvas:active{cursor:grabbing;}
+    .nw-3d-state{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:9px;font-size:var(--fs-xs);color:var(--ink-3);pointer-events:none;}
+    .nw-3d-spin{width:15px;height:15px;border:2px solid var(--border);border-top-color:var(--blue-hi,#22c3e6);border-radius:50%;animation:nw3dspin .7s linear infinite;}
+    @keyframes nw3dspin{to{transform:rotate(360deg);}}
+    .nw-3d-hint{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:var(--fs-2xs);color:var(--ink-4,#8494a0);opacity:.75;pointer-events:none;}
+    /* device action bar */
+    .nw-abar{display:flex;align-items:stretch;gap:8px;margin-bottom:6px;}
+    .nw-ab-ic{flex:0 0 auto;width:44px;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--border);border-radius:11px;color:var(--ink-2);cursor:pointer;transition:.13s;}
+    .nw-ab-ic:hover{color:var(--blue-hi,#22c3e6);border-color:var(--blue-dim,#7fc8e0);}
+    .nw-ab-main{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:11px;color:var(--ink);font-family:var(--ff-b);font-weight:700;font-size:var(--fs-sm);cursor:pointer;transition:.13s;}
+    .nw-ab-main:hover{border-color:var(--blue-dim,#7fc8e0);color:var(--blue-hi,#22c3e6);}
+    /* device tabs */
+    .nw-dtabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin:14px 0 12px;}
+    .nw-dtab{flex:1;background:none;border:none;padding:9px 4px;font-family:var(--ff-b);font-size:var(--fs-2xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:.13s;}
+    .nw-dtab.active{color:var(--ink);border-bottom-color:var(--blue-hi,#22c3e6);}
+    .nw-sec{font-size:var(--fs-2xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);margin:4px 0 9px;}
+    .nw-sec:not(:first-child){margin-top:16px;}
+    .nw-act{display:flex;align-items:center;gap:10px;width:100%;padding:9px 4px;background:none;border:none;text-align:left;font-size:var(--fs-sm);font-weight:600;color:var(--ink-2);cursor:pointer;font-family:var(--ff-b);border-radius:8px;}
+    .nw-act:hover{background:var(--surface-2);color:var(--blue-hi,#22c3e6);}
+    .nw-act svg{flex-shrink:0;}
     .nw-dr-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;}
     .nw-dr-name{font-family:var(--ff-d);font-size:var(--fs-lg);font-weight:800;color:var(--ink);}
     .nw-dr-sub{font-size:var(--fs-2xs);color:var(--ink-3);margin-top:2px;}
@@ -512,6 +599,6 @@ const OpsNetwork = (function () {
     .nw-zchip:hover{border-color:var(--blue-dim);color:var(--blue-hi);}
   `;
 
-  return { render, setView, toggleLayer, filter, openAsset, openWaterBody, openZone, openDevice, openInDevices, trace, clearTrace, closeDrawer };
+  return { render, setView, toggleLayer, filter, openAsset, openWaterBody, openZone, openDevice, openInDevices, deviceTab, trace, clearTrace, closeDrawer };
 })();
 window.OpsNetwork = OpsNetwork;
