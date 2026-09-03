@@ -651,11 +651,16 @@ const OpsSensors = (function () {
 
   function disposeViewer() {
     if (!_viewer) return;
+    _viewer.disposed = true;
     try {
       cancelAnimationFrame(_viewer.raf);
       window.removeEventListener('resize', _viewer.onResize);
       if (_viewer.controls) _viewer.controls.dispose();
-      if (_viewer.renderer) { _viewer.renderer.dispose(); const c = _viewer.renderer.domElement; if (c && c.parentNode) c.parentNode.removeChild(c); }
+      if (_viewer.renderer) {
+        try { _viewer.renderer.forceContextLoss(); } catch (_) {} // actually free the WebGL context (dispose() alone leaks it)
+        _viewer.renderer.dispose();
+        const c = _viewer.renderer.domElement; if (c && c.parentNode) c.parentNode.removeChild(c);
+      }
       // NB: the shared Draco loader and cached model are intentionally kept.
     } catch (_) { /* noop */ }
     _viewer = null;
@@ -664,19 +669,23 @@ const OpsSensors = (function () {
   async function mountModelViewer(hostId, stateId) {
     const host = document.getElementById(hostId || 'sn-3d');
     const stateEl = document.getElementById(stateId || 'sn-3d-state');
+    console.log('[3d] mount start', hostId, 'host?', !!host, 'threeReady?', threeReady());
     if (!host) return;
     const _t0 = performance.now();
     disposeViewer();
     try {
       await loadThree();
-    } catch (_) {
+    } catch (e) {
+      console.error('[3d] loadThree failed', e);
       if (stateEl) stateEl.innerHTML = 'Could not load the 3D viewer.';
       return;
     }
     // Drawer may have been closed while three.js was downloading.
-    if (!document.body.contains(host)) return;
+    if (!document.body.contains(host)) { console.warn('[3d] host detached before render'); return; }
 
+    // Wait one frame if the container hasn't been laid out yet (0 size).
     const W = host.clientWidth || 340, H = host.clientHeight || 220;
+    console.log('[3d] container', W + 'x' + H);
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, W / H, 0.01, 1000);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -693,11 +702,12 @@ const OpsSensors = (function () {
     controls.enableDamping = true; controls.dampingFactor = 0.08;
     controls.enablePan = false; controls.autoRotate = true; controls.autoRotateSpeed = 1.1;
 
-    const viewer = { renderer, controls, raf: 0, onResize: null };
+    const viewer = { renderer, controls, raf: 0, onResize: null, disposed: false };
     _viewer = viewer;
 
     loadModel().then((cached) => {
-      if (_viewer !== viewer) return; // superseded/closed
+      console.log('[3d] model resolved; disposed?', viewer.disposed, 'current?', _viewer === viewer);
+      if (viewer.disposed) return; // this viewer was torn down before the model arrived
       const model = cached.clone(true); // clone shares geometry/materials — no re-decode
       // centre + scale to fit the frame
       const box = new THREE.Box3().setFromObject(model);
@@ -715,7 +725,8 @@ const OpsSensors = (function () {
       controls.target.set(0, 0, 0); controls.update();
       if (stateEl) stateEl.style.display = 'none';
       console.log('[3d] mount total', Math.round(performance.now() - _t0) + 'ms');
-    }).catch(() => {
+    }).catch((e) => {
+      console.error('[3d] model mount failed', e);
       if (stateEl) stateEl.innerHTML = 'Model unavailable.';
     });
 
