@@ -96,6 +96,14 @@ const OpsSensors = (function () {
       .sn-act-row.danger { color:var(--err); }
       .sn-act-row.danger:hover { background:var(--eb); }
       .sn-act-row svg { flex-shrink:0; }
+      /* ── 3D node model viewer (top of drawer) ── */
+      .sn-3d { position:relative; width:100%; height:220px; border-radius:12px; overflow:hidden; background:radial-gradient(120% 120% at 50% 20%, var(--surface-2), var(--surface)); border:1px solid var(--border); margin-bottom:14px; }
+      .sn-3d canvas { display:block; width:100% !important; height:100% !important; outline:none; cursor:grab; }
+      .sn-3d canvas:active { cursor:grabbing; }
+      .sn-3d-state { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:9px; font-size:var(--fs-xs); color:var(--ink-3); pointer-events:none; }
+      .sn-3d-spin { width:15px; height:15px; border:2px solid var(--border); border-top-color:var(--blue-hi,#22c3e6); border-radius:50%; animation:sn3dspin .7s linear infinite; }
+      @keyframes sn3dspin { to { transform:rotate(360deg); } }
+      .sn-3d-hint { position:absolute; left:0; right:0; bottom:6px; text-align:center; font-size:var(--fs-2xs); color:var(--ink-4,#8494a0); pointer-events:none; opacity:.75; }
     </style>`;
 
   async function render(container) {
@@ -402,6 +410,7 @@ const OpsSensors = (function () {
 
   function closeDrawer() {
     _drawerId = null;
+    disposeViewer();
     const el = document.getElementById('sn-drawer-overlay');
     if (el) { el.classList.remove('open'); setTimeout(() => el.remove(), 220); }
   }
@@ -441,6 +450,10 @@ const OpsSensors = (function () {
         </div>
         <div class="sn-drawer-body">
           <div class="sn-drawer-status"><span class="hbadge ${tier}">${tier}</span></div>
+          <div class="sn-3d" id="sn-3d">
+            <div class="sn-3d-state" id="sn-3d-state"><span class="sn-3d-spin"></span>Loading 3D model…</div>
+            <div class="sn-3d-hint">Drag to rotate · scroll to zoom</div>
+          </div>
           <button class="sn-act-row" style="justify-content:center;font-weight:700;color:var(--blue-hi,#0d7fa0);border:1px solid var(--blue-dim,#7fc8e0);margin-bottom:12px;" onclick="OpsSensors.openFull('${__sid(x.sensor_id)}')">Open full details →</button>
 
           ${metric(cap.water_level !== false, 'Water Level', x.level != null ? Math.round(x.level) : null, '%', levelColor(x.level))}
@@ -491,6 +504,108 @@ const OpsSensors = (function () {
       </div>`;
 
     requestAnimationFrame(() => overlay.classList.add('open'));
+    mountModelViewer();
+  }
+
+  // ── 3D node model viewer ──────────────────────────────────────
+  // Lazily loads three.js + GLTFLoader + OrbitControls (only when a
+  // drawer is first opened), renders models/node.glb into #sn-3d,
+  // auto-centres/scales it, and slow-spins with drag-to-orbit.
+  const MODEL_URL = 'models/node.glb';
+  const THREE_BASE = 'https://unpkg.com/three@0.128.0';
+  let _threePromise = null;
+  let _viewer = null; // { renderer, raf, controls, onResize }
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      if ([...document.scripts].some(s => s.src === src)) return resolve();
+      const el = document.createElement('script');
+      el.src = src; el.onload = resolve; el.onerror = () => reject(new Error('load ' + src));
+      document.head.appendChild(el);
+    });
+  }
+  function loadThree() {
+    if (_threePromise) return _threePromise;
+    _threePromise = (async () => {
+      await loadScript(THREE_BASE + '/build/three.min.js');
+      await loadScript(THREE_BASE + '/examples/js/loaders/GLTFLoader.js');
+      await loadScript(THREE_BASE + '/examples/js/controls/OrbitControls.js');
+    })().catch(e => { _threePromise = null; throw e; });
+    return _threePromise;
+  }
+
+  function disposeViewer() {
+    if (!_viewer) return;
+    try {
+      cancelAnimationFrame(_viewer.raf);
+      window.removeEventListener('resize', _viewer.onResize);
+      if (_viewer.controls) _viewer.controls.dispose();
+      if (_viewer.renderer) { _viewer.renderer.dispose(); const c = _viewer.renderer.domElement; if (c && c.parentNode) c.parentNode.removeChild(c); }
+    } catch (_) { /* noop */ }
+    _viewer = null;
+  }
+
+  async function mountModelViewer() {
+    const host = document.getElementById('sn-3d');
+    const stateEl = document.getElementById('sn-3d-state');
+    if (!host) return;
+    disposeViewer();
+    try {
+      await loadThree();
+    } catch (_) {
+      if (stateEl) stateEl.innerHTML = 'Could not load the 3D viewer.';
+      return;
+    }
+    // Drawer may have been closed while three.js was downloading.
+    if (!document.body.contains(host)) return;
+
+    const W = host.clientWidth || 340, H = host.clientHeight || 220;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, W / H, 0.01, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(W, H);
+    if ('outputEncoding' in renderer) renderer.outputEncoding = THREE.sRGBEncoding;
+    host.appendChild(renderer.domElement);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    const key = new THREE.DirectionalLight(0xffffff, 1.1); key.position.set(3, 5, 4); scene.add(key);
+    const rim = new THREE.DirectionalLight(0x88bbff, 0.5); rim.position.set(-4, 2, -3); scene.add(rim);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; controls.dampingFactor = 0.08;
+    controls.enablePan = false; controls.autoRotate = true; controls.autoRotateSpeed = 1.1;
+
+    const viewer = { renderer, controls, raf: 0, onResize: null };
+    _viewer = viewer;
+
+    new THREE.GLTFLoader().load(MODEL_URL, (gltf) => {
+      if (_viewer !== viewer) return; // superseded/closed
+      const model = gltf.scene;
+      // centre + scale to fit the frame
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      model.position.sub(center);
+      const maxDim = Math.max(size.x, size.y, size.z) || 1;
+      const s = 2.2 / maxDim; model.scale.setScalar(s);
+      scene.add(model);
+      camera.position.set(0, 0.6, 3.4);
+      controls.target.set(0, 0, 0); controls.update();
+      if (stateEl) stateEl.style.display = 'none';
+    }, undefined, () => {
+      if (stateEl) stateEl.innerHTML = 'Model unavailable.';
+    });
+
+    const animate = () => { viewer.raf = requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); };
+    animate();
+
+    viewer.onResize = () => {
+      if (!host.clientWidth) return;
+      camera.aspect = host.clientWidth / host.clientHeight; camera.updateProjectionMatrix();
+      renderer.setSize(host.clientWidth, host.clientHeight);
+    };
+    window.addEventListener('resize', viewer.onResize);
   }
 
   // decommission logs a real device_events entry (event_type already
