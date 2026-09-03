@@ -588,7 +588,8 @@ const OpsSensors = (function () {
   const MODEL_URL = 'models/node.glb';
   const DRACO_PATH = 'models/draco/'; // decoder hosted same-origin (CSP connect-src 'self')
   const MODEL_FRONT_YAW = -Math.PI / 2; // yaw (radians) that turns the model's front toward the camera; ±90°/180° to reface
-  const THREE_BASE = 'https://unpkg.com/three@0.128.0';
+  // three.js served same-origin (vendored) — no external CDN latency/failure.
+  const THREE_LIB = 'vendor/three/';
   let _threePromise = null;
   let _viewer = null; // { renderer, raf, controls, onResize }
   let _dracoLoader = null;  // shared across mounts — decoder/worker created once
@@ -606,13 +607,13 @@ const OpsSensors = (function () {
     if (_threePromise) return _threePromise;
     _threePromise = (async () => {
       console.time('[3d] libs');
-      // three core first; its three add-ons only depend on the THREE global,
-      // so load them in parallel (1 round-trip instead of 3).
-      await loadScript(THREE_BASE + '/build/three.min.js');
+      // three core first; its add-ons only depend on the THREE global, so load
+      // them in parallel. All served same-origin from vendor/three/.
+      await loadScript(THREE_LIB + 'three.min.js');
       await Promise.all([
-        loadScript(THREE_BASE + '/examples/js/loaders/GLTFLoader.js'),
-        loadScript(THREE_BASE + '/examples/js/loaders/DRACOLoader.js'),
-        loadScript(THREE_BASE + '/examples/js/controls/OrbitControls.js'),
+        loadScript(THREE_LIB + 'GLTFLoader.js'),
+        loadScript(THREE_LIB + 'DRACOLoader.js'),
+        loadScript(THREE_LIB + 'OrbitControls.js'),
       ]);
       console.timeEnd('[3d] libs');
     })().catch(e => { _threePromise = null; throw e; });
