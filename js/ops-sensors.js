@@ -603,8 +603,10 @@ const OpsSensors = (function () {
       document.head.appendChild(el);
     });
   }
+  function threeReady() { return !!(window.THREE && THREE.GLTFLoader && THREE.DRACOLoader && THREE.OrbitControls); }
   function loadThree() {
     if (_threePromise) return _threePromise;
+    if (threeReady()) { _threePromise = Promise.resolve(); return _threePromise; } // parsed via deferred <script> tags
     _threePromise = (async () => {
       console.time('[3d] libs');
       // three core first; its add-ons only depend on the THREE global, so load
