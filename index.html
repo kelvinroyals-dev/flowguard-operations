@@ -50,14 +50,14 @@
       --amber:      #fbbf24;
       --teal:       #0e7490;
 
-      /* ── Canvas & surfaces (night mode = soft neutral black) ── */
-      --canvas:     #101216;
-      --surface:    #181b20;
-      --surface-2:  #121418;
-      --surface-3:  #1f232a;
-      --surface-h:  #262a32;
-      --border:     #262a31;
-      --border-2:   #333842;
+      /* ── Canvas & surfaces (night mode = true neutral black, no blue tint) ── */
+      --canvas:     #000000;
+      --surface:    #141414;
+      --surface-2:  #0b0b0b;
+      --surface-3:  #1c1c1c;
+      --surface-h:  #242424;
+      --border:     #2a2a2a;
+      --border-2:   #383838;
 
       /* ── Text ── */
       --ink:        #e8f1f8;
@@ -72,7 +72,7 @@
       --err:        #f87171;    --eb:     rgba(248,113,113,.12);
       --off:        #7d8fa3;    --ob:     rgba(125,143,163,.14);
       --amber-bg:   rgba(251,191,36,.08);
-      --overlay:    rgba(12,20,29,.92);
+      --overlay:    rgba(0,0,0,.92);
       /* ── Sidebar: permanently dark in both themes ── */
       --sb-ink:    rgba(255,255,255,.92);
       --sb-ink-2:  rgba(255,255,255,.62);
@@ -1096,7 +1096,7 @@
     @keyframes spin { to{transform:rotate(360deg);} }
 
     /* Modal */
-    .ops-modal-overlay { position:fixed; inset:0; background:rgba(5,15,24,.5); backdrop-filter:blur(6px); z-index:10000; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .2s; padding:24px; }
+    .ops-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); backdrop-filter:blur(6px); z-index:10000; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .2s; padding:24px; }
     .ops-modal-overlay.visible { opacity:1; }
     .ops-modal { background:var(--surface); border:1px solid var(--border); border-radius:var(--rl); width:100%; max-width:560px; max-height:85vh; display:flex; flex-direction:column; box-shadow:var(--sh-lg); transform:scale(.96) translateY(10px); transition:transform .25s cubic-bezier(.22,1,.36,1); }
     .ops-modal-overlay.visible .ops-modal { transform:scale(1) translateY(0); }
@@ -1175,7 +1175,7 @@
       background:#eef3f6;
       background-image:radial-gradient(900px 500px at 12% -8%,rgba(28,184,232,.10),transparent),radial-gradient(700px 420px at 100% 0%,rgba(31,157,91,.06),transparent);
     }
-    html[data-theme="dark"] .app-neon{ background:#101216; }
+    html[data-theme="dark"] .app-neon{ background:#000000; }
     /* Left vertical sidebar (was the horizontal top bar). Permanently dark. */
     .app-neon > .tnav{ width:var(--sw); flex-shrink:0; position:relative; z-index:60; height:100vh; }
     .app-neon > .content{ flex:1; min-width:0; padding:0 !important; background:transparent !important; position:relative; z-index:1; display:flex; flex-direction:column; overflow-y:auto; }
@@ -1194,7 +1194,7 @@
       overflow:visible;   /* let hover flyouts escape the rail */
     }
     html[data-theme="dark"] .tnav{
-      --pa:#0a0c10; --pb:rgba(255,255,255,0.06); --ps:rgba(255,255,255,0.10);
+      --pa:#000000; --pb:rgba(255,255,255,0.06); --ps:rgba(255,255,255,0.10);
       --bd:rgba(255,255,255,0.07); --t1:rgba(255,255,255,0.94); --t2:rgba(255,255,255,0.60); --t3:rgba(255,255,255,0.40);
       --sh:0 8px 30px rgba(0,0,0,.45);
     }
@@ -1219,7 +1219,7 @@
     /* Invisible bridge across the 8px gap so moving the cursor from the group
        into the flyout doesn't drop the hover and close it. */
     .tnav-drop::before{ content:""; position:absolute; top:0; bottom:0; left:-12px; width:12px; }
-    html[data-theme="dark"] .tnav-drop{ background:#14171c; }
+    html[data-theme="dark"] .tnav-drop{ background:#141414; }
     .tnav-grp:hover .tnav-drop{ display:block; }
     .tnav-link{ display:flex; align-items:center; gap:8px; width:100%; text-align:left; font-size:12.5px; font-weight:600; color:var(--t2); padding:9px 11px; border-radius:9px; cursor:pointer; background:transparent; border:none; font-family:inherit; white-space:nowrap; }
     .tnav-link:hover{ background:var(--pb); color:var(--t1); }
@@ -1247,8 +1247,8 @@
       font-family:'Plus Jakarta Sans','Inter',system-ui,sans-serif;
     }
     html[data-theme="dark"] .opsbar{
-      --pa:rgba(10,12,15,0.85); --pb:rgba(255,255,255,0.06); --ps:#14171c;
-      --bd:rgba(255,255,255,0.08); --t1:#e7f4f9; --t2:#9ec1cf; --t3:#5f818e;
+      --pa:rgba(0,0,0,0.85); --pb:rgba(255,255,255,0.06); --ps:#141414;
+      --bd:rgba(255,255,255,0.08); --t1:#f2f2f2; --t2:#a8a8a8; --t3:#787878;
       --sh:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.5);
     }
     .opsbar-title{ font-size:15px; font-weight:700; color:var(--t1); letter-spacing:.1px; }
