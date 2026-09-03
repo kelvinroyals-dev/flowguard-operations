@@ -513,6 +513,7 @@ const OpsSensors = (function () {
   // auto-centres/scales it, and slow-spins with drag-to-orbit.
   const MODEL_URL = 'models/node.glb';
   const DRACO_PATH = 'models/draco/'; // decoder hosted same-origin (CSP connect-src 'self')
+  const MODEL_FRONT_YAW = -Math.PI / 2; // yaw (radians) that turns the model's front toward the camera; ±90°/180° to reface
   const THREE_BASE = 'https://unpkg.com/three@0.128.0';
   let _threePromise = null;
   let _viewer = null; // { renderer, raf, controls, onResize }
@@ -597,7 +598,11 @@ const OpsSensors = (function () {
       model.position.sub(center);
       const maxDim = Math.max(size.x, size.y, size.z) || 1;
       const s = 2.2 / maxDim; model.scale.setScalar(s);
-      scene.add(model);
+      // Face the model's front toward the camera before the auto-rotate begins.
+      const pivot = new THREE.Group();
+      pivot.rotation.y = MODEL_FRONT_YAW;
+      pivot.add(model);
+      scene.add(pivot);
       camera.position.set(0, 0.6, 3.4);
       controls.target.set(0, 0, 0); controls.update();
       if (stateEl) stateEl.style.display = 'none';
