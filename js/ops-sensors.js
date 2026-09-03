@@ -605,10 +605,16 @@ const OpsSensors = (function () {
   function loadThree() {
     if (_threePromise) return _threePromise;
     _threePromise = (async () => {
+      console.time('[3d] libs');
+      // three core first; its three add-ons only depend on the THREE global,
+      // so load them in parallel (1 round-trip instead of 3).
       await loadScript(THREE_BASE + '/build/three.min.js');
-      await loadScript(THREE_BASE + '/examples/js/loaders/GLTFLoader.js');
-      await loadScript(THREE_BASE + '/examples/js/loaders/DRACOLoader.js');
-      await loadScript(THREE_BASE + '/examples/js/controls/OrbitControls.js');
+      await Promise.all([
+        loadScript(THREE_BASE + '/examples/js/loaders/GLTFLoader.js'),
+        loadScript(THREE_BASE + '/examples/js/loaders/DRACOLoader.js'),
+        loadScript(THREE_BASE + '/examples/js/controls/OrbitControls.js'),
+      ]);
+      console.timeEnd('[3d] libs');
     })().catch(e => { _threePromise = null; throw e; });
     return _threePromise;
   }
@@ -624,13 +630,21 @@ const OpsSensors = (function () {
   function loadModel() {
     if (_modelPromise) return _modelPromise;
     _modelPromise = new Promise((resolve, reject) => {
+      console.time('[3d] model fetch+decode');
       const g = new THREE.GLTFLoader(); g.setDRACOLoader(getDraco());
-      g.load(MODEL_URL, gltf => resolve(gltf.scene), undefined, err => { _modelPromise = null; reject(err); });
+      g.load(MODEL_URL, gltf => { console.timeEnd('[3d] model fetch+decode'); resolve(gltf.scene); }, undefined, err => { _modelPromise = null; reject(err); });
     });
     return _modelPromise;
   }
   // Warm the pipeline (libs + decoded model) ahead of first use.
   function preload3D() { return loadThree().then(loadModel).catch(() => {}); }
+  // Kick off warming as soon as the app is idle, so three.js + the decoded
+  // model are ready long before the user opens any device pop-out.
+  (function warmOnIdle() {
+    const go = () => preload3D();
+    if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 3000 });
+    else setTimeout(go, 1200);
+  })();
 
   function disposeViewer() {
     if (!_viewer) return;
@@ -648,6 +662,7 @@ const OpsSensors = (function () {
     const host = document.getElementById(hostId || 'sn-3d');
     const stateEl = document.getElementById(stateId || 'sn-3d-state');
     if (!host) return;
+    const _t0 = performance.now();
     disposeViewer();
     try {
       await loadThree();
@@ -696,6 +711,7 @@ const OpsSensors = (function () {
       camera.position.set(0, 0.6, 3.4);
       controls.target.set(0, 0, 0); controls.update();
       if (stateEl) stateEl.style.display = 'none';
+      console.log('[3d] mount total', Math.round(performance.now() - _t0) + 'ms');
     }).catch(() => {
       if (stateEl) stateEl.innerHTML = 'Model unavailable.';
     });
