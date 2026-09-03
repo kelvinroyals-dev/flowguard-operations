@@ -96,6 +96,38 @@ const OpsSensors = (function () {
       .sn-act-row.danger { color:var(--err); }
       .sn-act-row.danger:hover { background:var(--eb); }
       .sn-act-row svg { flex-shrink:0; }
+      /* ── Redesigned drawer (ArtemisOS-style): breadcrumb, status tokens,
+         action bar, tabs, metric cards ── */
+      .sn-crumb { font-size:var(--fs-2xs); font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-3); display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+      .sn-crumb span { opacity:.6; }
+      .sn-status-line { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px; font-family:var(--ff-m); font-size:var(--fs-2xs); font-weight:700; letter-spacing:.03em; }
+      .sn-tok { display:inline-flex; align-items:center; gap:5px; color:var(--ink-2); }
+      .sn-tok.id { color:var(--ink-3); }
+      .sn-tok.ok { color:var(--ok); } .sn-tok.warn { color:var(--warn); } .sn-tok.err { color:var(--err); } .sn-tok.blue { color:var(--blue-hi,#22c3e6); }
+      .sn-tok .tdot { width:7px; height:7px; border-radius:50%; background:currentColor; }
+      .sn-status-line .sep { color:var(--ink-4,#8494a0); opacity:.6; }
+      .sn-head-actions { display:flex; align-items:center; gap:2px; flex-shrink:0; }
+      .sn-icon-btn { background:none; border:none; color:var(--ink-3); cursor:pointer; padding:6px; border-radius:8px; display:grid; place-items:center; }
+      .sn-icon-btn:hover { background:var(--surface-2); color:var(--ink); }
+      /* action bar */
+      .sn-actionbar { display:flex; align-items:stretch; gap:8px; margin:14px 0 4px; }
+      .sn-ab-icon { flex:0 0 auto; width:46px; display:grid; place-items:center; background:var(--surface-2); border:1px solid var(--border); border-radius:11px; color:var(--ink-2); cursor:pointer; transition:.13s; }
+      .sn-ab-icon:hover { color:var(--blue-hi,#22c3e6); border-color:var(--blue-dim,#7fc8e0); }
+      .sn-ab-main { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px 14px; background:var(--surface-2); border:1px solid var(--border); border-radius:11px; color:var(--ink); font-family:var(--ff-b); font-weight:700; font-size:var(--fs-sm); cursor:pointer; transition:.13s; }
+      .sn-ab-main:hover { border-color:var(--blue-dim,#7fc8e0); color:var(--blue-hi,#22c3e6); }
+      /* tabs */
+      .sn-tabs { display:flex; gap:2px; border-bottom:1px solid var(--border); margin:16px 0 14px; }
+      .sn-tab { flex:1; background:none; border:none; padding:10px 4px; font-family:var(--ff-b); font-size:var(--fs-2xs); font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:.13s; }
+      .sn-tab:hover { color:var(--ink-2); }
+      .sn-tab.active { color:var(--ink); border-bottom-color:var(--blue-hi,#22c3e6); }
+      /* metric cards */
+      .sn-sec-h { font-size:var(--fs-2xs); font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--ink-3); margin:4px 0 9px; }
+      .sn-sec-h:not(:first-child) { margin-top:16px; }
+      .sn-cards { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+      .sn-card { background:var(--surface-2); border:1px solid var(--border); border-radius:11px; padding:12px 13px; min-width:0; }
+      .sn-card-k { font-size:var(--fs-2xs); font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-3); }
+      .sn-card-v { margin-top:6px; font-family:var(--ff-m); font-size:var(--fs-lg); font-weight:800; color:var(--ink); overflow:hidden; text-overflow:ellipsis; }
+      .sn-card-badge { display:inline-block; margin-top:6px; padding:2px 8px; border-radius:100px; background:var(--wb); color:var(--warn); font-size:var(--fs-2xs); font-weight:700; }
       /* ── 3D node model viewer (top of drawer) ── */
       .sn-3d { position:relative; width:100%; height:220px; border-radius:12px; overflow:hidden; background:radial-gradient(120% 120% at 50% 20%, var(--surface-2), var(--surface)); border:1px solid var(--border); margin-bottom:14px; }
       .sn-3d canvas { display:block; width:100% !important; height:100% !important; outline:none; cursor:grab; }
@@ -431,80 +463,121 @@ const OpsSensors = (function () {
     const outdated = commonFw && x.firmware_version && x.firmware_version !== commonFw;
     const cap = x.capabilities || {};
 
-    const metric = (on, label, val, unit, color) => {
-      if (on === false) return '';
-      const has = val != null;
-      return `<div class="sn-metric-row"><span class="sn-metric-k">${label}</span><span class="sn-metric-v" style="color:${has ? (color || 'var(--ink)') : 'var(--ink-4)'}">${has ? val + unit : '—'}</span></div>`;
-    };
+    const sid = __sid(x.sensor_id);
+    const tierClass = tier === 'healthy' ? 'ok' : tier === 'degraded' ? 'warn' : 'err';
+    const online = (x.status || 'active') === 'active';
+    const connLabel = online ? 'CONNECTED' : String(x.status || 'offline').toUpperCase();
+    const card = (k, v) => `<div class="sn-card"><div class="sn-card-k">${k}</div><div class="sn-card-v">${v}</div></div>`;
+    const dash = '<span style="color:var(--ink-4)">—</span>';
+
+    const readings = [
+      cap.water_level !== false ? card('Water Level', x.level != null ? `<span style="color:${levelColor(x.level)}">${Math.round(x.level)}%</span>` : dash) : '',
+      cap.flow_rate !== false ? card('Flow Rate', x.flow_rate != null ? `${x.flow_rate.toFixed(1)} L/s` : dash) : '',
+      cap.silt ? card('Silt Depth', x.silt_depth_mm != null ? `${x.silt_depth_mm} mm` : dash) : '',
+    ].filter(Boolean).join('');
+
+    const device = [
+      card('Battery', x.battery_percent != null ? `<span style="color:${OpsModal.vitalColor(x.battery_percent)}">${x.battery_percent}%</span>` : dash),
+      card('Signal', x.signal_strength != null ? `<span style="color:${OpsModal.vitalColor(x.signal_strength)}">${x.signal_strength}%</span>` : dash),
+      card('Temperature', x.temperature != null ? `<span style="color:${x.temperature >= 40 ? 'var(--err)' : 'var(--ink)'}">${Math.round(x.temperature)}°C</span>` : dash),
+      `<div class="sn-card"><div class="sn-card-k">Firmware</div><div class="sn-card-v" style="font-size:var(--fs-sm)">${x.firmware_version ? esc(x.firmware_version) : dash}</div>${outdated ? '<span class="sn-card-badge">Update</span>' : ''}</div>`,
+    ].join('');
 
     overlay.innerHTML = `
       <div class="sn-drawer" onclick="event.stopPropagation()">
         <div class="sn-drawer-head">
-          <div>
+          <div style="min-width:0">
+            <div class="sn-crumb">Devices <span>›</span> ${esc(propertyOf(x))}</div>
             <div class="sn-drawer-title">${esc(x.name || x.sensor_id)}</div>
-            <div class="sn-drawer-sub">${esc(propertyOf(x))}${x.sensor_id !== (x.name || x.sensor_id) ? ' · ' + esc(x.sensor_id) : ''}</div>
+            <div class="sn-status-line">
+              <span class="sn-tok id">${esc(x.sensor_id)}</span>
+              <span class="sep">·</span>
+              <span class="sn-tok ${tierClass}"><span class="tdot"></span>${tier.toUpperCase()}</span>
+              <span class="sep">·</span>
+              <span class="sn-tok ${online ? 'ok' : 'err'}">${connLabel}</span>
+            </div>
           </div>
-          <button class="sn-drawer-close" onclick="OpsSensors.closeDrawer()" aria-label="Close">
-            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
+          <div class="sn-head-actions">
+            <button class="sn-icon-btn" title="Send command" onclick="OpsSensors.queueCommand('${sid}')" aria-label="Commands">
+              <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+            </button>
+            <button class="sn-drawer-close" onclick="OpsSensors.closeDrawer()" aria-label="Close">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
         </div>
         <div class="sn-drawer-body">
-          <div class="sn-drawer-status"><span class="hbadge ${tier}">${tier}</span></div>
           <div class="sn-3d" id="sn-3d">
             <div class="sn-3d-state" id="sn-3d-state"><span class="sn-3d-spin"></span>Loading 3D model…</div>
             <div class="sn-3d-hint">Drag to rotate · scroll to zoom</div>
           </div>
-          <button class="sn-act-row" style="justify-content:center;font-weight:700;color:var(--blue-hi,#0d7fa0);border:1px solid var(--blue-dim,#7fc8e0);margin-bottom:12px;" onclick="OpsSensors.openFull('${__sid(x.sensor_id)}')">Open full details →</button>
 
-          ${metric(cap.water_level !== false, 'Water Level', x.level != null ? Math.round(x.level) : null, '%', levelColor(x.level))}
-          ${metric(cap.flow_rate !== false, 'Flow Rate', x.flow_rate != null ? x.flow_rate.toFixed(1) : null, ' L/s')}
-          <div class="sn-metric-row"><span class="sn-metric-k">Battery</span><span class="sn-metric-v" style="color:${OpsModal.vitalColor(x.battery_percent)}">${x.battery_percent != null ? x.battery_percent + '%' : '—'}</span></div>
-          <div class="sn-metric-row"><span class="sn-metric-k">Signal</span><span class="sn-metric-v" style="color:${OpsModal.vitalColor(x.signal_strength)}">${x.signal_strength != null ? x.signal_strength + '%' : '—'}</span></div>
-          <div class="sn-metric-row"><span class="sn-metric-k">Temperature</span><span class="sn-metric-v" style="color:${x.temperature != null && x.temperature >= 40 ? 'var(--err)' : 'var(--ink)'}">${x.temperature != null ? Math.round(x.temperature) + '°C' : '—'}</span></div>
-          ${metric(!!cap.silt, 'Silt depth', x.silt_depth_mm, ' mm')}
-
-          <div class="sn-fw-row">
-            <span class="sn-metric-k">Firmware</span>
-            <span style="display:flex;align-items:center;gap:8px;">
-              <span class="sn-metric-v">${x.firmware_version ? esc(x.firmware_version) : '—'}</span>
-              ${outdated ? `<span class="sn-fw-badge">Update available</span>` : ''}
-            </span>
+          <div class="sn-actionbar">
+            <button class="sn-ab-icon" title="Restart node" onclick="OpsSensors.sendCommand('${sid}', 'reset')" aria-label="Restart node">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
+            <button class="sn-ab-main" onclick="OpsSensors.openFull('${sid}')">Open full details
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+            <button class="sn-ab-icon" title="Command history" onclick="OpsSensors.commandHistory('${sid}')" aria-label="Command history">
+              <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </button>
           </div>
 
-          <div class="sn-acts-h">Actions</div>
-          <button class="sn-act-row" onclick="OpsSensors.sendCommand('${__sid(x.sensor_id)}', 'firmware_update')">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 0l-6 6m6-6l6 6"/></svg>
-            Push Firmware OTA
-          </button>
-          <button class="sn-act-row" onclick="OpsSensors.sendCommand('${__sid(x.sensor_id)}', 'reset')">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-            Restart Node
-          </button>
-          <button class="sn-act-row" onclick="OpsSensors.calibrate('${__sid(x.sensor_id)}')">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-            Run Calibration
-          </button>
-          <button class="sn-act-row" onclick="OpsSensors.commandHistory('${__sid(x.sensor_id)}')">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            Command History
-          </button>
-          <button class="sn-act-row" onclick="OpsSensors.history('${__sid(x.sensor_id)}')">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2"/></svg>
-            View Diagnostics Log
-          </button>
-          <button class="sn-act-row" onclick="OpsSensors.coverage('${__sid(x.sensor_id)}')">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-            Manage Coverage
-          </button>
-          <button class="sn-act-row danger" onclick="OpsSensors.decommission('${__sid(x.sensor_id)}')">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9.5 4L10 3h4l.5 1M4 7h16"/></svg>
-            Decommission Node
-          </button>
+          <div class="sn-tabs">
+            <button class="sn-tab active" data-tab="telemetry" onclick="OpsSensors.drawerTab('telemetry')">Telemetry</button>
+            <button class="sn-tab" data-tab="actions" onclick="OpsSensors.drawerTab('actions')">Actions</button>
+          </div>
+
+          <div class="sn-tabpanel" data-panel="telemetry">
+            ${readings ? `<div class="sn-sec-h">Readings</div><div class="sn-cards">${readings}</div>` : ''}
+            <div class="sn-sec-h">Device</div>
+            <div class="sn-cards">${device}</div>
+          </div>
+
+          <div class="sn-tabpanel" data-panel="actions" style="display:none">
+            <button class="sn-act-row" onclick="OpsSensors.sendCommand('${sid}', 'firmware_update')">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 0l-6 6m6-6l6 6"/></svg>
+              Push Firmware OTA
+            </button>
+            <button class="sn-act-row" onclick="OpsSensors.sendCommand('${sid}', 'reset')">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              Restart Node
+            </button>
+            <button class="sn-act-row" onclick="OpsSensors.calibrate('${sid}')">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+              Run Calibration
+            </button>
+            <button class="sn-act-row" onclick="OpsSensors.commandHistory('${sid}')">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              Command History
+            </button>
+            <button class="sn-act-row" onclick="OpsSensors.history('${sid}')">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2"/></svg>
+              View Diagnostics Log
+            </button>
+            <button class="sn-act-row" onclick="OpsSensors.coverage('${sid}')">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              Manage Coverage
+            </button>
+            <button class="sn-act-row danger" onclick="OpsSensors.decommission('${sid}')">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9.5 4L10 3h4l.5 1M4 7h16"/></svg>
+              Decommission Node
+            </button>
+          </div>
         </div>
       </div>`;
 
     requestAnimationFrame(() => overlay.classList.add('open'));
     mountModelViewer();
+  }
+
+  // Switch the drawer's Telemetry / Actions tabs (DOM-only, no re-render).
+  function drawerTab(name) {
+    const root = document.getElementById('sn-drawer-overlay');
+    if (!root) return;
+    root.querySelectorAll('.sn-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+    root.querySelectorAll('.sn-tabpanel').forEach(p => { p.style.display = (p.dataset.panel === name) ? '' : 'none'; });
   }
 
   // ── 3D node model viewer ──────────────────────────────────────
@@ -1019,7 +1092,7 @@ const OpsSensors = (function () {
 
   return {
     render, setFilter, setQuery,
-    viewSensor, closeDrawer, decommission, openFull, back, queueCommand,
+    viewSensor, closeDrawer, decommission, openFull, back, queueCommand, drawerTab,
     coverage, saveCoverage, history, calibrate, confirmCalibrate, openAsset,
     toggleSelect, toggleSelectAll, clearSelection, bulkCommand, confirmBulkCommand,
     sendCommand, _toggleFwField, confirmSendCommand, commandHistory, cancelCommand,
