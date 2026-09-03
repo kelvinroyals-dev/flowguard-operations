@@ -79,7 +79,7 @@ const OpsNetwork = (function () {
     }
   }
 
-  let _byId = {}, _wbId = {}, _filter = null;
+  let _byId = {}, _wbId = {}, _snById = {}, _filter = null;
 
   function paint() {
     const s = _g.summary || {};
@@ -120,7 +120,7 @@ const OpsNetwork = (function () {
       <div class="nw-panel-grp">Network</div>
       ${row('primary', 'Primary drains', true)}${row('secondary', 'Secondary drains', true)}${row('tertiary', 'Tertiary drains', true)}${row('culvert', 'Culverts', true)}${row('structure', 'Structures', true)}
       <div class="nw-panel-grp">Connected</div>
-      ${row('property', 'Properties', true)}${row('sensor', 'Sentinel devices', false)}${row('outfall', 'Outfalls', true)}
+      ${row('property', 'Properties', true)}${row('sensor', 'Sentinel devices', true)}${row('outfall', 'Outfalls', true)}
       <div class="nw-panel-grp">Environment</div>
       ${row('waterbody', 'Water bodies', true)}
     </div>`;
@@ -135,7 +135,7 @@ const OpsNetwork = (function () {
     baseTiles = L.maplibreGL({ style: styleUrl(), attribution: '&copy; OpenFreeMap &copy; OSM' }).addTo(map);
     _links = L.layerGroup().addTo(map);
     _traceLayer = L.layerGroup().addTo(map);
-    ['primary', 'secondary', 'tertiary', 'culvert', 'structure', 'outfall', 'property', 'sensor', 'waterbody'].forEach(k => { _layers[k] = L.layerGroup(); if (k !== 'sensor') _layers[k].addTo(map); });
+    ['primary', 'secondary', 'tertiary', 'culvert', 'structure', 'outfall', 'property', 'sensor', 'waterbody'].forEach(k => { _layers[k] = L.layerGroup().addTo(map); });
     plot();
     if (window.ResizeObserver) new ResizeObserver(() => { try { map.invalidateSize(); } catch (_) {} }).observe(document.getElementById('nw-map'));
   }
@@ -179,10 +179,14 @@ const OpsNetwork = (function () {
       _layers.waterbody.addLayer(m); pts.push(c);
     });
     // Sensors (from map-data)
+    _snById = {};
     (_md.sensors || []).forEach(sn => {
+      _snById[sn.sensor_id] = sn;
       const c = coord(sn); if (!c) return;
       const col = sn.status === 'active' ? '#8aa2ae' : sn.status === 'maintenance' ? '#e0a012' : '#d9463c';
-      _layers.sensor.addLayer(L.marker(c, { icon: marker(col, 7) }));
+      const m = L.marker(c, { icon: marker(col, 8) });
+      m.on('click', () => openDevice(sn.sensor_id));
+      _layers.sensor.addLayer(m); pts.push(c);
     });
     if (pts.length) { try { map.fitBounds(L.latLngBounds(pts).pad(0.2)); } catch (_) {} }
     setTimeout(() => { try { map.invalidateSize(); } catch (_) {} }, 80);
@@ -284,7 +288,7 @@ const OpsNetwork = (function () {
         <button class="nw-btn ghost" onclick="switchTab('maintenance')">Maintenance planner →</button>
       </div>
       <div class="nw-mh"><div class="nw-mh-h">Maintenance history</div><div id="nw-mh-body"><div class="nw-mh-empty">Loading…</div></div></div>`;
-    dr.classList.add('open');
+    showInspector();
     loadMaintenance(id);
   }
 
@@ -315,7 +319,7 @@ const OpsNetwork = (function () {
         ${fieldRow('Status', esc(w.status))}
       </div>
       <div class="nw-connected">Water level is external / environmental data.</div>`;
-    dr.classList.add('open');
+    showInspector();
   }
 
   function openZone(zone) {
@@ -331,10 +335,66 @@ const OpsNetwork = (function () {
         <div><b>${z.attention}</b><span>Need attention</span></div>
         <div><b>${esc(z.condition || '—')}</b><span>Condition</span></div>
       </div>`;
-    dr.classList.add('open');
+    showInspector();
   }
 
-  function closeDrawer() { const dr = document.getElementById('nw-drawer'); if (dr) dr.classList.remove('open'); _sel = null; clearTrace(); }
+  // A Sentinel device clicked on the map — same look as the Devices drawer,
+  // rendered into the side inspector (never overlaying the map).
+  function openDevice(id) {
+    _sel = null;
+    const sn = _snById[id]; if (!sn) return;
+    const dr = document.getElementById('nw-drawer'); if (!dr) return;
+    const online = sn.status === 'active';
+    const statusClass = online ? 'ok' : sn.status === 'maintenance' ? 'warn' : 'err';
+    const statusLabel = online ? 'CONNECTED' : String(sn.status || 'offline').toUpperCase();
+    const last = sn.last_ping ? fmtDate(sn.last_ping) : '—';
+    dr.innerHTML = `
+      <div class="nw-dr-head">
+        <div style="min-width:0">
+          <div class="nw-crumb">Devices <span>›</span> ${esc(sn.site_name || sn.zone || 'Network')}</div>
+          <div class="nw-dr-name">${esc(sn.name || sn.sensor_id)}</div>
+          <div class="nw-status-line">
+            <span class="nw-tok id">${esc(sn.sensor_id)}</span><span class="sep">·</span>
+            <span class="nw-tok ${statusClass}"><span class="tdot"></span>${statusLabel}</span>
+          </div>
+        </div>
+        <button class="nw-dr-x" onclick="OpsNetwork.closeDrawer()">&times;</button>
+      </div>
+      <div class="nw-cards">
+        <div class="nw-card"><div class="nw-card-k">Status</div><div class="nw-card-v" style="color:var(--${statusClass === 'ok' ? 'ok' : statusClass === 'warn' ? 'warn' : 'err'})">${esc(sn.status || 'offline')}</div></div>
+        <div class="nw-card"><div class="nw-card-k">Zone</div><div class="nw-card-v" style="font-size:var(--fs-sm)">${esc(sn.zone || '—')}</div></div>
+        <div class="nw-card"><div class="nw-card-k">Site</div><div class="nw-card-v" style="font-size:var(--fs-sm)">${esc(sn.site_name || '—')}</div></div>
+        <div class="nw-card"><div class="nw-card-k">Last ping</div><div class="nw-card-v" style="font-size:var(--fs-sm)">${last}</div></div>
+      </div>
+      <div class="nw-dr-actions" style="margin-top:14px">
+        <button class="nw-btn" onclick="OpsNetwork.openInDevices('${esc(sn.sensor_id)}')">Open in Devices →</button>
+      </div>`;
+    showInspector();
+  }
+
+  // Jump to the Sentinel Devices module and open this device's full drawer.
+  function openInDevices(id) {
+    try {
+      if (typeof switchTab === 'function') switchTab('devices');
+      setTimeout(() => { if (window.OpsSensors && OpsSensors.viewSensor) OpsSensors.viewSensor(id); }, 350);
+    } catch (_) {}
+  }
+
+  // The inspector is a third column of the page, not an overlay — reveal it by
+  // splitting the layout and let the map reflow into the remaining width.
+  function showInspector() {
+    const m = _root && _root.querySelector('.nw-main'); if (m) m.classList.add('split');
+    const dr = document.getElementById('nw-drawer'); if (dr) { dr.classList.add('open'); dr.scrollTop = 0; }
+    resizeMapSoon();
+  }
+  function hideInspector() {
+    const m = _root && _root.querySelector('.nw-main'); if (m) m.classList.remove('split');
+    const dr = document.getElementById('nw-drawer'); if (dr) dr.classList.remove('open');
+    resizeMapSoon();
+  }
+  function resizeMapSoon() { setTimeout(() => { try { if (map) map.invalidateSize(); } catch (_) {} }, 260); }
+
+  function closeDrawer() { hideInspector(); _sel = null; clearTrace(); }
   function clearTrace() { if (_traceLayer) _traceLayer.clearLayers(); }
 
   // ════════════ list view ════════════
@@ -391,10 +451,11 @@ const OpsNetwork = (function () {
     .nw-kpi.on{border-color:var(--blue-hi);box-shadow:0 0 0 1px var(--blue-hi);}
     .nw-kpi-v{font-family:var(--ff-d);font-size:24px;font-weight:800;color:var(--ink);letter-spacing:-.5px;line-height:1;}
     .nw-kpi-l{font-size:var(--fs-2xs);color:var(--ink-3);font-weight:600;margin-top:6px;}
-    /* main + map */
-    .nw-main{position:relative;}
+    /* main + map — inspector is a third column, not an overlay */
+    .nw-main{position:relative;display:flex;gap:14px;align-items:stretch;}
     #nw-map{height:62vh;min-height:440px;border-radius:16px;overflow:hidden;border:1px solid var(--border);}
-    .nw-mapwrap{position:relative;}
+    .nw-mapwrap{position:relative;flex:1 1 auto;min-width:0;}
+    .nw-listwrap{flex:1 1 auto;min-width:0;}
     .hidden{display:none;}
     /* layer panel */
     .nw-panel{position:absolute;top:14px;left:14px;z-index:600;background:var(--surface);border:1px solid var(--border-2);border-radius:12px;box-shadow:var(--sh-md);padding:12px 14px;min-width:172px;}
@@ -403,9 +464,23 @@ const OpsNetwork = (function () {
     .nw-lyr{display:flex;align-items:center;gap:8px;font-size:var(--fs-xs);color:var(--ink-2);padding:3px 0;cursor:pointer;}
     .nw-lyr span{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
     .nw-lyr input{accent-color:var(--blue);}
-    /* drawer */
-    .nw-drawer{position:fixed;top:60px;right:0;height:calc(100vh - 60px);width:360px;max-width:92vw;background:var(--surface);border:1px solid var(--border-2);border-right:none;border-radius:16px 0 0 16px;box-shadow:var(--sh-lg);padding:16px 18px;overflow-y:auto;transform:translateX(calc(100% + 24px));transition:transform .22s ease;z-index:1500;}
-    .nw-drawer.open{transform:translateX(0);}
+    /* inspector — third column, revealed by .nw-main.split */
+    .nw-drawer{flex:0 0 0;width:0;min-width:0;height:62vh;min-height:440px;overflow:hidden;opacity:0;background:var(--surface);border:1px solid var(--border-2);border-radius:16px;box-shadow:var(--sh-md);padding:0;transition:flex-basis .24s ease,width .24s ease,opacity .18s ease;}
+    .nw-main.split .nw-drawer{flex:0 0 372px;width:372px;opacity:1;padding:16px 18px;overflow-y:auto;}
+    @media (max-width:900px){ .nw-main{flex-direction:column;} .nw-main.split .nw-drawer{flex:1 1 auto;width:auto;height:auto;max-height:74vh;} }
+    /* device inspector (Devices-drawer style) */
+    .nw-crumb{font-size:var(--fs-2xs);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);display:flex;align-items:center;gap:6px;margin-bottom:5px;}
+    .nw-crumb span{opacity:.6;}
+    .nw-status-line{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:7px;font-family:var(--ff-m);font-size:var(--fs-2xs);font-weight:700;letter-spacing:.03em;}
+    .nw-status-line .nw-tok{display:inline-flex;align-items:center;gap:5px;color:var(--ink-2);}
+    .nw-status-line .nw-tok.id{color:var(--ink-3);}
+    .nw-status-line .nw-tok.ok{color:var(--ok);} .nw-status-line .nw-tok.warn{color:var(--warn);} .nw-status-line .nw-tok.err{color:var(--err);}
+    .nw-status-line .tdot{width:7px;height:7px;border-radius:50%;background:currentColor;}
+    .nw-status-line .sep{color:var(--ink-4,#8494a0);opacity:.6;}
+    .nw-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:14px;}
+    .nw-card{background:var(--surface-2);border:1px solid var(--border);border-radius:11px;padding:12px 13px;min-width:0;}
+    .nw-card-k{font-size:var(--fs-2xs);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);}
+    .nw-card-v{margin-top:6px;font-family:var(--ff-m);font-size:var(--fs-lg);font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:capitalize;}
     .nw-dr-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;}
     .nw-dr-name{font-family:var(--ff-d);font-size:var(--fs-lg);font-weight:800;color:var(--ink);}
     .nw-dr-sub{font-size:var(--fs-2xs);color:var(--ink-3);margin-top:2px;}
@@ -437,6 +512,6 @@ const OpsNetwork = (function () {
     .nw-zchip:hover{border-color:var(--blue-dim);color:var(--blue-hi);}
   `;
 
-  return { render, setView, toggleLayer, filter, openAsset, openWaterBody, openZone, trace, clearTrace, closeDrawer };
+  return { render, setView, toggleLayer, filter, openAsset, openWaterBody, openZone, openDevice, openInDevices, trace, clearTrace, closeDrawer };
 })();
 window.OpsNetwork = OpsNetwork;
