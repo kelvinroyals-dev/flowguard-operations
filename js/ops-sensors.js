@@ -1150,3 +1150,6 @@ const OpsSensors = (function () {
     sendCommand, _toggleFwField, confirmSendCommand, commandHistory, cancelCommand,
   };
 })();
+// Expose on window so other modules (e.g. Network) can reach it — a top-level
+// `const` is only a lexical global, not a window property.
+window.OpsSensors = OpsSensors;
