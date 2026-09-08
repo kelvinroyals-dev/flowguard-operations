@@ -149,6 +149,21 @@ const OpsProviders = (function () {
       : `<div style="color:var(--ink-3);font-size:var(--fs-sm)">No properties assigned yet. Dispatching a job also assigns its property automatically.</div>`;
     const propsBody = (canAssign ? `<div style="margin-bottom:12px"><button class="btn-ghost" onclick="OpsProviders._assignForm(${o.id})">+ Assign property</button></div>` : '') + propRows;
 
+    // performance (GET /:id returns stats)
+    const s = o.stats || {};
+    const onTime = (s.with_sla ? Math.round((s.on_time / s.with_sla) * 100) : null);
+    const perfBody = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 20px">
+      ${F('Total jobs', s.total != null ? s.total : '—')}
+      ${F('Open', s.open != null ? s.open : '—')}
+      ${F('Overdue', s.overdue ? `<span style="color:var(--err);font-weight:700">${s.overdue}</span>` : '0')}
+      ${F('Awaiting verification', s.awaiting != null ? s.awaiting : '—')}
+      ${F('Verified', s.verified != null ? s.verified : '—')}
+      ${F('Declined', s.declined != null ? s.declined : '—')}
+      ${F('On-time rate', onTime != null ? onTime + '%' : '—')}
+      ${F('Avg. time to accept', s.avg_accept_hrs != null ? s.avg_accept_hrs + ' h' : '—')}
+      ${F('Avg. time on site', s.avg_work_hrs != null ? s.avg_work_hrs + ' h' : '—')}
+    </div>`;
+
     let actions = '';
     if (o.status !== 'active') actions += `<button class="btn-ghost" onclick="OpsProviders._rejectForm(${o.id})">Reject</button> <button class="btn-primary" onclick="OpsProviders._approve(${o.id})">Approve</button>`;
 
@@ -159,9 +174,10 @@ const OpsProviders = (function () {
       meta: [['Members ', String(o.member_count || (o.members||[]).length || 1)], ['Properties ', String(assigns.length)]],
       actions,
       sections: [
-        { id:'details',    title:'Organisation', body: detailsBody },
-        { id:'members',    title:'Members', body: `<div class="spo-members">${members}</div>` },
-        { id:'properties', title:'Assigned properties', body: propsBody },
+        { id:'details',     title:'Organisation', body: detailsBody },
+        { id:'performance', title:'Performance', body: perfBody },
+        { id:'members',     title:'Members', body: `<div class="spo-members">${members}</div>` },
+        { id:'properties',  title:'Assigned properties', body: propsBody },
       ],
     });
   }

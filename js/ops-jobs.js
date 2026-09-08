@@ -54,6 +54,8 @@ const OpsJobs = (function () {
     done:   ['verified'],
     draft:  ['draft'],
   };
+  const IN_FLIGHT = ['dispatched','accepted','en_route','in_progress'];
+  const isOverdue = j => j.sla_due_at && IN_FLIGHT.includes(j.status) && new Date(j.sla_due_at).getTime() < Date.now();
 
   const EXTRA = `<style id="jb-css">
     .jb-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;}
@@ -83,6 +85,7 @@ const OpsJobs = (function () {
         <div class="jb-head-title"><h2>Field Jobs</h2><span>Work dispatched to service providers — track, verify, and close out</span></div>
         <button class="jb-add" onclick="OpsJobs.newJob()">+ New job</button>
       </div>
+      <div id="jb-kpis" style="margin-bottom:16px"></div>
       <div class="lv-wrap">
         <div class="lv-toolbar">
           <div class="lv-search">
@@ -92,6 +95,7 @@ const OpsJobs = (function () {
           <div class="lv-toolbar-right">
             <select class="um-filter" onchange="OpsJobs.filter(this.value)">
               <option value="active"${_filter==='active'?' selected':''}>Active</option>
+              <option value="overdue"${_filter==='overdue'?' selected':''}>Overdue</option>
               <option value="review"${_filter==='review'?' selected':''}>Awaiting verification</option>
               <option value="done"${_filter==='done'?' selected':''}>Verified</option>
               <option value="draft"${_filter==='draft'?' selected':''}>Drafts</option>
@@ -109,17 +113,34 @@ const OpsJobs = (function () {
     try {
       const res = await OpsModal.apiGet('/jobs');
       _rows = (res && res.data) || [];
+      drawKpis();
       draw();
     } catch (err) {
       if (body) body.innerHTML = OpsModal.emptyState('', "Couldn't load jobs", esc(err.message || 'network error'));
     }
   }
 
+  function drawKpis() {
+    const el = document.getElementById('jb-kpis');
+    if (!el) return;
+    const open     = _rows.filter(j => IN_FLIGHT.includes(j.status)).length;
+    const overdue  = _rows.filter(isOverdue).length;
+    const awaiting = _rows.filter(j => j.status === 'completed').length;
+    const verified = _rows.filter(j => j.status === 'verified').length;
+    el.innerHTML = OpsModal.kpiStrip([
+      { label: 'Open', value: open, sub: open ? 'In flight' : 'None' },
+      { label: 'Overdue', value: overdue, sub: overdue ? 'Past SLA' : 'On track', subClass: overdue ? 'err' : 'ok' },
+      { label: 'Awaiting verification', value: awaiting, sub: awaiting ? 'Needs review' : 'Clear', subClass: awaiting ? 'warn' : 'ok' },
+      { label: 'Verified', value: verified, sub: 'Signed off', subClass: 'ok' },
+    ]);
+  }
+
   function draw() {
     const body = document.getElementById('jb-body');
     if (!body) return;
     let rows = _rows.slice();
-    if (BUCKET[_filter]) rows = rows.filter(j => BUCKET[_filter].includes(j.status));
+    if (_filter === 'overdue') rows = rows.filter(isOverdue);
+    else if (BUCKET[_filter]) rows = rows.filter(j => BUCKET[_filter].includes(j.status));
     if (_term) rows = rows.filter(j => `${j.reference||''} ${j.title||''} ${j.property_name||''} ${j.provider_name||''} ${j.job_type||''}`.toLowerCase().includes(_term));
     if (!rows.length) {
       body.innerHTML = OpsModal.emptyState('', 'No jobs here yet',
