@@ -1333,6 +1333,7 @@
           <button class="tnav-link" id="nav-support" onclick="switchTab('support')">Support<span class="nav-badge" id="nav-badge-support" style="display:none;">0</span></button>
           <button class="tnav-link" id="nav-teams" onclick="switchTab('teams')">Teams</button>
           <button class="tnav-link" id="nav-team-members" onclick="switchTab('team-members')">Team Members</button>
+          <button class="tnav-link" id="nav-providers" onclick="switchTab('providers')">Service Providers<span class="nav-badge" id="nav-badge-providers" style="display:none;">0</span></button>
         </div>
       </div>
       <button class="tnav-item" id="nav-sensors" onclick="switchTab('sensors')"><svg class="tnav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>Devices</button>
@@ -1382,6 +1383,7 @@
       <div id="content-dashboard"    class="tab-content active"></div>
       <div id="content-situation"    class="tab-content"></div>
       <div id="content-clients"      class="tab-content"></div>
+      <div id="content-providers"    class="tab-content"></div>
       <div id="content-properties"   class="tab-content"></div>
       <div id="content-assets"       class="tab-content"></div>
       <div id="content-network"      class="tab-content"></div>
@@ -1430,6 +1432,7 @@
 <script src="js/ops-situation.js?v=sec4"></script>
 <script src="js/ops-user-management.js?v=sec13"></script>
 <script src="js/ops-clients.js?v=sec13"></script>
+<script src="js/ops-service-providers.js?v=sec1"></script>
 <script src="js/ops-properties.js?v=sec17"></script>
   <script src="js/ops-assets.js?v=sec13"></script>
   <script src="js/ops-network.js?v=sec13"></script>
@@ -1468,6 +1471,7 @@
     dashboard:        { module:'Dashboard',    title:'Operations Overview'         },
     situation:        { module:'Operations',   title:'Situation'                   },
     clients:          { module:'Clients',      title:'Client Accounts'             },
+    providers:        { module:'Providers',    title:'Service Providers'           },
     properties:       { module:'Properties',   title:'Asset Registry'              },
     assets:           { module:'Operations',   title:'Drainage Assets'             },
     network:          { module:'Operations',   title:'Property Network'            },
@@ -1829,6 +1833,7 @@
       dashboard:        () => typeof OpsDashboard      !== 'undefined' ? OpsDashboard      : null,
       situation:        () => typeof OpsSituation      !== 'undefined' ? OpsSituation      : null,
       clients:          () => typeof OpsClients        !== 'undefined' ? OpsClients        : null,
+      providers:        () => typeof OpsProviders      !== 'undefined' ? OpsProviders      : null,
       properties:       () => typeof OpsProperties     !== 'undefined' ? OpsProperties     : null,
       assets:           () => typeof OpsAssets         !== 'undefined' ? OpsAssets         : null,
       network:          () => typeof OpsNetwork        !== 'undefined' ? OpsNetwork        : null,
