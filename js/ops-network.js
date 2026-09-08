@@ -450,8 +450,12 @@ const OpsNetwork = (function () {
   // Jump to the Sentinel Devices module and open this device's full drawer.
   function openInDevices(id) {
     try {
-      if (typeof switchTab === 'function') switchTab('devices');
-      setTimeout(() => { if (window.OpsSensors && OpsSensors.viewSensor) OpsSensors.viewSensor(id); }, 350);
+      closeDrawer();
+      // fgOpen switches to the Devices (key: 'sensors') tab, waits for it to
+      // render (so its styles are injected) and opens the sensor drawer.
+      if (typeof fgOpen === 'function') { fgOpen('sensors', id); return; }
+      if (typeof switchTab === 'function') switchTab('sensors');
+      setTimeout(() => { if (window.OpsSensors && OpsSensors.viewSensor) OpsSensors.viewSensor(id); }, 400);
     } catch (_) {}
   }
 

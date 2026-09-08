@@ -471,6 +471,22 @@ const OpsModal = (function () {
     info:     'var(--blue,#0891b2)',
   };
 
+  const TOAST_ICONS = {
+    nominal:  '<circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/>',
+    success:  '<circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/>',
+    watch:    '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+    warning:  '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+    critical: '<circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/>',
+    error:    '<circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/>',
+    info:     '<circle cx="12" cy="12" r="10"/><path d="M12 11v5M12 8h.01"/>',
+  };
+  (function injectToastCSS(){
+    if (typeof document === 'undefined' || document.getElementById('fg-toast-css')) return;
+    const s = document.createElement('style'); s.id = 'fg-toast-css';
+    s.textContent = '@keyframes fgToastPop{0%{transform:scale(.3) rotate(-12deg);opacity:0}55%{transform:scale(1.18) rotate(3deg);opacity:1}100%{transform:scale(1) rotate(0);opacity:1}}@media(prefers-reduced-motion:reduce){.fg-toast-ic svg{animation:none!important}}';
+    document.head.appendChild(s);
+  })();
+
   function toast(msg, type = 'nominal') {
     document.querySelectorAll('.fg-toast').forEach(t => t.remove());
 
@@ -494,11 +510,14 @@ const OpsModal = (function () {
 
     // built with DOM APIs, not innerHTML: a malicious API error message
     // must not be able to inject markup here.
-    const dot = document.createElement('div');
-    dot.style.cssText = `width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;`;
+    const ic = document.createElement('div');
+    ic.className = 'fg-toast-ic';
+    ic.style.cssText = `width:19px;height:19px;flex-shrink:0;color:${color};display:grid;place-items:center;`;
+    // trusted, built-in glyph markup (not user data) — safe to set as innerHTML
+    ic.innerHTML = `<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:fgToastPop .42s cubic-bezier(.2,.9,.3,1.35) both">${TOAST_ICONS[type] || TOAST_ICONS.info}</svg>`;
     const span = document.createElement('span');
     span.textContent = String(msg == null ? '' : msg);
-    el.appendChild(dot);
+    el.appendChild(ic);
     el.appendChild(span);
 
     document.body.appendChild(el);
