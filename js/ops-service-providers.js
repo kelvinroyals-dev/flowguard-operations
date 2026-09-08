@@ -117,10 +117,11 @@ const OpsProviders = (function () {
 
   async function openDetail(id) {
     if (_container) _container.innerHTML = EXTRA + `<div style="padding:40px;text-align:center;color:var(--ink-3)">Loading…</div>`;
-    let o;
+    let o, assigns = [];
     try { const res = await OpsModal.apiGet('/service-providers/' + id); o = res && res.data; }
     catch (err) { OpsModal.toast("Couldn't load provider: " + (err.message||''), 'error'); back(); return; }
     if (!o) { back(); return; }
+    try { assigns = (await OpsModal.apiGet('/service-providers/' + id + '/properties')).data || []; } catch (_) {}
     const F = OpsModal.fact;
     const services = Array.isArray(o.service_types) ? o.service_types.join(', ') : '';
     const members = (o.members || []).map(m => `${esc(m.full_name||m.email)} <span style="color:var(--ink-3)">(${esc(m.sp_role||'member')})</span>`).join('<br>') || '—';
@@ -136,6 +137,18 @@ const OpsProviders = (function () {
       ${o.status==='rejected' ? F('Rejection', esc(REJECT_REASONS[o.reject_reason]||o.reject_reason||'—') + (o.reject_note?(' — '+esc(o.reject_note)):'')) : ''}
     </div>`;
 
+    // Assigned properties (tenancy). Assign is only meaningful once active.
+    const canAssign = o.status === 'active';
+    const propRows = assigns.length
+      ? `<div class="lv-scroll"><table class="lv-table"><thead><tr><th>Property</th><th>Location</th><th>Assigned</th><th></th></tr></thead><tbody>
+          ${assigns.map(p => `<tr><td>${OpsModal.link('properties', p.property_id, p.property_name || p.property_id)}</td>
+            <td>${esc([p.city, p.state].filter(Boolean).join(', ') || '—')}</td>
+            <td class="lv-mono">${fmtDate(p.assigned_at)}</td>
+            <td style="text-align:right">${canAssign ? `<button class="btn-ghost" style="padding:4px 10px" onclick="OpsProviders._unassign(${o.id},'${OpsModal.sid(p.property_id)}')">Remove</button>` : ''}</td></tr>`).join('')}
+        </tbody></table></div>`
+      : `<div style="color:var(--ink-3);font-size:var(--fs-sm)">No properties assigned yet. Dispatching a job also assigns its property automatically.</div>`;
+    const propsBody = (canAssign ? `<div style="margin-bottom:12px"><button class="btn-ghost" onclick="OpsProviders._assignForm(${o.id})">+ Assign property</button></div>` : '') + propRows;
+
     let actions = '';
     if (o.status !== 'active') actions += `<button class="btn-ghost" onclick="OpsProviders._rejectForm(${o.id})">Reject</button> <button class="btn-primary" onclick="OpsProviders._approve(${o.id})">Approve</button>`;
 
@@ -143,11 +156,12 @@ const OpsProviders = (function () {
     _container.innerHTML = EXTRA + OpsModal.detailShell({
       back: 'OpsProviders.back()', crumbRoot: 'Service Providers', title: esc(dash(o.name)),
       chips: [{ cls: st[0], label: st[1], dot: true }],
-      meta: [['Members ', String(o.member_count || (o.members||[]).length || 1)]],
+      meta: [['Members ', String(o.member_count || (o.members||[]).length || 1)], ['Properties ', String(assigns.length)]],
       actions,
       sections: [
-        { id:'details', title:'Organisation', body: detailsBody },
-        { id:'members', title:'Members', body: `<div class="spo-members">${members}</div>` },
+        { id:'details',    title:'Organisation', body: detailsBody },
+        { id:'members',    title:'Members', body: `<div class="spo-members">${members}</div>` },
+        { id:'properties', title:'Assigned properties', body: propsBody },
       ],
     });
   }
@@ -176,6 +190,32 @@ const OpsProviders = (function () {
     finally { OpsModal.setLoading('spo-rej-submit', false); }
   }
 
-  return { render, back, search, filter, openDetail, _approve, _rejectForm, _doReject };
+  // ── property assignment ────────────────────────────────────────────────
+  async function _assignForm(id) {
+    let props = [];
+    try { props = (await OpsModal.apiGet('/properties/all')).data || []; } catch (_) {}
+    if (!props.length) { OpsModal.toast('No properties available', 'warning'); return; }
+    const opts = props.map(p => ({ value: p.property_id, label: (p.property_name || p.property_id) + (p.city ? (' · ' + p.city) : '') }));
+    OpsModal.open('Assign property', OpsModal.field('Property', 'property_id', 'select', '', { options: opts }), [
+      { label:'Cancel', class:'btn-ghost', onclick:`OpsProviders.openDetail('${id}')` },
+      { label:'Assign', class:'btn-primary', onclick:`OpsProviders._doAssign(${id})`, id:'spo-asg-submit' },
+    ]);
+  }
+  async function _doAssign(id) {
+    const d = OpsModal.getFormData();
+    if (!d.property_id) { OpsModal.toast('Pick a property', 'warning'); return; }
+    OpsModal.setLoading('spo-asg-submit', true);
+    try { await OpsModal.apiPost('/service-providers/' + id + '/properties', { property_id: d.property_id }); OpsModal.toast('Property assigned', 'nominal'); OpsModal.close(); openDetail(id); }
+    catch (err) { OpsModal.toast(err.message || 'Failed to assign', 'error'); }
+    finally { OpsModal.setLoading('spo-asg-submit', false); }
+  }
+  function _unassign(id, propertyId) {
+    OpsModal.confirm('Remove this property from the provider?', async () => {
+      try { await OpsModal.apiDelete('/service-providers/' + id + '/properties/' + encodeURIComponent(propertyId)); OpsModal.toast('Property removed', 'nominal'); openDetail(id); }
+      catch (err) { OpsModal.toast(err.message || 'Failed to remove', 'error'); }
+    });
+  }
+
+  return { render, back, search, filter, openDetail, _approve, _rejectForm, _doReject, _assignForm, _doAssign, _unassign };
 })();
 window.OpsProviders = OpsProviders;
