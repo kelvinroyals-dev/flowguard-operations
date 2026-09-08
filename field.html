@@ -213,6 +213,15 @@
     .form-msg { display:none; margin-top:13px; padding:13px 15px; border-radius:12px; font-size:.84rem; line-height:1.5; }
     .form-msg.error   { display:block; background:rgba(239,68,68,.12); color:#fca5a5; border:1px solid rgba(239,68,68,.25); }
     .form-msg.success { display:block; background:rgba(22,168,211,.10); color:var(--blue-hi); border:1px solid rgba(22,168,211,.25); }
+    /* inline message icons (login, forgot-password, workflow) */
+    .form-msg.error, .form-msg.success, .sh-msg.error, .sh-msg.success { display:flex; align-items:center; gap:8px; }
+    .form-msg.error::before, .sh-msg.error::before, .form-msg.success::before, .sh-msg.success::before {
+      content:''; flex:0 0 16px; width:16px; height:16px; background-repeat:no-repeat; background-position:center; background-size:16px;
+      animation: fmIcon .4s cubic-bezier(.2,.9,.3,1.35) both; }
+    .form-msg.error::before, .sh-msg.error::before { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23dc2626' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'/%3E%3Cpath d='M12 9v4M12 17h.01'/%3E%3C/svg%3E"); }
+    .form-msg.success::before, .sh-msg.success::before { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2316a34a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M7.5 12.5l3 3 6-6.5'/%3E%3C/svg%3E"); }
+    @keyframes fmIcon { 0%{transform:scale(.4) rotate(-10deg);opacity:0} 55%{transform:scale(1.15);opacity:1} 100%{transform:scale(1);opacity:1} }
+    @media (prefers-reduced-motion:reduce){ .form-msg.error::before,.form-msg.success::before,.sh-msg.error::before,.sh-msg.success::before{animation:none} }
 
     .forgot-link {
       display:block; text-align:center; margin-top:18px;
@@ -1887,7 +1896,6 @@ async function doLogin() {
     localStorage.setItem(CONFIG.TOKEN_KEY,d.data.token);
     S.token=d.data.token;
     S.user={id:d.data.user.id,email:d.data.user.email,fullName:d.data.user.fullName,role:d.data.user.role};
-    btxt.innerHTML='✓ &nbsp;Access granted'; loginMsg('Authenticated. Loading your assignment…','success');
     setTimeout(initDashboard,700);
   } catch { btn.disabled=false; btxt.textContent='Sign in'; loginMsg('Connection failed. Check your network and retry.','error'); }
 }

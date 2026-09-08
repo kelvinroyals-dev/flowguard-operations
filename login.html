@@ -212,7 +212,7 @@
     const btxt = btn.querySelector('.btn-text');
     if (!email || !password) { showMsg('Please enter your email and password.', 'error'); return; }
     btn.disabled = true;
-    btxt.innerHTML = '<span class="spinner"></span>Authenticating…';
+    btxt.innerHTML = '<span class="spinner"></span>Signing in…';
     try {
       const r = await fetch('https://api.flowguard.ng/api/v1/auth/login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -236,8 +236,6 @@
         store.setItem('token', d.data.token);
         store.setItem('user', JSON.stringify(d.data.user));
         if (!remember) { localStorage.removeItem('token'); localStorage.removeItem('user'); }
-        btxt.innerHTML = '✓ &nbsp;Access granted';
-        showMsg('Authenticated. Loading your workspace…', 'success');
         const dest = String(d.data.user.role || '').trim().toLowerCase().replace(/[\s-]+/g, '_') === 'field_team' ? 'field.html' : 'index.html';
         setTimeout(() => window.location.href = dest, 800);
       } else {
