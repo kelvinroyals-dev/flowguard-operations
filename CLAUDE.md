@@ -24,3 +24,17 @@ This is the **Operations Portal** (internal staff dashboard) for FlowGuard, a dr
 - **`field.html` + `field-sw.js` + `manifest.json`** form a separate installable PWA scoped to `/field.html`, for field crews doing incident response — independent of the `ops-*.js` dashboard modules and not gated by the same nav system.
 - **Backend**: `https://api.flowguard.ng/api/v1`, not in this repo.
 - **CSP**: `_headers` locks `script-src`/`style-src`/`connect-src` down to self plus a small allowlist (unpkg, Google Fonts, api.flowguard.ng, CARTO/OSM map tiles). New third-party scripts or API hosts need a `_headers` update or they'll be silently blocked in production.
+
+## UI / module design convention (MANDATORY — do not deviate)
+
+Every new `ops-*.js` tab MUST reuse the established list/detail chrome. Benchmark against a mature core module — **`ops-maintenance.js`** is the canonical reference — NOT against whatever module happens to be most recent. (Getting this wrong once: the first Service Providers + Jobs modules used bespoke pill-chips, a solid-fill action button, and a bare empty box, and looked nothing like the rest of the app.)
+
+A list view has, in this order:
+1. A header row: `<h2>` title (`--fs-xl`, weight 700) + a one-line `<span>` subtitle (`--fs-xs`, `--ink-3`). Any primary action is a **ghost/outlined** button on the right (border `--blue-dim`, background `--neon-trace`, text `--blue-hi`, fills on hover) — never a solid-fill button.
+2. A single bordered panel: `.lv-wrap` containing `.lv-toolbar` → `.lv-search` (magnifier icon + input) on the left and `.lv-toolbar-right` → `select.um-filter` on the right. Filters are a **dropdown**, not free-floating chips.
+3. A `.lv-scroll` > `table.lv-table` with UPPERCASE column headers and `tr.clickable` rows. Status is a `.lv-status` pill (`.ok` / `.warn` / `.danger` / `.neutral`). Priority uses the inline colored-token span pattern from `ops-maintenance.js`.
+4. Empty states via `OpsModal.emptyState(icon, title, sub)`.
+
+Detail views use the shared **`OpsModal.detailShell({...})`** (fgd-* layout) with `OpsModal.fact()` rows and `.lv-status`/`fgd-chip` pills — the same shell Properties/Clients/Assets/Reports/Teams use. Do not build a one-off detail card.
+
+Always use design tokens, never literals: type scale `--fs-2xs … --fs-xl`, colors `--ink/-2/-3/-4`, `--surface/-2/-3`, `--border`, semantic `--ok/--warn/--caut/--err`, `--blue-hi/--blue-dim`, fonts `--ff-b/--ff-d/--ff-m`. These are defined for both light and dark `:root`, so using them gives correct theming for free. Reuse `OpsModal` helpers (`field`, `row`, `getFormData`, `link`, `sid`, `kpiStrip`, `toast`, `confirm`) rather than re-implementing form inputs, links, or toasts.
