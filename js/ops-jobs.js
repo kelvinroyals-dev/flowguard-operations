@@ -224,6 +224,17 @@ const OpsJobs = (function () {
     if (j.status === 'completed') actions += `<button class="btn-ghost" onclick="OpsJobs._rejectForm(${j.id})">Return for rework</button> <button class="btn-primary" onclick="OpsJobs._verify(${j.id})">Verify</button>`;
     if (!['verified','cancelled'].includes(j.status)) actions += ` <button class="btn-danger" onclick="OpsJobs._cancel(${j.id})">Cancel</button>`;
 
+    let comments = [];
+    try { comments = (await OpsModal.apiGet('/jobs/' + id + '/comments')).data || []; } catch (_) {}
+    const cBody = (comments.length
+      ? comments.map(c => { const mine = c.author_type === 'internal';
+          return `<div style="margin:8px 0;display:flex;flex-direction:column;${mine?'align-items:flex-end':'align-items:flex-start'}">
+            <div style="max-width:80%;background:${mine?'var(--blue-soft,var(--surface-2))':'var(--surface-2)'};padding:8px 12px;border-radius:12px;font-size:13px;color:var(--ink)">${esc(c.body)}</div>
+            <div class="jb-tl-d" style="margin-top:3px">${esc(c.author_name||(mine?'FlowGuard':'Provider'))} · ${fmtDT(c.created_at)}</div></div>`; }).join('')
+      : '<div class="jb-tl-d">No messages yet.</div>')
+      + `<div class="jf" style="margin-top:12px"><textarea id="jb-cmt" rows="2" placeholder="Message the provider about this job…"></textarea></div>
+         <div style="text-align:right"><button class="btn-primary" onclick="OpsJobs._postComment(${j.id})">Send</button></div>`;
+
     const st = STATUS[j.status] || STATUS.draft;
     _container.innerHTML = EXTRA + OpsModal.detailShell({
       back: 'OpsJobs.back()', crumbRoot: 'Field Jobs', title: esc(dash(j.title)),
@@ -233,9 +244,18 @@ const OpsJobs = (function () {
       sections: [
         { id:'details',  title:'Job details', body: detailsBody },
         { id:'evidence', title:'Evidence',    body: evidenceBody },
+        { id:'messages', title:'Messages',    body: cBody },
         { id:'activity', title:'Activity',    body: tlBody },
       ],
     });
+  }
+  async function _postComment(id) {
+    const el = document.getElementById('jb-cmt'); const body = el ? el.value.trim() : '';
+    if (!body) { OpsModal.toast('Type a message first', 'warning'); return; }
+    try {
+      const res = await OpsModal.apiPost('/jobs/' + id + '/comments', { body });
+      if (res && res.success) { openJob(id); } else OpsModal.toast((res && res.error) || 'Failed to send', 'error');
+    } catch (err) { OpsModal.toast('Failed to send: ' + (err.message||''), 'error'); }
   }
 
   // ── CREATE ─────────────────────────────────────────────────────────────
@@ -343,6 +363,6 @@ const OpsJobs = (function () {
     finally { OpsModal.setLoading('jb-can-submit', false); }
   }
 
-  return { render, back, search, filter, openJob, newJob, submitNewJob, _dispatchForm, _doDispatch, _verify, _rejectForm, _doReject, _cancel, _doCancel };
+  return { render, back, search, filter, openJob, newJob, submitNewJob, _dispatchForm, _doDispatch, _verify, _rejectForm, _doReject, _cancel, _doCancel, _postComment };
 })();
 window.OpsJobs = OpsJobs;
