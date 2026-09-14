@@ -15,6 +15,7 @@ const OpsSensors = (function () {
 
   let _all = [];
   let _filter = 'all';
+  let _tag = '';
   let _q = '';
   let _pg = null;
   let _container = null;
@@ -277,7 +278,13 @@ const OpsSensors = (function () {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
         <input placeholder="Search Sentinels…" value="${_q.replace(/"/g, '&quot;')}" oninput="OpsSensors.setQuery(this.value)">
       </div>
-      <div class="lv-toolbar-right"><select class="um-filter" onchange="OpsSensors.setFilter(this.value)">${chips.map(([k, l]) =>
+      <div class="lv-toolbar-right">
+        ${(() => { const tags = [...new Set(_all.flatMap(s => s.tags || []))].sort();
+          return tags.length ? `<select class="um-filter" onchange="OpsSensors.setTag(this.value)">
+            <option value="">All tags</option>
+            ${tags.map(t => `<option value="${esc(t)}" ${_tag === t ? 'selected' : ''}>#${esc(t)}</option>`).join('')}
+          </select>` : ''; })()}
+        <select class="um-filter" onchange="OpsSensors.setFilter(this.value)">${chips.map(([k, l]) =>
         `<option value="${k}" ${_filter === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`;
 
     let rows = _all.map((x, i) => ({ x, tier: tiers[i] }));
@@ -287,6 +294,7 @@ const OpsSensors = (function () {
     else if (_filter === 'dataissue') rows = rows.filter(r => r.x.data_trust === false && (r.x.device_state === 'online' || r.x.device_state === 'degraded'));
     else if (_filter === 'lowbatt') rows = rows.filter(r => r.x.battery_percent != null && r.x.battery_percent < 20);
     else if (_filter === 'unassigned') rows = rows.filter(r => !r.x.assets || !r.x.assets.length);
+    if (_tag) rows = rows.filter(r => (r.x.tags || []).includes(_tag));
     if (_q) {
       const q = _q.toLowerCase();
       rows = rows.filter(r => `${r.x.name || ''} ${r.x.sensor_id || ''} ${propertyOf(r.x)}`.toLowerCase().includes(q));
@@ -318,11 +326,39 @@ const OpsSensors = (function () {
     bar.style.display = 'flex';
     bar.innerHTML = `
       <span class="sn-bulk-count">${_selected.size} selected</span>
-      ${canMng() ? `<button class="btn-ghost" onclick="OpsSensors.bulkCommand('firmware_update')">Push firmware</button>
+      ${canMng() ? `<button class="btn-ghost" onclick="OpsSensors.bulkTag()">Tag…</button>
+      <button class="btn-ghost" onclick="OpsSensors.bulkCommand('firmware_update')">Push firmware</button>
       <button class="btn-ghost" onclick="OpsSensors.bulkCommand('reset')">Remote reset</button>
       <button class="btn-ghost" onclick="OpsSensors.bulkCommand('recalibrate')">Request recalibration</button>` : ''}
       <button class="sn-bulk-clear" onclick="OpsSensors.clearSelection()">Clear</button>
     `;
+  }
+
+  // Bulk add/remove a tag across the selected Sentinels.
+  function bulkTag() {
+    if (!_selected.size) return;
+    const n = _selected.size;
+    OpsModal.open(`Tag ${n} Sentinel${n > 1 ? 's' : ''}`, `
+      <p style="margin:0 0 12px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">Add or remove a group tag across the ${n} selected node${n > 1 ? 's' : ''} (e.g. <code>lekki</code>, <code>ring-pilot</code>, <code>hw-v2</code>).</p>
+      ${OpsModal.field('Add tag', 'add', 'text', '', { required: false, placeholder: 'tag to add' })}
+      ${OpsModal.field('Remove tag', 'remove', 'text', '', { required: false, placeholder: 'tag to remove' })}
+    `, [
+      { label: 'Cancel', onclick: 'OpsModal.close()' },
+      { label: `Apply to ${n}`, class: 'btn-primary', onclick: 'OpsSensors.confirmBulkTag()' },
+    ]);
+  }
+  async function confirmBulkTag() {
+    const f = OpsModal.getFormData();
+    if (!f.add && !f.remove) { OpsModal.toast('Enter a tag to add or remove.', 'warning'); return; }
+    OpsModal.setLoading(true);
+    try {
+      const r = await OpsModal.apiPost('/monitoring/sensors/tags/bulk', {
+        sensor_ids: Array.from(_selected), add: f.add ? [f.add] : [], remove: f.remove ? [f.remove] : [] });
+      OpsModal.close();
+      OpsModal.toast(`Tags updated on ${(r.data && r.data.updated) || _selected.size} node(s).`, 'success');
+      _selected.clear();
+      await load();
+    } catch (err) { OpsModal.setLoading(false); OpsModal.toast(err.message || 'Failed to update tags', 'error'); }
   }
 
   function toggleSelect(id, checked) {
@@ -446,7 +482,32 @@ const OpsSensors = (function () {
   }
 
   function setFilter(f) { _filter = f; draw(); }
+  function setTag(t) { _tag = t; draw(); }
   function setQuery(q) { _q = q; draw(); }
+
+  // Per-device tag editor (comma-separated).
+  function editTags(sensorId) {
+    const x = _all.find(s => s.sensor_id === sensorId) || {};
+    OpsModal.open(`Manage tags — ${esc(x.name || sensorId)}`, `
+      <p style="margin:0 0 10px;font-size:var(--fs-sm);color:var(--ink-3)">Comma-separated group tags — used for filtering and bulk actions (e.g. <code>lekki, ring-pilot, hw-v2</code>).</p>
+      ${OpsModal.field('Tags', 'tags', 'text', (x.tags || []).join(', '), { required: false, placeholder: 'lekki, ring-pilot, hw-v2' })}
+    `, [
+      { label: 'Cancel', onclick: 'OpsModal.close()' },
+      { label: 'Save', class: 'btn-primary', onclick: `OpsSensors.saveTags('${__sid(sensorId)}')` },
+    ]);
+  }
+  async function saveTags(sensorId) {
+    const f = OpsModal.getFormData();
+    const tags = (f.tags || '').split(',').map(s => s.trim()).filter(Boolean);
+    OpsModal.setLoading(true);
+    try {
+      await OpsModal.apiPut(`/monitoring/sensors/${sensorId}/tags`, { tags });
+      OpsModal.close();
+      OpsModal.toast('Tags updated.', 'success');
+      await load();
+      if (_drawerId === sensorId) renderDrawer();
+    } catch (err) { OpsModal.setLoading(false); OpsModal.toast(err.message || 'Failed to update tags', 'error'); }
+  }
 
   // ══════════════════════════════════════════════════════════════
   //  RIGHT-SIDE DETAIL DRAWER — matches the Figma slide-over exactly:
@@ -515,6 +576,7 @@ const OpsSensors = (function () {
               <span class="sep">·</span>
               <span class="sn-tok ${online ? 'ok' : 'err'}">${connLabel}</span>
             </div>
+            ${(x.tags && x.tags.length) ? `<div style="margin-top:7px;display:flex;flex-wrap:wrap;gap:5px">${x.tags.map(t => `<span style="font-size:var(--fs-2xs);font-weight:600;color:var(--blue-hi);background:var(--neon-trace);border:1px solid var(--blue-dim);padding:2px 8px;border-radius:20px">#${esc(t)}</span>`).join('')}</div>` : ''}
           </div>
           <div class="sn-head-actions">
             <button class="sn-icon-btn" title="Send command" onclick="OpsSensors.queueCommand('${sid}')" aria-label="Commands">
@@ -580,6 +642,10 @@ const OpsSensors = (function () {
             <button class="sn-act-row" onclick="OpsSensors.coverage('${sid}')">
               <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
               Manage Coverage
+            </button>
+            <button class="sn-act-row" onclick="OpsSensors.editTags('${sid}')">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M3 5v6.586a1 1 0 00.293.707l8.414 8.414a1 1 0 001.414 0l5.586-5.586a1 1 0 000-1.414L10.707 5.293A1 1 0 0010 5H4a1 1 0 00-1 1z"/></svg>
+              Manage Tags
             </button>
             <button class="sn-act-row danger" onclick="OpsSensors.decommission('${sid}')">
               <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9.5 4L10 3h4l.5 1M4 7h16"/></svg>
@@ -1195,7 +1261,8 @@ const OpsSensors = (function () {
   }
 
   return {
-    render, setFilter, setQuery,
+    render, setFilter, setTag, setQuery,
+    editTags, saveTags, bulkTag, confirmBulkTag,
     viewSensor, closeDrawer, decommission, openFull, back, queueCommand, drawerTab,
     getSensor: (id) => _all.find(s => s.sensor_id === id),
     loadAll: async () => { try { const r = await OpsModal.apiGet('/monitoring/sensors/all'); _all = r.data || []; } catch (_) {} return _all; },
