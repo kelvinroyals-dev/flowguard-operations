@@ -220,6 +220,20 @@ const OpsSensors = (function () {
     return best;
   }
 
+  // Three-state trust model (server-computed): Device alive? · Sensor data
+  // trustworthy? · what's actually in the drain (UNKNOWN when data isn't trusted).
+  function stateCards(x) {
+    const col = { ok:'var(--ok)', warn:'var(--warn)', err:'var(--err)', muted:'var(--ink-4)' };
+    const DS = { online:['ok','Online'], degraded:['warn','Degraded'], offline:['err','Offline'], maintenance:['muted','Maintenance'] };
+    const SS = { ok:['ok','Trusted'], stale:['warn','Stale'], frozen:['warn','Frozen'], implausible:['err','Implausible'], unknown:['muted','Unknown'] };
+    const IS = { normal:['ok','Normal'], elevated:['warn','Elevated'], high:['err','High'], critical:['err','Critical'], unknown:['warn','Unknown'] };
+    const pill = (m, mark) => `<span style="display:inline-flex;align-items:center;gap:5px;font-weight:700;color:${col[m[0]]}"><span style="width:7px;height:7px;border-radius:50%;background:${col[m[0]]}"></span>${mark||''}${m[1]}</span>`;
+    const c = (k, inner, reason) => `<div class="sn-card"><div class="sn-card-k">${k}</div><div class="sn-card-v" style="font-size:var(--fs-sm)">${inner}</div>${reason ? `<div style="font-size:var(--fs-2xs);color:var(--ink-4);margin-top:3px">${esc(reason)}</div>` : ''}</div>`;
+    return c('Device', pill(DS[x.device_state] || DS.offline), x.device_reason)
+         + c('Sensor data', pill(SS[x.sensor_state] || SS.unknown), x.sensor_reason)
+         + c('Drainage', pill(IS[x.infrastructure_state] || IS.unknown, x.infrastructure_state === 'unknown' ? '⚠ ' : ''), x.infra_reason);
+  }
+
   function draw() { drawList(); }
 
   function drawList() {
@@ -244,6 +258,8 @@ const OpsSensors = (function () {
     const battKnown = _all.some(x => x.battery_percent != null);
     const lowBatt = _all.filter(x => x.battery_percent != null && x.battery_percent < 20).length;
     const unassigned = _all.filter(x => !x.assets || !x.assets.length).length;
+    // "alive but lying" — device reachable, data not trustworthy (stale/frozen/implausible)
+    const dataIssues = _all.filter(x => x.data_trust === false && (x.device_state === 'online' || x.device_state === 'degraded')).length;
 
     if (sub) sub.textContent = `${total} nodes · ${commonFw ? 'firmware ' + commonFw + ' · ' : ''}fleet management`;
 
@@ -252,6 +268,7 @@ const OpsSensors = (function () {
     const chips = [
       ['all', `All (${total})`], ['healthy', `Healthy (${healthy})`],
       ['degraded', `Degraded (${degraded})`], ['offline', `Offline (${offline})`],
+      ['dataissue', `Data issues (${dataIssues})`],
       ['lowbatt', `Low battery (${battKnown ? lowBatt : 0})`],
       ['unassigned', `Unassigned (${unassigned})`],
     ];
@@ -267,6 +284,7 @@ const OpsSensors = (function () {
     if (_filter === 'healthy') rows = rows.filter(r => r.tier === 'healthy');
     else if (_filter === 'degraded') rows = rows.filter(r => r.tier === 'degraded');
     else if (_filter === 'offline') rows = rows.filter(r => r.tier === 'offline');
+    else if (_filter === 'dataissue') rows = rows.filter(r => r.x.data_trust === false && (r.x.device_state === 'online' || r.x.device_state === 'degraded'));
     else if (_filter === 'lowbatt') rows = rows.filter(r => r.x.battery_percent != null && r.x.battery_percent < 20);
     else if (_filter === 'unassigned') rows = rows.filter(r => !r.x.assets || !r.x.assets.length);
     if (_q) {
@@ -531,6 +549,8 @@ const OpsSensors = (function () {
           </div>
 
           <div class="sn-tabpanel" data-panel="telemetry">
+            <div class="sn-sec-h">State</div>
+            <div class="sn-cards">${stateCards(x)}</div>
             ${readings ? `<div class="sn-sec-h">Readings</div><div class="sn-cards">${readings}</div>` : ''}
             <div class="sn-sec-h">Device</div>
             <div class="sn-cards">${device}</div>
@@ -922,6 +942,43 @@ const OpsSensors = (function () {
       if (_drawerId === sensorId) renderDrawer();
     } catch (err) {
       OpsModal.setLoading(false);
+      // Command-safety block from the server (sole node on a high-water channel)
+      if (/only node reporting/i.test(err.message || '')) {
+        return safetyOverride(sensorId, type,
+          type === 'firmware_update' ? { firmware_version: f.firmware_version } : null,
+          f.note || '', err.message);
+      }
+      OpsModal.toast(err.message || 'Failed to queue command', 'error');
+    }
+  }
+
+  // Server refused a disruptive command because it's the only trusted node on a
+  // channel at high water. Force an explicit, logged override with a reason.
+  let _ovrPayload = null;
+  function safetyOverride(sensorId, type, payload, note, reasonMsg) {
+    _ovrPayload = payload;
+    OpsModal.open('⚠ Safety check', `
+      <p style="margin:0 0 12px;color:var(--err);font-weight:600;line-height:1.5">${esc(reasonMsg)}</p>
+      <p style="margin:0 0 12px;font-size:var(--fs-sm);color:var(--ink-3)">Proceed only if you're certain another crew/node has eyes on this channel. This is recorded as a safety override against your name.</p>
+      ${OpsModal.field('Reason to override', 'ovr', 'textarea', note, { required: true, placeholder: 'Why this must proceed now' })}
+    `, [
+      { label: 'Cancel', onclick: 'OpsModal.close()' },
+      { label: 'Override & queue', class: 'btn-danger', onclick: `OpsSensors._doOverride('${__sid(sensorId)}','${type}')` },
+    ]);
+  }
+  async function _doOverride(sensorId, type) {
+    const f = OpsModal.getFormData();
+    if (!f.ovr || !f.ovr.trim()) { OpsModal.toast('A reason is required to override.', 'warning'); return; }
+    OpsModal.setLoading(true);
+    try {
+      await OpsModal.apiPost(`/monitoring/sensors/${sensorId}/commands`, {
+        command_type: type, payload: _ovrPayload || null, note: f.ovr.trim(), override: true });
+      OpsModal.close();
+      OpsModal.toast('Command queued — safety override logged.', 'success');
+      await load();
+      if (_drawerId === sensorId) renderDrawer();
+    } catch (err) {
+      OpsModal.setLoading(false);
       OpsModal.toast(err.message || 'Failed to queue command', 'error');
     }
   }
@@ -1148,6 +1205,7 @@ const OpsSensors = (function () {
     coverage, saveCoverage, history, calibrate, confirmCalibrate, openAsset,
     toggleSelect, toggleSelectAll, clearSelection, bulkCommand, confirmBulkCommand,
     sendCommand, _toggleFwField, confirmSendCommand, commandHistory, cancelCommand,
+    _doOverride,
   };
 })();
 // Expose on window so other modules (e.g. Network) can reach it — a top-level
