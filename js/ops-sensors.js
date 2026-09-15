@@ -148,11 +148,14 @@ const OpsSensors = (function () {
 
   function shellHTML() {
     return `
-      <div class="fg-page-header">
+      <div class="fg-page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
         <div>
           <div class="fg-page-title">Sentinel Devices</div>
           <div class="fg-page-sub" id="sn-page-sub">Fleet management</div>
         </div>
+        <button class="btn-ghost" onclick="OpsSensors.protectionWindows()" title="Pause reboots/firmware during storms or incidents">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:6px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Maintenance windows
+        </button>
       </div>
       <div id="sn-kpis"></div>
       <div id="sn-note-slot"></div>
@@ -484,6 +487,63 @@ const OpsSensors = (function () {
   function setFilter(f) { _filter = f; draw(); }
   function setTag(t) { _tag = t; draw(); }
   function setQuery(q) { _q = q; draw(); }
+
+  // ── Protection (maintenance) windows ──────────────────────────────────
+  function protectionWindows() {
+    OpsModal.open('Maintenance windows',
+      '<div id="pw-body" style="min-width:0"><div style="padding:20px;color:var(--ink-3)">Loading…</div></div>',
+      [{ label: 'Close', onclick: 'OpsModal.close()' }]);
+    refreshWindows();
+  }
+  async function refreshWindows() {
+    const body = document.getElementById('pw-body');
+    if (!body) return;
+    let list = [];
+    try { list = (await OpsModal.apiGet('/monitoring/protection-windows')).data || []; } catch (_) {}
+    const fmt = d => d ? new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+    const scopeLabel = w => w.scope_type === 'fleet' ? 'Whole fleet' : `${w.scope_type}: ${esc(w.scope_value || '')}`;
+    const rows = list.length ? list.map(w => `
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <span class="lv-status ${w.active ? 'warn' : 'neutral'}" style="margin-top:2px">${w.active ? 'Active' : 'Scheduled'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;color:var(--ink)">${scopeLabel(w)}</div>
+          ${w.reason ? `<div style="font-size:var(--fs-sm);color:var(--ink-2);margin-top:2px">${esc(w.reason)}</div>` : ''}
+          <div style="font-size:var(--fs-2xs);color:var(--ink-3);margin-top:3px">${fmt(w.starts_at)} → ${fmt(w.ends_at)}${w.created_by_name ? ' · ' + esc(w.created_by_name) : ''}</div>
+        </div>
+        <button class="btn-ghost" style="padding:4px 10px" onclick="OpsSensors.cancelWindow(${w.id})">End</button>
+      </div>`).join('') : '<div style="color:var(--ink-3);font-size:var(--fs-sm);padding:6px 0 14px">No active or scheduled windows.</div>';
+
+    const form = `
+      <div style="border-top:1px solid var(--border);margin-top:8px;padding-top:14px">
+        <div style="font-weight:600;margin-bottom:10px">New window</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          ${OpsModal.field('Scope', 'scope_type', 'select', 'fleet', { options: [
+            { value: 'fleet', label: 'Whole fleet' }, { value: 'tag', label: 'Tag / group' },
+            { value: 'property', label: 'Property' }, { value: 'sensor', label: 'One Sentinel' }] })}
+          ${OpsModal.field('Scope value (tag / property_id / sensor_id)', 'scope_value', 'text', '', { required: false, placeholder: 'leave blank for whole fleet' })}
+        </div>
+        ${OpsModal.field('Reason', 'reason', 'text', '', { required: false, placeholder: 'e.g. Heavy rain forecast tonight' })}
+        ${OpsModal.field('Protect until', 'ends_at', 'datetime-local', '', { required: true })}
+        <div style="text-align:right;margin-top:10px"><button class="btn-primary" onclick="OpsSensors.createWindow()">Start protection</button></div>
+      </div>`;
+    body.innerHTML = rows + form;
+  }
+  async function createWindow() {
+    const f = OpsModal.getFormData();
+    if (!f.ends_at) { OpsModal.toast('Set an end time.', 'warning'); return; }
+    if (f.scope_type !== 'fleet' && !f.scope_value) { OpsModal.toast('This scope needs a value.', 'warning'); return; }
+    try {
+      await OpsModal.apiPost('/monitoring/protection-windows', {
+        scope_type: f.scope_type, scope_value: f.scope_type === 'fleet' ? null : f.scope_value,
+        reason: f.reason || null, ends_at: new Date(f.ends_at).toISOString() });
+      OpsModal.toast('Protection window started.', 'success');
+      refreshWindows();
+    } catch (err) { OpsModal.toast(err.message || 'Failed to create window', 'error'); }
+  }
+  async function cancelWindow(id) {
+    try { await OpsModal.apiPost(`/monitoring/protection-windows/${id}/cancel`, {}); OpsModal.toast('Window ended.', 'success'); refreshWindows(); }
+    catch (err) { OpsModal.toast(err.message || 'Failed', 'error'); }
+  }
 
   // Per-device tag editor (comma-separated).
   function editTags(sensorId) {
@@ -1008,8 +1068,9 @@ const OpsSensors = (function () {
       if (_drawerId === sensorId) renderDrawer();
     } catch (err) {
       OpsModal.setLoading(false);
-      // Command-safety block from the server (sole node on a high-water channel)
-      if (/only node reporting/i.test(err.message || '')) {
+      // Command-safety block from the server (sole node on a high-water channel,
+      // or an active protection/maintenance window)
+      if (/only node reporting|protection window/i.test(err.message || '')) {
         return safetyOverride(sensorId, type,
           type === 'firmware_update' ? { firmware_version: f.firmware_version } : null,
           f.note || '', err.message);
@@ -1263,6 +1324,7 @@ const OpsSensors = (function () {
   return {
     render, setFilter, setTag, setQuery,
     editTags, saveTags, bulkTag, confirmBulkTag,
+    protectionWindows, createWindow, cancelWindow,
     viewSensor, closeDrawer, decommission, openFull, back, queueCommand, drawerTab,
     getSensor: (id) => _all.find(s => s.sensor_id === id),
     loadAll: async () => { try { const r = await OpsModal.apiGet('/monitoring/sensors/all'); _all = r.data || []; } catch (_) {} return _all; },
