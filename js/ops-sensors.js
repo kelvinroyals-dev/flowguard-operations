@@ -154,6 +154,9 @@ const OpsSensors = (function () {
           <div class="fg-page-sub" id="sn-page-sub">Fleet management</div>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0">
+          <button class="btn-ghost" onclick="OpsSensors.fleetAnalytics()" title="Fleet-wide health, firmware, connectivity & integrity rollups">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:6px"><path stroke-linecap="round" stroke-linejoin="round" d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Analytics
+          </button>
           <button class="btn-ghost" onclick="OpsSensors.profilesManager()" title="Device configuration profiles">
             <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:6px"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Profiles
           </button>
@@ -495,6 +498,113 @@ const OpsSensors = (function () {
   function setFilter(f) { _filter = f; draw(); }
   function setTag(t) { _tag = t; draw(); }
   function setQuery(q) { _q = q; draw(); }
+
+  // ── Fleet analytics — rollups across the whole device fleet ─────────────
+  const _AC = { ok: 'var(--ok)', warn: 'var(--warn)', err: 'var(--err)', info: 'var(--blue-hi)', muted: 'var(--ink-4)' };
+  function fleetAnalytics() {
+    const A = _all || [];
+    const n = A.length;
+    if (!n) { OpsModal.open('Fleet analytics', '<p style="padding:20px;color:var(--ink-3)">No devices to analyse yet.</p>', [{ label: 'Close', class: 'btn-primary', onclick: 'OpsModal.close()' }]); return; }
+    const c = pred => A.filter(pred).length;
+    const pct = k => Math.round(k / n * 100);
+
+    const seg = (label, cnt, color, filter) => ({ label, cnt, color, filter });
+    const block = (title, segs, sub) => {
+      const shown = segs.filter(s => s.cnt > 0);
+      const max = Math.max(1, ...shown.map(s => s.cnt));
+      const rows = (shown.length ? shown : [{ label: 'None', cnt: 0, color: _AC.muted }]).map(s => `
+        <div style="display:flex;align-items:center;gap:8px;padding:3px 0">
+          <span style="width:9px;height:9px;border-radius:2px;background:${s.color};flex:0 0 auto"></span>
+          <span style="font-size:var(--fs-xs);color:var(--ink-2);flex:0 0 40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.label)}</span>
+          <span style="flex:1 1 auto;height:7px;background:var(--line);border-radius:4px;overflow:hidden"><span style="display:block;height:100%;width:${Math.round(s.cnt / max * 100)}%;background:${s.color}"></span></span>
+          <span style="font-size:var(--fs-xs);font-weight:700;color:var(--ink);width:26px;text-align:right">${s.cnt}</span>
+          ${s.filter ? `<button onclick="OpsModal.close();OpsSensors.setFilter('${s.filter}')" style="border:none;background:none;color:var(--blue-hi);cursor:pointer;font-size:var(--fs-2xs);padding:0 2px">view</button>` : '<span style="width:26px"></span>'}
+        </div>`).join('');
+      return `<div style="background:var(--surface-2,transparent);border:1px solid var(--line);border-radius:10px;padding:13px 15px">
+        <div style="font-size:var(--fs-sm);font-weight:700;color:var(--ink);margin-bottom:7px">${esc(title)}${sub ? ` <span style="color:var(--ink-4);font-weight:400;font-size:var(--fs-2xs)">${sub}</span>` : ''}</div>${rows}</div>`;
+    };
+
+    // firmware spread (most common first)
+    const fwT = {}; A.forEach(x => { const k = x.firmware_version || '—'; fwT[k] = (fwT[k] || 0) + 1; });
+    const commonFw = fleetFirmware(A);
+    const fwSegs = Object.entries(fwT).sort((a, b) => b[1] - a[1]).slice(0, 6)
+      .map(([v, cnt]) => seg(v, cnt, v === commonFw ? _AC.ok : v === '—' ? _AC.muted : _AC.warn));
+
+    const tamper = c(x => x.tamper_flagged);
+    const geo = c(x => x.geofence_state === 'breach');
+    const skew = c(x => x.last_clock_skew_seconds != null && Math.abs(x.last_clock_skew_seconds) >= 300);
+    const pendingCmds = A.reduce((s, x) => s + (x.pending_commands || 0), 0);
+
+    const blocks = [
+      block('Device health', [
+        seg('Online', c(x => x.device_state === 'online'), _AC.ok),
+        seg('Degraded', c(x => x.device_state === 'degraded'), _AC.warn, 'degraded'),
+        seg('Offline', c(x => x.device_state === 'offline'), _AC.err, 'offline'),
+        seg('Maintenance', c(x => x.device_state === 'maintenance'), _AC.muted),
+      ]),
+      block('Data trust', [
+        seg('OK', c(x => x.sensor_state === 'ok'), _AC.ok),
+        seg('Stale', c(x => x.sensor_state === 'stale'), _AC.warn, 'dataissue'),
+        seg('Frozen', c(x => x.sensor_state === 'frozen'), _AC.warn, 'dataissue'),
+        seg('Implausible', c(x => x.sensor_state === 'implausible'), _AC.err, 'dataissue'),
+        seg('Unknown', c(x => x.sensor_state === 'unknown'), _AC.muted),
+      ]),
+      block('Infrastructure', [
+        seg('Normal', c(x => x.infrastructure_state === 'normal'), _AC.ok),
+        seg('Elevated', c(x => x.infrastructure_state === 'elevated'), _AC.info),
+        seg('High', c(x => x.infrastructure_state === 'high'), _AC.warn),
+        seg('Critical', c(x => x.infrastructure_state === 'critical'), _AC.err),
+        seg('Unknown', c(x => x.infrastructure_state === 'unknown' || x.infrastructure_state == null), _AC.muted),
+      ]),
+      block('Integrity', [
+        seg('OK', c(x => x.integrity_state === 'ok'), _AC.ok),
+        seg('Warning', c(x => x.integrity_state === 'warning'), _AC.warn),
+        seg('Critical', c(x => x.integrity_state === 'critical'), _AC.err),
+        seg('Unknown', c(x => x.integrity_state === 'unknown' || x.integrity_state == null), _AC.muted),
+      ], `${tamper} tamper · ${geo} geofence · ${skew} clock`),
+      block('Firmware', fwSegs, commonFw ? `fleet baseline ${esc(commonFw)}` : ''),
+      block('Config profiles', [
+        seg('In sync', c(x => x.config_state === 'in_sync'), _AC.ok),
+        seg('Drift', c(x => x.config_state === 'drift'), _AC.warn),
+        seg('Pending', c(x => x.config_state === 'pending'), _AC.info),
+        seg('No profile', c(x => x.config_state === 'none' || x.config_state == null), _AC.muted),
+      ]),
+      block('Lifecycle', [
+        seg('Active', c(x => x.lifecycle_state === 'active'), _AC.ok),
+        seg('Installed', c(x => x.lifecycle_state === 'installed'), _AC.info),
+        seg('Assigned', c(x => x.lifecycle_state === 'assigned'), _AC.info),
+        seg('Warehouse', c(x => x.lifecycle_state === 'warehouse'), _AC.muted),
+        seg('Inventory', c(x => x.lifecycle_state === 'inventory'), _AC.muted),
+        seg('Maintenance', c(x => x.lifecycle_state === 'maintenance'), _AC.warn),
+        seg('RMA', c(x => x.lifecycle_state === 'rma'), _AC.err),
+        seg('Retired', c(x => x.lifecycle_state === 'retired'), _AC.muted),
+      ]),
+      block('Power', [
+        seg('Healthy (≥60%)', c(x => x.battery_percent != null && x.battery_percent >= 60), _AC.ok),
+        seg('Low (25–59%)', c(x => x.battery_percent != null && x.battery_percent >= 25 && x.battery_percent < 60), _AC.warn),
+        seg('Critical (<25%)', c(x => x.battery_percent != null && x.battery_percent < 25), _AC.err, 'lowbatt'),
+        seg('Unknown', c(x => x.battery_percent == null), _AC.muted),
+      ]),
+      block('Connectivity', [
+        seg('Good (≥50%)', c(x => x.device_state !== 'offline' && x.signal_strength != null && x.signal_strength >= 50), _AC.ok),
+        seg('Fair (25–49%)', c(x => x.device_state !== 'offline' && x.signal_strength != null && x.signal_strength >= 25 && x.signal_strength < 50), _AC.warn),
+        seg('Poor (<25%)', c(x => x.device_state !== 'offline' && x.signal_strength != null && x.signal_strength < 25), _AC.err),
+        seg('Offline / unknown', c(x => x.device_state === 'offline' || x.signal_strength == null), _AC.muted, 'offline'),
+      ]),
+    ];
+
+    const summary = `
+      <div style="display:flex;flex-wrap:wrap;gap:18px;margin-bottom:14px">
+        <div><div style="font-size:var(--fs-2xl,26px);font-weight:800;color:var(--ink);line-height:1">${n}</div><div style="font-size:var(--fs-2xs);color:var(--ink-4)">devices</div></div>
+        <div><div style="font-size:var(--fs-2xl,26px);font-weight:800;color:var(--ok);line-height:1">${pct(c(x => x.device_state === 'online'))}%</div><div style="font-size:var(--fs-2xs);color:var(--ink-4)">online</div></div>
+        <div><div style="font-size:var(--fs-2xl,26px);font-weight:800;color:${tamper || geo ? 'var(--err)' : 'var(--ink)'};line-height:1">${tamper + geo + skew}</div><div style="font-size:var(--fs-2xs);color:var(--ink-4)">integrity flags</div></div>
+        <div><div style="font-size:var(--fs-2xl,26px);font-weight:800;color:var(--ink);line-height:1">${pendingCmds}</div><div style="font-size:var(--fs-2xs);color:var(--ink-4)">queued commands</div></div>
+      </div>`;
+
+    OpsModal.open('Fleet analytics',
+      `${summary}<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">${blocks.join('')}</div>`,
+      [{ label: 'Close', class: 'btn-primary', onclick: 'OpsModal.close()' }]);
+  }
 
   // ── Protection (maintenance) windows ──────────────────────────────────
   function protectionWindows() {
@@ -2013,7 +2123,7 @@ const OpsSensors = (function () {
   }
 
   return {
-    render, setFilter, setTag, setQuery,
+    render, setFilter, setTag, setQuery, fleetAnalytics,
     editTags, saveTags, bulkTag, confirmBulkTag,
     deviceRecord, saveDeviceRecord, lifecycleLog, replaceDevice, doReplace, timeline,
     connectivityPanel, powerPanel, calibrationPanel,
