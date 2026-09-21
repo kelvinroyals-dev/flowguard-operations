@@ -1091,6 +1091,14 @@ const OpsSensors = (function () {
               <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
               Run Calibration
             </button>
+            <button class="sn-act-row" onclick="OpsSensors.sendCommand('${sid}', 'force_sync')">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              Force Sync / Diagnostics…
+            </button>
+            <button class="sn-act-row" onclick="OpsSensors.sendCommand('${sid}', 'locate')">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="2"/></svg>
+              Locate / Identify
+            </button>
             <button class="sn-act-row" onclick="OpsSensors.commandHistory('${sid}')">
               <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
               Command History
@@ -1432,47 +1440,124 @@ const OpsSensors = (function () {
 
   // ── Remote command: OTA push, reset, recalibrate — queued, delivered
   // on the device's next check-in (store-and-forward, no open socket). ──
+  // Remote-action catalogue — mirrors the backend COMMAND_TYPES vocabulary.
+  const CMD_CATALOG = [
+    { group: 'Diagnostics & connectivity', items: [
+      ['force_sync', 'Force sync (report now)'],
+      ['connectivity_test', 'Connectivity test'],
+      ['self_test', 'Run self-test'],
+      ['reconnect_modem', 'Reconnect modem'],
+      ['refresh_gps', 'Refresh GPS fix'],
+      ['diagnostic_bundle', 'Collect diagnostic bundle'],
+      ['locate', 'Locate / identify (blink)'],
+    ] },
+    { group: 'Configuration', items: [
+      ['recalibrate', 'Request recalibration'],
+      ['set_reporting_interval', 'Set reporting interval'],
+      ['set_thresholds', 'Set alert thresholds'],
+      ['enable_sensor', 'Enable sensor channel'],
+      ['disable_sensor', 'Disable sensor channel'],
+      ['reset_config', 'Reset config to defaults'],
+    ] },
+    { group: 'Firmware & lifecycle', items: [
+      ['firmware_update', 'Push firmware update'],
+      ['reset', 'Remote reset (reboot)'],
+      ['factory_reset', 'Factory reset (wipe)'],
+      ['reprovision', 'Re-provision (re-enrol)'],
+    ] },
+  ];
+  const CMD_DISRUPTIVE = ['firmware_update', 'reset', 'reset_config', 'factory_reset', 'reprovision'];
+  const CMD_CHANNELS = [
+    { value: 'water_level', label: 'Water level' }, { value: 'flow_rate', label: 'Flow rate' },
+    { value: 'silt', label: 'Silt probe' }, { value: 'water_quality', label: 'Water quality' },
+    { value: 'temperature', label: 'Temperature' },
+  ];
+
+  // Param fields for the parameterised commands (rendered into the live slot).
+  function _cmdParams(type) {
+    if (type === 'firmware_update')
+      return OpsModal.field('Firmware version', 'firmware_version', 'text', '', { required: true, placeholder: 'e.g. 2.4.1' });
+    if (type === 'set_reporting_interval')
+      return OpsModal.field('Reporting interval', 'interval_seconds', 'select', '300', { options: [
+        { value: '60', label: 'Every 1 minute' }, { value: '300', label: 'Every 5 minutes' },
+        { value: '900', label: 'Every 15 minutes' }, { value: '1800', label: 'Every 30 minutes' },
+        { value: '3600', label: 'Every hour' }, { value: '21600', label: 'Every 6 hours' },
+      ] });
+    if (type === 'set_thresholds')
+      return OpsModal.row([
+        OpsModal.field('High-water alert (%)', 'level_high_pct', 'number', '', { required: false, placeholder: 'e.g. 80' }),
+        OpsModal.field('Low-water alert (%)', 'level_low_pct', 'number', '', { required: false, placeholder: 'e.g. 15' }),
+      ]);
+    if (type === 'enable_sensor' || type === 'disable_sensor')
+      return OpsModal.field('Sensor channel', 'channel', 'select', 'water_level', { options: CMD_CHANNELS });
+    return '';
+  }
+
   function sendCommand(sensorId, presetType) {
     const node = _all.find(x => x.sensor_id === sensorId);
-    const type = presetType || 'firmware_update';
+    const type = presetType && CMD_DISRUPTIVE.concat(CMD_CATALOG.flatMap(g => g.items.map(i => i[0]))).includes(presetType) ? presetType : 'force_sync';
+    const optionsHtml = CMD_CATALOG.map(g =>
+      `<optgroup label="${esc(g.group)}">${g.items.map(([v, l]) => `<option value="${v}" ${v === type ? 'selected' : ''}>${esc(l)}</option>`).join('')}</optgroup>`).join('');
     OpsModal.open(`Send command — ${esc(node ? (node.name || sensorId) : sensorId)}`, `
       <p style="margin:0 0 12px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">
         This Sentinel is store-and-forward — the command is queued here and delivered on its next check-in, not instantly.
       </p>
-      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
-        <label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--ink-2);"><input type="radio" name="cmdtype" value="firmware_update" ${type === 'firmware_update' ? 'checked' : ''} onchange="OpsSensors._toggleFwField()"> Push firmware update</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--ink-2);"><input type="radio" name="cmdtype" value="reset" ${type === 'reset' ? 'checked' : ''} onchange="OpsSensors._toggleFwField()"> Remote reset</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--ink-2);"><input type="radio" name="cmdtype" value="recalibrate" ${type === 'recalibrate' ? 'checked' : ''} onchange="OpsSensors._toggleFwField()"> Request recalibration</label>
+      <div class="ops-modal-field">
+        <label class="ops-label">Command</label>
+        <select name="cmdtype" class="ops-input" onchange="OpsSensors._onCmdChange()">${optionsHtml}</select>
       </div>
-      <div id="sn-fw-field" style="${type === 'firmware_update' ? '' : 'display:none;'}">${OpsModal.field('Firmware version', 'firmware_version', 'text', '', { required: true, placeholder: 'e.g. 2.4.1' })}</div>
+      <div id="sn-cmd-warn" style="display:none;margin:0 0 10px;font-size:var(--fs-xs);color:var(--warn);display:flex;gap:6px;align-items:flex-start">
+        <span>⚠</span><span>Disruptive — takes the node offline briefly. Blocked automatically if it's the last trusted node on a channel at high water.</span>
+      </div>
+      <div id="sn-cmd-params">${_cmdParams(type)}</div>
       ${OpsModal.field('Expire after (hours, optional)', 'ttl_hours', 'number', '', { required: false, placeholder: 'e.g. 48 — lapses if never delivered' })}
       ${OpsModal.field('Note (optional)', 'note', 'textarea', '', { required: false, placeholder: 'Reason for this command' })}
     `, [
       { label: 'Cancel', onclick: 'OpsModal.close()' },
       { label: 'Queue command', class: 'btn-primary', onclick: `OpsSensors.confirmSendCommand('${sensorId}')` },
     ]);
+    _onCmdChange();
   }
 
-  function _toggleFwField() {
-    const checked = document.querySelector('input[name="cmdtype"]:checked');
-    const slot = document.getElementById('sn-fw-field');
-    if (!slot) return;
-    slot.style.display = checked && checked.value === 'firmware_update' ? '' : 'none';
+  function _onCmdChange() {
+    const sel = document.querySelector('select[name="cmdtype"]');
+    if (!sel) return;
+    const slot = document.getElementById('sn-cmd-params');
+    if (slot) slot.innerHTML = _cmdParams(sel.value);
+    const warn = document.getElementById('sn-cmd-warn');
+    if (warn) warn.style.display = CMD_DISRUPTIVE.includes(sel.value) ? 'flex' : 'none';
+  }
+
+  // Build the payload for a command type from the current form fields.
+  function _cmdPayload(type, f) {
+    if (type === 'firmware_update') return { firmware_version: f.firmware_version };
+    if (type === 'set_reporting_interval') return { interval_seconds: parseInt(f.interval_seconds, 10) };
+    if (type === 'set_thresholds') {
+      const th = {};
+      if (f.level_high_pct !== '' && f.level_high_pct != null) th.level_high_pct = Number(f.level_high_pct);
+      if (f.level_low_pct !== '' && f.level_low_pct != null) th.level_low_pct = Number(f.level_low_pct);
+      return { thresholds: th };
+    }
+    if (type === 'enable_sensor' || type === 'disable_sensor') return { channel: f.channel };
+    return null;
   }
 
   async function confirmSendCommand(sensorId) {
-    const checked = document.querySelector('input[name="cmdtype"]:checked');
-    const type = checked ? checked.value : 'reset';
+    const sel = document.querySelector('select[name="cmdtype"]');
+    const type = sel ? sel.value : 'force_sync';
     const f = OpsModal.getFormData();
     if (type === 'firmware_update' && !f.firmware_version) {
-      OpsModal.toast('Firmware version is required.', 'error');
-      return;
+      OpsModal.toast('Firmware version is required.', 'error'); return;
     }
+    if (type === 'set_thresholds' && (f.level_high_pct === '' || f.level_high_pct == null) && (f.level_low_pct === '' || f.level_low_pct == null)) {
+      OpsModal.toast('Set at least one threshold.', 'error'); return;
+    }
+    const payload = _cmdPayload(type, f);
     OpsModal.setLoading(true);
     try {
       await OpsModal.apiPost(`/monitoring/sensors/${sensorId}/commands`, {
         command_type: type,
-        payload: type === 'firmware_update' ? { firmware_version: f.firmware_version } : null,
+        payload,
         note: f.note || null,
         ttl_hours: f.ttl_hours ? parseInt(f.ttl_hours, 10) : null,
       });
@@ -1485,9 +1570,7 @@ const OpsSensors = (function () {
       // Command-safety block from the server (sole node on a high-water channel,
       // or an active protection/maintenance window)
       if (/only node reporting|protection window/i.test(err.message || '')) {
-        return safetyOverride(sensorId, type,
-          type === 'firmware_update' ? { firmware_version: f.firmware_version } : null,
-          f.note || '', err.message);
+        return safetyOverride(sensorId, type, payload, f.note || '', err.message);
       }
       OpsModal.toast(err.message || 'Failed to queue command', 'error');
     }
@@ -1750,7 +1833,7 @@ const OpsSensors = (function () {
     preload3D: () => preload3D(),
     coverage, saveCoverage, history, calibrate, confirmCalibrate, openAsset,
     toggleSelect, toggleSelectAll, clearSelection, bulkCommand, confirmBulkCommand,
-    sendCommand, _toggleFwField, confirmSendCommand, commandHistory, cancelCommand,
+    sendCommand, _onCmdChange, confirmSendCommand, commandHistory, cancelCommand,
     _doOverride,
   };
 })();
