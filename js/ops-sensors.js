@@ -153,9 +153,14 @@ const OpsSensors = (function () {
           <div class="fg-page-title">Sentinel Devices</div>
           <div class="fg-page-sub" id="sn-page-sub">Fleet management</div>
         </div>
-        <button class="btn-ghost" onclick="OpsSensors.protectionWindows()" title="Pause reboots/firmware during storms or incidents">
-          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:6px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Maintenance windows
-        </button>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          <button class="btn-ghost" onclick="OpsSensors.firmwareManager()" title="Firmware releases & staged rollouts">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:6px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>Firmware
+          </button>
+          <button class="btn-ghost" onclick="OpsSensors.protectionWindows()" title="Pause reboots/firmware during storms or incidents">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:6px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Maintenance windows
+          </button>
+        </div>
       </div>
       <div id="sn-kpis"></div>
       <div id="sn-note-slot"></div>
@@ -543,6 +548,116 @@ const OpsSensors = (function () {
   async function cancelWindow(id) {
     try { await OpsModal.apiPost(`/monitoring/protection-windows/${id}/cancel`, {}); OpsModal.toast('Window ended.', 'success'); refreshWindows(); }
     catch (err) { OpsModal.toast(err.message || 'Failed', 'error'); }
+  }
+
+  // ── Firmware releases & staged rollouts ───────────────────────────────
+  const RO_CHIP = { active:['warn','Active'], paused:['neutral','Paused'], completed:['ok','Completed'], rolled_back:['danger','Rolled back'], cancelled:['neutral','Cancelled'] };
+  function firmwareManager() {
+    OpsModal.open('Firmware & rollouts',
+      '<div id="fw-body" style="min-width:520px;max-width:640px"><div style="padding:20px;color:var(--ink-3)">Loading…</div></div>',
+      [{ label: 'Close', onclick: 'OpsModal.close()' }]);
+    fwHome();
+  }
+  async function fwHome() {
+    const body = document.getElementById('fw-body'); if (!body) return;
+    let rel = [], ro = [];
+    try { rel = (await OpsModal.apiGet('/firmware/releases')).data || []; } catch (_) {}
+    try { ro = (await OpsModal.apiGet('/firmware/rollouts')).data || []; } catch (_) {}
+    const relRows = rel.length ? rel.map(r => `<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:var(--fs-sm)">
+        <div><b>${esc(r.version)}</b> <span class="lv-status neutral" style="margin-left:6px">${esc(r.channel)}</span>${r.notes ? `<div style="color:var(--ink-3);font-size:var(--fs-2xs);margin-top:2px">${esc(r.notes)}</div>` : ''}</div>
+        <div class="lv-mono" style="color:var(--ink-3)">${r.devices_on_version} on this</div></div>`).join('')
+      : '<div style="color:var(--ink-3);font-size:var(--fs-sm)">No releases yet.</div>';
+    const relOpts = rel.map(r => `<option value="${r.id}">${esc(r.version)} (${esc(r.channel)})</option>`).join('');
+    const roRows = ro.length ? ro.map(r => { const c = RO_CHIP[r.status] || RO_CHIP.active;
+        const pct = r.total ? Math.round((r.updated / r.total) * 100) : 0;
+        return `<div class="sn-act-row" style="justify-content:space-between;cursor:pointer" onclick="OpsSensors.fwOpenRollout(${r.id})">
+          <div><b>${esc(r.name || r.version)}</b> <span class="lv-status ${c[0]}" style="margin-left:6px">${c[1]}</span>
+            <div style="color:var(--ink-3);font-size:var(--fs-2xs);margin-top:2px">→ ${esc(r.version)} · ${r.target_type === 'fleet' ? 'whole fleet' : '#' + esc(r.target_value || '')} · ${r.updated}/${r.total} updated (${pct}%)</div></div>
+          <span style="color:var(--ink-3)">›</span></div>`; }).join('')
+      : '<div style="color:var(--ink-3);font-size:var(--fs-sm)">No rollouts yet.</div>';
+    body.innerHTML = `
+      <div style="font-weight:600;margin-bottom:8px">Releases</div>${relRows}
+      <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:end;margin:12px 0 20px">
+        ${OpsModal.field('New version', 'fw-version', 'text', '', { required: false, placeholder: '2.4.1' })}
+        ${OpsModal.field('Channel', 'fw-channel', 'select', 'stable', { options: ['stable', 'beta', 'internal'] })}
+        <button class="btn-ghost" style="height:40px" onclick="OpsSensors.fwCreateRelease()">Add</button>
+      </div>
+      <div style="font-weight:600;margin-bottom:8px;border-top:1px solid var(--border);padding-top:14px">Rollouts</div>${roRows}
+      ${rel.length ? `<div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px">
+        <div style="font-weight:600;margin-bottom:8px">New rollout</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          ${OpsModal.field('Release', 'ro-release', 'select', '', { options: rel.map(r => ({ value: String(r.id), label: r.version + ' (' + r.channel + ')' })) })}
+          ${OpsModal.field('Target', 'ro-target', 'select', 'fleet', { options: [{ value: 'fleet', label: 'Whole fleet' }, { value: 'tag', label: 'Tag / group' }] })}
+        </div>
+        ${OpsModal.field('Tag (if target = tag)', 'ro-tag', 'text', '', { required: false, placeholder: 'e.g. lekki' })}
+        ${OpsModal.field('Rings (cumulative %)', 'ro-rings', 'text', '5, 25, 100', { required: false, placeholder: '5, 25, 100' })}
+        <div style="text-align:right;margin-top:10px"><button class="btn-primary" onclick="OpsSensors.fwCreateRollout()">Create rollout</button></div>
+      </div>` : ''}`;
+  }
+  async function fwCreateRelease() {
+    const f = OpsModal.getFormData();
+    if (!f['fw-version']) { OpsModal.toast('Enter a version.', 'warning'); return; }
+    try { await OpsModal.apiPost('/firmware/releases', { version: f['fw-version'], channel: f['fw-channel'] }); OpsModal.toast('Release added.', 'success'); fwHome(); }
+    catch (err) { OpsModal.toast(err.message || 'Failed', 'error'); }
+  }
+  async function fwCreateRollout() {
+    const f = OpsModal.getFormData();
+    if (!f['ro-release']) { OpsModal.toast('Pick a release.', 'warning'); return; }
+    const rings = (f['ro-rings'] || '5,25,100').split(',').map(s => parseInt(s.trim(), 10)).filter(n => n > 0);
+    try {
+      const r = await OpsModal.apiPost('/firmware/rollouts', {
+        release_id: parseInt(f['ro-release'], 10), target_type: f['ro-target'],
+        target_value: f['ro-target'] === 'tag' ? f['ro-tag'] : null, rings });
+      OpsModal.toast(`Rollout created — ${(r.data && r.data.total) || 0} devices staged.`, 'success');
+      fwOpenRollout(r.data.id);
+    } catch (err) { OpsModal.toast(err.message || 'Failed to create rollout', 'error'); }
+  }
+  async function fwOpenRollout(id) {
+    const body = document.getElementById('fw-body'); if (!body) return;
+    body.innerHTML = '<div style="padding:20px;color:var(--ink-3)">Loading…</div>';
+    let d; try { d = (await OpsModal.apiGet('/firmware/rollouts/' + id)).data; } catch (_) { body.innerHTML = '<div style="padding:20px;color:var(--err)">Couldn\'t load.</div>'; return; }
+    const c = RO_CHIP[d.status] || RO_CHIP.active;
+    const bar = r => { const w = r.total ? (r.updated / r.total) * 100 : 0;
+      return `<div style="height:6px;border-radius:3px;background:var(--surface-3);overflow:hidden;margin-top:6px"><div style="height:100%;width:${w}%;background:var(--ok)"></div></div>`; };
+    const ringRows = d.rings.map(r => `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;font-size:var(--fs-sm)"><b>Ring ${r.index + 1} · ${r.percent}%</b>
+          <span style="color:var(--ink-3)">${r.open ? 'open' : 'not opened'}</span></div>
+        <div style="font-size:var(--fs-2xs);color:var(--ink-3);margin-top:3px">${r.total} devices · ${r.updated} updated · ${r.queued} queued · ${r.pending} pending${r.failed ? ` · <span style="color:var(--err)">${r.failed} failed</span>` : ''}</div>
+        ${bar(r)}</div>`).join('');
+    const canAdvance = d.status === 'active' && d.current_ring < d.rings.length - 1;
+    const actions = [
+      canAdvance ? `<button class="btn-primary" onclick="OpsSensors.fwAdvance(${id})">Advance to ring ${d.current_ring + 2}</button>` : '',
+      d.status === 'active' ? `<button class="btn-ghost" onclick="OpsSensors.fwState(${id},'pause')">Pause</button>` : '',
+      d.status === 'paused' ? `<button class="btn-ghost" onclick="OpsSensors.fwState(${id},'resume')">Resume</button>` : '',
+      ['active', 'paused'].includes(d.status) ? `<button class="btn-danger" onclick="OpsSensors.fwRollback(${id})">Roll back</button>` : '',
+      ['active', 'paused'].includes(d.status) ? `<button class="btn-ghost" onclick="OpsSensors.fwState(${id},'cancel')">Cancel</button>` : '',
+    ].filter(Boolean).join(' ');
+    const failed = d.failed.length ? `<div style="margin-top:12px"><div style="font-weight:600;color:var(--err);font-size:var(--fs-sm);margin-bottom:4px">Failed (${d.failed.length})</div>${d.failed.map(x => `<div style="font-size:var(--fs-2xs);color:var(--ink-3)">${esc(x.name || x.sensor_id)}</div>`).join('')}</div>` : '';
+    body.innerHTML = `
+      <div class="sn-crumb" style="cursor:pointer" onclick="OpsSensors.fwHome()">‹ Firmware</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 4px">
+        <div><span style="font-family:var(--ff-d);font-size:17px;font-weight:700">${esc(d.name || d.version)}</span>
+          <div style="color:var(--ink-3);font-size:var(--fs-2xs)">→ ${esc(d.version)} · ${d.target_type === 'fleet' ? 'whole fleet' : '#' + esc(d.target_value || '')} · ${d.total} devices</div></div>
+        <span class="lv-status ${c[0]}">${c[1]}</span>
+      </div>
+      <div style="margin:12px 0">${ringRows}</div>
+      ${failed}
+      <div class="actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">${actions}</div>`;
+  }
+  async function fwAdvance(id) {
+    try { const r = await OpsModal.apiPost(`/firmware/rollouts/${id}/advance`, {});
+      const m = r.data || {}; OpsModal.toast(`Ring ${m.ring} opened — ${m.queued} queued${m.deferred ? `, ${m.deferred} deferred (protected)` : ''}.`, 'success'); fwOpenRollout(id); }
+    catch (err) { OpsModal.toast(err.message || 'Failed to advance', 'error'); }
+  }
+  async function fwState(id, action) {
+    try { await OpsModal.apiPost(`/firmware/rollouts/${id}/${action}`, {}); OpsModal.toast('Updated.', 'success'); fwOpenRollout(id); }
+    catch (err) { OpsModal.toast(err.message || 'Failed', 'error'); }
+  }
+  function fwRollback(id) {
+    OpsModal.confirm('Roll back this rollout? Devices already updated/queued get re-flashed to their previous firmware.', async () => {
+      try { const r = await OpsModal.apiPost(`/firmware/rollouts/${id}/rollback`, {}); OpsModal.toast(`Rollback queued for ${(r.data && r.data.reverted) || 0} device(s).`, 'success'); fwOpenRollout(id); }
+      catch (err) { OpsModal.toast(err.message || 'Failed to roll back', 'error'); }
+    });
   }
 
   // Per-device tag editor (comma-separated).
@@ -1325,6 +1440,7 @@ const OpsSensors = (function () {
     render, setFilter, setTag, setQuery,
     editTags, saveTags, bulkTag, confirmBulkTag,
     protectionWindows, createWindow, cancelWindow,
+    firmwareManager, fwHome, fwCreateRelease, fwCreateRollout, fwOpenRollout, fwAdvance, fwState, fwRollback,
     viewSensor, closeDrawer, decommission, openFull, back, queueCommand, drawerTab,
     getSensor: (id) => _all.find(s => s.sensor_id === id),
     loadAll: async () => { try { const r = await OpsModal.apiGet('/monitoring/sensors/all'); _all = r.data || []; } catch (_) {} return _all; },
