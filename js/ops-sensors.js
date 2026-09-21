@@ -1237,6 +1237,7 @@ const OpsSensors = (function () {
         <label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--ink-2);"><input type="radio" name="cmdtype" value="recalibrate" ${type === 'recalibrate' ? 'checked' : ''} onchange="OpsSensors._toggleFwField()"> Request recalibration</label>
       </div>
       <div id="sn-fw-field" style="${type === 'firmware_update' ? '' : 'display:none;'}">${OpsModal.field('Firmware version', 'firmware_version', 'text', '', { required: true, placeholder: 'e.g. 2.4.1' })}</div>
+      ${OpsModal.field('Expire after (hours, optional)', 'ttl_hours', 'number', '', { required: false, placeholder: 'e.g. 48 — lapses if never delivered' })}
       ${OpsModal.field('Note (optional)', 'note', 'textarea', '', { required: false, placeholder: 'Reason for this command' })}
     `, [
       { label: 'Cancel', onclick: 'OpsModal.close()' },
@@ -1265,6 +1266,7 @@ const OpsSensors = (function () {
         command_type: type,
         payload: type === 'firmware_update' ? { firmware_version: f.firmware_version } : null,
         note: f.note || null,
+        ttl_hours: f.ttl_hours ? parseInt(f.ttl_hours, 10) : null,
       });
       OpsModal.close();
       OpsModal.toast("Command queued — delivered on the device's next check-in.", 'success');
@@ -1324,12 +1326,12 @@ const OpsSensors = (function () {
       const cmds = r.data || [];
       const body = document.querySelector('.ops-modal-body');
       if (!body) return;
-      const statusColor = { queued: 'var(--warn)', delivered: 'var(--blue-hi)', acknowledged: 'var(--ok)', failed: 'var(--err)', cancelled: 'var(--ink-3)' };
+      const statusColor = { queued: 'var(--warn)', delivered: 'var(--blue-hi)', acknowledged: 'var(--ok)', failed: 'var(--err)', cancelled: 'var(--ink-3)', expired: 'var(--ink-3)' };
       body.innerHTML = cmds.length
         ? `<div>${cmds.map(c => `
             <div style="display:flex;gap:10px;align-items:center;padding:10px 2px;border-bottom:1px solid var(--border)">
-              <span style="font-size:var(--fs-2xs);font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:${statusColor[c.status] || 'var(--ink-3)'};min-width:96px">${esc(c.status)}</span>
-              <span style="flex:1;min-width:0;font-size:var(--fs-sm);color:var(--ink-2)">${esc((c.command_type || '').replace(/_/g, ' '))}${c.payload && c.payload.firmware_version ? ` → v${esc(c.payload.firmware_version)}` : ''}${c.note ? ' — ' + esc(c.note) : ''}</span>
+              <span style="font-size:var(--fs-2xs);font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:${statusColor[c.status] || 'var(--ink-3)'};min-width:96px">${esc(c.status)}${c.hold_reason && c.status === 'queued' ? ' · held' : ''}</span>
+              <span style="flex:1;min-width:0;font-size:var(--fs-sm);color:var(--ink-2)">${esc((c.command_type || '').replace(/_/g, ' '))}${c.payload && c.payload.firmware_version ? ` → v${esc(c.payload.firmware_version)}` : ''}${c.note ? ' — ' + esc(c.note) : ''}${c.hold_reason && c.status === 'queued' ? `<span style="display:block;font-size:var(--fs-2xs);color:var(--warn);margin-top:2px">⏸ ${esc(c.hold_reason)}</span>` : ''}${c.expires_at && c.status === 'queued' ? `<span style="display:block;font-size:var(--fs-2xs);color:var(--ink-3);margin-top:2px">expires ${OpsModal.fmtDate(c.expires_at)}</span>` : ''}</span>
               <span style="font-family:var(--ff-m);font-size:var(--fs-2xs);color:var(--ink-3);white-space:nowrap">${OpsModal.fmtDate(c.created_at)}</span>
               ${c.status === 'queued' ? `<button class="btn-ghost" style="padding:3px 9px;font-size:var(--fs-2xs);" onclick="OpsSensors.cancelCommand('${sensorId}', ${parseInt(c.id, 10)})">Cancel</button>` : ''}
             </div>`).join('')}</div>`
