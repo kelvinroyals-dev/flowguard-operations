@@ -770,6 +770,121 @@ const OpsSensors = (function () {
     } catch (err) { OpsModal.setLoading(false); OpsModal.toast(err.message || 'Failed to update tags', 'error'); }
   }
 
+  // ── Lifecycle state + hardware inventory ──────────────────────────
+  const LIFECYCLE_OPTS = [
+    { value: 'inventory',   label: 'Inventory — received, not yet stocked' },
+    { value: 'warehouse',   label: 'Warehouse — in stock' },
+    { value: 'assigned',    label: 'Assigned — allocated to a site' },
+    { value: 'installed',   label: 'Installed — mounted, not yet live' },
+    { value: 'active',      label: 'Active — live in the field' },
+    { value: 'maintenance', label: 'Maintenance — pulled for service' },
+    { value: 'rma',         label: 'RMA — returned / faulty' },
+    { value: 'retired',     label: 'Retired — decommissioned' },
+  ];
+  const _dval = v => v ? String(v).slice(0, 10) : '';
+
+  function deviceRecord(sensorId) {
+    const x = _all.find(s => s.sensor_id === sensorId) || {};
+    OpsModal.open(`Lifecycle &amp; hardware — ${esc(x.name || sensorId)}`, `
+      <p style="margin:0 0 12px;font-size:var(--fs-sm);color:var(--ink-3)">Lifecycle state is where the unit sits in its life — separate from its live health. Hardware identity is used for warranty, RMA and audit.</p>
+      ${OpsModal.field('Lifecycle state', 'lifecycle_state', 'select', x.lifecycle_state || 'active', { options: LIFECYCLE_OPTS })}
+      ${OpsModal.field('Reason / note (optional)', 'lifecycle_note', 'text', '', { required: false, placeholder: 'e.g. moved to warehouse after site cancellation' })}
+      <div style="height:1px;background:var(--line);margin:14px 0"></div>
+      ${OpsModal.row([
+        OpsModal.field('Serial number', 'serial_number', 'text', x.serial_number || '', { required: false, placeholder: 'FG-…' }),
+        OpsModal.field('Hardware rev', 'hardware_rev', 'text', x.hardware_rev || '', { required: false, placeholder: 'v2.1' }),
+      ])}
+      ${OpsModal.row([
+        OpsModal.field('Manufacturing batch', 'manufacturing_batch', 'text', x.manufacturing_batch || '', { required: false }),
+        OpsModal.field('Modem IMEI', 'modem_imei', 'text', x.modem_imei || '', { required: false }),
+      ])}
+      ${OpsModal.row([
+        OpsModal.field('SIM ICCID', 'sim_iccid', 'text', x.sim_iccid || '', { required: false }),
+        OpsModal.field('Install date', 'install_date', 'date', _dval(x.install_date), { required: false }),
+      ])}
+      ${OpsModal.field('Warranty expires', 'warranty_expires_at', 'date', _dval(x.warranty_expires_at), { required: false })}
+    `, [
+      { label: 'Cancel', onclick: 'OpsModal.close()' },
+      { label: 'View history', onclick: `OpsSensors.lifecycleLog('${__sid(sensorId)}')` },
+      { label: 'Save', class: 'btn-primary', onclick: `OpsSensors.saveDeviceRecord('${__sid(sensorId)}')` },
+    ]);
+  }
+  async function saveDeviceRecord(sensorId) {
+    const x = _all.find(s => s.sensor_id === sensorId) || {};
+    const f = OpsModal.getFormData();
+    OpsModal.setLoading(true);
+    try {
+      const hw = {
+        serial_number: f.serial_number || null,
+        hardware_rev: f.hardware_rev || null,
+        manufacturing_batch: f.manufacturing_batch || null,
+        modem_imei: f.modem_imei || null,
+        sim_iccid: f.sim_iccid || null,
+        install_date: f.install_date || null,
+        warranty_expires_at: f.warranty_expires_at || null,
+      };
+      await OpsModal.apiPut(`/monitoring/sensors/${sensorId}/hardware`, hw);
+      if (f.lifecycle_state && f.lifecycle_state !== (x.lifecycle_state || 'active')) {
+        await OpsModal.apiPut(`/monitoring/sensors/${sensorId}/lifecycle`, { lifecycle_state: f.lifecycle_state, note: f.lifecycle_note || null });
+      }
+      OpsModal.close();
+      OpsModal.toast('Device record updated.', 'success');
+      await load();
+      if (_drawerId === sensorId) renderDrawer();
+    } catch (err) { OpsModal.setLoading(false); OpsModal.toast(err.message || 'Failed to update device record', 'error'); }
+  }
+
+  async function lifecycleLog(sensorId) {
+    const x = _all.find(s => s.sensor_id === sensorId) || {};
+    let rows;
+    try { rows = await OpsModal.apiGet(`/monitoring/sensors/${sensorId}/lifecycle`); }
+    catch (err) { OpsModal.toast(err.message || 'Failed to load history', 'error'); return; }
+    const events = (rows && rows.events) || rows || [];
+    const EV = { state_change:['var(--blue-hi)','State change'], rma_out:['var(--err)','RMA out'], rma_in:['var(--ok)','RMA in'], replaced_by:['var(--warn)','Replaced'], note:['var(--ink-3)','Note'] };
+    const body = events.length ? `<div style="display:flex;flex-direction:column;gap:0">${events.map(e => {
+      const m = EV[e.event] || ['var(--ink-3)', e.event];
+      const when = e.created_at ? new Date(e.created_at).toLocaleString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+      const trans = (e.from_state || e.to_state) ? ` <span style="color:var(--ink-3)">${esc(e.from_state || '—')} → ${esc(e.to_state || '—')}</span>` : '';
+      const note = e.detail && (e.detail.note || e.detail.reason) ? `<div style="font-size:var(--fs-xs);color:var(--ink-3);margin-top:2px">${esc(e.detail.note || e.detail.reason)}</div>` : '';
+      return `<div style="padding:10px 0;border-bottom:1px solid var(--line)">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
+          <span style="font-weight:700;color:${m[0]};font-size:var(--fs-sm)">${m[1]}${trans}</span>
+          <span style="font-size:var(--fs-2xs);color:var(--ink-4);white-space:nowrap">${when}</span>
+        </div>${note}</div>`;
+    }).join('')}</div>` : `<p style="color:var(--ink-4);font-size:var(--fs-sm);margin:8px 0">No lifecycle events recorded yet.</p>`;
+    OpsModal.open(`Lifecycle history — ${esc(x.name || sensorId)}`, body, [{ label: 'Close', class: 'btn-primary', onclick: 'OpsModal.close()' }]);
+  }
+
+  // ── Replace device (RMA transfer) ─────────────────────────────────
+  function replaceDevice(sensorId) {
+    const x = _all.find(s => s.sensor_id === sensorId) || {};
+    const spares = _all.filter(s => s.sensor_id !== sensorId && ['inventory', 'warehouse', 'assigned'].includes(s.lifecycle_state));
+    const pool = spares.length ? spares : _all.filter(s => s.sensor_id !== sensorId);
+    if (!pool.length) { OpsModal.toast('No other device available to swap in.', 'error'); return; }
+    const opts = pool.map(s => ({ value: s.sensor_id, label: `${s.name || s.sensor_id} (${s.sensor_id})${s.lifecycle_state ? ' · ' + s.lifecycle_state : ''}` }));
+    OpsModal.open(`Replace device — ${esc(x.name || sensorId)}`, `
+      <p style="margin:0 0 12px;font-size:var(--fs-sm);color:var(--ink-3)">Transfers this node's property, coverage, tags and config profile to the replacement. The faulty unit moves to <b>RMA</b>; the replacement goes <b>active</b>. Both are logged.</p>
+      ${OpsModal.field('Replacement device', 'replacement_id', 'select', '', { options: opts })}
+      ${OpsModal.field('Reason', 'reason', 'text', '', { required: false, placeholder: 'e.g. modem failure, no check-in for 9 days' })}
+      ${spares.length ? '' : '<p style="margin:10px 0 0;font-size:var(--fs-xs);color:var(--warn)">No units in inventory/warehouse — showing all devices. Make sure the replacement is genuinely a spare.</p>'}
+    `, [
+      { label: 'Cancel', onclick: 'OpsModal.close()' },
+      { label: 'Replace &amp; transfer', class: 'btn-primary', onclick: `OpsSensors.doReplace('${__sid(sensorId)}')` },
+    ]);
+  }
+  async function doReplace(sensorId) {
+    const f = OpsModal.getFormData();
+    if (!f.replacement_id) { OpsModal.toast('Choose a replacement device.', 'error'); return; }
+    OpsModal.setLoading(true);
+    try {
+      await OpsModal.apiPost(`/monitoring/sensors/${sensorId}/replace`, { replacement_id: f.replacement_id, reason: f.reason || null });
+      OpsModal.close();
+      OpsModal.toast('Device replaced. Assignments transferred.', 'success');
+      await load();
+      if (_drawerId === sensorId) { _drawerId = f.replacement_id; renderDrawer(); }
+    } catch (err) { OpsModal.setLoading(false); OpsModal.toast(err.message || 'Failed to replace device', 'error'); }
+  }
+
   // ══════════════════════════════════════════════════════════════
   //  RIGHT-SIDE DETAIL DRAWER — matches the Figma slide-over exactly:
   //  header (name + estate), status badge, metric rows, firmware +
@@ -825,6 +940,10 @@ const OpsSensors = (function () {
       (() => { const st = { in_sync:['var(--ok)','in sync'], drift:['var(--warn)','drift'], pending:['var(--ink-3)','pending'] }[x.config_state];
         const v = x.profile_name ? `${esc(x.profile_name)}${st ? ` <span style="color:${st[0]};font-weight:700;font-size:var(--fs-2xs)">· ${st[1]}</span>` : ''}` : dash;
         return `<div class="sn-card"><div class="sn-card-k">Config profile</div><div class="sn-card-v" style="font-size:var(--fs-sm)">${v}</div></div>`; })(),
+      (() => { const L = { active:['var(--ok)','Active'], installed:['var(--blue-hi)','Installed'], assigned:['var(--blue-hi)','Assigned'], warehouse:['var(--ink-4)','Warehouse'], inventory:['var(--ink-4)','Inventory'], maintenance:['var(--warn)','Maintenance'], rma:['var(--err)','RMA'], retired:['var(--ink-4)','Retired'] }[x.lifecycle_state] || ['var(--ink-4)', x.lifecycle_state || '—'];
+        return `<div class="sn-card"><div class="sn-card-k">Lifecycle</div><div class="sn-card-v" style="font-size:var(--fs-sm);color:${L[0]};font-weight:700">${L[1]}</div></div>`; })(),
+      card('Serial', x.serial_number ? esc(x.serial_number) : dash),
+      card('Warranty', x.warranty_expires_at ? new Date(x.warranty_expires_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : dash),
     ].join('');
 
     overlay.innerHTML = `
@@ -910,6 +1029,14 @@ const OpsSensors = (function () {
             <button class="sn-act-row" onclick="OpsSensors.editTags('${sid}')">
               <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M3 5v6.586a1 1 0 00.293.707l8.414 8.414a1 1 0 001.414 0l5.586-5.586a1 1 0 000-1.414L10.707 5.293A1 1 0 0010 5H4a1 1 0 00-1 1z"/></svg>
               Manage Tags
+            </button>
+            <button class="sn-act-row" onclick="OpsSensors.deviceRecord('${sid}')">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h8M8 11h8M8 15h5"/></svg>
+              Lifecycle &amp; Hardware
+            </button>
+            <button class="sn-act-row" onclick="OpsSensors.replaceDevice('${sid}')">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v6h6M20 20v-6h-6"/><path stroke-linecap="round" stroke-linejoin="round" d="M20 8a8 8 0 00-14.9-2M4 16a8 8 0 0014.9 2"/></svg>
+              Replace Device (RMA)
             </button>
             <button class="sn-act-row danger" onclick="OpsSensors.decommission('${sid}')">
               <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9.5 4L10 3h4l.5 1M4 7h16"/></svg>
@@ -1530,6 +1657,7 @@ const OpsSensors = (function () {
   return {
     render, setFilter, setTag, setQuery,
     editTags, saveTags, bulkTag, confirmBulkTag,
+    deviceRecord, saveDeviceRecord, lifecycleLog, replaceDevice, doReplace,
     protectionWindows, createWindow, cancelWindow,
     profilesManager, pfHome, pfCreate, pfOpen, pfSave, pfAssign,
     firmwareManager, fwHome, fwCreateRelease, fwCreateRollout, fwOpenRollout, fwAdvance, fwState, fwRollback,
