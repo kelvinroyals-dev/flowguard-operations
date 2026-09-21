@@ -299,7 +299,9 @@ const OpsSensors = (function () {
             ${tags.map(t => `<option value="${esc(t)}" ${_tag === t ? 'selected' : ''}>#${esc(t)}</option>`).join('')}
           </select>` : ''; })()}
         <select class="um-filter" onchange="OpsSensors.setFilter(this.value)">${chips.map(([k, l]) =>
-        `<option value="${k}" ${_filter === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`;
+        `<option value="${k}" ${_filter === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        ${canMng() ? `<button class="btn-ghost" onclick="OpsSensors.targetCohort()" title="Select a cohort by tag, state, firmware, lifecycle or integrity">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:5px"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>Target…</button>` : ''}</div>`;
 
     let rows = _all.map((x, i) => ({ x, tier: tiers[i] }));
     if (_filter === 'healthy') rows = rows.filter(r => r.tier === 'healthy');
@@ -373,6 +375,70 @@ const OpsSensors = (function () {
       _selected.clear();
       await load();
     } catch (err) { OpsModal.setLoading(false); OpsModal.toast(err.message || 'Failed to update tags', 'error'); }
+  }
+
+  // ── Advanced bulk targeting — build a selection cohort by criteria ───────
+  function _cohortMatch(f) {
+    const base = fleetFirmware(_all);
+    return _all.filter(x => {
+      if (f.tag && !(x.tags || []).includes(f.tag)) return false;
+      if (f.device_state && f.device_state !== 'any' && x.device_state !== f.device_state) return false;
+      if (f.data === 'issues' && !(x.data_trust === false && (x.device_state === 'online' || x.device_state === 'degraded'))) return false;
+      if (f.lifecycle && f.lifecycle !== 'any' && x.lifecycle_state !== f.lifecycle) return false;
+      if (f.config && f.config !== 'any' && (x.config_state || 'none') !== f.config) return false;
+      if (f.fw === 'outdated') { if (!(base && x.firmware_version && x.firmware_version !== base)) return false; }
+      else if (f.fw && f.fw !== 'any') { if (x.firmware_version !== f.fw) return false; }
+      if (f.integrity === 'flagged' && !(x.integrity_state === 'warning' || x.integrity_state === 'critical')) return false;
+      if (f.integrity === 'tamper' && !x.tamper_flagged) return false;
+      if (f.integrity === 'geofence' && x.geofence_state !== 'breach') return false;
+      if (f.lowbatt === 'yes' && !(x.battery_percent != null && x.battery_percent < 25)) return false;
+      return true;
+    }).map(x => x.sensor_id);
+  }
+  function targetCohort() {
+    const tags = [...new Set(_all.flatMap(s => s.tags || []))].sort();
+    const vers = [...new Set(_all.map(s => s.firmware_version).filter(Boolean))].sort();
+    const any = [{ value: 'any', label: 'Any' }];
+    OpsModal.open('Target a cohort', `
+      <p style="margin:0 0 12px;font-size:var(--fs-sm);color:var(--ink-3);line-height:1.5">Match devices by criteria, then select them — the bulk bar lets you tag, push firmware, reset or recalibrate the whole set at once.</p>
+      <div onchange="OpsSensors._targetPreview()">
+        ${OpsModal.field('Tag / group', 'tag', 'select', '', { options: [{ value: '', label: 'Any tag' }].concat(tags.map(t => ({ value: t, label: '#' + t }))) })}
+        ${OpsModal.row([
+          OpsModal.field('Device state', 'device_state', 'select', 'any', { options: any.concat(['online', 'degraded', 'offline', 'maintenance'].map(v => ({ value: v, label: v }))) }),
+          OpsModal.field('Data trust', 'data', 'select', 'any', { options: [{ value: 'any', label: 'Any' }, { value: 'issues', label: 'Data issues only' }] }),
+        ])}
+        ${OpsModal.row([
+          OpsModal.field('Lifecycle', 'lifecycle', 'select', 'any', { options: any.concat(['inventory', 'warehouse', 'assigned', 'installed', 'active', 'maintenance', 'rma', 'retired'].map(v => ({ value: v, label: v }))) }),
+          OpsModal.field('Config', 'config', 'select', 'any', { options: any.concat([{ value: 'in_sync', label: 'In sync' }, { value: 'drift', label: 'Drift' }, { value: 'pending', label: 'Pending' }, { value: 'none', label: 'No profile' }]) }),
+        ])}
+        ${OpsModal.row([
+          OpsModal.field('Firmware', 'fw', 'select', 'any', { options: [{ value: 'any', label: 'Any' }, { value: 'outdated', label: 'Outdated (≠ baseline)' }].concat(vers.map(v => ({ value: v, label: v }))) }),
+          OpsModal.field('Integrity', 'integrity', 'select', 'any', { options: [{ value: 'any', label: 'Any' }, { value: 'flagged', label: 'Flagged (warn/critical)' }, { value: 'tamper', label: 'Tamper only' }, { value: 'geofence', label: 'Geofence breach' }] }),
+        ])}
+        ${OpsModal.field('Battery', 'lowbatt', 'select', 'any', { options: [{ value: 'any', label: 'Any' }, { value: 'yes', label: 'Critical only (<25%)' }] })}
+      </div>
+      <div id="tg-count" style="margin-top:12px;font-size:var(--fs-sm);font-weight:700;color:var(--ink)"></div>
+    `, [
+      { label: 'Cancel', onclick: 'OpsModal.close()' },
+      { label: 'Select matching', class: 'btn-primary', onclick: 'OpsSensors.applyCohort()' },
+    ]);
+    _targetPreview();
+  }
+  function _targetPreview() {
+    const el = document.getElementById('tg-count');
+    if (!el) return;
+    const n = _cohortMatch(OpsModal.getFormData()).length;
+    el.innerHTML = n ? `${n} device${n > 1 ? 's' : ''} match` : `<span style="color:var(--ink-4)">No devices match — loosen the criteria</span>`;
+  }
+  function applyCohort() {
+    const ids = _cohortMatch(OpsModal.getFormData());
+    if (!ids.length) { OpsModal.toast('No devices match those criteria.', 'warning'); return; }
+    _selected = new Set(ids);
+    // clear list filters so the whole cohort is visible in the table
+    _filter = 'all'; _tag = ''; _q = '';
+    OpsModal.close();
+    draw();
+    OpsModal.toast(`${ids.length} device${ids.length > 1 ? 's' : ''} selected — apply a bulk action from the bar.`, 'success');
   }
 
   function toggleSelect(id, checked) {
@@ -2124,6 +2190,7 @@ const OpsSensors = (function () {
 
   return {
     render, setFilter, setTag, setQuery, fleetAnalytics,
+    targetCohort, _targetPreview, applyCohort,
     editTags, saveTags, bulkTag, confirmBulkTag,
     deviceRecord, saveDeviceRecord, lifecycleLog, replaceDevice, doReplace, timeline,
     connectivityPanel, powerPanel, calibrationPanel,
