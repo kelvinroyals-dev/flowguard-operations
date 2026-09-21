@@ -941,7 +941,7 @@ const OpsSensors = (function () {
     try { resp = await OpsModal.apiGet(`/monitoring/sensors/${sensorId}/timeline`); }
     catch (err) { OpsModal.toast(err.message || 'Failed to load timeline', 'error'); return; }
     const feed = (resp && resp.data) || [];
-    const SRC = { maintenance: ['var(--blue-hi)', 'Maintenance'], command: ['var(--ink-3)', 'Command'], lifecycle: ['var(--ink-3)', 'Lifecycle'] };
+    const SRC = { maintenance: ['var(--blue-hi)', 'Maintenance'], command: ['var(--ink-3)', 'Command'], lifecycle: ['var(--ink-3)', 'Lifecycle'], integrity: ['var(--err)', 'Integrity'] };
     const body = feed.length ? `<div style="display:flex;flex-direction:column">${feed.map(e => {
       const col = _TONE[e.tone] || SRC[e.source]?.[0] || 'var(--ink-3)';
       const when = e.ts ? new Date(e.ts).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
@@ -1030,6 +1030,113 @@ const OpsSensors = (function () {
     OpsModal.open(`Calibration — ${esc(x.name || sensorId)}`, body, [{ label: 'Close', class: 'btn-primary', onclick: 'OpsModal.close()' }]);
   }
 
+  // ── Integrity panel (time-sync / geofence / tamper) ─────────────────────
+  function integrityPanel(sensorId) {
+    const x = _all.find(s => s.sensor_id === sensorId) || {};
+    const skew = x.last_clock_skew_seconds;
+    const skewTone = skew == null ? 'muted' : Math.abs(skew) >= 300 ? 'err' : Math.abs(skew) >= 60 ? 'warn' : 'ok';
+    const skewTxt = skew == null ? 'Never synced' : `${skew > 0 ? '+' : ''}${Math.abs(skew) < 120 ? skew + 's' : Math.round(skew / 60) + ' min'}${x.clock_synced_at ? ` · ${_ago(x.clock_synced_at)}` : ''}`;
+    const gf = x.geofence_state;
+    const gfTone = gf === 'breach' ? 'err' : gf === 'inside' ? 'ok' : 'muted';
+    const gfTxt = gf === 'breach' ? `Breach · ${x.geofence_distance_m ?? '?'} m from anchor`
+      : gf === 'inside' ? `Inside${x.geofence_distance_m != null ? ` · ${x.geofence_distance_m} m from anchor` : ''}`
+      : (x.geofence_center_lat != null ? 'Anchor set · awaiting GPS' : 'No anchor set');
+    const anchored = x.geofence_center_lat != null;
+    const tamper = !!x.tamper_flagged;
+    const body = `
+      <div style="font-size:var(--fs-2xs);font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:.04em;margin:2px 0 2px">Time sync</div>
+      ${_prow('Clock skew', skewTxt, skewTone)}
+      <div style="font-size:var(--fs-2xs);font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 2px">Geofence</div>
+      ${_prow('Status', gfTxt, gfTone)}
+      ${_prow('Radius', `${x.geofence_radius_m ?? 150} m`)}
+      ${_prow('Anchor', anchored ? `${(+x.geofence_center_lat).toFixed(4)}, ${(+x.geofence_center_lng).toFixed(4)}` : '—')}
+      <div style="font-size:var(--fs-2xs);font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 2px">Tamper</div>
+      ${_prow('State', tamper ? `Flagged · ${_ago(x.tamper_at)}` : 'Clear', tamper ? 'err' : 'ok')}
+      ${tamper && x.tamper_reason ? _prow('Reason', esc(x.tamper_reason)) : ''}
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px">
+        <button onclick="OpsSensors.setGeofenceAnchor('${sensorId}')" style="flex:1 1 auto;min-width:130px;padding:9px 12px;border:1px solid var(--line);background:var(--surface-2,transparent);color:var(--ink-2);border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">Anchor to current GPS</button>
+        <button onclick="OpsSensors.editGeofence('${sensorId}')" style="flex:1 1 auto;min-width:130px;padding:9px 12px;border:1px solid var(--line);background:var(--surface-2,transparent);color:var(--ink-2);border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">Edit geofence</button>
+        ${tamper
+          ? `<button onclick="OpsSensors.clearTamper('${sensorId}')" style="flex:1 1 auto;min-width:130px;padding:9px 12px;border:1px solid var(--ok);background:transparent;color:var(--ok);border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">Clear tamper</button>`
+          : `<button onclick="OpsSensors.flagTamper('${sensorId}')" style="flex:1 1 auto;min-width:130px;padding:9px 12px;border:1px solid var(--err);background:transparent;color:var(--err);border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">Flag tamper</button>`}
+      </div>`;
+    OpsModal.open(`Integrity — ${esc(x.name || sensorId)}`, body, [{ label: 'Close', class: 'btn-primary', onclick: 'OpsModal.close()' }]);
+  }
+
+  function setGeofenceAnchor(sensorId) {
+    const x = _all.find(s => s.sensor_id === sensorId) || {};
+    if (x.latitude == null || x.longitude == null) { OpsModal.toast('Device has no reported GPS position to anchor to.', 'error'); return; }
+    OpsModal.confirm(`Pin the geofence anchor to this device's current position (${(+x.latitude).toFixed(4)}, ${(+x.longitude).toFixed(4)})? Future GPS reports are measured against it.`, async () => {
+      try {
+        await OpsModal.apiPut(`/monitoring/sensors/${sensorId}/geofence`, { anchor: true });
+        OpsModal.toast('Geofence anchored.', 'success');
+        await load(); if (_drawerId === sensorId) renderDrawer();
+      } catch (err) { OpsModal.toast(err.message || 'Failed to anchor geofence', 'error'); }
+    });
+  }
+  function editGeofence(sensorId) {
+    const x = _all.find(s => s.sensor_id === sensorId) || {};
+    OpsModal.open(`Edit geofence — ${esc(x.name || sensorId)}`, `
+      <p style="margin:0 0 12px;font-size:var(--fs-sm);color:var(--ink-3)">Set the fence centre and how far the device may report from it before a breach is raised. Leave the centre blank to keep the current anchor.</p>
+      ${OpsModal.row([
+        OpsModal.field('Centre latitude', 'center_lat', 'text', x.geofence_center_lat != null ? String(+x.geofence_center_lat) : '', { required: false, placeholder: 'e.g. 6.4281' }),
+        OpsModal.field('Centre longitude', 'center_lng', 'text', x.geofence_center_lng != null ? String(+x.geofence_center_lng) : '', { required: false, placeholder: 'e.g. 3.4219' }),
+      ])}
+      ${OpsModal.field('Radius (metres)', 'radius_m', 'number', String(x.geofence_radius_m ?? 150), { required: true, placeholder: '10–100000' })}
+    `, [
+      { label: 'Cancel', onclick: 'OpsModal.close()' },
+      { label: 'Save', class: 'btn-primary', onclick: `OpsSensors.saveGeofence('${__sid(sensorId)}')` },
+    ]);
+  }
+  async function saveGeofence(sensorId) {
+    const f = OpsModal.getFormData();
+    const payload = {};
+    if (f.center_lat !== '' && f.center_lng !== '') { payload.center_lat = parseFloat(f.center_lat); payload.center_lng = parseFloat(f.center_lng); }
+    else if (f.center_lat !== '' || f.center_lng !== '') { OpsModal.toast('Set both latitude and longitude, or leave both blank.', 'error'); return; }
+    if (f.radius_m !== '') payload.radius_m = parseInt(f.radius_m, 10);
+    if (payload.center_lat == null && payload.radius_m == null) { OpsModal.toast('Nothing to save.', 'error'); return; }
+    if (payload.center_lat == null && x_hasAnchor(sensorId) === false) { OpsModal.toast('No anchor yet — set a centre or use Anchor to current GPS.', 'error'); return; }
+    OpsModal.setLoading(true);
+    try {
+      await OpsModal.apiPut(`/monitoring/sensors/${sensorId}/geofence`, payload);
+      OpsModal.close(); OpsModal.toast('Geofence updated.', 'success');
+      await load(); if (_drawerId === sensorId) renderDrawer();
+    } catch (err) { OpsModal.setLoading(false); OpsModal.toast(err.message || 'Failed to update geofence', 'error'); }
+  }
+  function x_hasAnchor(sensorId) { const x = _all.find(s => s.sensor_id === sensorId); return !!(x && x.geofence_center_lat != null); }
+
+  function flagTamper(sensorId) {
+    const x = _all.find(s => s.sensor_id === sensorId) || {};
+    OpsModal.open(`Flag tamper — ${esc(x.name || sensorId)}`, `
+      <p style="margin:0 0 12px;font-size:var(--fs-sm);color:var(--ink-3)">Mark this device as suspected tampered — it stays flagged until an inspection clears it.</p>
+      ${OpsModal.field('Reason', 'reason', 'text', '', { required: true, placeholder: 'e.g. enclosure found open on site visit' })}
+    `, [
+      { label: 'Cancel', onclick: 'OpsModal.close()' },
+      { label: 'Flag tamper', class: 'btn-danger', onclick: `OpsSensors.doTamper('${__sid(sensorId)}', true)` },
+    ]);
+  }
+  function clearTamper(sensorId) {
+    const x = _all.find(s => s.sensor_id === sensorId) || {};
+    OpsModal.open(`Clear tamper — ${esc(x.name || sensorId)}`, `
+      <p style="margin:0 0 12px;font-size:var(--fs-sm);color:var(--ink-3)">Confirm the device has been inspected and is intact. This is logged against your name.</p>
+      ${OpsModal.field('Note (optional)', 'reason', 'text', '', { required: false, placeholder: 'e.g. inspected, seal intact' })}
+    `, [
+      { label: 'Cancel', onclick: 'OpsModal.close()' },
+      { label: 'Clear tamper', class: 'btn-primary', onclick: `OpsSensors.doTamper('${__sid(sensorId)}', false)` },
+    ]);
+  }
+  async function doTamper(sensorId, flagged) {
+    const f = OpsModal.getFormData();
+    if (flagged && (!f.reason || !f.reason.trim())) { OpsModal.toast('A reason is required.', 'error'); return; }
+    OpsModal.setLoading(true);
+    try {
+      await OpsModal.apiPost(`/monitoring/sensors/${sensorId}/tamper`, { flagged: !!flagged, reason: f.reason || null });
+      OpsModal.close();
+      OpsModal.toast(flagged ? 'Device flagged for tamper.' : 'Tamper cleared.', 'success');
+      await load(); if (_drawerId === sensorId) renderDrawer();
+    } catch (err) { OpsModal.setLoading(false); OpsModal.toast(err.message || 'Failed to update tamper flag', 'error'); }
+  }
+
   // ══════════════════════════════════════════════════════════════
   //  RIGHT-SIDE DETAIL DRAWER — matches the Figma slide-over exactly:
   //  header (name + estate), status badge, metric rows, firmware +
@@ -1103,6 +1210,7 @@ const OpsSensors = (function () {
               <span class="sn-tok ${tierClass}"><span class="tdot"></span>${tier.toUpperCase()}</span>
               <span class="sep">·</span>
               <span class="sn-tok ${online ? 'ok' : 'err'}">${connLabel}</span>
+              ${(x.integrity_state === 'warning' || x.integrity_state === 'critical') ? `<span class="sep">·</span><span class="sn-tok ${x.integrity_state === 'critical' ? 'err' : 'warn'}" title="${esc((x.integrity_reasons || []).join('; '))}"><span class="tdot"></span>${x.integrity_state === 'critical' ? 'TAMPER' : 'INTEGRITY'}</span>` : ''}
             </div>
             ${(x.tags && x.tags.length) ? `<div style="margin-top:7px;display:flex;flex-wrap:wrap;gap:5px">${x.tags.map(t => `<span style="font-size:var(--fs-2xs);font-weight:600;color:var(--blue-hi);background:var(--neon-trace);border:1px solid var(--blue-dim);padding:2px 8px;border-radius:20px">#${esc(t)}</span>`).join('')}</div>` : ''}
           </div>
@@ -1180,6 +1288,10 @@ const OpsSensors = (function () {
             <button class="sn-act-row" onclick="OpsSensors.calibrationPanel('${sid}')">
               <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>
               Calibration
+            </button>
+            <button class="sn-act-row" onclick="OpsSensors.integrityPanel('${sid}')">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2l7 4v6c0 4.5-3 7.5-7 8-4-.5-7-3.5-7-8V6l7-4z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4"/></svg>
+              Integrity
             </button>
             <button class="sn-act-row" onclick="OpsSensors.commandHistory('${sid}')">
               <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -1905,6 +2017,7 @@ const OpsSensors = (function () {
     editTags, saveTags, bulkTag, confirmBulkTag,
     deviceRecord, saveDeviceRecord, lifecycleLog, replaceDevice, doReplace, timeline,
     connectivityPanel, powerPanel, calibrationPanel,
+    integrityPanel, setGeofenceAnchor, editGeofence, saveGeofence, flagTamper, clearTamper, doTamper,
     protectionWindows, createWindow, cancelWindow,
     profilesManager, pfHome, pfCreate, pfOpen, pfSave, pfAssign,
     firmwareManager, fwHome, fwCreateRelease, fwCreateRollout, fwOpenRollout, fwAdvance, fwState, fwRollback,
