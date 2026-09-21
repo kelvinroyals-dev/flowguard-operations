@@ -163,6 +163,9 @@ const OpsSensors = (function () {
           <button class="btn-ghost" onclick="OpsSensors.firmwareManager()" title="Firmware releases & staged rollouts">
             <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:6px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>Firmware
           </button>
+          <button class="btn-ghost" onclick="OpsSensors.driversManager()" title="Third-party device drivers & adapters">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:6px"><rect x="3" y="4" width="18" height="12" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M7 20h10M9 16v4M15 16v4"/></svg>Drivers
+          </button>
           <button class="btn-ghost" onclick="OpsSensors.protectionWindows()" title="Pause reboots/firmware during storms or incidents">
             <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:6px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Maintenance windows
           </button>
@@ -1372,6 +1375,9 @@ const OpsSensors = (function () {
         return `<div class="sn-card"><div class="sn-card-k">Lifecycle</div><div class="sn-card-v" style="font-size:var(--fs-sm);color:${L[0]};font-weight:700">${L[1]}</div></div>`; })(),
       card('Serial', x.serial_number ? esc(x.serial_number) : dash),
       card('Warranty', x.warranty_expires_at ? new Date(x.warranty_expires_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : dash),
+      (() => { const label = x.driver_native ? 'Sentinel (native)' : (x.driver_name ? esc(x.driver_name) : 'Sentinel (native)');
+        const vend = !x.driver_native && x.driver_vendor ? ` <span style="color:var(--ink-4);font-weight:400;font-size:var(--fs-2xs)">· ${esc(x.driver_vendor)}</span>` : '';
+        return `<div class="sn-card"><div class="sn-card-k">Driver</div><div class="sn-card-v" style="font-size:var(--fs-sm)">${label}${vend}</div></div>`; })(),
     ].join('');
 
     overlay.innerHTML = `
@@ -1492,6 +1498,10 @@ const OpsSensors = (function () {
             <button class="sn-act-row" onclick="OpsSensors.deviceRecord('${sid}')">
               <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h8M8 11h8M8 15h5"/></svg>
               Lifecycle &amp; Hardware
+            </button>
+            <button class="sn-act-row" onclick="OpsSensors.setDriver('${sid}')">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M7 20h10M9 16v4M15 16v4"/></svg>
+              Device Driver
             </button>
             <button class="sn-act-row" onclick="OpsSensors.replaceDevice('${sid}')">
               <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v6h6M20 20v-6h-6"/><path stroke-linecap="round" stroke-linejoin="round" d="M20 8a8 8 0 00-14.9-2M4 16a8 8 0 0014.9 2"/></svg>
@@ -2188,6 +2198,106 @@ const OpsSensors = (function () {
     ]);
   }
 
+  // ══════════════════════════════════════════════════════════════
+  //  THIRD-PARTY DEVICE DRIVERS — registry manager + per-device binding
+  // ══════════════════════════════════════════════════════════════
+  const DRV_CAPS = ['water_level', 'flow_rate', 'silt', 'temperature', 'battery', 'signal', 'gps'];
+  const DRV_CMDS = ['firmware_update', 'reset', 'recalibrate', 'apply_config', 'force_sync', 'connectivity_test', 'self_test', 'reconnect_modem', 'refresh_gps', 'diagnostic_bundle', 'locate', 'set_reporting_interval', 'set_thresholds', 'enable_sensor', 'disable_sensor', 'reset_config', 'factory_reset', 'reprovision'];
+  let _drivers = [];
+
+  async function driversManager() {
+    OpsModal.open('Device drivers', '<div style="padding:20px;color:var(--ink-3)">Loading…</div>', [{ label: 'Close', onclick: 'OpsModal.close()' }]);
+    try { const r = await OpsModal.apiGet('/device-drivers'); _drivers = r.data || []; } catch (err) { OpsModal.toast(err.message || 'Failed to load drivers', 'error'); return; }
+    drvHome();
+  }
+  function drvHome() {
+    const rows = _drivers.map(d => {
+      const caps = Object.keys(d.capabilities || {}).filter(k => d.capabilities[k]).length;
+      const cmds = (d.commands || []).length;
+      return `<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)">
+        <div style="flex:1 1 auto;min-width:0">
+          <div style="font-weight:700;color:var(--ink);font-size:var(--fs-sm)">${esc(d.name)}${d.native ? ' <span style="font-size:var(--fs-2xs);color:var(--ok);font-weight:700">· NATIVE</span>' : ''}${!d.active ? ' <span style="font-size:var(--fs-2xs);color:var(--ink-4)">· inactive</span>' : ''}</div>
+          <div style="font-size:var(--fs-2xs);color:var(--ink-4)">${esc(d.key)}${d.vendor ? ' · ' + esc(d.vendor) : ''} · ${caps} caps · ${cmds} commands · ${d.device_count || 0} device${d.device_count === 1 ? '' : 's'}</div>
+        </div>
+        <button class="btn-ghost" onclick="OpsSensors.drvEdit(${d.id})">${d.native ? 'View' : 'Edit'}</button>
+      </div>`;
+    }).join('');
+    OpsModal.open('Device drivers', `
+      <p style="margin:0 0 12px;font-size:var(--fs-sm);color:var(--ink-3);line-height:1.5">Adapters that let third-party hardware report telemetry and take commands through the same model as a Sentinel. Each device binds to a driver.</p>
+      ${rows || '<p style="color:var(--ink-4)">No drivers yet.</p>'}
+    `, [
+      { label: 'New driver', class: 'btn-primary', onclick: 'OpsSensors.drvEdit(0)' },
+      { label: 'Close', onclick: 'OpsModal.close()' },
+    ]);
+  }
+  function drvEdit(id) {
+    const d = id ? (_drivers.find(x => x.id === id) || {}) : {};
+    const ro = !!d.native;
+    const capBoxes = DRV_CAPS.map(c => `<label style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-xs);color:var(--ink-2);margin:0 10px 6px 0"><input type="checkbox" name="cap_${c}" ${(d.capabilities && d.capabilities[c]) ? 'checked' : ''}> ${c.replace(/_/g, ' ')}</label>`).join('');
+    const cmdBoxes = DRV_CMDS.map(c => `<label style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-xs);color:var(--ink-2);margin:0 10px 6px 0"><input type="checkbox" name="cmd_${c}" ${(d.commands || []).includes(c) ? 'checked' : ''} ${ro ? 'disabled' : ''}> ${c.replace(/_/g, ' ')}</label>`).join('');
+    OpsModal.open(id ? `Driver — ${esc(d.name || '')}` : 'New driver', `
+      ${OpsModal.row([
+        OpsModal.field('Key (slug)', 'key', 'text', d.key || '', { required: !id, readonly: !!id, placeholder: 'acme-flow-v2' }),
+        OpsModal.field('Name', 'name', 'text', d.name || '', { required: true, placeholder: 'Acme Flow Meter v2' }),
+      ])}
+      ${OpsModal.row([
+        OpsModal.field('Vendor', 'vendor', 'text', d.vendor || '', { required: false }),
+        OpsModal.field('Model', 'model', 'text', d.model || '', { required: false }),
+      ])}
+      ${OpsModal.field('Auth type', 'auth_type', 'select', d.auth_type || 'device_key', { options: ['device_key', 'hmac', 'bearer'] })}
+      <div class="ops-modal-field"><label class="ops-label">Capabilities</label><div>${capBoxes}</div></div>
+      <div class="ops-modal-field"><label class="ops-label">Supported commands</label><div>${cmdBoxes}</div></div>
+      ${OpsModal.field('Field map (JSON: canonical → vendor path)', 'field_map', 'textarea', d.field_map ? JSON.stringify(d.field_map, null, 2) : '{}', { required: false, rows: 5, placeholder: '{ "water_level_percent": "level_pct" }' })}
+      ${OpsModal.field('Notes', 'notes', 'textarea', d.notes || '', { required: false, rows: 2 })}
+      ${id && !ro ? OpsModal.field('Active', 'active', 'select', d.active === false ? 'no' : 'yes', { options: [{ value: 'yes', label: 'Active' }, { value: 'no', label: 'Inactive' }] }) : ''}
+    `, ro ? [{ label: 'Back', onclick: 'OpsSensors.drvHome()' }] : [
+      { label: 'Back', onclick: 'OpsSensors.drvHome()' },
+      { label: id ? 'Save' : 'Create', class: 'btn-primary', onclick: `OpsSensors.drvSave(${id || 0})` },
+    ]);
+  }
+  async function drvSave(id) {
+    const f = OpsModal.getFormData();
+    let field_map;
+    try { field_map = f.field_map && f.field_map.trim() ? JSON.parse(f.field_map) : {}; }
+    catch (_) { OpsModal.toast('Field map must be valid JSON.', 'error'); return; }
+    const capabilities = {}; DRV_CAPS.forEach(c => { const el = document.querySelector(`input[name="cap_${c}"]`); if (el && el.checked) capabilities[c] = true; });
+    const commands = DRV_CMDS.filter(c => { const el = document.querySelector(`input[name="cmd_${c}"]`); return el && el.checked; });
+    const body = { name: f.name, vendor: f.vendor || null, model: f.model || null, auth_type: f.auth_type, capabilities, field_map, commands, notes: f.notes || null };
+    if (!id) body.key = f.key;
+    if (id) body.active = f.active !== 'no';
+    if (!body.name || (!id && !body.key)) { OpsModal.toast('Key and name are required.', 'error'); return; }
+    OpsModal.setLoading(true);
+    try {
+      if (id) await OpsModal.apiPut(`/device-drivers/${id}`, body);
+      else await OpsModal.apiPost('/device-drivers', body);
+      OpsModal.toast('Driver saved.', 'success');
+      const r = await OpsModal.apiGet('/device-drivers'); _drivers = r.data || [];
+      drvHome();
+    } catch (err) { OpsModal.setLoading(false); OpsModal.toast(err.message || 'Failed to save driver', 'error'); }
+  }
+
+  async function setDriver(sensorId) {
+    const x = _all.find(s => s.sensor_id === sensorId) || {};
+    if (!_drivers.length) { try { const r = await OpsModal.apiGet('/device-drivers'); _drivers = r.data || []; } catch (_) {} }
+    const opts = [{ value: '', label: 'Sentinel (native / unbound)' }].concat(_drivers.filter(d => d.active && !d.native).map(d => ({ value: String(d.id), label: `${d.name}${d.vendor ? ' · ' + d.vendor : ''}` })));
+    OpsModal.open(`Device driver — ${esc(x.name || sensorId)}`, `
+      <p style="margin:0 0 12px;font-size:var(--fs-sm);color:var(--ink-3);line-height:1.5">Bind this device to a driver. Telemetry is remapped to canonical fields on ingest and commands are gated to the driver's supported set.</p>
+      ${OpsModal.field('Driver', 'driver_id', 'select', x.driver_id ? String(x.driver_id) : '', { options: opts })}
+    `, [
+      { label: 'Cancel', onclick: 'OpsModal.close()' },
+      { label: 'Save', class: 'btn-primary', onclick: `OpsSensors.saveDriver('${__sid(sensorId)}')` },
+    ]);
+  }
+  async function saveDriver(sensorId) {
+    const f = OpsModal.getFormData();
+    OpsModal.setLoading(true);
+    try {
+      await OpsModal.apiPut(`/monitoring/sensors/${sensorId}/driver`, { driver_id: f.driver_id ? parseInt(f.driver_id, 10) : null });
+      OpsModal.close(); OpsModal.toast('Driver updated.', 'success');
+      await load(); if (_drawerId === sensorId) renderDrawer();
+    } catch (err) { OpsModal.setLoading(false); OpsModal.toast(err.message || 'Failed to set driver', 'error'); }
+  }
+
   return {
     render, setFilter, setTag, setQuery, fleetAnalytics,
     targetCohort, _targetPreview, applyCohort,
@@ -2195,6 +2305,7 @@ const OpsSensors = (function () {
     deviceRecord, saveDeviceRecord, lifecycleLog, replaceDevice, doReplace, timeline,
     connectivityPanel, powerPanel, calibrationPanel,
     integrityPanel, setGeofenceAnchor, editGeofence, saveGeofence, flagTamper, clearTamper, doTamper,
+    driversManager, drvHome, drvEdit, drvSave, setDriver, saveDriver,
     protectionWindows, createWindow, cancelWindow,
     profilesManager, pfHome, pfCreate, pfOpen, pfSave, pfAssign,
     firmwareManager, fwHome, fwCreateRelease, fwCreateRollout, fwOpenRollout, fwAdvance, fwState, fwRollback,
