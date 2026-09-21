@@ -154,6 +154,9 @@ const OpsSensors = (function () {
           <div class="fg-page-sub" id="sn-page-sub">Fleet management</div>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0">
+          <button class="btn-ghost" onclick="OpsSensors.profilesManager()" title="Device configuration profiles">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:6px"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Profiles
+          </button>
           <button class="btn-ghost" onclick="OpsSensors.firmwareManager()" title="Firmware releases & staged rollouts">
             <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:6px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>Firmware
           </button>
@@ -550,6 +553,89 @@ const OpsSensors = (function () {
     catch (err) { OpsModal.toast(err.message || 'Failed', 'error'); }
   }
 
+  // ── Device configuration profiles ─────────────────────────────────────
+  const CFG_FIELDS = [
+    ['telemetry_interval_sec', 'Telemetry interval (s)', 60],
+    ['water_poll_sec', 'Water polling (s)', 10],
+    ['offline_alert_min', 'Offline alert (min)', 5],
+    ['high_level_pct', 'High water (%)', 70],
+    ['critical_level_pct', 'Critical water (%)', 85],
+  ];
+  function profilesManager() {
+    OpsModal.open('Device profiles',
+      '<div id="pf-body" style="min-width:520px;max-width:640px"><div style="padding:20px;color:var(--ink-3)">Loading…</div></div>',
+      [{ label: 'Close', onclick: 'OpsModal.close()' }]);
+    pfHome();
+  }
+  async function pfHome() {
+    const body = document.getElementById('pf-body'); if (!body) return;
+    let list = [];
+    try { list = (await OpsModal.apiGet('/device-profiles')).data || []; } catch (_) {}
+    const rows = list.length ? list.map(p => `<div class="sn-act-row" style="justify-content:space-between;cursor:pointer" onclick="OpsSensors.pfOpen(${p.id})">
+        <div><b>${esc(p.name)}</b> <span class="lv-mono" style="color:var(--ink-3);margin-left:6px">v${p.version}</span>
+          <div style="color:var(--ink-3);font-size:var(--fs-2xs);margin-top:2px">${p.assigned} assigned${p.drifted ? ` · <span style="color:var(--warn)">${p.drifted} drifted</span>` : ' · in sync'}</div></div>
+        <span style="color:var(--ink-3)">›</span></div>`).join('')
+      : '<div style="color:var(--ink-3);font-size:var(--fs-sm)">No profiles yet.</div>';
+    body.innerHTML = `${rows}
+      <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px">
+        <div style="font-weight:600;margin-bottom:8px">New profile</div>
+        ${OpsModal.field('Name', 'pf-name', 'text', '', { required: false, placeholder: 'e.g. Urban Drain Profile' })}
+        <div style="text-align:right;margin-top:8px"><button class="btn-primary" onclick="OpsSensors.pfCreate()">Create</button></div>
+      </div>`;
+  }
+  async function pfCreate() {
+    const f = OpsModal.getFormData();
+    if (!f['pf-name']) { OpsModal.toast('Name the profile.', 'warning'); return; }
+    try { const r = await OpsModal.apiPost('/device-profiles', { name: f['pf-name'], config: {} }); OpsModal.toast('Profile created.', 'success'); pfOpen(r.data.id); }
+    catch (err) { OpsModal.toast(err.message || 'Failed', 'error'); }
+  }
+  async function pfOpen(id) {
+    const body = document.getElementById('pf-body'); if (!body) return;
+    body.innerHTML = '<div style="padding:20px;color:var(--ink-3)">Loading…</div>';
+    let d; try { d = (await OpsModal.apiGet('/device-profiles/' + id)).data; } catch (_) { body.innerHTML = '<div style="padding:20px;color:var(--err)">Couldn\'t load.</div>'; return; }
+    const cfg = d.config || {};
+    const fields = CFG_FIELDS.map(([k, label, def]) => `<div class="ops-modal-field"><label class="ops-label">${label}</label><input class="ops-input" id="pf-${k}" type="number" value="${cfg[k] != null ? cfg[k] : def}"></div>`).join('');
+    const drift = (d.devices || []).filter(x => x.drift).length;
+    body.innerHTML = `
+      <div class="sn-crumb" style="cursor:pointer" onclick="OpsSensors.pfHome()">‹ Profiles</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:6px 0 10px">
+        <span style="font-family:var(--ff-d);font-size:17px;font-weight:700">${esc(d.name)} <span class="lv-mono" style="color:var(--ink-3);font-size:var(--fs-sm)">v${d.version}</span></span>
+        <span style="font-size:var(--fs-2xs);color:${drift ? 'var(--warn)' : 'var(--ink-3)'}">${d.devices.length} assigned${drift ? ` · ${drift} drifted` : ''}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${fields}
+        <div class="ops-modal-field"><label class="ops-label">Camera mode</label><select class="ops-input" id="pf-camera_mode">${['off', 'event', 'continuous'].map(o => `<option ${cfg.camera_mode === o ? 'selected' : ''}>${o}</option>`).join('')}</select></div>
+        <div class="ops-modal-field"><label class="ops-label">Firmware channel</label><select class="ops-input" id="pf-firmware_channel">${['stable', 'beta', 'internal'].map(o => `<option ${cfg.firmware_channel === o ? 'selected' : ''}>${o}</option>`).join('')}</select></div>
+      </div>
+      <div style="text-align:right;margin-top:10px"><button class="btn-primary" onclick="OpsSensors.pfSave(${id})">Save new version</button></div>
+      <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px">
+        <div style="font-weight:600;margin-bottom:8px">Assign</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
+          ${OpsModal.field('Target', 'pf-target', 'select', 'fleet', { options: [{ value: 'fleet', label: 'Whole fleet' }, { value: 'tag', label: 'Tag / group' }] })}
+          ${OpsModal.field('Tag', 'pf-tag', 'text', '', { required: false, placeholder: 'if tag' })}
+          <button class="btn-ghost" style="height:40px" onclick="OpsSensors.pfAssign(${id})">Assign</button>
+        </div>
+      </div>
+      ${d.history && d.history.length ? `<div style="border-top:1px solid var(--border);margin-top:14px;padding-top:10px"><div style="font-weight:600;margin-bottom:6px;font-size:var(--fs-sm)">History</div>${d.history.map(h => `<div style="font-size:var(--fs-2xs);color:var(--ink-3)">v${h.version} · ${esc(h.note || '')} · ${new Date(h.changed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}${h.changed_by_name ? ' · ' + esc(h.changed_by_name) : ''}</div>`).join('')}</div>` : ''}`;
+  }
+  function _pfReadConfig() {
+    const c = {};
+    CFG_FIELDS.forEach(([k]) => { const el = document.getElementById('pf-' + k); if (el) c[k] = el.value; });
+    c.camera_mode = (document.getElementById('pf-camera_mode') || {}).value;
+    c.firmware_channel = (document.getElementById('pf-firmware_channel') || {}).value;
+    return c;
+  }
+  async function pfSave(id) {
+    try { const r = await OpsModal.apiPut('/device-profiles/' + id, { config: _pfReadConfig() });
+      OpsModal.toast(`Saved v${r.data.version} — re-pushed to ${r.data.repushed} device(s).`, 'success'); pfOpen(id); }
+    catch (err) { OpsModal.toast(err.message || 'Failed to save', 'error'); }
+  }
+  async function pfAssign(id) {
+    const f = OpsModal.getFormData();
+    try { const r = await OpsModal.apiPost(`/device-profiles/${id}/assign`, { target_type: f['pf-target'], target_value: f['pf-target'] === 'tag' ? f['pf-tag'] : null });
+      OpsModal.toast(`Assigned to ${(r.data && r.data.assigned) || 0} device(s) — config queued.`, 'success'); pfOpen(id); await load(); }
+    catch (err) { OpsModal.toast(err.message || 'Failed to assign', 'error'); }
+  }
+
   // ── Firmware releases & staged rollouts ───────────────────────────────
   const RO_CHIP = { active:['warn','Active'], paused:['neutral','Paused'], completed:['ok','Completed'], rolled_back:['danger','Rolled back'], cancelled:['neutral','Cancelled'] };
   function firmwareManager() {
@@ -736,6 +822,9 @@ const OpsSensors = (function () {
       card('Signal', x.signal_strength != null ? `<span style="color:${OpsModal.vitalColor(x.signal_strength)}">${x.signal_strength}%</span>` : dash),
       card('Temperature', x.temperature != null ? `<span style="color:${x.temperature >= 40 ? 'var(--err)' : 'var(--ink)'}">${Math.round(x.temperature)}°C</span>` : dash),
       `<div class="sn-card"><div class="sn-card-k">Firmware</div><div class="sn-card-v" style="font-size:var(--fs-sm)">${x.firmware_version ? esc(x.firmware_version) : dash}</div>${outdated ? '<span class="sn-card-badge">Update</span>' : ''}</div>`,
+      (() => { const st = { in_sync:['var(--ok)','in sync'], drift:['var(--warn)','drift'], pending:['var(--ink-3)','pending'] }[x.config_state];
+        const v = x.profile_name ? `${esc(x.profile_name)}${st ? ` <span style="color:${st[0]};font-weight:700;font-size:var(--fs-2xs)">· ${st[1]}</span>` : ''}` : dash;
+        return `<div class="sn-card"><div class="sn-card-k">Config profile</div><div class="sn-card-v" style="font-size:var(--fs-sm)">${v}</div></div>`; })(),
     ].join('');
 
     overlay.innerHTML = `
@@ -1440,6 +1529,7 @@ const OpsSensors = (function () {
     render, setFilter, setTag, setQuery,
     editTags, saveTags, bulkTag, confirmBulkTag,
     protectionWindows, createWindow, cancelWindow,
+    profilesManager, pfHome, pfCreate, pfOpen, pfSave, pfAssign,
     firmwareManager, fwHome, fwCreateRelease, fwCreateRollout, fwOpenRollout, fwAdvance, fwState, fwRollback,
     viewSensor, closeDrawer, decommission, openFull, back, queueCommand, drawerTab,
     getSensor: (id) => _all.find(s => s.sensor_id === id),
