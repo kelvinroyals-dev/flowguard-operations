@@ -960,6 +960,76 @@ const OpsSensors = (function () {
     OpsModal.open(`Event timeline — ${esc(x.name || sensorId)}`, body, [{ label: 'Close', class: 'btn-primary', onclick: 'OpsModal.close()' }]);
   }
 
+  // ── Per-domain drawer panels (connectivity / power / calibration) ────────
+  // (uses the shared _ago() relative-time helper defined below)
+  const _prow = (label, value, tone) => `
+    <div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)">
+      <span style="font-size:var(--fs-sm);color:var(--ink-3)">${esc(label)}</span>
+      <span style="font-size:var(--fs-sm);font-weight:600;color:${tone ? (_TONE[tone] || 'var(--ink)') : 'var(--ink)'};text-align:right">${value}</span>
+    </div>`;
+  const _qa = (sid, type, label) => `<button onclick="OpsSensors.sendCommand('${sid}','${type}')" style="flex:1 1 auto;min-width:120px;padding:9px 12px;border:1px solid var(--line);background:var(--surface-2,transparent);color:var(--ink-2);border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">${esc(label)}</button>`;
+  const _qaWrap = html => `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px">${html}</div>`;
+
+  function connectivityPanel(sensorId) {
+    const x = _all.find(s => s.sensor_id === sensorId) || {};
+    const offline = x.device_state === 'offline' || x.device_state === 'maintenance';
+    const sig = x.signal_strength;
+    const band = offline ? ['No uplink', 'err'] : sig == null ? ['Unknown', 'muted'] : sig >= 75 ? ['Excellent', 'ok'] : sig >= 50 ? ['Good', 'ok'] : sig >= 25 ? ['Fair', 'warn'] : ['Poor', 'err'];
+    const dstate = { online: 'ok', degraded: 'warn', offline: 'err', maintenance: 'muted' }[x.device_state] || 'muted';
+    const last = x.last_ping || x.reading_time;
+    const body = `
+      ${_prow('Uplink state', `${esc((x.device_state || 'unknown').toUpperCase())}${x.device_reason ? ` <span style="color:var(--ink-4);font-weight:400">· ${esc(x.device_reason)}</span>` : ''}`, dstate)}
+      ${_prow('Signal quality', `${sig != null && !offline ? sig + '% · ' : ''}${band[0]}`, band[1])}
+      ${_prow('Link type', esc(x.link_type || '—'))}
+      ${_prow('Last check-in', `${_ago(last)}${last ? ` <span style="color:var(--ink-4);font-weight:400">· ${new Date(last).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>` : ''}`)}
+      ${_prow('Modem IMEI', x.modem_imei ? esc(x.modem_imei) : '—')}
+      ${_prow('SIM ICCID', x.sim_iccid ? esc(x.sim_iccid) : '—')}
+      ${_prow('GPS fix', (x.latitude != null && x.longitude != null) ? `${(+x.latitude).toFixed(4)}, ${(+x.longitude).toFixed(4)}` : 'No fix', (x.latitude != null && x.longitude != null) ? 'ok' : 'muted')}
+      ${_qaWrap(_qa(sensorId, 'connectivity_test', 'Test uplink') + _qa(sensorId, 'reconnect_modem', 'Reconnect modem') + _qa(sensorId, 'refresh_gps', 'Refresh GPS') + _qa(sensorId, 'force_sync', 'Force sync'))}`;
+    OpsModal.open(`Connectivity — ${esc(x.name || sensorId)}`, body, [{ label: 'Close', class: 'btn-primary', onclick: 'OpsModal.close()' }]);
+  }
+
+  function powerPanel(sensorId) {
+    const x = _all.find(s => s.sensor_id === sensorId) || {};
+    const b = x.battery_percent;
+    const band = b == null ? ['Unknown', 'muted'] : b >= 60 ? ['Healthy', 'ok'] : b >= 25 ? ['Replace soon', 'warn'] : ['Critical', 'err'];
+    const t = x.temperature;
+    const tband = t == null ? ['—', undefined] : t >= 45 ? ['Hot', 'err'] : t >= 38 ? ['Warm', 'warn'] : ['Normal', 'ok'];
+    const body = `
+      ${_prow('Battery charge', b != null ? `${b}% · ${band[0]}` : 'Unknown', band[1])}
+      ${_prow('Battery voltage', x.battery_voltage != null ? `${x.battery_voltage.toFixed(2)} V` : '—')}
+      ${_prow('Temperature', t != null ? `${Math.round(t)}°C · ${tband[0]}` : '—', tband[1])}
+      ${_prow('Power source', esc(x.link_type && /solar/i.test(x.link_type) ? 'Solar + battery' : 'Battery'))}
+      ${_prow('Reporting node', esc((x.device_state || 'unknown').toUpperCase()), { online: 'ok', degraded: 'warn', offline: 'err', maintenance: 'muted' }[x.device_state] || 'muted')}
+      ${b != null && b < 25 ? `<p style="margin:14px 0 0;font-size:var(--fs-sm);color:var(--err)">Battery critical — schedule a swap. Log it under Lifecycle &amp; Hardware once replaced.</p>` : ''}
+      ${_qaWrap(_qa(sensorId, 'self_test', 'Run self-test') + _qa(sensorId, 'force_sync', 'Force sync'))}`;
+    OpsModal.open(`Power & battery — ${esc(x.name || sensorId)}`, body, [{ label: 'Close', class: 'btn-primary', onclick: 'OpsModal.close()' }]);
+  }
+
+  function calibrationPanel(sensorId) {
+    const x = _all.find(s => s.sensor_id === sensorId) || {};
+    const due = x.calibration_due_at ? new Date(x.calibration_due_at) : null;
+    const overdueDays = due ? Math.round((Date.now() - due.getTime()) / 86400000) : null;
+    const dueTone = overdueDays == null ? 'muted' : overdueDays > 0 ? 'err' : overdueDays > -14 ? 'warn' : 'ok';
+    const dueTxt = due ? (overdueDays > 0 ? `Overdue ${overdueDays}d` : `in ${-overdueDays}d`) + ` · ${due.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : '—';
+    const isBio = x.enzyme_level_percent != null || x.cartridge_status;
+    const chan = [];
+    if ((x.capabilities || {}).water_level !== false) chan.push(['Level', x.sensor_state, x.sensor_reason]);
+    const dt = s => ({ ok: 'ok', stale: 'warn', frozen: 'warn', implausible: 'err', unknown: 'muted' })[s] || 'muted';
+    const body = `
+      ${_prow('Last calibrated', x.last_calibrated_at ? `${_ago(x.last_calibrated_at)} · ${new Date(x.last_calibrated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : 'Never')}
+      ${_prow('Next due', dueTxt, dueTone)}
+      ${chan.map(c => _prow(`${c[0]} channel`, `${esc(c[1] || 'unknown')}${c[2] ? ` <span style="color:var(--ink-4);font-weight:400">· ${esc(c[2])}</span>` : ''}`, dt(c[1]))).join('')}
+      ${isBio ? _prow('Enzyme level', x.enzyme_level_percent != null ? `${Math.round(x.enzyme_level_percent)}%` : '—', x.enzyme_level_percent != null && x.enzyme_level_percent < 20 ? 'warn' : 'ok') : ''}
+      ${isBio ? _prow('Cartridge', esc(x.cartridge_status ? String(x.cartridge_status).replace(/_/g, ' ') : '—')) : ''}
+      ${overdueDays != null && overdueDays > 0 ? `<p style="margin:14px 0 0;font-size:var(--fs-sm);color:var(--warn)">Calibration overdue — readings may drift. Run a calibration to reset the clock.</p>` : ''}
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px">
+        <button onclick="OpsSensors.calibrate('${sensorId}')" style="flex:1 1 auto;min-width:120px;padding:9px 12px;border:1px solid var(--line);background:var(--surface-2,transparent);color:var(--ink-2);border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">Log calibration</button>
+        ${_qa(sensorId, 'recalibrate', 'Request recalibration')}
+      </div>`;
+    OpsModal.open(`Calibration — ${esc(x.name || sensorId)}`, body, [{ label: 'Close', class: 'btn-primary', onclick: 'OpsModal.close()' }]);
+  }
+
   // ══════════════════════════════════════════════════════════════
   //  RIGHT-SIDE DETAIL DRAWER — matches the Figma slide-over exactly:
   //  header (name + estate), status badge, metric rows, firmware +
@@ -1098,6 +1168,18 @@ const OpsSensors = (function () {
             <button class="sn-act-row" onclick="OpsSensors.sendCommand('${sid}', 'locate')">
               <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="2"/></svg>
               Locate / Identify
+            </button>
+            <button class="sn-act-row" onclick="OpsSensors.connectivityPanel('${sid}')">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12.55a11 11 0 0114 0M8.5 16.11a6 6 0 017 0M2 8.82a15 15 0 0120 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg>
+              Connectivity
+            </button>
+            <button class="sn-act-row" onclick="OpsSensors.powerPanel('${sid}')">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path stroke-linecap="round" d="M22 10v4"/><path stroke-linecap="round" stroke-linejoin="round" d="M11 9l-2 3h3l-2 3"/></svg>
+              Power &amp; Battery
+            </button>
+            <button class="sn-act-row" onclick="OpsSensors.calibrationPanel('${sid}')">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>
+              Calibration
             </button>
             <button class="sn-act-row" onclick="OpsSensors.commandHistory('${sid}')">
               <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -1822,6 +1904,7 @@ const OpsSensors = (function () {
     render, setFilter, setTag, setQuery,
     editTags, saveTags, bulkTag, confirmBulkTag,
     deviceRecord, saveDeviceRecord, lifecycleLog, replaceDevice, doReplace, timeline,
+    connectivityPanel, powerPanel, calibrationPanel,
     protectionWindows, createWindow, cancelWindow,
     profilesManager, pfHome, pfCreate, pfOpen, pfSave, pfAssign,
     firmwareManager, fwHome, fwCreateRelease, fwCreateRollout, fwOpenRollout, fwAdvance, fwState, fwRollback,
