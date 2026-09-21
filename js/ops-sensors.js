@@ -836,10 +836,10 @@ const OpsSensors = (function () {
 
   async function lifecycleLog(sensorId) {
     const x = _all.find(s => s.sensor_id === sensorId) || {};
-    let rows;
-    try { rows = await OpsModal.apiGet(`/monitoring/sensors/${sensorId}/lifecycle`); }
+    let resp;
+    try { resp = await OpsModal.apiGet(`/monitoring/sensors/${sensorId}/lifecycle`); }
     catch (err) { OpsModal.toast(err.message || 'Failed to load history', 'error'); return; }
-    const events = (rows && rows.events) || rows || [];
+    const events = (resp && resp.data) || [];
     const EV = { state_change:['var(--blue-hi)','State change'], rma_out:['var(--err)','RMA out'], rma_in:['var(--ok)','RMA in'], replaced_by:['var(--warn)','Replaced'], note:['var(--ink-3)','Note'] };
     const body = events.length ? `<div style="display:flex;flex-direction:column;gap:0">${events.map(e => {
       const m = EV[e.event] || ['var(--ink-3)', e.event];
@@ -877,12 +877,87 @@ const OpsSensors = (function () {
     if (!f.replacement_id) { OpsModal.toast('Choose a replacement device.', 'error'); return; }
     OpsModal.setLoading(true);
     try {
-      await OpsModal.apiPost(`/monitoring/sensors/${sensorId}/replace`, { replacement_id: f.replacement_id, reason: f.reason || null });
+      await OpsModal.apiPost(`/monitoring/sensors/${sensorId}/replace`, { replacement_sensor_id: f.replacement_id, note: f.reason || null });
       OpsModal.close();
       OpsModal.toast('Device replaced. Assignments transferred.', 'success');
       await load();
       if (_drawerId === sensorId) { _drawerId = f.replacement_id; renderDrawer(); }
     } catch (err) { OpsModal.setLoading(false); OpsModal.toast(err.message || 'Failed to replace device', 'error'); }
+  }
+
+  // ── Component topology tree (derived client-side from the node payload) ──
+  const _TONE = { ok: 'var(--ok)', warn: 'var(--warn)', err: 'var(--err)', info: 'var(--blue-hi)', muted: 'var(--ink-4)' };
+  function _battTone(p) { return p == null ? 'muted' : p >= 60 ? 'ok' : p >= 25 ? 'warn' : 'err'; }
+  function _sigTone(p)  { return p == null ? 'muted' : p >= 50 ? 'ok' : p >= 25 ? 'warn' : 'err'; }
+  function _dataTone(s) { return ({ ok: 'ok', stale: 'warn', frozen: 'warn', implausible: 'err', unknown: 'muted' })[s] || 'muted'; }
+
+  function topologyTree(x) {
+    const cap = x.capabilities || {};
+    const offline = x.device_state === 'offline' || x.device_state === 'maintenance';
+    const rootTone = { online: 'ok', degraded: 'warn', offline: 'err', maintenance: 'muted' }[x.device_state] || 'muted';
+    const comps = [];
+    const add = (label, value, tone, sub) => comps.push({ label, value, tone, sub });
+
+    if (cap.water_level !== false)
+      add('Level sensor', x.level != null ? `${Math.round(x.level)}%` : '—', offline ? 'muted' : _dataTone(x.sensor_state), offline ? 'device ' + x.device_state : x.sensor_reason);
+    if (cap.flow_rate !== false)
+      add('Flow sensor', x.flow_rate != null ? `${x.flow_rate.toFixed(1)} L/s` : '—', offline ? 'muted' : (x.flow_rate != null ? 'ok' : 'muted'));
+    if (cap.silt)
+      add('Silt probe', x.silt_depth_mm != null ? `${x.silt_depth_mm} mm` : '—', offline ? 'muted' : (x.silt_depth_mm != null ? 'ok' : 'muted'));
+    if (x.enzyme_level_percent != null || cap.enzyme)
+      add('Enzyme dosing', x.enzyme_level_percent != null ? `${Math.round(x.enzyme_level_percent)}%` : (x.cartridge_status || '—'), x.enzyme_level_percent != null && x.enzyme_level_percent < 20 ? 'warn' : 'ok');
+    if (x.water_quality_ph != null || x.turbidity_ntu != null)
+      add('Water quality', [x.water_quality_ph != null ? `pH ${x.water_quality_ph}` : null, x.turbidity_ntu != null ? `${x.turbidity_ntu} NTU` : null].filter(Boolean).join(' · ') || '—', offline ? 'muted' : 'ok');
+    add('Battery / power', x.battery_percent != null ? `${x.battery_percent}%` : '—', _battTone(x.battery_percent), x.battery_voltage != null ? `${x.battery_voltage.toFixed(2)} V` : null);
+    add('Modem / uplink', offline ? 'offline' : (x.signal_strength != null ? `${x.signal_strength}%` : '—'), offline ? 'err' : _sigTone(x.signal_strength), x.link_type || null);
+    if (x.temperature != null)
+      add('Temperature', `${Math.round(x.temperature)}°C`, x.temperature >= 40 ? 'err' : 'ok');
+    add('GPS / location', (x.latitude != null && x.longitude != null) ? `${(+x.latitude).toFixed(4)}, ${(+x.longitude).toFixed(4)}` : '—', (x.latitude != null && x.longitude != null) ? 'ok' : 'muted');
+
+    const dot = t => `<span style="width:8px;height:8px;border-radius:50%;background:${_TONE[t] || _TONE.muted};display:inline-block;flex:0 0 auto"></span>`;
+    const rows = comps.map(c => `
+      <div style="display:flex;align-items:center;gap:10px;padding:7px 0 7px 18px;position:relative">
+        <span style="position:absolute;left:0;top:0;bottom:50%;width:11px;border-left:1px solid var(--line);border-bottom:1px solid var(--line);border-bottom-left-radius:0"></span>
+        ${dot(c.tone)}
+        <span style="font-size:var(--fs-sm);color:var(--ink-2);flex:1 1 auto;min-width:0">${esc(c.label)}${c.sub ? `<span style="color:var(--ink-4);font-size:var(--fs-2xs)"> · ${esc(c.sub)}</span>` : ''}</span>
+        <span style="font-size:var(--fs-sm);font-weight:600;color:var(--ink);white-space:nowrap">${esc(c.value)}</span>
+      </div>`).join('');
+
+    return `
+      <div class="sn-topo" style="padding:2px 2px 6px">
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 0;font-weight:700">
+          ${dot(rootTone)}
+          <span style="font-size:var(--fs-sm);color:var(--ink);flex:1 1 auto;min-width:0">${esc(x.name || x.sensor_id)}</span>
+          <span style="font-size:var(--fs-2xs);font-weight:700;color:${_TONE[rootTone]};text-transform:uppercase">${esc((x.device_state || 'unknown'))}</span>
+        </div>
+        <div style="margin-left:4px">${rows}</div>
+      </div>`;
+  }
+
+  // ── Unified event timeline (maintenance + commands + lifecycle) ──────────
+  async function timeline(sensorId) {
+    const x = _all.find(s => s.sensor_id === sensorId) || {};
+    let resp;
+    try { resp = await OpsModal.apiGet(`/monitoring/sensors/${sensorId}/timeline`); }
+    catch (err) { OpsModal.toast(err.message || 'Failed to load timeline', 'error'); return; }
+    const feed = (resp && resp.data) || [];
+    const SRC = { maintenance: ['var(--blue-hi)', 'Maintenance'], command: ['var(--ink-3)', 'Command'], lifecycle: ['var(--ink-3)', 'Lifecycle'] };
+    const body = feed.length ? `<div style="display:flex;flex-direction:column">${feed.map(e => {
+      const col = _TONE[e.tone] || SRC[e.source]?.[0] || 'var(--ink-3)';
+      const when = e.ts ? new Date(e.ts).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+      return `<div style="display:flex;gap:11px;padding:10px 0;border-bottom:1px solid var(--line)">
+        <span style="width:9px;height:9px;border-radius:50%;background:${col};flex:0 0 auto;margin-top:5px"></span>
+        <div style="flex:1 1 auto;min-width:0">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
+            <span style="font-weight:700;font-size:var(--fs-sm);color:var(--ink);text-transform:capitalize">${esc(e.title || e.kind || 'event')}</span>
+            <span style="font-size:var(--fs-2xs);color:var(--ink-4);white-space:nowrap">${when}</span>
+          </div>
+          ${e.detail ? `<div style="font-size:var(--fs-xs);color:var(--ink-3);margin-top:2px">${esc(e.detail)}</div>` : ''}
+          <div style="font-size:var(--fs-2xs);color:var(--ink-4);margin-top:2px">${esc(SRC[e.source]?.[1] || e.source)}${e.actor ? ' · ' + esc(e.actor) : ''}</div>
+        </div>
+      </div>`;
+    }).join('')}</div>` : `<p style="color:var(--ink-4);font-size:var(--fs-sm);margin:8px 0">No events recorded for this device yet.</p>`;
+    OpsModal.open(`Event timeline — ${esc(x.name || sensorId)}`, body, [{ label: 'Close', class: 'btn-primary', onclick: 'OpsModal.close()' }]);
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -999,6 +1074,8 @@ const OpsSensors = (function () {
             ${readings ? `<div class="sn-sec-h">Readings</div><div class="sn-cards">${readings}</div>` : ''}
             <div class="sn-sec-h">Device</div>
             <div class="sn-cards">${device}</div>
+            <div class="sn-sec-h">Components</div>
+            ${topologyTree(x)}
           </div>
 
           <div class="sn-tabpanel" data-panel="actions" style="display:none">
@@ -1017,6 +1094,10 @@ const OpsSensors = (function () {
             <button class="sn-act-row" onclick="OpsSensors.commandHistory('${sid}')">
               <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
               Command History
+            </button>
+            <button class="sn-act-row" onclick="OpsSensors.timeline('${sid}')">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3M3 12h3m12 0h3M12 3v3m0 12v3"/></svg>
+              Event Timeline
             </button>
             <button class="sn-act-row" onclick="OpsSensors.history('${sid}')">
               <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2"/></svg>
@@ -1657,7 +1738,7 @@ const OpsSensors = (function () {
   return {
     render, setFilter, setTag, setQuery,
     editTags, saveTags, bulkTag, confirmBulkTag,
-    deviceRecord, saveDeviceRecord, lifecycleLog, replaceDevice, doReplace,
+    deviceRecord, saveDeviceRecord, lifecycleLog, replaceDevice, doReplace, timeline,
     protectionWindows, createWindow, cancelWindow,
     profilesManager, pfHome, pfCreate, pfOpen, pfSave, pfAssign,
     firmwareManager, fwHome, fwCreateRelease, fwCreateRollout, fwOpenRollout, fwAdvance, fwState, fwRollback,
