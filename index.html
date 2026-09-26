@@ -10,7 +10,46 @@
   <title>FlowGuard — Operations Center</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- ═══ FlowGuard shared design system (tokens + components) — portal-wide ═══ -->
+  <style id="fg-ds">
+  :root{
+    --fg-bg:#111214; --fg-chrome:#18191b; --fg-card:#1c1d20; --fg-card-2:#212327;
+    --fg-line:#34363b; --fg-line-2:#3d4046;
+    --fg-t1:#f0f1f2; --fg-t2:#b5b8be; --fg-t3:#8b909a; --fg-t4:#6c727c;
+    --fg-blue:#5379ff; --fg-blue-h:#3f63e6;
+    --fg-crit:#f0616d; --fg-high:#f0913e; --fg-mod:#f2c14e; --fg-ok:#35c98a; --fg-neutral:#8b9099;
+    --fg-crit-bg:rgba(240,97,109,.12); --fg-ok-bg:rgba(53,201,138,.12); --fg-mod-bg:rgba(242,193,78,.12);
+    --fg-s1:4px; --fg-s2:8px; --fg-s3:12px; --fg-s4:16px; --fg-s5:24px; --fg-s6:32px;
+    --fg-r:9px; --fg-r-s:7px;
+    --fg-fs-title:28px; --fg-fs-body:14px; --fg-fs-sm:13px; --fg-fs-xs:12px;
+  }
+  /* Shared components (prefix fgc-). Any module can use these directly. */
+  .fgc-card{ background:var(--fg-card); border:1px solid var(--fg-line); border-radius:var(--fg-r); padding:var(--fg-s4); }
+  .fgc-h1{ font-size:var(--fg-fs-title); font-weight:600; letter-spacing:-.01em; color:var(--fg-t1); }
+  .fgc-sub{ font-size:var(--fg-fs-sm); color:var(--fg-t3); }
+  .fgc-k{ font-size:10.5px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--fg-t2); }
+  .fgc-link{ color:var(--fg-blue); font-weight:500; cursor:pointer; background:none; border:none; padding:0; font-family:inherit; font-size:var(--fg-fs-xs); text-decoration:none; }
+  .fgc-link:hover{ text-decoration:underline; }
+  .fgc-btn{ background:var(--fg-blue); color:#fff; border:none; border-radius:8px; padding:9px 14px; font-weight:600; font-size:var(--fg-fs-sm); cursor:pointer; font-family:inherit; }
+  .fgc-btn:hover{ background:var(--fg-blue-h); }
+  .fgc-btn.ghost{ background:transparent; border:1px solid var(--fg-line-2); color:var(--fg-t2); }
+  .fgc-status{ display:inline-flex; align-items:center; gap:var(--fg-s2); font-size:var(--fg-fs-sm); color:var(--fg-t1); font-weight:500; }
+  .fgc-status .dot{ width:8px; height:8px; border-radius:50%; flex:0 0 auto; }
+  .fgc-seg{ display:flex; background:#1c1e23; border:1px solid var(--fg-line-2); border-radius:var(--fg-r-s); overflow:hidden; }
+  .fgc-seg button{ font-size:var(--fg-fs-xs); font-weight:500; color:var(--fg-t3); padding:5px 12px; cursor:pointer; border:none; background:none; border-right:1px solid var(--fg-line-2); font-family:inherit; }
+  .fgc-seg button:last-child{ border-right:none; }
+  .fgc-seg button.active{ background:var(--fg-line-2); color:var(--fg-t1); }
+  .fgc-seg .c{ color:var(--fg-t4); font-weight:600; margin-left:5px; }
+  .fgc-table{ width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  .fgc-table thead th{ text-align:left; font-size:10px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--fg-t3); padding:0 8px 8px; border-bottom:1px solid var(--fg-line); }
+  .fgc-table tbody td{ padding:7px 8px; border-bottom:1px solid var(--fg-line); font-size:var(--fg-fs-sm); color:var(--fg-t1); }
+  .fgc-table tbody tr:last-child td{ border-bottom:none; }
+  .fgc-empty{ padding:var(--fg-s5) var(--fg-s3); text-align:center; color:var(--fg-t3); font-size:var(--fg-fs-sm); }
+  .fgc-empty .fgc-link{ font-size:var(--fg-fs-sm); }
+  .fgc-panel{ background:var(--fg-card); border:1px solid var(--fg-line); border-radius:var(--fg-r); padding:var(--fg-s4); }
+  .fgc-div{ height:1px; background:var(--fg-line); margin:var(--fg-s2) 0; }
+  </style>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -97,8 +136,8 @@
       --r:   14px; --rs: 9px; --rl: 20px;
 
       /* ── Fonts ── */
-      --ff-d: 'Plus Jakarta Sans', system-ui, sans-serif;
-      --ff-b: 'Plus Jakarta Sans', system-ui, sans-serif;
+      --ff-d: 'Inter', system-ui, sans-serif;
+      --ff-b: 'Inter', system-ui, sans-serif;
       --ff-m: 'JetBrains Mono', monospace;
 
       /* ── Legacy aliases for JS modules ── */
@@ -171,8 +210,8 @@
       --r:   14px; --rs: 9px; --rl: 20px;
 
       /* ── Fonts ── */
-      --ff-d: 'Plus Jakarta Sans', system-ui, sans-serif;
-      --ff-b: 'Plus Jakarta Sans', system-ui, sans-serif;
+      --ff-d: 'Inter', system-ui, sans-serif;
+      --ff-b: 'Inter', system-ui, sans-serif;
       --ff-m: 'JetBrains Mono', monospace;
 
       /* ── Legacy aliases for JS modules ── */
@@ -1190,7 +1229,7 @@
       display:flex; flex-direction:column; align-items:stretch; gap:14px;
       padding:18px 12px; border-right:1px solid var(--bd);
       background:var(--pa);
-      font-family:'Plus Jakarta Sans','Inter',system-ui,sans-serif;
+      font-family:'Inter',system-ui,sans-serif;
       overflow:visible;   /* let hover flyouts escape the rail */
     }
     html[data-theme="dark"] .tnav{
@@ -1247,7 +1286,7 @@
       position:sticky; top:0; z-index:55; display:flex; align-items:center; gap:16px;
       padding:11px 22px; border-bottom:1px solid var(--bd);
       background:var(--pa); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
-      font-family:'Plus Jakarta Sans','Inter',system-ui,sans-serif;
+      font-family:'Inter',system-ui,sans-serif;
     }
     html[data-theme="dark"] .opsbar{
       --pa:#18191b; --pb:rgba(255,255,255,0.06); --ps:#1c1d20;
@@ -1442,8 +1481,9 @@
   <script src="js/config.js?v=sec4"></script>
 <script src="js/auth.js?v=sec6"></script>
 <script src="js/ops-modal.js?v=sec12"></script>
+<script src="js/fg-ui.js?v=sec1"></script>
 <script src="js/fg-paginator.js?v=sec2"></script>
-<script src="js/ops-dashboard.js?v=sec25"></script>
+<script src="js/ops-dashboard.js?v=sec26"></script>
 <script src="js/ops-situation.js?v=sec4"></script>
 <script src="js/ops-user-management.js?v=sec13"></script>
 <script src="js/ops-clients.js?v=sec13"></script>
@@ -1783,11 +1823,15 @@
   let _deepLinking  = false; // true only while fgOpen() is navigating to a record
   const _syncTimes  = {};    // tracks when each tab last fetched data
 
+  var _fgScroll = {};
   function switchTab(name) {
     if (!Auth.hasNavAccess(name)) return;
     if (_switching) return; // ignore rapid clicks
     _switching = true;
     setTimeout(() => { _switching = false; }, 300);
+
+    // preserve scroll position of the module we're leaving; restore on return
+    try { const cur = document.querySelector('.app-neon > .content'); if (cur && _activeTab) _fgScroll[_activeTab] = cur.scrollTop; } catch (_) {}
 
     ALL_TABS.forEach(t => {
       document.getElementById(`content-${t}`)?.classList.remove('active');
@@ -1823,6 +1867,9 @@
     }
 
     renderTab(name);
+
+    // restore scroll position for the module we're returning to
+    try { const c = document.querySelector('.app-neon > .content'); const y = _fgScroll[name]; if (c && y) requestAnimationFrame(() => { c.scrollTop = y; }); } catch (_) {}
   }
 
   function stampSync(name) {

@@ -12,11 +12,11 @@ const OpsDashboard = (function () {
   const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   const CSS = `
-  .ovx{ --bg:#111214; --card:#1c1d20; --line:#34363b; --line-2:#3d4046;
-        --t1:#f0f1f2; --t2:#b5b8be; --t3:#8b909a; --t4:#6c727c;
-        --link:#5379ff; --btn:#5379ff; --btn-h:#3f63e6;
-        --sev-crit:#f0616d; --sev-high:#f0913e; --sev-mod:#f2c14e; --sev-low:#8b9099; --sev-unk:#8b9099;
-        --ok:#35c98a;
+  .ovx{ --bg:var(--fg-bg); --card:var(--fg-card); --line:var(--fg-line); --line-2:var(--fg-line-2);
+        --t1:var(--fg-t1); --t2:var(--fg-t2); --t3:var(--fg-t3); --t4:var(--fg-t4);
+        --link:var(--fg-blue); --btn:var(--fg-blue); --btn-h:var(--fg-blue-h);
+        --sev-crit:var(--fg-crit); --sev-high:var(--fg-high); --sev-mod:var(--fg-mod); --sev-low:var(--fg-neutral); --sev-unk:var(--fg-neutral);
+        --ok:var(--fg-ok);
         background:var(--bg); min-height:100%; padding:14px 20px 30px; font-family:var(--ff-b); color:var(--t1);
         font-variant-numeric:tabular-nums; }
   .ovx *{ box-sizing:border-box; }
