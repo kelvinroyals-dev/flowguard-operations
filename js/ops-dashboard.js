@@ -59,7 +59,7 @@ const OpsDashboard = (function () {
   .ov-table-h{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
   .ov-th-title{ font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--t2); }
   .ov-th-sub{ font-size:11.5px; color:var(--t3); margin-top:3px; }
-  .ov-seg{ display:flex; background:#1c1e23; border:1px solid var(--line-2); border-radius:7px; overflow:hidden; }
+  .ov-seg{ display:flex; background:var(--fg-card-2); border:1px solid var(--line-2); border-radius:7px; overflow:hidden; }
   .ov-seg button{ font-size:12px; font-weight:500; color:var(--t3); padding:5px 12px; cursor:pointer; border:none; background:none; border-right:1px solid var(--line-2); }
   .ov-seg button:last-child{ border-right:none; }
   .ov-seg button.active{ background:var(--line-2); color:var(--t1); }
@@ -88,7 +88,8 @@ const OpsDashboard = (function () {
   .ov-risk .d{ width:7px; height:7px; border-radius:50%; }
   .ov-chg{ color:var(--t2); font-weight:500; }
   .ov-resp{ color:var(--t2); }
-  .ov-foot{ margin-top:9px; font-size:11.5px; color:var(--t3); }
+  .ov-foot{ margin-top:0; padding-top:10px; border-top:1px solid var(--line); font-size:11.5px; color:var(--t3); background:var(--card); }
+  .ov-tbl thead th{ background:var(--card); }
 
   /* banner */
   .ov-banner{ display:flex; align-items:center; gap:11px; background:rgba(242,193,78,.06); border:1px solid rgba(242,193,78,.24); border-radius:9px; padding:10px 14px; }
@@ -184,18 +185,19 @@ const OpsDashboard = (function () {
     const riskLine = (k) => `<div class="ov-line"><span class="l"><span class="d" style="background:${SEV[k]}"></span>${SEV_LABEL[k]}</span><span class="v">${rk[k] || 0}</span></div>`;
     const arrow = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>`;
 
+    const titleCase = s => String(s || '').replace(/\b([a-z])/g, m => m.toUpperCase());
     const rows = vm.estates.map(e => {
-      const chg = (e.change == null) ? `<span title="Insufficient history">—</span>` : (e.change > 0 ? `+${e.change} pts` : `${e.change} pts`);
-      const sc = e.score != null ? e.score : e.baseline;
+      const chg = (e.change == null) ? `<span title="No comparable live assessments">—</span>` : (e.change > 0 ? `+${e.change} pts` : `${e.change} pts`);
+      // Live estates show a definitive score + bar; unassessed show "—" (no fake score)
       const scoreCell = e.score != null
         ? `<div class="ov-score"><span class="n">${e.score}</span><span class="ov-bar"><span style="width:${Math.max(2, Math.min(100, e.score))}%;background:${SEV[e.risk]}"></span></span></div>`
-        : `<div class="ov-score"><span class="n" style="color:var(--t3)" title="Baseline estimate">${sc != null ? sc : '—'}</span><span class="ov-bar"><span style="width:${Math.max(2, Math.min(100, sc || 0))}%;background:var(--sev-unk);opacity:.5"></span></span></div>`;
+        : `<div class="ov-score"><span class="n" style="color:var(--t4)" title="No live assessment">—</span></div>`;
       return `<tr data-estate="${esc(e.name)}" data-risk="${e.risk}" data-id="${esc(e.property_id || '')}">
-        <td><div class="ov-est">${esc(e.name)}${e.zone ? `<span class="z">${esc(e.zone)}</span>` : ''}</div></td>
+        <td><div class="ov-est">${esc(titleCase(e.name))}${e.zone ? `<span class="z">${esc(e.zone)}</span>` : ''}</div></td>
         <td>${scoreCell}</td>
         <td><span class="ov-risk"><span class="d" style="background:${SEV[e.risk]}"></span>${SEV_LABEL[e.risk]}</span></td>
         <td><span class="ov-chg">${chg}</span></td>
-        <td style="color:var(--t2)">${esc(e.driver)}</td>
+        <td style="color:var(--t2)">${e.risk === 'unknown' ? 'No live assessment' : esc(e.driver)}</td>
         <td><span class="ov-resp">${esc(e.response)}</span></td>
       </tr>`;
     }).join('');
@@ -308,8 +310,8 @@ const OpsDashboard = (function () {
               <button data-filter="unknown">Unknown <span class="c">${rk.unknown}</span></button>
             </div>
           </div>
-          <div class="ov-tbl-wrap"><table class="ov-tbl">
-            <thead><tr><th>Estate</th><th>Score</th><th>Risk</th><th>Change · 1h</th><th>Primary driver</th><th>Response</th></tr></thead>
+          <div class="ov-tbl-wrap"${vm.estates.length > 10 ? '' : ' style="max-height:none;overflow:visible"'}><table class="ov-tbl">
+            <thead><tr><th>Estate</th><th>Score</th><th>Risk</th><th>Change · 1h</th><th>Risk driver / assessment</th><th>Response</th></tr></thead>
             <tbody id="ov-tbody">${rows}</tbody>
           </table>
           <div id="ov-empty" style="display:none;padding:24px 12px;text-align:center;color:var(--t3);font-size:13px"></div></div>
