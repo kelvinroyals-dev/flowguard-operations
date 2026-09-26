@@ -38,7 +38,7 @@ const OpsModal = (function () {
       .um-filter:focus { border-color:var(--blue,#5379ff); }
       /* Shared page header (title + subtitle + action) — one source of truth. */
       .lv-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:20px; flex-wrap:wrap; }
-      .lv-head-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink); letter-spacing:-.02em; margin-bottom:3px; }
+      .lv-head-title { font-family:var(--ff-d,'Inter',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink); letter-spacing:-.02em; margin-bottom:3px; }
       .lv-head-sub { font-size:var(--fs-base); color:var(--ink-3); }
       .lv-icon-btn { width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; color:var(--ink-2); border:1px solid var(--border); background:var(--surface); cursor:pointer; flex-shrink:0; }
       .lv-icon-btn:hover { border-color:var(--border-2); color:var(--ink); }

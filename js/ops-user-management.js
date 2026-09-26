@@ -69,12 +69,12 @@ const OpsUserManagement = (function () {
         .um-e { color:var(--ink-3); font-size:var(--fs-sm); padding:6px 0; }
         .um-needs { font-size:var(--fs-xs); color:var(--ink-4); font-style:italic; }
         .um-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
-        .um-header-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#1c1d20); letter-spacing:-.02em; margin-bottom:3px; }
+        .um-header-title { font-family:var(--ff-d,'Inter',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#1c1d20); letter-spacing:-.02em; margin-bottom:3px; }
         .um-header-sub { font-size:var(--fs-base); color:var(--ink-3,#8b909a); }
 
         .um-table-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); overflow:hidden; box-shadow:var(--sh-xs); margin-bottom:18px; }
         .um-table-head { padding:14px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; gap:12px; }
-        .um-table-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--ink,#1c1d20); }
+        .um-table-title { font-family:var(--ff-d,'Inter',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--ink,#1c1d20); }
         .um-controls { display:flex; align-items:center; gap:8px; }
 
         .um-filter { padding:7px 12px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:var(--fs-base); color:var(--ink,#1c1d20); outline:none; cursor:pointer; transition:border-color .2s; }

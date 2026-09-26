@@ -62,7 +62,7 @@ const OpsAudit = (function () {
     container.innerHTML = `
       <style>
         .au-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
-        .au-header-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#1c1d20); letter-spacing:-.02em; margin-bottom:3px; }
+        .au-header-title { font-family:var(--ff-d,'Inter',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#1c1d20); letter-spacing:-.02em; margin-bottom:3px; }
         .au-header-sub { font-size:var(--fs-base); color:var(--ink-3,#8b909a); }
 
         /* Filters bar */
@@ -74,7 +74,7 @@ const OpsAudit = (function () {
         /* Log table */
         .au-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); overflow:hidden; box-shadow:var(--sh-xs); }
         .au-card-head { padding:14px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; }
-        .au-card-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--ink,#1c1d20); }
+        .au-card-title { font-family:var(--ff-d,'Inter',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--ink,#1c1d20); }
 
         /* Log row */
         .au-row { padding:12px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:flex-start; gap:12px; transition:background .12s; cursor:pointer; }

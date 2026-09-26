@@ -64,7 +64,7 @@ const OpsAlerts = (function () {
         }
 
         .al-feed-title {
-          font-family: var(--ff-d, 'Space Grotesk', sans-serif);
+          font-family: var(--ff-d, 'Inter', sans-serif);
           font-size: var(--fs-md); font-weight: 700; color: var(--ink, #1c1d20);
         }
 
@@ -168,7 +168,7 @@ const OpsAlerts = (function () {
            belongs, ahead of the reactive Active Incidents feed below it. ── */
         .ic-card { background: var(--surface, #fff); border: 1px solid var(--blue-dim, #7dd3fc); border-radius: var(--r, 14px); overflow: hidden; box-shadow: var(--sh-xs, 0 1px 2px rgba(10,31,46,.06)); margin-bottom: 16px; }
         .ic-head { padding: 14px 20px; border-bottom: 1px solid var(--border, #dae6ef); background: var(--neon-trace, rgba(22,168,211,.06)); }
-        .ic-title { font-family: var(--ff-d, 'Space Grotesk', sans-serif); font-size: var(--fs-md); font-weight: 700; color: var(--ink, #1c1d20); display: flex; align-items: center; gap: 8px; }
+        .ic-title { font-family: var(--ff-d, 'Inter', sans-serif); font-size: var(--fs-md); font-weight: 700; color: var(--ink, #1c1d20); display: flex; align-items: center; gap: 8px; }
         .ic-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 100px; background: var(--wb, #fef3c7); color: var(--warn, #b45309); font-size: var(--fs-2xs); font-weight: 800; }
         .ic-sub { font-size: var(--fs-sm); color: var(--ink-3, #8b909a); margin-top: 3px; line-height: 1.5; max-width: 680px; }
         .ic-row { padding: 14px 20px; border-bottom: 1px solid var(--border, #dae6ef); display: flex; align-items: center; gap: 14px; }
@@ -877,7 +877,7 @@ const OpsReports = (function () {
           margin-bottom: 16px;
         }
 
-        .rp-card-title { font-family: var(--ff-d, 'Space Grotesk', sans-serif); font-size: var(--fs-lg); font-weight: 700; color: var(--ink, #1c1d20); margin-bottom: 4px; }
+        .rp-card-title { font-family: var(--ff-d, 'Inter', sans-serif); font-size: var(--fs-lg); font-weight: 700; color: var(--ink, #1c1d20); margin-bottom: 4px; }
         .rp-card-sub   { font-size: var(--fs-sm); color: var(--ink-3, #8b909a); line-height: 1.5; }
 
         .rp-recent {
@@ -894,7 +894,7 @@ const OpsReports = (function () {
           display: flex; align-items: center; justify-content: space-between;
         }
 
-        .rp-recent-title { font-family: var(--ff-d, 'Space Grotesk', sans-serif); font-size: var(--fs-md); font-weight: 700; color: var(--ink, #1c1d20); }
+        .rp-recent-title { font-family: var(--ff-d, 'Inter', sans-serif); font-size: var(--fs-md); font-weight: 700; color: var(--ink, #1c1d20); }
 
         .rp-report-row {
           padding: 14px 20px;

@@ -651,7 +651,7 @@ window.OpsAlerts = (function () {
     style.textContent = `
       .fg-module { }
       .fg-module-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; gap:12px; flex-wrap:wrap; }
-      .fg-module-title  { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#1c1d20); letter-spacing:-.02em; margin-bottom:3px; }
+      .fg-module-title  { font-family:var(--ff-d,'Inter',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#1c1d20); letter-spacing:-.02em; margin-bottom:3px; }
       .fg-module-sub    { font-size:var(--fs-base); color:var(--ink-3,#8b909a); }
       .um-filter { padding:7px 12px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:var(--fs-base); color:var(--ink,#1c1d20); outline:none; cursor:pointer; }
       .um-filter:focus { border-color:var(--blue,#5379ff); }

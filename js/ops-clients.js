@@ -28,7 +28,7 @@ const OpsClients = (function () {
     <style>
       .cl-table-wrap { background: var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); overflow:hidden; box-shadow:var(--sh-xs); }
       .cl-table-head { padding:14px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
-      .cl-table-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--ink,#1c1d20); }
+      .cl-table-title { font-family:var(--ff-d,'Inter',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--ink,#1c1d20); }
       .cl-search-wrap { position:relative; }
       .cl-search-input { padding:7px 12px 7px 32px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:var(--fs-base); color:var(--ink,#1c1d20); outline:none; transition:all .2s; width:220px; }
       .cl-search-input:focus { border-color:var(--blue,#5379ff); box-shadow:0 0 0 3px rgba(22,168,211,.1); background:var(--surface,#fff); }

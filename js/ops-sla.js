@@ -37,7 +37,7 @@ const OpsSLA = (function () {
         .sla-kpi.amber::after  { background:var(--amber,#f5a623); }
         .sla-kpi.red::after    { background:var(--err,#dc2626); }
         .sla-kpi-label { font-size:var(--fs-2xs); font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-3,#8b909a); margin-bottom:6px; }
-        .sla-kpi-val { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-2xl); font-weight:900; color:var(--ink,#1c1d20); letter-spacing:-.03em; line-height:1; }
+        .sla-kpi-val { font-family:var(--ff-d,'Inter',sans-serif); font-size:var(--fs-2xl); font-weight:900; color:var(--ink,#1c1d20); letter-spacing:-.03em; line-height:1; }
         .sla-kpi-val.green { color:var(--ok,#0a8a6a); }
         .sla-kpi-val.amber { color:var(--amber,#f5a623); }
         .sla-kpi-val.red   { color:var(--err,#dc2626); }
@@ -49,7 +49,7 @@ const OpsSLA = (function () {
         /* Per-client table */
         .sla-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); box-shadow:var(--sh-xs); overflow:hidden; }
         .sla-card-head { padding:14px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; }
-        .sla-card-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--ink,#1c1d20); }
+        .sla-card-title { font-family:var(--ff-d,'Inter',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--ink,#1c1d20); }
 
         /* Compliance bar */
         .sla-bar-track { height:6px; background:var(--border,#dae6ef); border-radius:3px; overflow:hidden; margin-top:5px; }
@@ -58,7 +58,7 @@ const OpsSLA = (function () {
         /* Breach list */
         .sla-breach-card { background:var(--surface,#fff); border:1px solid rgba(220,38,38,.2); border-radius:var(--r,14px); box-shadow:var(--sh-xs); overflow:hidden; }
         .sla-breach-head { padding:14px 18px; border-bottom:1px solid rgba(220,38,38,.1); background:rgba(220,38,38,.03); display:flex; align-items:center; gap:8px; }
-        .sla-breach-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--err,#dc2626); }
+        .sla-breach-title { font-family:var(--ff-d,'Inter',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--err,#dc2626); }
         .sla-breach-item { padding:11px 18px; border-bottom:1px solid var(--border,#dae6ef); transition:background .12s; }
         .sla-breach-item:last-child { border-bottom:none; }
         .sla-breach-item:hover { background:var(--surface-2,#f7fafc); }

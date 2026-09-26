@@ -29,7 +29,7 @@ const OpsProperties = (function () {
     <style>
       .pr-table-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); overflow:hidden; box-shadow:var(--sh-xs); }
       .pr-table-head { padding:14px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
-      .pr-table-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--ink,#1c1d20); }
+      .pr-table-title { font-family:var(--ff-d,'Inter',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--ink,#1c1d20); }
       .pr-search-wrap { position:relative; }
       .pr-search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--ink-4,#b5b8be); pointer-events:none; }
       .pr-search { padding:7px 12px 7px 32px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:var(--fs-base); color:var(--ink,#1c1d20); outline:none; transition:all .2s; width:200px; }
