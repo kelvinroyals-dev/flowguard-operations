@@ -190,7 +190,7 @@ const OpsDashboard = (function () {
       const scoreCell = e.score != null
         ? `<div class="ov-score"><span class="n">${e.score}</span><span class="ov-bar"><span style="width:${Math.max(2, Math.min(100, e.score))}%;background:${SEV[e.risk]}"></span></span></div>`
         : `<div class="ov-score"><span class="n" style="color:var(--t3)" title="Baseline estimate">${sc != null ? sc : '—'}</span><span class="ov-bar"><span style="width:${Math.max(2, Math.min(100, sc || 0))}%;background:var(--sev-unk);opacity:.5"></span></span></div>`;
-      return `<tr data-estate="${esc(e.name)}" data-risk="${e.risk}">
+      return `<tr data-estate="${esc(e.name)}" data-risk="${e.risk}" data-id="${esc(e.property_id || '')}">
         <td><div class="ov-est">${esc(e.name)}${e.zone ? `<span class="z">${esc(e.zone)}</span>` : ''}</div></td>
         <td>${scoreCell}</td>
         <td><span class="ov-risk"><span class="d" style="background:${SEV[e.risk]}"></span>${SEV_LABEL[e.risk]}</span></td>
@@ -372,7 +372,11 @@ const OpsDashboard = (function () {
   }
   function wire(root) {
     root.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
-    root.querySelectorAll('.ov-tbl tbody tr').forEach(tr => tr.addEventListener('click', () => go('estates')));
+    root.querySelectorAll('.ov-tbl tbody tr').forEach(tr => tr.addEventListener('click', () => {
+      const id = tr.dataset.id;
+      if (id && typeof window.fgOpen === 'function') window.fgOpen('properties', id);  // open that estate directly
+      else go('estates');
+    }));
     const applyFilter = (f) => {
       root.querySelectorAll('.ov-seg button').forEach(x => x.classList.toggle('active', x.dataset.filter === f));
       let shown = 0;
