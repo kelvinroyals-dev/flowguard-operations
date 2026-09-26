@@ -25,19 +25,21 @@ const OpsDashboard = (function () {
   .ov-demo { display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:600; color:var(--ink-2); background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:7px 12px; white-space:nowrap; }
   .ov-demo .d { width:6px; height:6px; border-radius:50%; background:var(--warn); }
 
-  .ov-grid { display:grid; grid-template-columns:minmax(0,1fr) 344px; gap:16px; align-items:start; }
-  .ov-main { display:flex; flex-direction:column; gap:16px; min-width:0; }
-  .ov-kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  /* four equal columns; rail (col 4) spans down alongside the lower stack */
+  .ov-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; align-items:start; }
+  .ov-kpis { grid-column:1 / 4; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+  .ov-rail-cell { grid-column:4 / 5; grid-row:1 / span 2; }
+  .ov-lower { grid-column:1 / 4; grid-row:2; display:flex; flex-direction:column; gap:16px; min-width:0; }
 
-  .ovc { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 18px 16px; box-shadow:var(--sh-sm); }
-  .ovc-h { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
-  .ovc-k { font-size:11px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3); }
+  .ovc { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 18px 16px; box-shadow:var(--sh-sm); min-width:0; }
+  .ovc-h { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; flex-wrap:wrap; row-gap:4px; }
+  .ovc-k { font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); white-space:nowrap; }
   .ovc-k .live { color:var(--ink-4); }
-  .ovc-flag { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600; white-space:nowrap; }
+  .ovc-flag { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600; white-space:nowrap; }
   .ovc-flag .d { width:7px; height:7px; border-radius:50%; }
   .ov-big { display:flex; align-items:baseline; gap:9px; }
-  .ov-big .n { font-size:38px; font-weight:800; letter-spacing:-.02em; line-height:1; }
-  .ov-big .u { font-size:13px; color:var(--ink-3); font-weight:500; }
+  .ov-big .n { font-size:36px; font-weight:800; letter-spacing:-.02em; line-height:1; flex:0 0 auto; }
+  .ov-big .u { font-size:12.5px; color:var(--ink-3); font-weight:500; line-height:1.25; min-width:0; }
   .ov-lines { margin-top:14px; display:flex; flex-direction:column; gap:0; }
   .ov-line { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 0; font-size:13px; }
   .ov-line .l { color:var(--ink-2); display:flex; align-items:center; gap:8px; min-width:0; }
@@ -60,10 +62,16 @@ const OpsDashboard = (function () {
   .ov-pill.active { background:var(--surface-h); color:var(--ink); }
   .ov-pill .c { color:var(--ink-4); font-weight:700; }
   .ov-pill.active .c { color:var(--ink-2); }
-  table.ov-tbl { width:100%; border-collapse:collapse; margin-top:14px; }
+  table.ov-tbl { width:100%; border-collapse:collapse; margin-top:14px; table-layout:fixed; }
   .ov-tbl thead th { text-align:left; font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-4); padding:0 10px 10px; border-bottom:1px solid var(--border); }
   .ov-tbl thead th.r { text-align:right; }
-  .ov-tbl tbody td { padding:12px 10px; border-bottom:1px solid var(--border); font-size:13.5px; vertical-align:middle; }
+  .ov-tbl tbody td { padding:11px 10px; border-bottom:1px solid var(--border); font-size:13.5px; vertical-align:middle; }
+  .ov-tbl th:nth-child(1),.ov-tbl td:nth-child(1){ width:19%; }
+  .ov-tbl th:nth-child(2),.ov-tbl td:nth-child(2){ width:15%; white-space:nowrap; }
+  .ov-tbl th:nth-child(3),.ov-tbl td:nth-child(3){ width:12%; white-space:nowrap; }
+  .ov-tbl th:nth-child(4),.ov-tbl td:nth-child(4){ width:11%; white-space:nowrap; }
+  .ov-tbl th:nth-child(5),.ov-tbl td:nth-child(5){ width:24%; }
+  .ov-tbl th:nth-child(6),.ov-tbl td:nth-child(6){ width:19%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .ov-tbl tbody tr:last-child td { border-bottom:none; }
   .ov-tbl tbody tr { cursor:pointer; }
   .ov-tbl tbody tr:hover td { background:var(--surface-h); }
@@ -100,6 +108,7 @@ const OpsDashboard = (function () {
 
   /* response desk rail */
   .ov-rail { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px; box-shadow:var(--sh-sm); position:sticky; top:14px; }
+  .ov-rail-cell { min-width:0; }
   .ov-inc { padding:12px 0; border-bottom:1px solid var(--border); }
   .ov-inc:first-of-type { padding-top:4px; }
   .ov-inc-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
@@ -126,7 +135,12 @@ const OpsDashboard = (function () {
   .ov-queue { display:block; width:100%; text-align:left; margin-top:12px; font-size:13px; font-weight:600; color:var(--blue-hi); background:none; border:none; cursor:pointer; font-family:inherit; }
   .ov-queue:hover { text-decoration:underline; }
 
-  @media (max-width:1180px){ .ov-grid{ grid-template-columns:1fr; } .ov-rail{ position:static; } }
+  @media (max-width:1240px){
+    .ov-grid{ grid-template-columns:1fr; }
+    .ov-kpis, .ov-lower{ grid-column:1 / -1; }
+    .ov-rail-cell{ grid-column:1 / -1; grid-row:auto; order:3; }
+    .ov-rail{ position:static; }
+  }
   @media (max-width:820px){ .ov-kpis{ grid-template-columns:1fr; } .ov-bottom{ grid-template-columns:1fr; } }
   `;
 
@@ -260,8 +274,7 @@ const OpsDashboard = (function () {
     </div>
 
     <div class="ov-grid">
-      <div class="ov-main">
-        <div class="ov-kpis">
+      <div class="ov-kpis">
           <!-- Portfolio -->
           <div class="ovc">
             <div class="ovc-h"><span class="ovc-k">Portfolio · <span class="live">${liveTag}</span></span>
@@ -308,6 +321,7 @@ const OpsDashboard = (function () {
           </div>
         </div>
 
+        <div class="ov-lower">
         <!-- Estate risk table -->
         <div class="ovc">
           <div class="ov-table-h">
@@ -361,7 +375,7 @@ const OpsDashboard = (function () {
       </div>
 
       <!-- Response desk rail -->
-      <div class="ov-rail">
+      <div class="ov-rail-cell"><div class="ov-rail">
         <div class="ovc-h" style="margin-bottom:10px"><span class="ovc-k">Response desk · <span class="live">${liveTag}</span></span>
           ${rd.unacknowledged ? `<span class="ovc-flag" style="color:var(--warn)"><span class="d" style="background:var(--warn)"></span>${rd.unacknowledged} unacknowledged</span>` : ''}</div>
         <div class="ov-big"><span class="n">${rd.open}</span><span class="u">open incidents</span></div>
@@ -378,7 +392,7 @@ const OpsDashboard = (function () {
         <div class="ov-next">${esc(rd.nextAction)}</div>
         <button class="ov-cta" data-go="incident">Dispatch team</button>
         <button class="ov-queue" data-go="queue">View response queue →</button>
-      </div>
+      </div></div>
     </div>`;
   }
 
