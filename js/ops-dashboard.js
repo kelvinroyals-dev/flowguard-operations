@@ -12,9 +12,9 @@ const OpsDashboard = (function () {
   const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   const CSS = `
-  .ovx{ --bg:#101114; --card:#17181c; --line:#2f3238; --line-2:#3a3d44;
-        --t1:#f4f6f9; --t2:#b8bec7; --t3:#8b919b; --t4:#6c727c;
-        --link:#5b8def; --btn:#2f6bfe; --btn-h:#245ae0;
+  .ovx{ --bg:#111214; --card:#1c1d20; --line:#34363b; --line-2:#3d4046;
+        --t1:#f0f1f2; --t2:#b5b8be; --t3:#8b909a; --t4:#6c727c;
+        --link:#5379ff; --btn:#5379ff; --btn-h:#3f63e6;
         --sev-crit:#f0616d; --sev-high:#f0913e; --sev-mod:#f2c14e; --sev-low:#8b9099; --sev-unk:#8b9099;
         --ok:#35c98a;
         background:var(--bg); min-height:100%; padding:14px 20px 30px; font-family:var(--ff-b); color:var(--t1);
@@ -417,7 +417,7 @@ const OpsDashboard = (function () {
   }
   async function render(container) {
     _root = container;
-    try { container.style.background = '#101114'; container.style.minHeight = 'calc(100vh - 58px)'; } catch (_) {}   // continuous charcoal surface, full height
+    try { container.style.background = '#111214'; container.style.minHeight = 'calc(100vh - 58px)'; } catch (_) {}   // continuous charcoal surface, full height
     if (!document.getElementById('ovx-style')) {
       const st = document.createElement('style'); st.id = 'ovx-style'; st.textContent = CSS; document.head.appendChild(st);
     }
