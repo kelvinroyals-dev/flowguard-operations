@@ -12,12 +12,12 @@ const OpsDashboard = (function () {
   const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   const CSS = `
-  .ovx{ --bg:#0b0c0e; --card:#131417; --line:#2a2c30; --line-2:#34363b;
-        --t1:#f2f4f7; --t2:#a7adb5; --t3:#71767e; --t4:#565b62;
+  .ovx{ --bg:#101114; --card:#17181c; --line:#2f3238; --line-2:#3a3d44;
+        --t1:#f4f6f9; --t2:#b8bec7; --t3:#8b919b; --t4:#6c727c;
         --link:#5b8def; --btn:#2f6bfe; --btn-h:#245ae0;
-        --sev-crit:#f0616d; --sev-high:#f0913e; --sev-mod:#f2c14e; --sev-low:#6b7078; --sev-unk:#6b7078;
+        --sev-crit:#f0616d; --sev-high:#f0913e; --sev-mod:#f2c14e; --sev-low:#8b9099; --sev-unk:#8b9099;
         --ok:#35c98a;
-        background:var(--bg); min-height:100%; padding:16px 20px 34px; font-family:var(--ff-b); color:var(--t1);
+        background:var(--bg); min-height:100%; padding:14px 20px 30px; font-family:var(--ff-b); color:var(--t1);
         font-variant-numeric:tabular-nums; }
   .ovx *{ box-sizing:border-box; }
   .ovx button{ font-family:inherit; }
@@ -33,9 +33,9 @@ const OpsDashboard = (function () {
   .ov-rail-cell{ grid-column:4 / 5; grid-row:1 / span 2; min-width:0; }
   .ov-lower{ grid-column:1 / 4; grid-row:2; display:flex; flex-direction:column; gap:12px; min-width:0; }
 
-  .ovc{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; min-width:0; }
+  .ovc{ background:var(--card); border:1px solid var(--line); border-radius:9px; padding:13px; min-width:0; }
   .ovc-h{ display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:16px; }
-  .ovc-k{ font-size:10.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--t3); white-space:nowrap; }
+  .ovc-k{ font-size:10.5px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--t2); white-space:nowrap; }
   .ovc-k .live{ color:var(--t4); }
   .ovc-flag{ display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600; white-space:nowrap; }
   .ovc-flag .d{ width:6px; height:6px; border-radius:50%; }
@@ -47,9 +47,9 @@ const OpsDashboard = (function () {
   .ov-line .l{ color:var(--t2); display:flex; align-items:center; gap:8px; min-width:0; }
   .ov-line .l .d{ width:7px; height:7px; border-radius:50%; flex:0 0 auto; }
   .ov-line .v{ color:var(--t1); font-weight:600; }
-  .ov-div{ height:1px; background:var(--line); margin:9px 0; }
-  .ov-subh{ font-size:10px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--t3); margin:2px 0 5px; }
-  .ov-note{ font-size:11px; color:var(--t3); margin-top:8px; }
+  .ov-div{ height:1px; background:var(--line); margin:8px 0; }
+  .ov-subh{ font-size:12px; font-weight:600; text-transform:none; color:var(--t2); margin:2px 0 2px; }
+  .ov-note{ font-size:11px; color:var(--t3); margin-top:7px; }
   .ov-links{ margin-top:10px; display:flex; flex-direction:column; gap:6px; }
   .ov-link{ display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:500; color:var(--link); cursor:pointer; background:none; border:none; padding:0; text-align:left; }
   .ov-link:hover{ text-decoration:underline; }
@@ -59,16 +59,16 @@ const OpsDashboard = (function () {
   .ov-table-h{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
   .ov-th-title{ font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--t2); }
   .ov-th-sub{ font-size:11.5px; color:var(--t3); margin-top:3px; }
-  .ov-seg{ display:flex; background:var(--bg); border:1px solid var(--line); border-radius:7px; overflow:hidden; }
-  .ov-seg button{ font-size:12px; font-weight:500; color:var(--t3); padding:5px 12px; cursor:pointer; border:none; background:none; border-right:1px solid var(--line); }
+  .ov-seg{ display:flex; background:#1c1e23; border:1px solid var(--line-2); border-radius:7px; overflow:hidden; }
+  .ov-seg button{ font-size:12px; font-weight:500; color:var(--t3); padding:5px 12px; cursor:pointer; border:none; background:none; border-right:1px solid var(--line-2); }
   .ov-seg button:last-child{ border-right:none; }
-  .ov-seg button.active{ background:var(--line); color:var(--t1); }
+  .ov-seg button.active{ background:var(--line-2); color:var(--t1); }
   .ov-seg .c{ color:var(--t4); font-weight:600; margin-left:5px; }
   .ov-tbl-wrap{ margin-top:11px; max-height:320px; overflow-y:auto; }
   .ov-tbl-wrap::-webkit-scrollbar{ width:8px; } .ov-tbl-wrap::-webkit-scrollbar-thumb{ background:var(--line-2); border-radius:4px; }
   table.ov-tbl{ width:100%; border-collapse:collapse; table-layout:fixed; }
   .ov-tbl thead th{ text-align:left; font-size:10px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--t4); padding:0 8px 8px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--card); }
-  .ov-tbl tbody td{ padding:9px 8px; border-bottom:1px solid var(--line); font-size:13px; vertical-align:middle; color:var(--t1); }
+  .ov-tbl tbody td{ padding:7px 8px; border-bottom:1px solid var(--line); font-size:13px; vertical-align:middle; color:var(--t1); }
   .ov-tbl tbody tr:last-child td{ border-bottom:none; }
   .ov-tbl tbody tr{ cursor:pointer; }
   .ov-tbl tbody tr:hover td{ background:rgba(255,255,255,.02); }
@@ -88,10 +88,12 @@ const OpsDashboard = (function () {
   .ov-risk .d{ width:7px; height:7px; border-radius:50%; }
   .ov-chg{ color:var(--t2); font-weight:500; }
   .ov-resp{ color:var(--t2); }
-  .ov-foot{ margin-top:10px; font-size:11.5px; color:var(--t4); }
+  .ov-foot{ margin-top:9px; font-size:11.5px; color:var(--t3); }
 
   /* banner */
-  .ov-banner{ display:flex; align-items:center; gap:11px; background:rgba(242,193,78,.06); border:1px solid rgba(242,193,78,.24); border-radius:9px; padding:11px 14px; }
+  .ov-banner{ display:flex; align-items:center; gap:11px; background:rgba(242,193,78,.06); border:1px solid rgba(242,193,78,.24); border-radius:9px; padding:10px 14px; }
+  .ov-banner.ok{ background:transparent; border:1px solid var(--line); }
+  .ov-banner.ok .ic{ color:var(--ok); }
   .ov-banner .ic{ color:var(--sev-mod); flex:0 0 auto; display:flex; }
   .ov-banner .tx{ font-size:12.5px; color:var(--t2); flex:1 1 auto; min-width:0; }
   .ov-banner .tx b{ color:var(--t1); font-weight:600; }
@@ -182,10 +184,14 @@ const OpsDashboard = (function () {
     const arrow = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>`;
 
     const rows = vm.estates.map(e => {
-      const chg = e.change === 0 ? '—' : (e.change > 0 ? `+${e.change} pts` : `${e.change} pts`);
+      const chg = (e.change == null) ? `<span title="Insufficient history">—</span>` : (e.change > 0 ? `+${e.change} pts` : `${e.change} pts`);
+      const sc = e.score != null ? e.score : e.baseline;
+      const scoreCell = e.score != null
+        ? `<div class="ov-score"><span class="n">${e.score}</span><span class="ov-bar"><span style="width:${Math.max(2, Math.min(100, e.score))}%;background:${SEV[e.risk]}"></span></span></div>`
+        : `<div class="ov-score"><span class="n" style="color:var(--t3)" title="Baseline estimate">${sc != null ? sc : '—'}</span><span class="ov-bar"><span style="width:${Math.max(2, Math.min(100, sc || 0))}%;background:var(--sev-unk);opacity:.5"></span></span></div>`;
       return `<tr data-estate="${esc(e.name)}" data-risk="${e.risk}">
         <td><div class="ov-est">${esc(e.name)}${e.zone ? `<span class="z">${esc(e.zone)}</span>` : ''}</div></td>
-        <td><div class="ov-score"><span class="n">${e.score}</span><span class="ov-bar"><span style="width:${Math.max(2, Math.min(100, e.score))}%;background:${SEV[e.risk]}"></span></span></div></td>
+        <td>${scoreCell}</td>
         <td><span class="ov-risk"><span class="d" style="background:${SEV[e.risk]}"></span>${SEV_LABEL[e.risk]}</span></td>
         <td><span class="ov-chg">${chg}</span></td>
         <td style="color:var(--t2)">${esc(e.driver)}</td>
@@ -215,7 +221,7 @@ const OpsDashboard = (function () {
         <div class="ov-title">Overview</div>
         <div class="ov-sub">Live estate risk and response · Updated ${esc(nowWAT())}</div>
       </div>
-      <div class="ov-chip"><span class="d" style="background:${vm.live ? 'var(--ok)' : 'var(--sev-mod)'}"></span>${vm.live ? 'Live data · Lagos' : 'Demo mode · Simulated data'}</div>
+      <div class="ov-chip"><span class="d" style="background:${vm.live ? 'var(--ok)' : 'var(--sev-mod)'}"></span>${vm.live ? 'Live data' : 'Demo mode · Simulated data'}</div>
     </div>
 
     <div class="ov-grid">
@@ -225,13 +231,14 @@ const OpsDashboard = (function () {
           <div class="ovc-h"><span class="ovc-k">Portfolio · <span class="live">${liveTag}</span></span>
             <span class="ovc-flag" style="color:var(--ok)"><span class="d" style="background:var(--ok)"></span>Monitoring</span></div>
           <div class="ov-big"><span class="n">${p.estates}</span><span class="u">estates</span></div>
+          <div class="ov-div"></div>
           <div class="ov-lines">
-            <div class="ov-line"><span class="l">Assessed</span><span class="v">${p.assessed}</span></div>
-            <div class="ov-line"><span class="l">Unknown</span><span class="v">${p.unknown}</span></div>
+            <div class="ov-line"><span class="l">Assessed <span style="color:var(--t4);font-size:11px">· sensor-backed</span></span><span class="v">${p.assessed}</span></div>
+            <div class="ov-line"><span class="l">Baseline / unknown</span><span class="v">${p.unknown}</span></div>
           </div>
           <div class="ov-div"></div>
           <div class="ov-subh">Gateway connectivity</div>
-          <div class="ov-lines">
+          <div class="ov-lines" style="margin-top:2px">
             <div class="ov-line"><span class="l">Online</span><span class="v">${p.online} / ${p.total}</span></div>
             <div class="ov-line"><span class="l">Offline</span><span class="v">${p.offline} / ${p.total}</span></div>
           </div>
@@ -242,7 +249,7 @@ const OpsDashboard = (function () {
         <!-- Risk exposure -->
         <div class="ovc">
           <div class="ovc-h"><span class="ovc-k">Risk exposure · <span class="live">${liveTag}</span></span>
-            ${rk.highRisk ? `<span class="ovc-flag" style="color:var(--sev-crit)"><span class="d" style="background:var(--sev-crit)"></span>Action required</span>` : `<span class="ovc-flag" style="color:var(--ok)"><span class="d" style="background:var(--ok)"></span>Stable</span>`}</div>
+            ${rk.highRisk ? `<span class="ovc-flag" style="color:var(--sev-crit)"><span class="d" style="background:var(--sev-crit)"></span>Action required</span>` : `<span class="ovc-flag" style="color:var(--t3)"><span class="d" style="background:var(--sev-low)"></span>No high-risk estates</span>`}</div>
           <div class="ov-big"><span class="n">${rk.highRisk}</span><span class="u">high-risk estates</span></div>
           <div class="ov-lines">${riskLine('critical')}${riskLine('high')}${riskLine('moderate')}${riskLine('low')}${riskLine('unknown')}</div>
         </div>
@@ -272,16 +279,18 @@ const OpsDashboard = (function () {
           ${rd.unacknowledged ? `<span class="ovc-flag" style="color:var(--sev-mod)"><span class="d" style="background:var(--sev-mod)"></span>${rd.unacknowledged} unacknowledged</span>` : ''}</div>
         <div class="ov-big"><span class="n">${rd.open}</span><span class="u">open incidents</span></div>
         <div class="ov-div"></div>
-        <div class="ov-sec" style="margin-top:4px">Priority incidents</div>
+        <div class="ov-sec" style="margin-top:2px">Priority incidents</div>
         ${priority}
-        <div class="ov-sec">Field operations · ${liveTag}</div>
+        <div class="ov-div"></div>
+        <div class="ov-sec" style="margin-top:2px">Field operations · ${liveTag}</div>
         <div class="ov-frow"><span class="l">Open work orders</span><span class="v">${rd.workOrders}</span></div>
-        <div class="ov-frow"><span class="l">Teams deployed</span><span class="v">${esc(rd.teamsDeployed)}</span></div>
+        <div class="ov-frow"><span class="l">Teams deployed</span><span class="v"${rd.teamsConfigured === false ? ' style="color:var(--t3);font-weight:500"' : ''}>${esc(rd.teamsDeployed)}</span></div>
         <div class="ov-frow"><span class="l">SLA breaches · today</span><span class="v">${rd.slaBreaches ? `<span class="ad"></span>${rd.slaBreaches}` : '0'}</span></div>
-        <div class="ov-sec">Next action</div>
-        <div class="ov-next">${esc(rd.nextAction)}</div>
-        <button class="ov-cta" data-go="incident">Dispatch team</button>
-        <button class="ov-queue" data-go="queue">View response queue →</button>
+        <div class="ov-div"></div>
+        <div class="ov-sec" style="margin-top:2px">Next action</div>
+        <div class="ov-next"${rd.dispatchable ? '' : ' style="color:var(--t2);font-weight:500"'}>${esc(rd.nextAction)}</div>
+        ${rd.dispatchable ? `<button class="ov-cta" data-go="incident">Dispatch team</button>` : ''}
+        <button class="ov-queue" data-go="queue"${rd.dispatchable ? '' : ' style="margin-top:0"'}>View response queue →</button>
       </div></div>
 
       <div class="ov-lower">
@@ -299,14 +308,19 @@ const OpsDashboard = (function () {
             <thead><tr><th>Estate</th><th>Score</th><th>Risk</th><th>Change · 1h</th><th>Primary driver</th><th>Response</th></tr></thead>
             <tbody id="ov-tbody">${rows}</tbody>
           </table></div>
-          <div class="ov-foot">Score 0 – 100 · Higher means greater risk</div>
+          <div class="ov-foot">Showing ${vm.estates.length} of ${p.estates} estates · Score 0 – 100 · Higher means greater risk</div>
         </div>
 
-        <div class="ov-banner">
-          <span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></span>
-          <span class="tx">${vm.lagoon ? `<b>${esc(vm.lagoon.name)}</b> <span class="code">${esc(vm.lagoon.device)}</span> · Risk unavailable · Last valid reading ${esc(vm.lagoon.lastValid)}` : 'All monitored estates reporting fresh telemetry.'}</span>
-          ${vm.lagoon ? `<button class="ov-link" data-go="timeline" data-device="${esc(vm.lagoon.device)}">Device timeline ${arrow}</button>` : ''}
-        </div>
+        ${vm.lagoon
+          ? `<div class="ov-banner">
+              <span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></span>
+              <span class="tx"><b>${esc(vm.lagoon.name)}</b> <span class="code">${esc(vm.lagoon.device)}</span> · Risk unavailable · Last valid reading ${esc(vm.lagoon.lastValid)}</span>
+              <button class="ov-link" data-go="timeline" data-device="${esc(vm.lagoon.device)}">Device timeline ${arrow}</button>
+            </div>`
+          : `<div class="ov-banner ok">
+              <span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6L9 17l-5-5"/></svg></span>
+              <span class="tx">All monitored estates reporting fresh telemetry.</span>
+            </div>`}
 
         <div class="ov-bottom">
           <div class="ovc">
@@ -381,6 +395,7 @@ const OpsDashboard = (function () {
   }
   async function render(container) {
     _root = container;
+    try { container.style.background = '#101114'; } catch (_) {}   // continuous charcoal surface
     if (!document.getElementById('ovx-style')) {
       const st = document.createElement('style'); st.id = 'ovx-style'; st.textContent = CSS; document.head.appendChild(st);
     }

@@ -194,7 +194,7 @@
     .tb-search { position: relative; display: flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 7px 11px; width: 260px; flex-shrink: 1; min-width: 130px; color: var(--ink-3); }
     .tb-search svg { width: 14px; height: 14px; flex-shrink: 0; }
     .tb-search input { flex: 1; min-width: 0; background: transparent; border: none; outline: none; color: var(--ink); font-family: var(--ff-b); font-size: var(--fs-sm); }
-    .tb-search input::placeholder { color: var(--ink-4); }
+    .tb-search input::placeholder { color: var(--ink-3); }
     .tb-search kbd { flex-shrink: 0; font-family: var(--ff-m); font-size: var(--fs-2xs); color: var(--ink-4); background: var(--surface-3); border: 1px solid var(--border); border-radius: 5px; padding: 2px 5px; }
     .tb-search:focus-within { border-color: var(--blue-dim); }
     .tb-search-drop { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--border-2); border-radius: 10px; box-shadow: var(--sh-md); z-index: 900; display: none; overflow: hidden; max-height: 300px; overflow-y: auto; }
@@ -1194,8 +1194,8 @@
       overflow:visible;   /* let hover flyouts escape the rail */
     }
     html[data-theme="dark"] .tnav{
-      --pa:#000000; --pb:rgba(255,255,255,0.06); --ps:rgba(255,255,255,0.10);
-      --bd:rgba(255,255,255,0.07); --t1:rgba(255,255,255,0.94); --t2:rgba(255,255,255,0.60); --t3:rgba(255,255,255,0.40);
+      --pa:#17181c; --pb:rgba(255,255,255,0.05); --ps:rgba(255,255,255,0.09);
+      --bd:rgba(255,255,255,0.08); --t1:rgba(255,255,255,0.92); --t2:rgba(255,255,255,0.66); --t3:rgba(255,255,255,0.52);
       --sh:0 8px 30px rgba(0,0,0,.45);
     }
     .tnav-brand{ display:flex; align-items:center; gap:11px; flex-shrink:0; padding:2px 8px 6px; }
@@ -1208,11 +1208,11 @@
     .tnav-sub{ font-size:10px; letter-spacing:1.3px; text-transform:uppercase; color:var(--t3); margin-top:3px; }
 
     .tnav-menu{ display:flex; flex-direction:column; align-items:stretch; gap:2px; }
-    .tnav-sec{ font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--sb-ink-3); padding:14px 12px 5px; }
+    .tnav-sec{ font-size:10px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--t3); padding:14px 12px 5px; }
     .tnav-sec:first-child{ padding-top:4px; }
     .tnav-div{ height:1px; background:var(--sb-line); margin:10px 10px; }
     .tnav-grp{ position:relative; }
-    .tnav-item{ display:flex; align-items:center; gap:11px; width:100%; font-size:13px; font-weight:600; color:var(--t2); padding:10px 12px; border-radius:9px; cursor:pointer; background:transparent; border:none; font-family:inherit; white-space:nowrap; text-align:left; }
+    .tnav-item{ display:flex; align-items:center; gap:11px; width:100%; font-size:13px; font-weight:500; color:var(--t2); padding:9px 12px; border-radius:8px; cursor:pointer; background:transparent; border:none; font-family:inherit; white-space:nowrap; text-align:left; }
     .tnav-ic{ width:18px; height:18px; flex-shrink:0; }
     .tnav-grp > .tnav-item::after{ content:"›"; margin-left:auto; font-size:15px; color:var(--t3); }
     .tnav-item:hover{ color:var(--t1); background:var(--pb); }
@@ -1370,7 +1370,7 @@
         <button class="opsbar-scope" style="display:flex;align-items:center;gap:7px;background:none;border:none;color:var(--ink);font-family:var(--ff-b);font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap">All estates
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg></button>
         <span style="width:1px;height:18px;background:var(--border);flex:0 0 auto"></span>
-        <span style="font-size:13px;color:var(--ink-3);font-weight:600;white-space:nowrap">Lagos · WAT</span>
+        <span style="font-size:13px;color:var(--ink-2);font-weight:600;white-space:nowrap">Lagos · WAT</span>
       </div>
       <div style="flex:1 1 auto"></div>
       <div class="tb-search" id="tb-search-wrap" style="width:320px;flex:0 1 320px">
@@ -1443,7 +1443,7 @@
 <script src="js/auth.js?v=sec6"></script>
 <script src="js/ops-modal.js?v=sec12"></script>
 <script src="js/fg-paginator.js?v=sec2"></script>
-<script src="js/ops-dashboard.js?v=sec22"></script>
+<script src="js/ops-dashboard.js?v=sec23"></script>
 <script src="js/ops-situation.js?v=sec4"></script>
 <script src="js/ops-user-management.js?v=sec13"></script>
 <script src="js/ops-clients.js?v=sec13"></script>
