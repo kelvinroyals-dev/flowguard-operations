@@ -21,7 +21,7 @@ const OpsSituation = (function () {
   const riskColor = r => r >= 80 ? '#a11313' : r >= 60 ? '#d9463c' : r >= 45 ? '#e8720e' : r >= 25 ? '#e0a012' : '#1f9d5b';
   const riskLevel = r => r >= 80 ? 'Critical' : r >= 60 ? 'High' : r >= 45 ? 'Elevated' : r >= 25 ? 'Moderate' : 'Low';
   const sevRank = s => ({ critical: 4, high: 3, moderate: 2, medium: 2, low: 1 }[String(s || '').toLowerCase()] || 1);
-  const sevColor = s => ({ critical: '#a11313', high: '#d9463c', moderate: '#e08e12', medium: '#e08e12', low: '#1f9d5b' }[String(s || '').toLowerCase()] || '#7d8fa3');
+  const sevColor = s => ({ critical: '#a11313', high: '#d9463c', moderate: '#e08e12', medium: '#e08e12', low: '#1f9d5b' }[String(s || '').toLowerCase()] || '#8b909a');
 
   function rel(t) {
     if (!t) return '—';
@@ -185,8 +185,8 @@ const OpsSituation = (function () {
     return `<div class="sit-strip">
       ${cell(ICON.incident, '#d9463c', 'Active incidents', M.active.length, `${M.high} high · ${M.medium} medium`)}
       ${cell(ICON.flood, '#e08e12', 'Flood risk level', M.overall, trendTxt)}
-      ${cell(ICON.rain, '#16a8d3', 'Rainfall (last 24h)', (wx.last24 != null ? Math.round(wx.last24) : '—') + '<span class="u">mm</span>', rainDelta != null ? `${rainDelta >= 0 ? '↑' : '↓'} ${Math.abs(rainDelta)}% from yesterday` : 'Live')}
-      ${cell(ICON.home, '#0d7fa0', 'At risk properties', M.atRisk.length, `${M.entering.length} entering high (3h)`)}
+      ${cell(ICON.rain, '#5379ff', 'Rainfall (last 24h)', (wx.last24 != null ? Math.round(wx.last24) : '—') + '<span class="u">mm</span>', rainDelta != null ? `${rainDelta >= 0 ? '↑' : '↓'} ${Math.abs(rainDelta)}% from yesterday` : 'Live')}
+      ${cell(ICON.home, '#3f63e6', 'At risk properties', M.atRisk.length, `${M.entering.length} entering high (3h)`)}
       ${cell(ICON.teams, '#7c6cf0', 'Response teams', M.respond, `${M.onSite} on site · ${M.enRoute} en route`)}
     </div>`;
   }
@@ -205,7 +205,7 @@ const OpsSituation = (function () {
       <div class="sit-legend">
         <span class="lbl">Risk level:</span>
         <span><i style="background:#1f9d5b"></i>Low</span><span><i style="background:#e0a012"></i>Moderate</span><span><i style="background:#e8720e"></i>Elevated</span><span><i style="background:#d9463c"></i>High</span><span><i style="background:#a11313"></i>Critical</span>
-        <span class="sep"></span><span><i style="background:#7d8fa3"></i>Sensor</span>
+        <span class="sep"></span><span><i style="background:#8b909a"></i>Sensor</span>
       </div>
     </div>`;
   }

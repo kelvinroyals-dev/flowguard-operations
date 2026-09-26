@@ -104,7 +104,7 @@ const OpsSensors = (function () {
       .sn-status-line { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px; font-family:var(--ff-m); font-size:var(--fs-2xs); font-weight:700; letter-spacing:.03em; }
       .sn-tok { display:inline-flex; align-items:center; gap:5px; color:var(--ink-2); }
       .sn-tok.id { color:var(--ink-3); }
-      .sn-tok.ok { color:var(--ok); } .sn-tok.warn { color:var(--warn); } .sn-tok.err { color:var(--err); } .sn-tok.blue { color:var(--blue-hi,#22c3e6); }
+      .sn-tok.ok { color:var(--ok); } .sn-tok.warn { color:var(--warn); } .sn-tok.err { color:var(--err); } .sn-tok.blue { color:var(--blue-hi,#6b8cff); }
       .sn-tok .tdot { width:7px; height:7px; border-radius:50%; background:currentColor; }
       .sn-status-line .sep { color:var(--ink-4,#8494a0); opacity:.6; }
       .sn-head-actions { display:flex; align-items:center; gap:2px; flex-shrink:0; }
@@ -113,14 +113,14 @@ const OpsSensors = (function () {
       /* action bar */
       .sn-actionbar { display:flex; align-items:stretch; gap:8px; margin:14px 0 4px; }
       .sn-ab-icon { flex:0 0 auto; width:46px; display:grid; place-items:center; background:var(--surface-2); border:1px solid var(--border); border-radius:11px; color:var(--ink-2); cursor:pointer; transition:.13s; }
-      .sn-ab-icon:hover { color:var(--blue-hi,#22c3e6); border-color:var(--blue-dim,#7fc8e0); }
+      .sn-ab-icon:hover { color:var(--blue-hi,#6b8cff); border-color:var(--blue-dim,#93a9ff); }
       .sn-ab-main { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px 14px; background:var(--surface-2); border:1px solid var(--border); border-radius:11px; color:var(--ink); font-family:var(--ff-b); font-weight:700; font-size:var(--fs-sm); cursor:pointer; transition:.13s; }
-      .sn-ab-main:hover { border-color:var(--blue-dim,#7fc8e0); color:var(--blue-hi,#22c3e6); }
+      .sn-ab-main:hover { border-color:var(--blue-dim,#93a9ff); color:var(--blue-hi,#6b8cff); }
       /* tabs */
       .sn-tabs { display:flex; gap:2px; border-bottom:1px solid var(--border); margin:16px 0 14px; }
       .sn-tab { flex:1; background:none; border:none; padding:10px 4px; font-family:var(--ff-b); font-size:var(--fs-2xs); font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:.13s; }
       .sn-tab:hover { color:var(--ink-2); }
-      .sn-tab.active { color:var(--ink); border-bottom-color:var(--blue-hi,#22c3e6); }
+      .sn-tab.active { color:var(--ink); border-bottom-color:var(--blue-hi,#6b8cff); }
       /* metric cards */
       .sn-sec-h { font-size:var(--fs-2xs); font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--ink-3); margin:4px 0 9px; }
       .sn-sec-h:not(:first-child) { margin-top:16px; }
@@ -134,7 +134,7 @@ const OpsSensors = (function () {
       .sn-3d canvas { display:block; width:100% !important; height:100% !important; outline:none; cursor:grab; }
       .sn-3d canvas:active { cursor:grabbing; }
       .sn-3d-state { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:9px; font-size:var(--fs-xs); color:var(--ink-3); pointer-events:none; }
-      .sn-3d-spin { width:15px; height:15px; border:2px solid var(--border); border-top-color:var(--blue-hi,#22c3e6); border-radius:50%; animation:sn3dspin .7s linear infinite; }
+      .sn-3d-spin { width:15px; height:15px; border:2px solid var(--border); border-top-color:var(--blue-hi,#6b8cff); border-radius:50%; animation:sn3dspin .7s linear infinite; }
       @keyframes sn3dspin { to { transform:rotate(360deg); } }
       .sn-3d-hint { position:absolute; left:0; right:0; bottom:6px; text-align:center; font-size:var(--fs-2xs); color:var(--ink-4,#8494a0); pointer-events:none; opacity:.75; }
     </style>`;
@@ -2055,12 +2055,12 @@ const OpsSensors = (function () {
     .snd-cmd:last-child,.snd-ev:last-child{border-bottom:none;}
     .snd-cmd .st{font-size:var(--fs-2xs);font-weight:700;padding:3px 9px;border-radius:20px;flex-shrink:0;text-transform:capitalize;}
     .snd-cmd .st.queued,.snd-cmd .st.pending{background:var(--surface-2);color:var(--ink-2);}
-    .snd-cmd .st.delivered{background:rgba(28,184,232,.12);color:#0d7fa0;}
+    .snd-cmd .st.delivered{background:rgba(28,184,232,.12);color:#3f63e6;}
     .snd-cmd .st.acknowledged,.snd-cmd .st.completed{background:rgba(31,157,91,.12);color:var(--ok);}
     .snd-cmd .st.failed,.snd-cmd .st.cancelled{background:rgba(217,70,60,.12);color:var(--err);}
     .snd-cmd .t,.snd-ev .t{font-size:var(--fs-sm);font-weight:600;color:var(--ink);text-transform:capitalize;}
     .snd-cmd .m,.snd-ev .m{font-size:var(--fs-2xs);color:var(--ink-3);margin-top:2px;}
-    .snd-ev .dot{width:9px;height:9px;border-radius:50%;background:var(--blue-hi,#0d7fa0);margin-top:5px;flex-shrink:0;}
+    .snd-ev .dot{width:9px;height:9px;border-radius:50%;background:var(--blue-hi,#3f63e6);margin-top:5px;flex-shrink:0;}
   </style>`;
 
   const _cap = s => s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : s;
@@ -2167,13 +2167,13 @@ const OpsSensors = (function () {
       back: 'OpsSensors.back()',
       crumbRoot: 'Sentinel Devices',
       title: esc(x.name || x.sensor_id),
-      avatar: { text: 'SN', bg: 'linear-gradient(135deg,#0d7fa0,#16a8d3)' },
+      avatar: { text: 'SN', bg: 'linear-gradient(135deg,#3f63e6,#5379ff)' },
       chips: [
         { cls: chipCls, dot: true, label: _cap(x.status || 'unknown') },
         x.device_variant ? { cls: 'neutral', label: x.device_variant.replace(/_/g, ' ') } : null,
       ].filter(Boolean),
       meta: [['Zone', esc(x.zone || '—')], ['Primary asset', primary ? esc(primary.name || primary.property_id) : '—'], ['Property', esc(x.property_name || '—')], ['Link', esc(x.link_type || '—')]],
-      actions: `${primary && primary.property_id ? `<button class="fgd-btn" onclick="OpsNetwork.open('${__sid(primary.property_id)}')">View on map</button>` : ''}${canMng() ? `<button class="fgd-btn" style="background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;" onclick="OpsSensors.queueCommand('${sid}')">Queue command</button>` : ''}`,
+      actions: `${primary && primary.property_id ? `<button class="fgd-btn" onclick="OpsNetwork.open('${__sid(primary.property_id)}')">View on map</button>` : ''}${canMng() ? `<button class="fgd-btn" style="background:linear-gradient(135deg,#5379ff,#3f63e6);color:#fff;border:none;" onclick="OpsSensors.queueCommand('${sid}')">Queue command</button>` : ''}`,
       sections: [
         { id: 'overview', title: 'Device overview', meta: last ? 'Last ping ' + _ago(last) : '', body: overview },
         { id: 'telemetry', title: 'Live telemetry', body: tele },

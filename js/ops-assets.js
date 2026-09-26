@@ -245,7 +245,7 @@ const OpsAssets = (function () {
       back: 'OpsAssets.back()',
       crumbRoot: 'Assets',
       title: esc(a.asset_code || a.property_name || 'Asset'),
-      avatar: { text: initials(a.asset_code || a.property_name), bg: 'linear-gradient(135deg,#0d7fa0,#1f9d5b)' },
+      avatar: { text: initials(a.asset_code || a.property_name), bg: 'linear-gradient(135deg,#3f63e6,#1f9d5b)' },
       chips: [
         { cls: monitored ? 'ok' : 'neutral', label: monitored ? 'Monitored' : 'No Sentinel', dot: true },
         a.risk_level ? { cls: condCls, label: a.risk_level + ' condition' } : null,

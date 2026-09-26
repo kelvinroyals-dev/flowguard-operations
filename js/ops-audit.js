@@ -27,25 +27,25 @@ const OpsAudit = (function () {
     // Dispatch & Alerts
     alert_assigned:    { label:'Alert Assigned',    color:'var(--warn,#b45309)',  bg:'var(--wb,#fef3c7)' },
     alert_resolved:    { label:'Alert Resolved',    color:'var(--ok,#0a8a6a)',    bg:'var(--ok-bg,#e2f5ee)' },
-    team_dispatched:   { label:'Team Dispatched',   color:'var(--blue,#16a8d3)',  bg:'rgba(22,168,211,.08)' },
+    team_dispatched:   { label:'Team Dispatched',   color:'var(--blue,#5379ff)',  bg:'rgba(22,168,211,.08)' },
     // Client & Property
     client_created:    { label:'Client Created',    color:'var(--ok,#0a8a6a)',    bg:'var(--ok-bg,#e2f5ee)' },
-    client_updated:    { label:'Client Updated',    color:'var(--blue,#16a8d3)',  bg:'rgba(22,168,211,.08)' },
-    area_submitted:    { label:'Area Submitted',    color:'var(--blue,#16a8d3)',  bg:'rgba(22,168,211,.08)' },
-    area_updated:      { label:'Area Updated',      color:'var(--blue,#16a8d3)',  bg:'rgba(22,168,211,.08)' },
+    client_updated:    { label:'Client Updated',    color:'var(--blue,#5379ff)',  bg:'rgba(22,168,211,.08)' },
+    area_submitted:    { label:'Area Submitted',    color:'var(--blue,#5379ff)',  bg:'rgba(22,168,211,.08)' },
+    area_updated:      { label:'Area Updated',      color:'var(--blue,#5379ff)',  bg:'rgba(22,168,211,.08)' },
     inspection_scheduled: { label:'Inspection Scheduled', color:'var(--amber,#f5a623)', bg:'var(--ambb,rgba(245,166,35,.09))' },
     // Auth
-    user_login:        { label:'Login',             color:'var(--ink-3,#6b8fa3)', bg:'var(--surface-2,#f7fafc)' },
-    user_logout:       { label:'Logout',            color:'var(--ink-3,#6b8fa3)', bg:'var(--surface-2,#f7fafc)' },
+    user_login:        { label:'Login',             color:'var(--ink-3,#8b909a)', bg:'var(--surface-2,#f7fafc)' },
+    user_logout:       { label:'Logout',            color:'var(--ink-3,#8b909a)', bg:'var(--surface-2,#f7fafc)' },
     user_invited:      { label:'User Invited',      color:'var(--ok,#0a8a6a)',    bg:'var(--ok-bg,#e2f5ee)' },
     user_deactivated:  { label:'User Deactivated',  color:'var(--err,#dc2626)',   bg:'var(--eb,#fef2f2)' },
     // Billing
     invoice_paid:      { label:'Invoice Paid',      color:'var(--ok,#0a8a6a)',    bg:'var(--ok-bg,#e2f5ee)' },
     reminder_sent:     { label:'Reminder Sent',     color:'var(--warn,#b45309)',  bg:'var(--wb,#fef3c7)' },
     // Settings
-    settings_updated:  { label:'Settings Updated',  color:'var(--ink-2,#2d5068)', bg:'var(--surface-2,#f7fafc)' },
+    settings_updated:  { label:'Settings Updated',  color:'var(--ink-2,#34363b)', bg:'var(--surface-2,#f7fafc)' },
     // Team
-    team_created:      { label:'Team Created',      color:'var(--blue,#16a8d3)',  bg:'rgba(22,168,211,.08)' },
+    team_created:      { label:'Team Created',      color:'var(--blue,#5379ff)',  bg:'rgba(22,168,211,.08)' },
     member_added:      { label:'Member Added',      color:'var(--ok,#0a8a6a)',    bg:'var(--ok-bg,#e2f5ee)' },
     member_removed:    { label:'Member Removed',    color:'var(--err,#dc2626)',   bg:'var(--eb,#fef2f2)' },
     // SLA
@@ -62,19 +62,19 @@ const OpsAudit = (function () {
     container.innerHTML = `
       <style>
         .au-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
-        .au-header-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#0a1f2e); letter-spacing:-.02em; margin-bottom:3px; }
-        .au-header-sub { font-size:var(--fs-base); color:var(--ink-3,#6b8fa3); }
+        .au-header-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#1c1d20); letter-spacing:-.02em; margin-bottom:3px; }
+        .au-header-sub { font-size:var(--fs-base); color:var(--ink-3,#8b909a); }
 
         /* Filters bar */
         .au-filters { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); padding:14px 20px; display:flex; align-items:center; gap:10px; margin-bottom:16px; box-shadow:var(--sh-xs); flex-wrap:wrap; }
-        .au-filter-input { padding:7px 12px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:var(--fs-base); color:var(--ink,#0a1f2e); outline:none; transition:all .2s; }
-        .au-filter-input:focus { border-color:var(--blue,#16a8d3); box-shadow:0 0 0 3px rgba(22,168,211,.1); background:var(--surface,#fff); }
-        .au-filter-label { font-size:var(--fs-xs); font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--ink-3,#6b8fa3); }
+        .au-filter-input { padding:7px 12px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:var(--fs-base); color:var(--ink,#1c1d20); outline:none; transition:all .2s; }
+        .au-filter-input:focus { border-color:var(--blue,#5379ff); box-shadow:0 0 0 3px rgba(22,168,211,.1); background:var(--surface,#fff); }
+        .au-filter-label { font-size:var(--fs-xs); font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--ink-3,#8b909a); }
 
         /* Log table */
         .au-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); overflow:hidden; box-shadow:var(--sh-xs); }
         .au-card-head { padding:14px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; }
-        .au-card-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--ink,#0a1f2e); }
+        .au-card-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--ink,#1c1d20); }
 
         /* Log row */
         .au-row { padding:12px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:flex-start; gap:12px; transition:background .12s; cursor:pointer; }
@@ -86,14 +86,14 @@ const OpsAudit = (function () {
         .au-body { flex:1; min-width:0; }
         .au-action-row { display:flex; align-items:center; gap:8px; margin-bottom:3px; flex-wrap:wrap; }
         .au-action-badge { display:inline-flex; padding:2px 8px; border-radius:12px; font-size:var(--fs-xs); font-weight:700; letter-spacing:.3px; white-space:nowrap; }
-        .au-desc { font-size:var(--fs-base); color:var(--ink-2,#2d5068); line-height:1.4; }
-        .au-meta { font-size:var(--fs-xs); color:var(--ink-4,#9eb8c8); margin-top:3px; font-family:var(--ff-m,'JetBrains Mono',monospace); display:flex; align-items:center; gap:8px; }
+        .au-desc { font-size:var(--fs-base); color:var(--ink-2,#34363b); line-height:1.4; }
+        .au-meta { font-size:var(--fs-xs); color:var(--ink-4,#b5b8be); margin-top:3px; font-family:var(--ff-m,'JetBrains Mono',monospace); display:flex; align-items:center; gap:8px; }
 
         .au-actor { display:flex; align-items:center; gap:6px; flex-shrink:0; }
         .au-actor-av { width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:var(--fs-2xs); font-weight:700; color:white; flex-shrink:0; font-family:var(--ff-m,'JetBrains Mono',monospace); }
-        .au-actor-name { font-size:var(--fs-sm); font-weight:600; color:var(--ink-2,#2d5068); white-space:nowrap; }
-        .au-actor-role { font-size:var(--fs-xs); color:var(--ink-4,#9eb8c8); }
-        .au-time { font-family:var(--ff-m,'JetBrains Mono',monospace); font-size:var(--fs-xs); color:var(--ink-4,#9eb8c8); flex-shrink:0; white-space:nowrap; }
+        .au-actor-name { font-size:var(--fs-sm); font-weight:600; color:var(--ink-2,#34363b); white-space:nowrap; }
+        .au-actor-role { font-size:var(--fs-xs); color:var(--ink-4,#b5b8be); }
+        .au-time { font-family:var(--ff-m,'JetBrains Mono',monospace); font-size:var(--fs-xs); color:var(--ink-4,#b5b8be); flex-shrink:0; white-space:nowrap; }
       </style>
 
       <div class="au-header">
@@ -280,7 +280,7 @@ const OpsAudit = (function () {
   // ── HELPERS ───────────────────────────────────────────────────────────
 
   function avatarColor(name) {
-    const colors = ['#0a2a3d','#0d7fa0','#16a8d3','#0a8a6a','#7c3aed','#b45309'];
+    const colors = ['#17181b','#3f63e6','#5379ff','#0a8a6a','#7c3aed','#b45309'];
     let h = 0;
     for (let i = 0; i < (name || '').length; i++) h = (h * 31 + name.charCodeAt(i)) % colors.length;
     return colors[h];

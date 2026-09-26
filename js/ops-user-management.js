@@ -27,7 +27,7 @@ const OpsUserManagement = (function () {
   const ROLE_CONFIG = {
     admin:              { label:'Admin',             color:'#f87171', bg:'rgba(248,113,113,.13)', perms:['Full system access, all modules and configuration'] },
     super_admin:        { label:'Super Admin',       color:'#f87171', bg:'rgba(248,113,113,.13)', perms:['Full system access, all modules and configuration'] },
-    operations_manager: { label:'Ops Manager',       color:'#22c3e6', bg:'rgba(34,195,230,.13)',  perms:['Client management','Team management','Alert handling','Reports'] },
+    operations_manager: { label:'Ops Manager',       color:'#6b8cff', bg:'rgba(34,195,230,.13)',  perms:['Client management','Team management','Alert handling','Reports'] },
     dispatcher:         { label:'Dispatcher',        color:'#f0a92a', bg:'rgba(240,169,42,.13)',  perms:['View alerts','Assign teams','Dispatch operations'] },
     field_lead:         { label:'Field Lead',        color:'#a78bfa', bg:'rgba(167,139,250,.15)', perms:['View own alerts','Update job status'] },
     analyst:            { label:'Analyst',           color:'#f472b6', bg:'rgba(244,114,182,.13)', perms:['View reports','Export data'] },
@@ -69,35 +69,35 @@ const OpsUserManagement = (function () {
         .um-e { color:var(--ink-3); font-size:var(--fs-sm); padding:6px 0; }
         .um-needs { font-size:var(--fs-xs); color:var(--ink-4); font-style:italic; }
         .um-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
-        .um-header-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#0a1f2e); letter-spacing:-.02em; margin-bottom:3px; }
-        .um-header-sub { font-size:var(--fs-base); color:var(--ink-3,#6b8fa3); }
+        .um-header-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#1c1d20); letter-spacing:-.02em; margin-bottom:3px; }
+        .um-header-sub { font-size:var(--fs-base); color:var(--ink-3,#8b909a); }
 
         .um-table-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); overflow:hidden; box-shadow:var(--sh-xs); margin-bottom:18px; }
         .um-table-head { padding:14px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; gap:12px; }
-        .um-table-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--ink,#0a1f2e); }
+        .um-table-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--ink,#1c1d20); }
         .um-controls { display:flex; align-items:center; gap:8px; }
 
-        .um-filter { padding:7px 12px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:var(--fs-base); color:var(--ink,#0a1f2e); outline:none; cursor:pointer; transition:border-color .2s; }
-        .um-filter:focus { border-color:var(--blue,#16a8d3); }
+        .um-filter { padding:7px 12px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:var(--fs-base); color:var(--ink,#1c1d20); outline:none; cursor:pointer; transition:border-color .2s; }
+        .um-filter:focus { border-color:var(--blue,#5379ff); }
 
         .um-avatar { width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:var(--fs-xs); font-weight:700; color:white; flex-shrink:0; font-family:var(--ff-m,'JetBrains Mono',monospace); letter-spacing:.5px; }
         .um-user-wrap { display:flex; align-items:center; gap:10px; }
-        .um-user-name  { font-size:var(--fs-md); font-weight:600; color:var(--ink,#0a1f2e); }
-        .um-user-email { font-size:var(--fs-sm); color:var(--ink-3,#6b8fa3); margin-top:1px; }
+        .um-user-name  { font-size:var(--fs-md); font-weight:600; color:var(--ink,#1c1d20); }
+        .um-user-email { font-size:var(--fs-sm); color:var(--ink-3,#8b909a); margin-top:1px; }
 
         .um-role-chip { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:var(--fs-xs); font-weight:700; white-space:nowrap; }
 
         /* Team chip */
-        .um-team-chip { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:20px; font-size:var(--fs-xs); font-weight:600; background:rgba(22,168,211,.08); color:var(--blue,#16a8d3); border:1px solid rgba(22,168,211,.18); white-space:nowrap; cursor:pointer; transition:all .18s; }
+        .um-team-chip { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:20px; font-size:var(--fs-xs); font-weight:600; background:rgba(22,168,211,.08); color:var(--blue,#5379ff); border:1px solid rgba(22,168,211,.18); white-space:nowrap; cursor:pointer; transition:all .18s; }
         .um-team-chip:hover { background:rgba(22,168,211,.15); }
-        .um-team-chip.unassigned { background:var(--surface-2,#f7fafc); color:var(--ink-4,#9eb8c8); border-color:var(--border,#dae6ef); cursor:default; }
+        .um-team-chip.unassigned { background:var(--surface-2,#f7fafc); color:var(--ink-4,#b5b8be); border-color:var(--border,#dae6ef); cursor:default; }
 
         /* Permissions grid */
         .um-perms-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
         .um-perm-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); padding:16px 18px; box-shadow:var(--sh-xs); position:relative; overflow:hidden; }
-        .um-perm-title { font-size:var(--fs-base); font-weight:700; color:var(--ink,#0a1f2e); margin-bottom:8px; }
+        .um-perm-title { font-size:var(--fs-base); font-weight:700; color:var(--ink,#1c1d20); margin-bottom:8px; }
         .um-perm-list  { list-style:none; display:flex; flex-direction:column; gap:5px; }
-        .um-perm-item  { font-size:var(--fs-sm); color:var(--ink-2,#2d5068); display:flex; align-items:flex-start; gap:6px; line-height:1.4; }
+        .um-perm-item  { font-size:var(--fs-sm); color:var(--ink-2,#34363b); display:flex; align-items:flex-start; gap:6px; line-height:1.4; }
       </style>
 
       <div class="um-header">

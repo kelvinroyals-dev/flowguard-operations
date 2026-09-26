@@ -65,7 +65,7 @@ const OpsAlerts = (function () {
 
         .al-feed-title {
           font-family: var(--ff-d, 'Space Grotesk', sans-serif);
-          font-size: var(--fs-md); font-weight: 700; color: var(--ink, #0a1f2e);
+          font-size: var(--fs-md); font-weight: 700; color: var(--ink, #1c1d20);
         }
 
         .al-feed-body { display: flex; flex-direction: column; }
@@ -103,18 +103,18 @@ const OpsAlerts = (function () {
 
         .al-row-title {
           font-size: var(--fs-md); font-weight: 700;
-          color: var(--ink, #0a1f2e);
+          color: var(--ink, #1c1d20);
         }
 
         .al-row-location {
-          font-size: var(--fs-base); color: var(--ink-3, #6b8fa3);
+          font-size: var(--fs-base); color: var(--ink-3, #8b909a);
           margin-bottom: 3px;
           display: flex; align-items: center; gap: 4px;
         }
 
         .al-row-meta {
           display: flex; align-items: center; gap: 10px;
-          font-size: var(--fs-xs); color: var(--ink-4, #9eb8c8);
+          font-size: var(--fs-xs); color: var(--ink-4, #b5b8be);
           font-family: var(--ff-m, 'JetBrains Mono', monospace);
         }
 
@@ -122,7 +122,7 @@ const OpsAlerts = (function () {
           margin-top: 8px; padding: 6px 10px;
           background: var(--surface-3, #eef4f8);
           border-radius: 6px;
-          font-size: var(--fs-sm); color: var(--ink-2, #2d5068);
+          font-size: var(--fs-sm); color: var(--ink-2, #34363b);
           display: flex; align-items: center; gap: 6px;
         }
 
@@ -138,13 +138,13 @@ const OpsAlerts = (function () {
           background: var(--surface-2, #f7fafc);
           font-family: var(--ff-b, 'Inter', sans-serif);
           font-size: var(--fs-sm); font-weight: 600;
-          color: var(--ink-2, #2d5068);
+          color: var(--ink-2, #34363b);
           cursor: pointer; transition: all .18s;
           white-space: nowrap;
         }
 
-        .al-action-btn:hover { border-color: var(--blue, #16a8d3); color: var(--blue, #16a8d3); background: rgba(22,168,211,.05); }
-        .al-action-btn.primary { background: var(--navy, #0a2a3d); border-color: var(--navy, #0a2a3d); color: white; }
+        .al-action-btn:hover { border-color: var(--blue, #5379ff); color: var(--blue, #5379ff); background: rgba(22,168,211,.05); }
+        .al-action-btn.primary { background: var(--navy, #17181b); border-color: var(--navy, #17181b); color: white; }
         .al-action-btn.primary:hover { background: var(--navy-mid, #0d3a54); }
         .al-action-btn.resolve { background: var(--ok-bg, #e2f5ee); border-color: var(--ok, #0a8a6a); color: var(--ok, #0a8a6a); }
         .al-action-btn.resolve:hover { background: var(--ok, #0a8a6a); color: white; }
@@ -152,11 +152,11 @@ const OpsAlerts = (function () {
         /* Empty state */
         .al-empty {
           padding: 60px 20px; text-align: center;
-          color: var(--ink-3, #6b8fa3);
+          color: var(--ink-3, #8b909a);
         }
 
         .al-empty svg { margin: 0 auto 14px; display: block; opacity: .25; }
-        .al-empty-title { font-size: var(--fs-md); font-weight: 600; color: var(--ink-2, #2d5068); margin-bottom: 4px; }
+        .al-empty-title { font-size: var(--fs-md); font-weight: 600; color: var(--ink-2, #34363b); margin-bottom: 4px; }
         .al-empty-sub   { font-size: var(--fs-sm); }
 
         /* ── Incident Intelligence — the "days flood-free" sweep already runs
@@ -168,16 +168,16 @@ const OpsAlerts = (function () {
            belongs, ahead of the reactive Active Incidents feed below it. ── */
         .ic-card { background: var(--surface, #fff); border: 1px solid var(--blue-dim, #7dd3fc); border-radius: var(--r, 14px); overflow: hidden; box-shadow: var(--sh-xs, 0 1px 2px rgba(10,31,46,.06)); margin-bottom: 16px; }
         .ic-head { padding: 14px 20px; border-bottom: 1px solid var(--border, #dae6ef); background: var(--neon-trace, rgba(22,168,211,.06)); }
-        .ic-title { font-family: var(--ff-d, 'Space Grotesk', sans-serif); font-size: var(--fs-md); font-weight: 700; color: var(--ink, #0a1f2e); display: flex; align-items: center; gap: 8px; }
+        .ic-title { font-family: var(--ff-d, 'Space Grotesk', sans-serif); font-size: var(--fs-md); font-weight: 700; color: var(--ink, #1c1d20); display: flex; align-items: center; gap: 8px; }
         .ic-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 100px; background: var(--wb, #fef3c7); color: var(--warn, #b45309); font-size: var(--fs-2xs); font-weight: 800; }
-        .ic-sub { font-size: var(--fs-sm); color: var(--ink-3, #6b8fa3); margin-top: 3px; line-height: 1.5; max-width: 680px; }
+        .ic-sub { font-size: var(--fs-sm); color: var(--ink-3, #8b909a); margin-top: 3px; line-height: 1.5; max-width: 680px; }
         .ic-row { padding: 14px 20px; border-bottom: 1px solid var(--border, #dae6ef); display: flex; align-items: center; gap: 14px; }
         .ic-row:last-child { border-bottom: none; }
         .ic-row-body { flex: 1; min-width: 0; }
-        .ic-row-title { font-size: var(--fs-md); font-weight: 700; color: var(--ink, #0a1f2e); }
-        .ic-row-meta { font-size: var(--fs-xs); color: var(--ink-3, #6b8fa3); font-family: var(--ff-m, 'JetBrains Mono', monospace); margin-top: 2px; }
+        .ic-row-title { font-size: var(--fs-md); font-weight: 700; color: var(--ink, #1c1d20); }
+        .ic-row-meta { font-size: var(--fs-xs); color: var(--ink-3, #8b909a); font-family: var(--ff-m, 'JetBrains Mono', monospace); margin-top: 2px; }
         .ic-row-peak { font-family: var(--ff-m, 'JetBrains Mono', monospace); font-weight: 700; color: var(--warn, #b45309); white-space: nowrap; }
-        .ic-empty { padding: 20px; text-align: center; color: var(--ink-3, #6b8fa3); font-size: var(--fs-sm); }
+        .ic-empty { padding: 20px; text-align: center; color: var(--ink-3, #8b909a); font-size: var(--fs-sm); }
       </style>
 
       <div class="fg-page-header">
@@ -866,8 +866,8 @@ const OpsReports = (function () {
         .rp-card:hover { transform: translateY(-3px); box-shadow: var(--sh-md, 0 4px 20px rgba(10,31,46,.09)); border-color: var(--border-2, #b8d0de); }
         .rp-card:hover::after { opacity: 1; }
 
-        .rp-card.daily::after   { background: linear-gradient(90deg, var(--navy, #0a2a3d), var(--blue, #16a8d3)); }
-        .rp-card.weekly::after  { background: linear-gradient(90deg, var(--blue, #16a8d3), var(--ok, #0a8a6a)); }
+        .rp-card.daily::after   { background: linear-gradient(90deg, var(--navy, #17181b), var(--blue, #5379ff)); }
+        .rp-card.weekly::after  { background: linear-gradient(90deg, var(--blue, #5379ff), var(--ok, #0a8a6a)); }
         .rp-card.finance::after { background: linear-gradient(90deg, var(--ok, #0a8a6a), #34d399); }
 
         .rp-icon {
@@ -877,8 +877,8 @@ const OpsReports = (function () {
           margin-bottom: 16px;
         }
 
-        .rp-card-title { font-family: var(--ff-d, 'Space Grotesk', sans-serif); font-size: var(--fs-lg); font-weight: 700; color: var(--ink, #0a1f2e); margin-bottom: 4px; }
-        .rp-card-sub   { font-size: var(--fs-sm); color: var(--ink-3, #6b8fa3); line-height: 1.5; }
+        .rp-card-title { font-family: var(--ff-d, 'Space Grotesk', sans-serif); font-size: var(--fs-lg); font-weight: 700; color: var(--ink, #1c1d20); margin-bottom: 4px; }
+        .rp-card-sub   { font-size: var(--fs-sm); color: var(--ink-3, #8b909a); line-height: 1.5; }
 
         .rp-recent {
           background: var(--surface, #fff);
@@ -894,7 +894,7 @@ const OpsReports = (function () {
           display: flex; align-items: center; justify-content: space-between;
         }
 
-        .rp-recent-title { font-family: var(--ff-d, 'Space Grotesk', sans-serif); font-size: var(--fs-md); font-weight: 700; color: var(--ink, #0a1f2e); }
+        .rp-recent-title { font-family: var(--ff-d, 'Space Grotesk', sans-serif); font-size: var(--fs-md); font-weight: 700; color: var(--ink, #1c1d20); }
 
         .rp-report-row {
           padding: 14px 20px;
@@ -912,8 +912,8 @@ const OpsReports = (function () {
           flex-shrink: 0;
         }
 
-        .rp-report-name  { font-size: var(--fs-md); font-weight: 600; color: var(--ink, #0a1f2e); margin-bottom: 2px; }
-        .rp-report-meta  { font-size: var(--fs-xs); color: var(--ink-3, #6b8fa3); font-family: var(--ff-m, 'JetBrains Mono', monospace); }
+        .rp-report-name  { font-size: var(--fs-md); font-weight: 600; color: var(--ink, #1c1d20); margin-bottom: 2px; }
+        .rp-report-meta  { font-size: var(--fs-xs); color: var(--ink-3, #8b909a); font-family: var(--ff-m, 'JetBrains Mono', monospace); }
       </style>
 
       <div class="rp-grid">

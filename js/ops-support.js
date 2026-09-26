@@ -23,8 +23,8 @@ const OpsSupport = (function () {
     .sup-title { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:800; color:var(--ink); letter-spacing:-.02em; }
     .sup-sub { font-size:var(--fs-base); color:var(--ink-3); margin-top:3px; }
     .sup-pill { display:inline-flex; align-items:center; padding:3px 10px; border-radius:20px; font-size:var(--fs-xs); font-weight:700; white-space:nowrap; text-transform:capitalize; }
-    .um-filter { padding:7px 12px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:var(--fs-base); color:var(--ink,#0a1f2e); outline:none; cursor:pointer; }
-    .um-filter:focus { border-color:var(--blue,#16a8d3); }
+    .um-filter { padding:7px 12px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:var(--fs-base); color:var(--ink,#1c1d20); outline:none; cursor:pointer; }
+    .um-filter:focus { border-color:var(--blue,#5379ff); }
     .sup-thread { display:grid; grid-template-columns:1fr 300px; gap:16px; align-items:start; }
     @media (max-width:900px){ .sup-thread{ grid-template-columns:1fr; } }
     .sup-msgs { background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--sh-xs); padding:18px; display:flex; flex-direction:column; gap:12px; }
@@ -32,13 +32,13 @@ const OpsSupport = (function () {
     .sup-bubble .who { font-size:var(--fs-2xs); font-weight:700; margin-bottom:3px; opacity:.8; }
     .sup-bubble .t { font-size:var(--fs-2xs); color:var(--ink-4); margin-top:5px; }
     .sup-client { align-self:flex-start; background:var(--surface-2); color:var(--ink); border:1px solid var(--border); }
-    .sup-ops { align-self:flex-end; background:linear-gradient(135deg,#16a8d3,#0d7fa0); color:#fff; }
+    .sup-ops { align-self:flex-end; background:linear-gradient(135deg,#5379ff,#3f63e6); color:#fff; }
     .sup-ops .t, .sup-ops .who { color:rgba(255,255,255,.85); }
     .sup-reply { margin-top:14px; }
     .sup-reply textarea { width:100%; box-sizing:border-box; min-height:80px; padding:11px; border:1px solid var(--border); border-radius:12px; font-family:var(--ff-b); font-size:var(--fs-sm); color:var(--ink); background:var(--surface); resize:vertical; }
     .sup-reply-bar { display:flex; justify-content:flex-end; gap:8px; margin-top:10px; }
     .sup-btn { font-size:var(--fs-sm); font-weight:600; padding:9px 16px; border-radius:10px; cursor:pointer; border:1px solid var(--border-2); background:var(--surface); color:var(--ink-2); }
-    .sup-btn.primary { background:linear-gradient(135deg,#16a8d3,#0d7fa0); color:#fff; border:none; }
+    .sup-btn.primary { background:linear-gradient(135deg,#5379ff,#3f63e6); color:#fff; border:none; }
     .sup-empty { padding:40px; text-align:center; color:var(--ink-3); }
     .sup-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--blue); margin-right:7px; vertical-align:middle; box-shadow:0 0 6px rgba(22,168,211,.6); }
     .lv-table tr.sup-unread { background:rgba(22,168,211,.05); }
@@ -99,7 +99,7 @@ const OpsSupport = (function () {
 
   function prioPill(p) {
     const k = String(p || 'normal').toLowerCase();
-    const c = k === 'urgent' ? '#f87171' : k === 'high' ? '#f0a92a' : k === 'low' ? '#7d8fa3' : '#22c3e6';
+    const c = k === 'urgent' ? '#f87171' : k === 'high' ? '#f0a92a' : k === 'low' ? '#8b909a' : '#6b8cff';
     return `<span class="sup-pill" style="background:${c}22;color:${c};">${esc(k)}</span>`;
   }
 
@@ -112,10 +112,10 @@ const OpsSupport = (function () {
       <tbody>${rows.map(r => `<tr class="clickable${r.needs_response ? ' sup-unread' : ''}" onclick="OpsSupport.open('${r.ticket_id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsSupport.open('${r.ticket_id}')}">
         <td>
           <div class="lv-name-cell">
-            <div class="lv-avatar" style="background:${r.needs_response ? 'rgba(22,168,211,.15)' : 'var(--surface-3)'};color:${r.needs_response ? 'var(--blue,#16a8d3)' : 'var(--ink-3)'};border:1px solid var(--border);">
+            <div class="lv-avatar" style="background:${r.needs_response ? 'rgba(22,168,211,.15)' : 'var(--surface-3)'};color:${r.needs_response ? 'var(--blue,#5379ff)' : 'var(--ink-3)'};border:1px solid var(--border);">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
             </div>
-            <div style="min-width:0;"><div class="lv-name lv-mono">${esc(r.ticket_id)}</div>${r.needs_response ? '<span class="lv-source" style="color:var(--blue,#16a8d3);">Awaiting response</span>' : ''}</div>
+            <div style="min-width:0;"><div class="lv-name lv-mono">${esc(r.ticket_id)}</div>${r.needs_response ? '<span class="lv-source" style="color:var(--blue,#5379ff);">Awaiting response</span>' : ''}</div>
           </div>
         </td>
         <td>${r.user_id ? L('clients', r.user_id, r.client_name || 'Client') : esc(r.client_name || '—')}</td>
@@ -152,7 +152,7 @@ const OpsSupport = (function () {
     // Payment-notification tickets reference an invoice — deep-link finance to it.
     const invMatch = `${t.subject || ''} ${t.title || ''} ${t.description || ''}`.match(/INV-\d{4}-\d+/);
     const invId = invMatch ? invMatch[0] : null;
-    const primaryBtn = 'style="background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;"';
+    const primaryBtn = 'style="background:linear-gradient(135deg,#5379ff,#3f63e6);color:#fff;border:none;"';
     const open_ = openStatus(t.status);
 
     const convo = `
@@ -175,13 +175,13 @@ const OpsSupport = (function () {
         ${F('Opened', OpsModal.fmtDate ? OpsModal.fmtDate(t.created_at) : '—')}
         ${invId ? F('Invoice', OpsModal.link('billing', invId, esc(invId))) : ''}
       </div>
-      ${invId ? `<div class="fgd-card"><div class="fgd-card-head"><h2>Reconcile</h2></div><button class="fgd-btn" style="width:100%;background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;" onclick="fgOpen('billing','${esc(invId)}')">Open invoice ${esc(invId)} →</button></div>` : ''}`;
+      ${invId ? `<div class="fgd-card"><div class="fgd-card-head"><h2>Reconcile</h2></div><button class="fgd-btn" style="width:100%;background:linear-gradient(135deg,#5379ff,#3f63e6);color:#fff;border:none;" onclick="fgOpen('billing','${esc(invId)}')">Open invoice ${esc(invId)} →</button></div>` : ''}`;
 
     _container.innerHTML = CSS + OpsModal.detailShell({
       back: 'OpsSupport.back()',
       crumbRoot: 'Support',
       title: esc(t.subject || t.title || 'Support ticket'),
-      avatar: { text: 'ST', bg: 'linear-gradient(135deg,#16a8d3,#0d7fa0)' },
+      avatar: { text: 'ST', bg: 'linear-gradient(135deg,#5379ff,#3f63e6)' },
       chips: [
         { cls: open_ ? 'warn' : 'ok', dot: true, label: t.status || 'new' },
         t.priority ? { cls: 'neutral', label: t.priority } : null,

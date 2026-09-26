@@ -43,7 +43,7 @@ const OpsBilling = (function () {
     .bl-head-actions { margin-left:auto; display:flex; gap:8px; }
     .bl-btn { font-size:var(--fs-sm); font-weight:600; padding:9px 16px; border-radius:10px; cursor:pointer; border:1px solid var(--border-2); background:var(--surface); color:var(--ink-2); }
     .bl-btn:hover { border-color:var(--blue-dim); color:var(--blue-hi); }
-    .bl-btn.primary { background:linear-gradient(135deg,#16a8d3,#0d7fa0); color:#fff; border:none; }
+    .bl-btn.primary { background:linear-gradient(135deg,#5379ff,#3f63e6); color:#fff; border:none; }
     .bl-btn.primary:hover { filter:brightness(1.05); color:#fff; }
 
     .bl-story { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:16px; }
@@ -58,7 +58,7 @@ const OpsBilling = (function () {
     .bl-status.paid{ background:rgba(31,157,91,.12); color:var(--ok); }
     .bl-status.overdue{ background:rgba(217,70,60,.12); color:var(--err); }
     .bl-status.pending{ background:rgba(224,142,18,.12); color:var(--warn); }
-    .bl-status.partial{ background:rgba(28,184,232,.14); color:var(--blue-hi,#0d7fa0); }
+    .bl-status.partial{ background:rgba(28,184,232,.14); color:var(--blue-hi,#3f63e6); }
     .bl-raw { display:block; font-size:var(--fs-2xs); color:var(--ink-4); font-family:var(--ff-mono,monospace); margin-top:3px; }
     .bl-flag { color:var(--warn); font-weight:700; cursor:help; }
 
@@ -93,7 +93,7 @@ const OpsBilling = (function () {
     .bl-li .amt{ font-family:var(--ff-mono,monospace); font-weight:700; color:var(--ink); text-align:right; font-size:var(--fs-sm); }
     .bl-li-rm{ cursor:pointer; color:var(--ink-4); font-size:18px; text-align:center; line-height:1; }
     .bl-li-rm:hover{ color:var(--err); }
-    .bl-addrow{ font-size:var(--fs-sm); font-weight:600; color:var(--blue-hi,#0d7fa0); background:var(--neon-trace,rgba(28,184,232,.08)); border:1px dashed var(--blue-dim,#7fc8e0); border-radius:9px; padding:8px 12px; cursor:pointer; width:100%; margin-top:4px; }
+    .bl-addrow{ font-size:var(--fs-sm); font-weight:600; color:var(--blue-hi,#3f63e6); background:var(--neon-trace,rgba(28,184,232,.08)); border:1px dashed var(--blue-dim,#93a9ff); border-radius:9px; padding:8px 12px; cursor:pointer; width:100%; margin-top:4px; }
     .bl-totals{ margin-top:14px; border-top:1px solid var(--border); padding-top:12px; }
     .bl-totrow{ display:flex; justify-content:space-between; font-size:var(--fs-sm); color:var(--ink-2); padding:4px 0; }
     .bl-totrow.grand{ font-weight:800; color:var(--ink); font-size:var(--fs-md); border-top:1px solid var(--border); margin-top:6px; padding-top:10px; }
@@ -335,10 +335,10 @@ const OpsBilling = (function () {
       back: 'OpsBilling.back()',
       crumbRoot: 'Billing',
       title: esc(id),
-      avatar: { text: '₦', bg: 'linear-gradient(135deg,#16a8d3,#0d7fa0)' },
+      avatar: { text: '₦', bg: 'linear-gradient(135deg,#5379ff,#3f63e6)' },
       chips: [{ cls: chipCls, label: pm.l, dot: true }],
       meta: [['Property', esc(inv.property_name || '—')], ['Client', inv.client_name ? esc(inv.client_name) : 'Unlinked'], ['Issued', fmtDate(inv.issue_date || inv.created_at)], ['Due', fmtDate(inv.due_date)], ['Sent', inv.sent_at ? fmtDate(inv.sent_at) : 'Not sent']],
-      actions: `<button class="fgd-btn" onclick="OpsBilling.downloadPdf('${id}')">Download PDF</button>${canManage() ? `<button class="fgd-btn" onclick="OpsBilling.openEdit('${id}')">Edit</button>${eff !== 'paid' ? `<button class="fgd-btn" onclick="OpsBilling.recordPayment('${id}')">Record payment</button>` : ''}<button class="fgd-btn" style="background:linear-gradient(135deg,#16a8d3,#0d7fa0);color:#fff;border:none;" onclick="OpsBilling.sendInvoiceEmail('${id}')">${inv.sent_at ? 'Resend to client' : 'Send to client'}</button>` : ''}`,
+      actions: `<button class="fgd-btn" onclick="OpsBilling.downloadPdf('${id}')">Download PDF</button>${canManage() ? `<button class="fgd-btn" onclick="OpsBilling.openEdit('${id}')">Edit</button>${eff !== 'paid' ? `<button class="fgd-btn" onclick="OpsBilling.recordPayment('${id}')">Record payment</button>` : ''}<button class="fgd-btn" style="background:linear-gradient(135deg,#5379ff,#3f63e6);color:#fff;border:none;" onclick="OpsBilling.sendInvoiceEmail('${id}')">${inv.sent_at ? 'Resend to client' : 'Send to client'}</button>` : ''}`,
       sections: [
         { id: 'details', title: 'Invoice details', meta: 'invoices', body: detailsBody },
         { id: 'services', title: 'Services', meta: 'invoices.line_items (jsonb)', body: servicesBody },

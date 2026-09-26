@@ -83,33 +83,34 @@
       --navy:       #0a1622;
       --navy-deep:  #070d14;
       --navy-mid:   #0e1c2a;
-      --blue:       #06b6d4;
-      --blue-hi:    #22d3ee;
-      --blue-dim:   #0e7490;
-      --amber:      #fbbf24;
-      --teal:       #0e7490;
+      /* Single action colour (shared design system) — links, buttons, selected */
+      --blue:       #5379ff;
+      --blue-hi:    #6b8cff;
+      --blue-dim:   #3f63e6;
+      --amber:      #f2c14e;
+      --teal:       #3f63e6;
 
-      /* ── Canvas & surfaces (night mode = true neutral black, no blue tint) ── */
-      --canvas:     #000000;
-      --surface:    #141414;
-      --surface-2:  #0b0b0b;
-      --surface-3:  #1c1c1c;
-      --surface-h:  #242424;
-      --border:     #2a2a2a;
-      --border-2:   #383838;
+      /* ── Canvas & surfaces (shared charcoal spec — --fg-* mirror) ── */
+      --canvas:     #111214;
+      --surface:    #1c1d20;
+      --surface-2:  #17181b;
+      --surface-3:  #212327;
+      --surface-h:  #26282c;
+      --border:     #34363b;
+      --border-2:   #3d4046;
 
-      /* ── Text ── */
-      --ink:        #e8f1f8;
-      --ink-2:      #9db1c2;
-      --ink-3:      #6a8095;
-      --ink-4:      #47596b;
+      /* ── Text (neutral greys, brighter secondary) ── */
+      --ink:        #f0f1f2;
+      --ink-2:      #b5b8be;
+      --ink-3:      #8b909a;
+      --ink-4:      #6c727c;
 
-      /* ── Status ── */
-      --ok:         #34d399;    --ok-bg:  rgba(52,211,153,.12);
-      --warn:       #fbbf24;    --wb:     rgba(251,191,36,.12);
-      --caut:       #fb923c;    --cb:     rgba(251,146,60,.12);
-      --err:        #f87171;    --eb:     rgba(248,113,113,.12);
-      --off:        #7d8fa3;    --ob:     rgba(125,143,163,.14);
+      /* ── Status (shared severity) ── */
+      --ok:         #35c98a;    --ok-bg:  rgba(53,201,138,.12);
+      --warn:       #f2c14e;    --wb:     rgba(242,193,78,.12);
+      --caut:       #f0913e;    --cb:     rgba(240,145,62,.12);
+      --err:        #f0616d;    --eb:     rgba(240,97,109,.12);
+      --off:        #8b9099;    --ob:     rgba(139,144,153,.14);
       --amber-bg:   rgba(251,191,36,.08);
       --overlay:    rgba(0,0,0,.92);
       /* ── Sidebar: permanently dark in both themes ── */
@@ -126,7 +127,7 @@
       --sh-sm: 0 2px 10px rgba(0,0,0,.35);
       --sh-md: 0 4px 24px rgba(0,0,0,.45);
       --sh-lg: 0 24px 70px rgba(0,0,0,.55);
-      --sh-card: 0 0 0 1px rgba(34,211,238,.05), 0 2px 10px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3);
+      --sh-card: 0 0 0 1px rgba(83,121,255,.05), 0 2px 10px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3);
 
       /* ── Layout ── */
       --sw:  204px;
@@ -142,7 +143,7 @@
 
       /* ── Legacy aliases for JS modules ── */
       --neon: var(--blue-hi); --neon-dim: var(--blue-dim);
-      --neon-glow: rgba(34,211,238,.16); --neon-trace: rgba(34,211,238,.05);
+      --neon-glow: rgba(83,121,255,.16); --neon-trace: rgba(83,121,255,.05);
       --bg: var(--canvas); --panel: var(--surface); --panel-edge: var(--border);
       --panel-hover: var(--surface-h);
       --text-bright: var(--ink); --text-mid: var(--ink-2); --text-dim: var(--ink-3);
@@ -158,7 +159,7 @@
       --navy-deep:  #071722;
       --navy-mid:   #0d3a54;
       --blue:       #0891b2;
-      --blue-hi:    #06b6d4;
+      --blue-hi:    #5379ff;
       --blue-dim:   #0e5b6e;
       --amber:      #f59e0b;
       --teal:       #0e5b6e;
@@ -1475,35 +1476,35 @@
 <!-- Scripts -->
 <script>
     window.FG_BUILD = 'cmd8';
-    console.log('%c FlowGuard Ops ' + FG_BUILD + ' ', 'background:#22d3ee;color:#04222b;font-weight:700;border-radius:3px',
+    console.log('%c FlowGuard Ops ' + FG_BUILD + ' ', 'background:#6b8cff;color:#04222b;font-weight:700;border-radius:3px',
       '| tabs: dashboard, alerts, clients, properties, assets, sentinel, network, teams');
   </script>
   <script src="js/config.js?v=sec4"></script>
 <script src="js/auth.js?v=sec6"></script>
-<script src="js/ops-modal.js?v=sec12"></script>
-<script src="js/fg-ui.js?v=sec1"></script>
+<script src="js/ops-modal.js?v=dsv1"></script>
+<script src="js/fg-ui.js?v=dsv1"></script>
 <script src="js/fg-paginator.js?v=sec2"></script>
-<script src="js/ops-dashboard.js?v=sec26"></script>
-<script src="js/ops-situation.js?v=sec4"></script>
-<script src="js/ops-user-management.js?v=sec13"></script>
-<script src="js/ops-clients.js?v=sec13"></script>
-<script src="js/ops-service-providers.js?v=sec5"></script>
-<script src="js/ops-jobs.js?v=sec5"></script>
-<script src="js/ops-properties.js?v=sec17"></script>
-  <script src="js/ops-assets.js?v=sec13"></script>
-  <script src="js/ops-network.js?v=sec13"></script>
-  <script src="js/ops-sensors.js?v=sec36"></script>
-<script src="js/ops-teams.js?v=sec10"></script>
-<script src="js/ops-alerts-reports.js?v=sec18"></script>
-<script src="js/ops-field-reports.js?v=sec12"></script>
-<script src="js/ops-maintenance.js?v=sec13"></script>
-<script src="js/ops-support.js?v=sec9"></script>
-<script src="js/ops-forecast.js?v=sec25"></script>
-<script src="js/ops-billing.js?v=sec19"></script>
-<script src="js/ops-sla.js?v=sec6"></script>
-<script src="js/ops-audit.js?v=sec7"></script>
-<script src="js/ops-settings.js?v=sec8"></script>
-<script src="js/ops-notify.js?v=sec3"></script>
+<script src="js/ops-dashboard.js?v=dsv1"></script>
+<script src="js/ops-situation.js?v=dsv1"></script>
+<script src="js/ops-user-management.js?v=dsv1"></script>
+<script src="js/ops-clients.js?v=dsv1"></script>
+<script src="js/ops-service-providers.js?v=dsv1"></script>
+<script src="js/ops-jobs.js?v=dsv1"></script>
+<script src="js/ops-properties.js?v=dsv1"></script>
+  <script src="js/ops-assets.js?v=dsv1"></script>
+  <script src="js/ops-network.js?v=dsv1"></script>
+  <script src="js/ops-sensors.js?v=dsv1"></script>
+<script src="js/ops-teams.js?v=dsv1"></script>
+<script src="js/ops-alerts-reports.js?v=dsv1"></script>
+<script src="js/ops-field-reports.js?v=dsv1"></script>
+<script src="js/ops-maintenance.js?v=dsv1"></script>
+<script src="js/ops-support.js?v=dsv1"></script>
+<script src="js/ops-forecast.js?v=dsv1"></script>
+<script src="js/ops-billing.js?v=dsv1"></script>
+<script src="js/ops-sla.js?v=dsv1"></script>
+<script src="js/ops-audit.js?v=dsv1"></script>
+<script src="js/ops-settings.js?v=dsv1"></script>
+<script src="js/ops-notify.js?v=dsv1"></script>
 
 <!-- three.js for the device 3D viewer — deferred so it parses in the background
      during page load and is ready before any device pop-out is opened -->

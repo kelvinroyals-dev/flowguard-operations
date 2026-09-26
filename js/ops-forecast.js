@@ -168,9 +168,9 @@ const OpsForecast = (function () {
     const kpis = `<div class="fcx-kpis">
       ${kpi('Overall risk index', `<span style="color:${riskColor(overall)}">${riskLabel(overall)}</span>`, `${overall}/100`, `Peak across ${total} propert${total === 1 ? 'y' : 'ies'}`, riskVals, riskHex(overall), dRisk)}
       ${kpi('High-risk properties', high, '', `${med} medium · ${low} low`, est.map(e => e.predicted_risk), '#e08e12', null)}
-      ${kpi('Rainfall forecast (24h)', rain24, 'mm', _fc.has_rainfall_data ? 'Open-Meteo · Lagos' : 'No live rainfall feed', rainVals, '#1cb8e8', null)}
+      ${kpi('Rainfall forecast (24h)', rain24, 'mm', _fc.has_rainfall_data ? 'Open-Meteo · Lagos' : 'No live rainfall feed', rainVals, '#6b8cff', null)}
       ${kpi(`Network capacity`, capacity, '%', `${liveN ? 'Measured on ' + liveN : 'Estimated'} · ${avgCur}% avg load`, riskVals.map(v => 100 - v), '#1f9d5b', null)}
-      ${kpi('Open preventive actions', preventive, '', 'Recommended by the model', est.map(e => e.recommendation_level === 'critical' ? 100 : e.recommendation_level === 'warning' ? 60 : 20), '#1cb8e8', null)}
+      ${kpi('Open preventive actions', preventive, '', 'Recommended by the model', est.map(e => e.recommendation_level === 'critical' ? 100 : e.recommendation_level === 'warning' ? 60 : 20), '#6b8cff', null)}
     </div>`;
 
     const events = buildEvents(est, series);
@@ -210,7 +210,7 @@ const OpsForecast = (function () {
 
     const charts = `<div class="fcx-charts">
       <div class="fcx-card fcx-chart"><div class="fcx-card-head"><h3>Flood risk timeline</h3><span class="fcx-meta">index · 0–100</span></div><div class="fcx-chart-box">${lineChart(riskVals, { yMax: 100, ticks: [25, 50, 75, 100], color: '#d9463c', fill: true, xLabels: xl })}</div></div>
-      <div class="fcx-card fcx-chart"><div class="fcx-card-head"><h3>Rainfall forecast</h3><span class="fcx-meta">mm</span></div><div class="fcx-chart-box">${barChart(rainVals, { yMax: rainMax, ticks: [rainMax * 0.25, rainMax * 0.5, rainMax * 0.75, rainMax].map(v => Math.round(v)), color: '#1cb8e8', xLabels: xl })}</div></div>
+      <div class="fcx-card fcx-chart"><div class="fcx-card-head"><h3>Rainfall forecast</h3><span class="fcx-meta">mm</span></div><div class="fcx-chart-box">${barChart(rainVals, { yMax: rainMax, ticks: [rainMax * 0.25, rainMax * 0.5, rainMax * 0.75, rainMax].map(v => Math.round(v)), color: '#6b8cff', xLabels: xl })}</div></div>
       <div class="fcx-card fcx-chart"><div class="fcx-card-head"><h3>Property risk distribution</h3><span class="fcx-meta">by level</span></div>
         <div class="fcx-donut">
           ${donut([{ v: high, color: '#d9463c' }, { v: med, color: '#e08e12' }, { v: low, color: '#1f9d5b' }], total, 'Properties')}
@@ -221,8 +221,8 @@ const OpsForecast = (function () {
           </div>
         </div>
       </div>
-      <div class="fcx-card fcx-chart"><div class="fcx-card-head"><h3>Drain capacity vs forecast volume</h3><span class="fcx-meta">m³/s · 0–8</span></div><div class="fcx-chart-box">${multiLine([{ vals: capVals, color: '#1cb8e8' }, { vals: volVals, color: '#7c4dff' }], { yMax: 8, ticks: [2, 4, 6, 8], xLabels: xl })}</div>
-        <div class="fcx-chart-legend"><span><i style="background:#1cb8e8"></i>Drain capacity</span><span><i style="background:#7c4dff"></i>Forecast volume</span></div></div>
+      <div class="fcx-card fcx-chart"><div class="fcx-card-head"><h3>Drain capacity vs forecast volume</h3><span class="fcx-meta">m³/s · 0–8</span></div><div class="fcx-chart-box">${multiLine([{ vals: capVals, color: '#6b8cff' }, { vals: volVals, color: '#7c4dff' }], { yMax: 8, ticks: [2, 4, 6, 8], xLabels: xl })}</div>
+        <div class="fcx-chart-legend"><span><i style="background:#6b8cff"></i>Drain capacity</span><span><i style="background:#7c4dff"></i>Forecast volume</span></div></div>
     </div>`;
 
     const topEst = est.slice(0, 8);
@@ -507,7 +507,7 @@ const OpsForecast = (function () {
     let peakI = 0; rainVals.forEach((v, i) => { if (v > rainVals[peakI]) peakI = i; });
     const peakRain = rainVals.length ? rainVals[peakI] : 0;
     if (peakRain >= 5) out.push({ icon: ICON.rain, bg: 'rgba(217,70,60,.12)', color: '#d9463c', title: 'Heavy rain expected', desc: `${Math.round(peakRain)}mm forecast around +${peakI}h — drains will load fast.`, time: `+${peakI}h` });
-    else if (peakRain >= 1.5) out.push({ icon: ICON.rain, bg: 'rgba(28,184,232,.12)', color: '#1cb8e8', title: 'Showers expected', desc: `${peakRain.toFixed(1)}mm forecast around +${peakI}h.`, time: `+${peakI}h` });
+    else if (peakRain >= 1.5) out.push({ icon: ICON.rain, bg: 'rgba(28,184,232,.12)', color: '#6b8cff', title: 'Showers expected', desc: `${peakRain.toFixed(1)}mm forecast around +${peakI}h.`, time: `+${peakI}h` });
 
     const crit = est.filter(e => e.recommendation_level === 'critical');
     if (crit.length) out.push({ icon: ICON.crew, bg: 'rgba(217,70,60,.12)', color: '#d9463c', title: 'Crew recommended', desc: `Deploy crews to ${crit.slice(0, 2).map(e => e.name).join(', ')}${crit.length > 2 ? ' +' + (crit.length - 2) : ''}.`, time: 'now' });
@@ -579,15 +579,15 @@ const OpsForecast = (function () {
     // point, so it's a coverage wash, not per-drain rain).
     const rainMm = _fc.cumulative_rain_mm || 0;
     if (rainMm > 0) {
-      _layers.rain.addLayer(L.circle([6.5244, 3.3792], { radius: 16000, color: '#1cb8e8', weight: 1, fillColor: '#1cb8e8', fillOpacity: Math.min(0.28, rainMm / 120) }));
-      _layers.rain.addLayer(L.marker([6.5244, 3.3792], { icon: L.divIcon({ className: '', iconSize: [70, 20], iconAnchor: [35, 10], html: `<div style="background:#1cb8e8;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;">${Math.round(rainMm)}mm / 24h</div>` }) }));
+      _layers.rain.addLayer(L.circle([6.5244, 3.3792], { radius: 16000, color: '#6b8cff', weight: 1, fillColor: '#6b8cff', fillOpacity: Math.min(0.28, rainMm / 120) }));
+      _layers.rain.addLayer(L.marker([6.5244, 3.3792], { icon: L.divIcon({ className: '', iconSize: [70, 20], iconAnchor: [35, 10], html: `<div style="background:#6b8cff;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;">${Math.round(rainMm)}mm / 24h</div>` }) }));
     }
 
     est.forEach(e => {
       const col = riskHex(e.predicted_risk);
       _layers.heat.addLayer(L.circle([e.latitude, e.longitude], { radius: 900, color: col, weight: 0, fillColor: col, fillOpacity: 0.18 }));
       // drainage-network coverage ring per estate
-      _layers.net.addLayer(L.circle([e.latitude, e.longitude], { radius: 600, color: '#1cb8e8', weight: 1.5, dashArray: '4 4', fill: false, opacity: 0.6 }));
+      _layers.net.addLayer(L.circle([e.latitude, e.longitude], { radius: 600, color: '#6b8cff', weight: 1.5, dashArray: '4 4', fill: false, opacity: 0.6 }));
       const s = 16 + Math.round(e.predicted_risk / 10);
       const border = e.has_live ? '2px solid #fff' : '2px dashed #fff';
       const op = e.has_live ? '1' : '.82';
@@ -602,7 +602,7 @@ const OpsForecast = (function () {
     // Sentinel devices
     (_md && _md.sensors || []).filter(s => s.latitude && s.longitude).forEach(s => {
       const on = s.status === 'active';
-      const c = on ? '#1cb8e8' : '#8aa2ae';
+      const c = on ? '#6b8cff' : '#8aa2ae';
       const icon = L.divIcon({ className: '', iconSize: [12, 12], iconAnchor: [6, 6], html: `<div style="width:12px;height:12px;border-radius:3px;background:${c};border:2px solid #fff;box-shadow:0 1px 3px rgba(10,42,61,.3);"></div>` });
       _layers.dev.addLayer(L.marker([s.latitude, s.longitude], { icon, title: s.name || s.sensor_id }));
     });
@@ -763,7 +763,7 @@ const OpsForecast = (function () {
     .fcx-map-wrap .leaflet-control-zoom a { width:32px; height:32px; line-height:32px; font-size:17px; color:var(--ink-2); background:var(--surface); border:1px solid var(--border); border-bottom:none; font-family:var(--ff-d); }
     .fcx-map-wrap .leaflet-control-zoom a:first-child { border-radius:10px 10px 0 0; }
     .fcx-map-wrap .leaflet-control-zoom a:last-child { border-radius:0 0 10px 10px; border-bottom:1px solid var(--border); }
-    .fcx-map-wrap .leaflet-control-zoom a:hover { background:var(--surface-2); color:var(--blue-hi,#0d7fa0); }
+    .fcx-map-wrap .leaflet-control-zoom a:hover { background:var(--surface-2); color:var(--blue-hi,#3f63e6); }
     .fcx-map-wrap .leaflet-control-zoom a.leaflet-disabled { color:var(--ink-4,#9fb0b8); background:var(--surface); }
     .fcx-map-head { position:absolute; top:0; left:0; right:0; z-index:400; display:flex; align-items:center; justify-content:space-between; padding:14px 18px; background:linear-gradient(180deg,rgba(255,255,255,.85),transparent); pointer-events:none; }
     html[data-theme="dark"] .fcx-map-head { background:linear-gradient(180deg,rgba(8,20,27,.88),transparent); }
@@ -803,7 +803,7 @@ const OpsForecast = (function () {
     .fcx-cap .fill { height:100%; border-radius:4px; }
     .fcx-act { font-size:var(--fs-sm); color:var(--ink); font-weight:600; line-height:1.4; }
     .fcx-btn { font-size:var(--fs-sm); font-weight:600; padding:9px 14px; border-radius:10px; cursor:pointer; border:1px solid var(--border-2); background:var(--surface); color:var(--ink-2); }
-    .fcx-btn.primary { background:linear-gradient(135deg,#16a8d3,#0d7fa0); color:#fff; border:none; box-shadow:0 4px 14px rgba(22,168,211,.30); }
+    .fcx-btn.primary { background:linear-gradient(135deg,#5379ff,#3f63e6); color:#fff; border:none; box-shadow:0 4px 14px rgba(22,168,211,.30); }
     .fcx-btn.primary:hover { filter:brightness(1.05); }
 
     .fcx-side { display:flex; flex-direction:column; gap:16px; }

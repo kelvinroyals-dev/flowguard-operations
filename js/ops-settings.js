@@ -14,7 +14,7 @@ const OpsSettings = (function () {
     _dirty = true;
     const btn = document.getElementById('st-save-btn');
     if (btn) {
-      btn.style.background  = 'var(--blue, #16a8d3)';
+      btn.style.background  = 'var(--blue, #5379ff)';
       btn.style.boxShadow   = '0 4px 14px rgba(22,168,211,.35)';
     }
     const note = document.getElementById('st-dirty-note');

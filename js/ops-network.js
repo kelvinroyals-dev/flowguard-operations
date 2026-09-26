@@ -28,9 +28,9 @@ const OpsNetwork = (function () {
     outfall:         { grp: 'outfall',   label: 'Outfall' },
   };
   const typeInfo = t => TYPE[t] || { grp: 'secondary', label: (t || 'asset').replace(/_/g, ' ') };
-  const condColor = c => ({ Good: '#1f9d5b', Fair: '#e0a012', Poor: '#e8720e', Critical: '#d9463c' }[c] || '#7d8fa3');
-  const riskColor = r => ({ low: '#1f9d5b', moderate: '#e0a012', medium: '#e0a012', high: '#d9463c', critical: '#a11313' }[(r || '').toLowerCase()] || '#7d8fa3');
-  const GRP_COLOR = { primary: '#16a8d3', secondary: '#22c3e6', tertiary: '#7c6cf0', culvert: '#e0a012', structure: '#8aa2ae', outfall: '#d9463c', property: '#0d7fa0', sensor: '#16b364', waterbody: '#2563eb' };
+  const condColor = c => ({ Good: '#1f9d5b', Fair: '#e0a012', Poor: '#e8720e', Critical: '#d9463c' }[c] || '#8b909a');
+  const riskColor = r => ({ low: '#1f9d5b', moderate: '#e0a012', medium: '#e0a012', high: '#d9463c', critical: '#a11313' }[(r || '').toLowerCase()] || '#8b909a');
+  const GRP_COLOR = { primary: '#5379ff', secondary: '#6b8cff', tertiary: '#7c6cf0', culvert: '#e0a012', structure: '#8aa2ae', outfall: '#d9463c', property: '#3f63e6', sensor: '#16b364', waterbody: '#2563eb' };
   // Per-type glyphs (all rendered at the same badge size, distinct colours)
   const GLYPH = {
     property:  '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/><path d="M9.5 20v-5h5v5"/>',
@@ -182,7 +182,7 @@ const OpsNetwork = (function () {
     (_g.assets || []).forEach(a => {
       const c = coord(a); if (!c) return;
       const grp = a.is_outfall ? 'outfall' : typeInfo(a.property_type).grp;
-      const col = a.needs_attention ? (riskColor(a.risk_level) || '#d9463c') : (GRP_COLOR[grp] || '#7d8fa3');
+      const col = a.needs_attention ? (riskColor(a.risk_level) || '#d9463c') : (GRP_COLOR[grp] || '#8b909a');
       const m = L.marker(c, { icon: pin(grp, col, { attention: a.needs_attention }) });
       m.on('click', () => openAsset(a.property_id));
       (_layers[grp] || _layers.secondary).addLayer(m); pts.push(c);
@@ -190,7 +190,7 @@ const OpsNetwork = (function () {
     // Properties
     (_g.properties || []).forEach(p => {
       const c = coord(p); if (!c) return;
-      const m = L.marker(c, { icon: pin('property', '#0d7fa0') });
+      const m = L.marker(c, { icon: pin('property', '#3f63e6') });
       m.on('click', () => openAsset(p.property_id));
       _layers.property.addLayer(m); pts.push(c);
     });
@@ -242,8 +242,8 @@ const OpsNetwork = (function () {
     if (!_traceLayer || !map) return;
     _traceLayer.clearLayers();
     const line = [];
-    nodes.forEach(n => { const lat = n.latitude, lng = n.longitude; if (lat != null && lng != null) { line.push([+lat, +lng]); _traceLayer.addLayer(L.marker([+lat, +lng], { icon: marker('#16a8d3', 14, true) })); } });
-    if (line.length > 1) _traceLayer.addLayer(L.polyline(line, { color: '#16a8d3', weight: 4, opacity: .95 }));
+    nodes.forEach(n => { const lat = n.latitude, lng = n.longitude; if (lat != null && lng != null) { line.push([+lat, +lng]); _traceLayer.addLayer(L.marker([+lat, +lng], { icon: marker('#5379ff', 14, true) })); } });
+    if (line.length > 1) _traceLayer.addLayer(L.polyline(line, { color: '#5379ff', weight: 4, opacity: .95 }));
     if (line.length) { try { map.fitBounds(L.latLngBounds(line).pad(0.3)); } catch (_) {} }
   }
   function trace(id, dir) {
@@ -567,23 +567,23 @@ const OpsNetwork = (function () {
     .nw-3d canvas{display:block;width:100% !important;height:100% !important;outline:none;cursor:grab;}
     .nw-3d canvas:active{cursor:grabbing;}
     .nw-3d-state{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:9px;font-size:var(--fs-xs);color:var(--ink-3);pointer-events:none;}
-    .nw-3d-spin{width:15px;height:15px;border:2px solid var(--border);border-top-color:var(--blue-hi,#22c3e6);border-radius:50%;animation:nw3dspin .7s linear infinite;}
+    .nw-3d-spin{width:15px;height:15px;border:2px solid var(--border);border-top-color:var(--blue-hi,#6b8cff);border-radius:50%;animation:nw3dspin .7s linear infinite;}
     @keyframes nw3dspin{to{transform:rotate(360deg);}}
     .nw-3d-hint{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:var(--fs-2xs);color:var(--ink-4,#8494a0);opacity:.75;pointer-events:none;}
     /* device action bar */
     .nw-abar{display:flex;align-items:stretch;gap:8px;margin-bottom:6px;}
     .nw-ab-ic{flex:0 0 auto;width:44px;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--border);border-radius:11px;color:var(--ink-2);cursor:pointer;transition:.13s;}
-    .nw-ab-ic:hover{color:var(--blue-hi,#22c3e6);border-color:var(--blue-dim,#7fc8e0);}
+    .nw-ab-ic:hover{color:var(--blue-hi,#6b8cff);border-color:var(--blue-dim,#93a9ff);}
     .nw-ab-main{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:11px;color:var(--ink);font-family:var(--ff-b);font-weight:700;font-size:var(--fs-sm);cursor:pointer;transition:.13s;}
-    .nw-ab-main:hover{border-color:var(--blue-dim,#7fc8e0);color:var(--blue-hi,#22c3e6);}
+    .nw-ab-main:hover{border-color:var(--blue-dim,#93a9ff);color:var(--blue-hi,#6b8cff);}
     /* device tabs */
     .nw-dtabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin:14px 0 12px;}
     .nw-dtab{flex:1;background:none;border:none;padding:9px 4px;font-family:var(--ff-b);font-size:var(--fs-2xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:.13s;}
-    .nw-dtab.active{color:var(--ink);border-bottom-color:var(--blue-hi,#22c3e6);}
+    .nw-dtab.active{color:var(--ink);border-bottom-color:var(--blue-hi,#6b8cff);}
     .nw-sec{font-size:var(--fs-2xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);margin:4px 0 9px;}
     .nw-sec:not(:first-child){margin-top:16px;}
     .nw-act{display:flex;align-items:center;gap:10px;width:100%;padding:9px 4px;background:none;border:none;text-align:left;font-size:var(--fs-sm);font-weight:600;color:var(--ink-2);cursor:pointer;font-family:var(--ff-b);border-radius:8px;}
-    .nw-act:hover{background:var(--surface-2);color:var(--blue-hi,#22c3e6);}
+    .nw-act:hover{background:var(--surface-2);color:var(--blue-hi,#6b8cff);}
     .nw-act svg{flex-shrink:0;}
     .nw-dr-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;}
     .nw-dr-name{font-family:var(--ff-d);font-size:var(--fs-lg);font-weight:800;color:var(--ink);}

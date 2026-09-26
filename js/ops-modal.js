@@ -35,7 +35,7 @@ const OpsModal = (function () {
       .lv-toolbar-right { display:flex; gap:8px; align-items:center; margin-left:auto; }
       /* Shared dropdown filter (global so every module matches without redefining). */
       .um-filter { padding:7px 12px; border:1px solid var(--border); border-radius:var(--rs,9px); background:var(--surface-2); font-family:var(--ff-b); font-size:var(--fs-base); color:var(--ink); outline:none; cursor:pointer; }
-      .um-filter:focus { border-color:var(--blue,#16a8d3); }
+      .um-filter:focus { border-color:var(--blue,#5379ff); }
       /* Shared page header (title + subtitle + action) — one source of truth. */
       .lv-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:20px; flex-wrap:wrap; }
       .lv-head-title { font-family:var(--ff-d,'Space Grotesk',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink); letter-spacing:-.02em; margin-bottom:3px; }
@@ -503,7 +503,7 @@ const OpsModal = (function () {
       display:flex; align-items:center; gap:10px;
       box-shadow:0 4px 20px rgba(10,31,46,.1),0 1px 4px rgba(10,31,46,.06);
       font-family:var(--ff-b,'Inter',sans-serif);
-      font-size:var(--fs-base); color:var(--ink-2,#2d5068);
+      font-size:var(--fs-base); color:var(--ink-2,#34363b);
       max-width:340px;
       opacity:0; transform:translateX(12px);
       transition:opacity .25s,transform .25s cubic-bezier(.22,1,.36,1);`;
@@ -555,8 +555,8 @@ const OpsModal = (function () {
               d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
           </svg>
         </div>
-        <div style="font-size:var(--fs-md);font-weight:600;color:var(--ink,#0a1f2e);margin-bottom:6px;">${message}</div>
-        <div style="font-size:var(--fs-sm);color:var(--ink-3,#6b8fa3);">This action cannot be undone.</div>
+        <div style="font-size:var(--fs-md);font-weight:600;color:var(--ink,#1c1d20);margin-bottom:6px;">${message}</div>
+        <div style="font-size:var(--fs-sm);color:var(--ink-3,#8b909a);">This action cannot be undone.</div>
       </div>`;
 
     open('Confirm Action', body, [
