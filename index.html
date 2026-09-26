@@ -24,6 +24,12 @@
     --fg-r:9px; --fg-r-s:7px;
     --fg-fs-title:28px; --fg-fs-body:14px; --fg-fs-sm:13px; --fg-fs-xs:12px;
   }
+  /* Light-theme overrides so shared-token surfaces follow the theme toggle */
+  html[data-theme="light"]{
+    --fg-bg:#f6f7f8; --fg-chrome:#ffffff; --fg-card:#ffffff; --fg-card-2:#f6f7f8;
+    --fg-line:#e5e8eb; --fg-line-2:#d7dbdf;
+    --fg-t1:#14171a; --fg-t2:#4b535a; --fg-t3:#767d84; --fg-t4:#9aa0a6;
+  }
   /* Shared components (prefix fgc-). Any module can use these directly. */
   .fgc-card{ background:var(--fg-card); border:1px solid var(--fg-line); border-radius:var(--fg-r); padding:var(--fg-s4); }
   .fgc-h1{ font-size:var(--fg-fs-title); font-weight:600; letter-spacing:-.01em; color:var(--fg-t1); }
@@ -1495,7 +1501,7 @@
 <script src="js/ops-modal.js?v=dsv1"></script>
 <script src="js/fg-ui.js?v=dsv1"></script>
 <script src="js/fg-paginator.js?v=sec2"></script>
-<script src="js/ops-dashboard.js?v=dsv2"></script>
+<script src="js/ops-dashboard.js?v=dsv3"></script>
 <script src="js/ops-situation.js?v=dsv1"></script>
 <script src="js/ops-user-management.js?v=dsv1"></script>
 <script src="js/ops-clients.js?v=dsv1"></script>

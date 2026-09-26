@@ -372,10 +372,20 @@ const OpsDashboard = (function () {
   }
   function wire(root) {
     root.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
-    root.querySelectorAll('.ov-tbl tbody tr').forEach(tr => tr.addEventListener('click', () => {
-      const id = tr.dataset.id;
+    root.querySelectorAll('.ov-tbl tbody tr').forEach(tr => tr.addEventListener('click', async () => {
+      let id = tr.dataset.id;
+      // fallback: resolve the property id by name if the overview feed didn't supply it
+      if (!id) {
+        try {
+          const r = await OpsModal.apiGet('/properties');
+          const list = (r && r.data) || [];
+          const nm = tr.dataset.estate;
+          const match = list.find(p => (p.property_name || p.name || p.asset_code) === nm);
+          if (match) id = match.property_id || match.id;
+        } catch (_) {}
+      }
       if (id && typeof window.fgOpen === 'function') window.fgOpen('properties', id);  // open that estate directly
-      else go('estates');
+      else if (typeof window.switchTab === 'function') window.switchTab('properties');
     }));
     const applyFilter = (f) => {
       root.querySelectorAll('.ov-seg button').forEach(x => x.classList.toggle('active', x.dataset.filter === f));
@@ -421,7 +431,7 @@ const OpsDashboard = (function () {
   }
   async function render(container) {
     _root = container;
-    try { container.style.background = '#111214'; container.style.minHeight = 'calc(100vh - 58px)'; } catch (_) {}   // continuous charcoal surface, full height
+    try { container.style.background = 'var(--fg-bg)'; container.style.minHeight = 'calc(100vh - 58px)'; } catch (_) {}   // theme-aware full-height surface
     if (!document.getElementById('ovx-style')) {
       const st = document.createElement('style'); st.id = 'ovx-style'; st.textContent = CSS; document.head.appendChild(st);
     }
