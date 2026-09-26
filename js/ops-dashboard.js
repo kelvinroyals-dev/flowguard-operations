@@ -165,16 +165,17 @@ const OpsDashboard = (function () {
     try { return new Date().toLocaleTimeString('en-GB', { timeZone: 'Africa/Lagos', hour: '2-digit', minute: '2-digit' }) + ' WAT'; }
     catch (_) { return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' WAT'; }
   }
-  function sparkLine(series, color) {
+  function sparkLine(series, color, unit) {
     if (!series || series.length < 2) series = [0, 0];
     const w = 130, h = 52, p = 3, max = Math.max(...series, 1), min = Math.min(...series, 0), rng = (max - min) || 1;
     const pts = series.map((v, i) => `${(p + i * (w - 2 * p) / (series.length - 1)).toFixed(1)},${(h - p - ((v - min) / rng) * (h - 2 * p)).toFixed(1)}`).join(' ');
-    return `<svg class="ov-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+    const last = series[series.length - 1];
+    return `<svg class="ov-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><title>Latest ${last}${unit || ''} · range ${min}–${max}${unit || ''}</title><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
   }
-  function sparkBars(series, color) {
+  function sparkBars(series, color, unit) {
     if (!series || !series.length) series = [0];
     const w = 130, h = 52, n = series.length, gap = 2, bw = Math.max(1, (w - gap * (n - 1)) / n), max = Math.max(...series, 1);
-    return `<svg class="ov-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">${series.map((v, i) => { const bh = Math.max(1.5, (v / max) * (h - 3)); return `<rect x="${(i * (bw + gap)).toFixed(1)}" y="${(h - bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="1" fill="${color}"/>`; }).join('')}</svg>`;
+    return `<svg class="ov-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">${series.map((v, i) => { const bh = Math.max(1.5, (v / max) * (h - 3)); return `<rect x="${(i * (bw + gap)).toFixed(1)}" y="${(h - bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="1" fill="${color}"><title>+${i + 1}h · ${v}${unit || ''}</title></rect>`; }).join('')}</svg>`;
   }
 
   function template(vm) {
@@ -234,7 +235,7 @@ const OpsDashboard = (function () {
           <div class="ov-div"></div>
           <div class="ov-lines">
             <div class="ov-line"><span class="l">Assessed <span style="color:var(--t4);font-size:11px">· sensor-backed</span></span><span class="v">${p.assessed}</span></div>
-            <div class="ov-line"><span class="l">Baseline / unknown</span><span class="v">${p.unknown}</span></div>
+            <div class="ov-line"><span class="l">Without live assessment</span><span class="v">${p.unknown}</span></div>
           </div>
           <div class="ov-div"></div>
           <div class="ov-subh">Gateway connectivity</div>
@@ -249,8 +250,9 @@ const OpsDashboard = (function () {
         <!-- Risk exposure -->
         <div class="ovc">
           <div class="ovc-h"><span class="ovc-k">Risk exposure · <span class="live">${liveTag}</span></span>
-            ${rk.highRisk ? `<span class="ovc-flag" style="color:var(--sev-crit)"><span class="d" style="background:var(--sev-crit)"></span>Action required</span>` : `<span class="ovc-flag" style="color:var(--t3)"><span class="d" style="background:var(--sev-low)"></span>No high-risk estates</span>`}</div>
+            ${rk.highRisk ? `<span class="ovc-flag" style="color:var(--sev-crit)"><span class="d" style="background:var(--sev-crit)"></span>Action required</span>` : `<span class="ovc-flag" style="color:var(--t3)"><span class="d" style="background:var(--sev-low)"></span>Monitoring</span>`}</div>
           <div class="ov-big"><span class="n">${rk.highRisk}</span><span class="u">high-risk estates</span></div>
+          <div class="ov-note" style="margin-top:5px">${rk.highRisk} identified${rk.unknown ? ` · ${rk.unknown} without live assessment` : ''}</div>
           <div class="ov-lines">${riskLine('critical')}${riskLine('high')}${riskLine('moderate')}${riskLine('low')}${riskLine('unknown')}</div>
         </div>
 
@@ -289,8 +291,10 @@ const OpsDashboard = (function () {
         <div class="ov-div"></div>
         <div class="ov-sec" style="margin-top:2px">Next action</div>
         <div class="ov-next"${rd.dispatchable ? '' : ' style="color:var(--t2);font-weight:500"'}>${esc(rd.nextAction)}</div>
-        ${rd.dispatchable ? `<button class="ov-cta" data-go="incident">Dispatch team</button>` : ''}
-        <button class="ov-queue" data-go="queue"${rd.dispatchable ? '' : ' style="margin-top:0"'}>View response queue →</button>
+        ${rd.dispatchable
+          ? `<button class="ov-cta" data-go="incident">Dispatch team</button>`
+          : (p.unknown ? `<button class="ov-link" data-go="estates" style="font-size:12.5px">Review ${p.unknown} unassessed estate${p.unknown > 1 ? 's' : ''} ${arrow}</button>` : '')}
+        <button class="ov-queue" data-go="queue"${rd.dispatchable ? '' : ' style="margin-top:11px"'}>View response queue →</button>
       </div></div>
 
       <div class="ov-lower">
@@ -307,8 +311,9 @@ const OpsDashboard = (function () {
           <div class="ov-tbl-wrap"><table class="ov-tbl">
             <thead><tr><th>Estate</th><th>Score</th><th>Risk</th><th>Change · 1h</th><th>Primary driver</th><th>Response</th></tr></thead>
             <tbody id="ov-tbody">${rows}</tbody>
-          </table></div>
-          <div class="ov-foot">Showing ${vm.estates.length} of ${p.estates} estates · Score 0 – 100 · Higher means greater risk</div>
+          </table>
+          <div id="ov-empty" style="display:none;padding:24px 12px;text-align:center;color:var(--t3);font-size:13px"></div></div>
+          <div class="ov-foot">Showing <span id="ov-shown">${Math.min(vm.estates.length, p.estates)}</span> of ${p.estates} estates · Score 0 – 100 · Higher means greater risk</div>
         </div>
 
         ${vm.lagoon
@@ -319,34 +324,38 @@ const OpsDashboard = (function () {
             </div>`
           : `<div class="ov-banner ok">
               <span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6L9 17l-5-5"/></svg></span>
-              <span class="tx">All monitored estates reporting fresh telemetry.</span>
+              <span class="tx"><b>${cf.valid} of ${cf.total}</b> sensor streams fresh · <b>${p.assessed} of ${p.estates}</b> estates have a sensor-backed assessment.</span>
             </div>`}
 
         <div class="ov-bottom">
-          <div class="ovc">
+          ${(() => { const dr = vm.drainage, hasObs = (dr.series && dr.series.some(v => v > 0)) || dr.peak > 0;
+          return `<div class="ovc">
             <div class="ovc-k">Drainage · Past 24h</div>
-            <div class="ov-mini-body">
+            ${hasObs ? `<div class="ov-mini-body">
               <div class="col">
-                <div class="ov-mrow"><span class="l">Peak utilisation</span><span class="v">${vm.drainage.peak}%</span></div>
-                <div class="ov-mrow"><span class="l">Restricted outfalls</span><span class="v">${vm.drainage.restricted}</span></div>
-                <div class="ov-mrow"><span class="l">Rising-level locations</span><span class="v">${vm.drainage.rising}</span></div>
+                <div class="ov-mrow"><span class="l">Peak utilisation</span><span class="v">${dr.peak}%</span></div>
+                <div class="ov-mrow"><span class="l">Restricted outfalls</span><span class="v">${dr.restricted}</span></div>
+                <div class="ov-mrow"><span class="l">Rising-level locations</span><span class="v">${dr.rising}</span></div>
               </div>
               <div class="ov-vdiv"></div>
-              ${sparkLine(vm.drainage.series, 'var(--t2)')}
-            </div>
-          </div>
-          <div class="ovc">
+              ${sparkLine(dr.series, 'var(--t2)', '%')}
+            </div>` : `<div class="ov-note" style="margin-top:14px">No observations from monitored locations yet.</div>`}
+            <div class="ov-note" style="margin-top:9px">From monitored locations · % utilisation</div>
+          </div>`; })()}
+          ${(() => { const w = vm.weather; const hasW = w.updated && (w.series && w.series.length);
+          return `<div class="ovc">
             <div class="ovc-k">Weather · Next 6h</div>
-            <div class="ov-mini-body">
+            ${hasW ? `<div class="ov-mini-body">
               <div class="col">
-                <div class="ov-mrow"><span class="l">Forecast rainfall</span><span class="v">${vm.weather.rainfall} mm</span></div>
-                <div class="ov-mrow"><span class="l">Estates exposed</span><span class="v">${vm.weather.exposed}</span></div>
-                <div class="ov-mrow"><span class="l" style="color:var(--t4)">Updated ${esc(vm.weather.updated || '—')}</span><span class="v"></span></div>
+                <div class="ov-mrow"><span class="l">Forecast rainfall</span><span class="v">${w.rainfall} mm</span></div>
+                <div class="ov-mrow"><span class="l">Estates exposed</span><span class="v">${w.exposed}</span></div>
+                <div class="ov-mrow"><span class="l" style="color:var(--t3)">Updated ${esc(w.updated)}</span><span class="v"></span></div>
               </div>
               <div class="ov-vdiv"></div>
-              ${sparkBars(vm.weather.series, 'var(--sev-low)')}
-            </div>
-          </div>
+              ${sparkBars(w.series, 'var(--sev-low)', ' mm')}
+            </div>` : `<div class="ov-note" style="margin-top:14px">Forecast unavailable.</div>`}
+            <div class="ov-note" style="margin-top:9px">Forecast · Open-Meteo · mm/h</div>
+          </div>`; })()}
         </div>
       </div>
     </div>`;
@@ -364,12 +373,25 @@ const OpsDashboard = (function () {
   function wire(root) {
     root.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
     root.querySelectorAll('.ov-tbl tbody tr').forEach(tr => tr.addEventListener('click', () => go('estates')));
-    root.querySelectorAll('.ov-seg button').forEach(p => p.addEventListener('click', () => {
-      root.querySelectorAll('.ov-seg button').forEach(x => x.classList.remove('active'));
-      p.classList.add('active');
-      const f = p.dataset.filter;
-      root.querySelectorAll('#ov-tbody tr').forEach(tr => { tr.style.display = (f === 'all' || tr.dataset.risk === f) ? '' : 'none'; });
-    }));
+    const applyFilter = (f) => {
+      root.querySelectorAll('.ov-seg button').forEach(x => x.classList.toggle('active', x.dataset.filter === f));
+      let shown = 0;
+      root.querySelectorAll('#ov-tbody tr').forEach(tr => {
+        const vis = (f === 'all' || tr.dataset.risk === f);
+        tr.style.display = vis ? '' : 'none'; if (vis) shown++;
+      });
+      const sh = root.querySelector('#ov-shown'); if (sh) sh.textContent = shown;
+      const empty = root.querySelector('#ov-empty');
+      if (empty) {
+        if (shown === 0) {
+          const label = { critical: 'critical-risk', high: 'high-risk', unknown: 'unknown-risk' }[f] || 'matching';
+          empty.style.display = 'block';
+          empty.innerHTML = `No ${label} estates. <button class="ov-link" data-all="1" style="display:inline">View all estates</button>`;
+          const b = empty.querySelector('[data-all]'); if (b) b.addEventListener('click', () => applyFilter('all'));
+        } else empty.style.display = 'none';
+      }
+    };
+    root.querySelectorAll('.ov-seg button').forEach(p => p.addEventListener('click', () => applyFilter(p.dataset.filter)));
     root.querySelectorAll('.ov-ack').forEach(b => b.addEventListener('click', (e) => {
       e.stopPropagation();
       const inc = b.closest('.ov-inc'); b.remove();
@@ -395,7 +417,7 @@ const OpsDashboard = (function () {
   }
   async function render(container) {
     _root = container;
-    try { container.style.background = '#101114'; } catch (_) {}   // continuous charcoal surface
+    try { container.style.background = '#101114'; container.style.minHeight = 'calc(100vh - 58px)'; } catch (_) {}   // continuous charcoal surface, full height
     if (!document.getElementById('ovx-style')) {
       const st = document.createElement('style'); st.id = 'ovx-style'; st.textContent = CSS; document.head.appendChild(st);
     }
