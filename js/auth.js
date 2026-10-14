@@ -16,12 +16,10 @@ const Auth = (function () {
   // localStorage   = "Keep me signed in" checked (persistent)
 
   function getToken() {
-    if (window.FG_LOCAL_PREVIEW) return 'local-design-preview';
     return sessionStorage.getItem('token') || localStorage.getItem('token') || null;
   }
 
   function getUser() {
-    if (window.FG_LOCAL_PREVIEW) return { full_name: 'Design Reviewer', role: 'admin', user_type: 'internal' };
     try {
       const raw = sessionStorage.getItem('user') || localStorage.getItem('user');
       return raw ? JSON.parse(raw) : null;
@@ -77,7 +75,6 @@ const Auth = (function () {
   // ── AUTH STATE ─────────────────────────────────────────────────────────
 
   function isAuthenticated() {
-    if (window.FG_LOCAL_PREVIEW) return true;
     const token = getToken();
     const user  = getUser();
     if (!token || !user) return false;
@@ -134,7 +131,6 @@ const Auth = (function () {
   // ── SESSION MANAGEMENT ─────────────────────────────────────────────────
 
   async function logout() {
-    if (window.FG_LOCAL_PREVIEW) { window.location.href = 'login.html'; return; }
     // Clear both stores — handles both persistent and session-only logins
     CONFIG.STORAGE_KEYS.forEach(k => {
       localStorage.removeItem(k);

@@ -214,16 +214,6 @@ document.addEventListener('DOMContentLoaded', () => {
   accountControls.className = 'ops-account-controls';
   accountControls.append(document.getElementById('ntf-wrap'),nav.querySelector('.tnav-theme'),nav.querySelector('.tnav-user'));
   document.querySelector('.opsbar').append(accountControls);
-  const previewBar = document.querySelector('.local-preview-banner');
-  if (previewBar) {
-    const previewTools = document.createElement('details');
-    previewTools.className = 'ops-preview-tools';
-    const previewLabel = document.createElement('summary');
-    previewLabel.textContent = 'Demo mode';
-    [...previewBar.childNodes].filter(node=>node.nodeType===Node.TEXT_NODE).forEach(node=>node.remove());
-    previewTools.append(previewLabel,previewBar);
-    accountControls.prepend(previewTools);
-  }
   document.querySelectorAll('.tnav-grp').forEach((group, index) => {
     const old = group.querySelector(':scope > .tnav-item');
     const trigger = document.createElement('button');
@@ -243,9 +233,4 @@ document.addEventListener('DOMContentLoaded', () => {
       group.classList.toggle('is-open', !open);
     });
   });
-  if (window.FG_LOCAL_PREVIEW) {
-    const notifications = document.querySelector('#ntf-wrap button');
-    notifications.disabled = true;
-    notifications.title = 'Realtime notifications are disabled in the sample preview';
-  }
 });

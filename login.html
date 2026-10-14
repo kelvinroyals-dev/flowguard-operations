@@ -89,7 +89,7 @@
     :is(button,input,a):focus-visible {outline:2px solid var(--blue);outline-offset:3px;}
     @media(prefers-reduced-motion:reduce) {*,*::before,*::after {animation:none!important;transition:none!important;}}
   </style>
-  <link rel="stylesheet" href="css/auth-density.css?v=1">
+  <link rel="stylesheet" href="css/auth-density.css?v=prod20261014">
 </head>
 <body>
   <div class="shell">
@@ -104,7 +104,6 @@
     <div class="card">
       <h1>Sign in</h1>
       <p class="sub">Access your FlowGuard workspace.</p>
-      <p id="design-preview-link" hidden style="margin-bottom:20px"><a class="link" href="index.html?preview=design#situation">Open local design preview · no login needed →</a></p>
 
       <form id="lform" novalidate>
         <div class="field">
@@ -156,7 +155,7 @@
     <div class="foot"><b>FlowGuard Solutions</b> &nbsp;|&nbsp; © 2026</div>
   </div>
 
-<script src="js/config.js?v=local1"></script>
+<script src="js/config.js?v=prod20261014"></script>
 <script>
   try { document.documentElement.setAttribute('data-theme',localStorage.getItem('ops_theme') === 'light' ? 'light' : 'dark'); } catch (_) {}
   document.querySelectorAll('.brand-logo img').forEach(function(img) { img.src=document.documentElement.getAttribute('data-theme') === 'light' ? 'fg-logo-light.png' : 'fg-logo-dark.png'; });
@@ -180,16 +179,6 @@
   }
   function clearMsg() { document.getElementById('fmsg').className = 'msg'; }
 
-  // The design launcher uses this origin. Deployed CORS configuration must
-  // still be checked independently; an unexpected origin is not a bad password.
-  var isLocalPreview = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-  var localPreviewUrl = 'http://localhost:5173/login.html';
-  document.getElementById('design-preview-link').hidden = !isLocalPreview;
-  if (CONFIG.LOCAL_SANDBOX) {
-    showMsg('Isolated local API — use disposable test credentials only. External delivery is disabled.', 'info');
-  } else if (isLocalPreview && (window.location.hostname !== 'localhost' || window.location.port !== '5173')) {
-    showMsg('The supported design launcher opens ' + localPreviewUrl + '. Other local origins may need API access configuration.');
-  }
 
   document.getElementById('lform').addEventListener('submit', async function (e) {
     e.preventDefault(); clearMsg();
@@ -229,9 +218,7 @@
       }
     } catch (err) {
       btn.disabled = false; btxt.textContent = 'Sign in';
-      showMsg(err.message === 'invalid-response' ? 'The sign-in service returned an unreadable response. No session was saved.' : isLocalPreview
-        ? 'The local page could not reach the sign-in API. Check your connection and the API origin configuration. Design preview is available without signing in.'
-        : 'Connection failed. Check your network and retry.');
+      showMsg(err.message === 'invalid-response' ? 'The sign-in service returned an unreadable response. No session was saved.' : 'Connection failed. Check your network and retry.');
     }
   });
 </script>
