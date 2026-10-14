@@ -12,1410 +12,83 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <!-- ═══ FlowGuard shared design system (tokens + components) — portal-wide ═══ -->
-  <style id="fg-ds">
-  :root{
-    --fg-bg:#111214; --fg-chrome:#18191b; --fg-card:#1c1d20; --fg-card-2:#212327;
-    --fg-line:#34363b; --fg-line-2:#3d4046;
-    --fg-t1:#f0f1f2; --fg-t2:#b5b8be; --fg-t3:#8b909a; --fg-t4:#6c727c;
-    --fg-blue:#5379ff; --fg-blue-h:#3f63e6;
-    --fg-crit:#f0616d; --fg-high:#f0913e; --fg-mod:#f2c14e; --fg-ok:#35c98a; --fg-neutral:#8b9099;
-    --fg-crit-bg:rgba(240,97,109,.12); --fg-ok-bg:rgba(53,201,138,.12); --fg-mod-bg:rgba(242,193,78,.12);
-    --fg-s1:4px; --fg-s2:8px; --fg-s3:12px; --fg-s4:16px; --fg-s5:24px; --fg-s6:32px;
-    --fg-r:9px; --fg-r-s:7px;
-    --fg-fs-title:28px; --fg-fs-body:14px; --fg-fs-sm:13px; --fg-fs-xs:12px;
-  }
-  /* Light-theme overrides so shared-token surfaces follow the theme toggle */
-  html[data-theme="light"]{
-    --fg-bg:#f6f7f8; --fg-chrome:#ffffff; --fg-card:#ffffff; --fg-card-2:#f6f7f8;
-    --fg-line:#e5e8eb; --fg-line-2:#d7dbdf;
-    --fg-t1:#14171a; --fg-t2:#4b535a; --fg-t3:#767d84; --fg-t4:#9aa0a6;
-  }
-  /* Shared components (prefix fgc-). Any module can use these directly. */
-  .fgc-card{ background:var(--fg-card); border:1px solid var(--fg-line); border-radius:var(--fg-r); padding:var(--fg-s4); }
-  .fgc-h1{ font-size:var(--fg-fs-title); font-weight:600; letter-spacing:-.01em; color:var(--fg-t1); }
-  .fgc-sub{ font-size:var(--fg-fs-sm); color:var(--fg-t3); }
-  .fgc-k{ font-size:10.5px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--fg-t2); }
-  .fgc-link{ color:var(--fg-blue); font-weight:500; cursor:pointer; background:none; border:none; padding:0; font-family:inherit; font-size:var(--fg-fs-xs); text-decoration:none; }
-  .fgc-link:hover{ text-decoration:underline; }
-  .fgc-btn{ background:var(--fg-blue); color:#fff; border:none; border-radius:8px; padding:9px 14px; font-weight:600; font-size:var(--fg-fs-sm); cursor:pointer; font-family:inherit; }
-  .fgc-btn:hover{ background:var(--fg-blue-h); }
-  .fgc-btn.ghost{ background:transparent; border:1px solid var(--fg-line-2); color:var(--fg-t2); }
-  .fgc-status{ display:inline-flex; align-items:center; gap:var(--fg-s2); font-size:var(--fg-fs-sm); color:var(--fg-t1); font-weight:500; }
-  .fgc-status .dot{ width:8px; height:8px; border-radius:50%; flex:0 0 auto; }
-  .fgc-seg{ display:flex; background:#1c1e23; border:1px solid var(--fg-line-2); border-radius:var(--fg-r-s); overflow:hidden; }
-  .fgc-seg button{ font-size:var(--fg-fs-xs); font-weight:500; color:var(--fg-t3); padding:5px 12px; cursor:pointer; border:none; background:none; border-right:1px solid var(--fg-line-2); font-family:inherit; }
-  .fgc-seg button:last-child{ border-right:none; }
-  .fgc-seg button.active{ background:var(--fg-line-2); color:var(--fg-t1); }
-  .fgc-seg .c{ color:var(--fg-t4); font-weight:600; margin-left:5px; }
-  .fgc-table{ width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
-  .fgc-table thead th{ text-align:left; font-size:10px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--fg-t3); padding:0 8px 8px; border-bottom:1px solid var(--fg-line); }
-  .fgc-table tbody td{ padding:7px 8px; border-bottom:1px solid var(--fg-line); font-size:var(--fg-fs-sm); color:var(--fg-t1); }
-  .fgc-table tbody tr:last-child td{ border-bottom:none; }
-  .fgc-empty{ padding:var(--fg-s5) var(--fg-s3); text-align:center; color:var(--fg-t3); font-size:var(--fg-fs-sm); }
-  .fgc-empty .fgc-link{ font-size:var(--fg-fs-sm); }
-  .fgc-panel{ background:var(--fg-card); border:1px solid var(--fg-line); border-radius:var(--fg-r); padding:var(--fg-s4); }
-  .fgc-div{ height:1px; background:var(--fg-line); margin:var(--fg-s2) 0; }
-  </style>
-  <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-    :root {
-      /* ══ COMMAND — dark-first theme ══ */
-
-      /* ── Type scale (theme-independent — defined once, here only) ──
-         One scale, used everywhere. Same size = same role, on every tab.
-         Role guide:
-           2xs  micro captions, uppercase eyebrow labels, tiny badges
-           xs   table headers, meta/timestamp text, small captions
-           sm   secondary body text, buttons/pills, filter controls
-           base primary UI text — standard buttons, inputs, nav, form labels
-           md   table/card body text — the "read this" data cell size
-           lg   section/card titles, modal titles
-           xl   module page headers (top of each tab)
-           2xl  KPI / stat headline numbers — always this size, everywhere
-           3xl  hero-level numbers (dashboard greeting strip only) */
-      --fs-2xs:  .625rem;   /* 10px */
-      --fs-xs:   .6875rem;  /* 11px */
-      --fs-sm:   .75rem;    /* 12px */
-      --fs-base: .8125rem;  /* 13px */
-      --fs-md:   .875rem;   /* 14px */
-      --fs-lg:   1rem;      /* 16px */
-      --fs-xl:   1.25rem;   /* 20px */
-      --fs-2xl:  1.75rem;   /* 28px */
-      --fs-3xl:  2.25rem;   /* 36px */
-      --fs-hero: clamp(1.9rem, 3vw, 2.6rem);
-
-      /* ── Brand ── */
-      --navy:       #0a1622;
-      --navy-deep:  #070d14;
-      --navy-mid:   #0e1c2a;
-      /* Single action colour (shared design system) — links, buttons, selected */
-      --blue:       #5379ff;
-      --blue-hi:    #6b8cff;
-      --blue-dim:   #3f63e6;
-      --amber:      #f2c14e;
-      --teal:       #3f63e6;
-
-      /* ── Canvas & surfaces (shared charcoal spec — --fg-* mirror) ── */
-      --canvas:     #111214;
-      --surface:    #1c1d20;
-      --surface-2:  #17181b;
-      --surface-3:  #212327;
-      --surface-h:  #26282c;
-      --border:     #34363b;
-      --border-2:   #3d4046;
-
-      /* ── Text (neutral greys, brighter secondary) ── */
-      --ink:        #f0f1f2;
-      --ink-2:      #b5b8be;
-      --ink-3:      #8b909a;
-      --ink-4:      #6c727c;
-
-      /* ── Status (shared severity) ── */
-      --ok:         #35c98a;    --ok-bg:  rgba(53,201,138,.12);
-      --warn:       #f2c14e;    --wb:     rgba(242,193,78,.12);
-      --caut:       #f0913e;    --cb:     rgba(240,145,62,.12);
-      --err:        #f0616d;    --eb:     rgba(240,97,109,.12);
-      --off:        #8b9099;    --ob:     rgba(139,144,153,.14);
-      --amber-bg:   rgba(251,191,36,.08);
-      --overlay:    rgba(0,0,0,.92);
-      /* ── Sidebar: permanently dark in both themes ── */
-      --sb-ink:    rgba(255,255,255,.92);
-      --sb-ink-2:  rgba(255,255,255,.62);
-      --sb-ink-3:  rgba(255,255,255,.38);
-      --sb-ink-4:  rgba(255,255,255,.24);
-      --sb-line:   rgba(255,255,255,.07);
-      --sb-hover:  rgba(255,255,255,.06);
-
-
-      /* ── Shadows / glow ── */
-      --sh-xs: 0 1px 2px rgba(0,0,0,.4);
-      --sh-sm: 0 2px 10px rgba(0,0,0,.35);
-      --sh-md: 0 4px 24px rgba(0,0,0,.45);
-      --sh-lg: 0 24px 70px rgba(0,0,0,.55);
-      --sh-card: 0 0 0 1px rgba(83,121,255,.05), 0 2px 10px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3);
-
-      /* ── Layout ── */
-      --sw:  204px;
-      --th:  58px;
-
-      /* ── Radii ── */
-      --r:   14px; --rs: 9px; --rl: 20px;
-
-      /* ── Fonts ── */
-      --ff-d: 'Inter', system-ui, sans-serif;
-      --ff-b: 'Inter', system-ui, sans-serif;
-      --ff-m: 'JetBrains Mono', monospace;
-
-      /* ── Legacy aliases for JS modules ── */
-      --neon: var(--blue-hi); --neon-dim: var(--blue-dim);
-      --neon-glow: rgba(83,121,255,.16); --neon-trace: rgba(83,121,255,.05);
-      --bg: var(--canvas); --panel: var(--surface); --panel-edge: var(--border);
-      --panel-hover: var(--surface-h);
-      --text-bright: var(--ink); --text-mid: var(--ink-2); --text-dim: var(--ink-3);
-      --s-nominal: var(--ok); --s-watch: var(--warn);
-      --s-warning: var(--caut); --s-critical: var(--err); --s-offline: var(--off);
-      --font-display: var(--ff-d); --font-mono: var(--ff-m);
-    }
-
-    /* ══ Light theme — the original operations palette ══ */
-    html[data-theme="light"] {
-      /* ── Brand (aligned to client portal) ── */
-      --navy:       #0a2a3d;
-      --navy-deep:  #071722;
-      --navy-mid:   #0d3a54;
-      --blue:       #0891b2;
-      --blue-hi:    #5379ff;
-      --blue-dim:   #0e5b6e;
-      --amber:      #f59e0b;
-      --teal:       #0e5b6e;
-
-      /* ── Canvas & surfaces (client portal) ── */
-      --canvas:     #ffffff;
-      --surface:    #ffffff;
-      --surface-2:  #f8fbfc;
-      --surface-3:  #eef4f8;
-      --surface-h:  #e0f5fa;
-      --border:     #e2e9ed;
-      --border-2:   #d3dde2;
-
-      /* ── Text (client portal) ── */
-      --ink:        #12222b;
-      --ink-2:      #4a626d;
-      --ink-3:      #8399a4;
-      --ink-4:      #a9bcc7;
-
-      /* ── Status ── */
-      --ok:         #0a8a6a;    --ok-bg:  #e2f5ee;
-      --warn:       #b45309;    --wb:     #fef3c7;
-      --caut:       #c2410c;    --cb:     #fff0eb;
-      --err:        #dc2626;    --eb:     #fef2f2;
-      --off:        #64748b;    --ob:     #f1f5f9;
-      --amber-bg:   rgba(245,166,35,.09);
-      --overlay:    rgba(255,255,255,.92);
-      /* ── Sidebar: permanently dark in both themes ── */
-      --sb-ink:    rgba(255,255,255,.92);
-      --sb-ink-2:  rgba(255,255,255,.62);
-      --sb-ink-3:  rgba(255,255,255,.38);
-      --sb-ink-4:  rgba(255,255,255,.24);
-      --sb-line:   rgba(255,255,255,.07);
-      --sb-hover:  rgba(255,255,255,.06);
-
-
-      /* ── Shadows ── */
-      --sh-xs: 0 1px 2px rgba(10,31,46,.06);
-      --sh-sm: 0 2px 8px rgba(10,31,46,.07), 0 1px 2px rgba(10,31,46,.04);
-      --sh-md: 0 4px 20px rgba(10,31,46,.09), 0 2px 4px rgba(10,31,46,.05);
-      --sh-lg: 0 20px 60px rgba(10,31,46,.12), 0 4px 12px rgba(10,31,46,.07);
-      --sh-card: 0 0 0 1px rgba(10,31,46,.05), 0 2px 8px rgba(10,31,46,.06), 0 8px 24px rgba(10,31,46,.06);
-
-      /* ── Layout ── */
-      --sw:  204px;
-      --th:  58px;
-
-      /* ── Radii ── */
-      --r:   14px; --rs: 9px; --rl: 20px;
-
-      /* ── Fonts ── */
-      --ff-d: 'Inter', system-ui, sans-serif;
-      --ff-b: 'Inter', system-ui, sans-serif;
-      --ff-m: 'JetBrains Mono', monospace;
-
-      /* ── Legacy aliases for JS modules ── */
-      --neon: var(--blue); --neon-dim: var(--teal);
-      --neon-glow: rgba(8,145,178,.14); --neon-trace: rgba(8,145,178,.05);
-      --bg: var(--canvas); --panel: var(--surface-2); --panel-edge: var(--border);
-      --panel-hover: var(--surface-h);
-      --text-bright: var(--ink); --text-mid: var(--ink-2); --text-dim: var(--ink-3);
-      --s-nominal: var(--ok); --s-watch: var(--warn);
-      --s-warning: var(--caut); --s-critical: var(--err); --s-offline: var(--off);
-      --font-display: var(--ff-d); --font-mono: var(--ff-m);
-    }
-
-    .topbar { gap: 16px; overflow: visible; padding: 0 18px; min-width: 0; }
-    .topbar > * { min-width: 0; }
-    .topbar .tb-btn { flex-shrink: 0; }
-
-    /* search — the only bordered element, like the sample */
-    .tb-search { position: relative; display: flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 7px 11px; width: 260px; flex-shrink: 1; min-width: 130px; color: var(--ink-3); }
-    .tb-search svg { width: 14px; height: 14px; flex-shrink: 0; }
-    .tb-search input { flex: 1; min-width: 0; background: transparent; border: none; outline: none; color: var(--ink); font-family: var(--ff-b); font-size: var(--fs-sm); }
-    .tb-search input::placeholder { color: var(--ink-3); }
-    .tb-search kbd { flex-shrink: 0; font-family: var(--ff-m); font-size: var(--fs-2xs); color: var(--ink-4); background: var(--surface-3); border: 1px solid var(--border); border-radius: 5px; padding: 2px 5px; }
-    .tb-search:focus-within { border-color: var(--blue-dim); }
-    .tb-search-drop { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--border-2); border-radius: 10px; box-shadow: var(--sh-md); z-index: 900; display: none; overflow: hidden; max-height: 300px; overflow-y: auto; }
-    .tbs-item { display: flex; align-items: center; gap: 9px; padding: 9px 12px; cursor: pointer; font-size: var(--fs-sm); color: var(--ink); border-bottom: 1px solid var(--border); }
-    .tbs-item:hover { background: var(--surface-h); }
-    .tbs-kind { font-size: var(--fs-2xs); font-weight: 800; letter-spacing: .8px; text-transform: uppercase; padding: 2px 6px; border-radius: 5px; background: var(--neon-trace); color: var(--blue-hi); }
-    .tbs-sub { margin-left: auto; font-size: var(--fs-2xs); color: var(--ink-3); }
-
-    /* cross-module relationship links (OpsModal.link) */
-    .fg-link { color: var(--blue-hi); font-weight: 700; cursor: pointer; text-decoration: none; border-bottom: 1px solid transparent; transition: border-color .12s, opacity .12s; }
-    .fg-link:hover, .fg-link:focus { border-bottom-color: var(--blue-hi); opacity: .9; outline: none; }
-    .fg-link-block { display: inline-flex; align-items: center; gap: 6px; }
-    .fg-link-none { color: var(--ink-3); font-weight: 600; }
-    /* Global list-view (lv-*) styles are injected by ops-modal.js so they stay
-       cache-busted; index.html itself has no ?v and would otherwise go stale. */
-
-    /* storm banner — two-line, with action, like the sample */
-    .tb-storm { display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 12px; border-radius: 9px; background: var(--eb); border: 1px solid rgba(248,113,113,.4); color: var(--err); flex-shrink: 1; min-width: 0; }
-    .tb-storm > svg { width: 17px; height: 17px; flex-shrink: 0; }
-    .tb-storm-txt { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
-    .tb-storm-txt b { font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; }
-    .tb-storm-txt i { font-size: var(--fs-xs); font-style: normal; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .tb-storm-btn { flex-shrink: 0; padding: 5px 10px; border-radius: 7px; border: none; background: rgba(248,113,113,.18); color: var(--err); font-size: var(--fs-xs); font-weight: 700; font-family: var(--ff-b); cursor: pointer; white-space: nowrap; }
-    .tb-storm-btn:hover { background: rgba(248,113,113,.3); }
-
-    /* right cluster — borderless metrics, icon + stacked label/value */
-    .tb-right { margin-left: auto; display: flex; align-items: center; gap: 18px; flex-shrink: 0; position: relative; }
-    .tb-metric { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-    .tb-mi { width: 22px; height: 22px; color: var(--ink-3); flex-shrink: 0; }
-    .tb-mv { display: flex; flex-direction: column; line-height: 1.3; }
-    .tb-mv b { font-size: var(--fs-base); font-weight: 600; color: var(--ink); }
-    .tb-mv i { font-size: var(--fs-xs); font-style: normal; color: var(--ink-3); }
-    .tb-mv em { font-style: normal; font-size: var(--fs-2xs); color: var(--ink-3); font-weight: 500; }
-    #current-time { font-family: var(--ff-m); font-size: var(--fs-base); }
-
-    /* user chip */
-    .tb-user { position: relative; flex-shrink: 0; }
-    .tb-user-btn { display: flex; align-items: center; gap: 9px; padding: 5px 10px 5px 5px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--ink-3); cursor: pointer; }
-    .tb-user-btn:hover { border-color: var(--border-2); }
-    .tb-av { width: 30px; height: 30px; border-radius: 8px; background: var(--blue); color: #04222b; display: grid; place-items: center; font-size: var(--fs-xs); font-weight: 800; flex-shrink: 0; }
-    .tb-user-txt { display: flex; flex-direction: column; line-height: 1.25; text-align: left; }
-    .tb-user-txt b { font-size: var(--fs-sm); color: var(--ink); font-weight: 600; white-space: nowrap; }
-    .tb-user-txt i { font-size: var(--fs-2xs); color: var(--ink-3); font-style: normal; white-space: nowrap; }
-    .tb-user-menu { display: none; position: absolute; top: calc(100% + 8px); right: 0; min-width: 168px; background: var(--surface); border: 1px solid var(--border-2); border-radius: 11px; box-shadow: var(--sh-lg); overflow: hidden; z-index: 2000; }
-    .tb-user-menu.open { display: block; }
-    .tb-user-menu button { display: block; width: 100%; padding: 10px 14px; background: none; border: none; color: var(--ink-2); font-size: var(--fs-sm); font-family: var(--ff-b); cursor: pointer; text-align: left; }
-    .tb-user-menu button:hover { background: var(--surface-h); color: var(--ink); }
-    .tb-user-menu button.danger:hover { color: var(--err); }
-
-    @media (max-width: 1250px) { .tb-metric:nth-of-type(1) .tb-mv { display: none; } }
-    @media (max-width: 1080px) { .tb-user-txt { display: none; } .tb-search { width: 170px; } }
-
-
-    /* ══ responsive shell ══ */
-    @media (max-width: 1150px) {
-      .tb-search { width: 180px; }
-    }
-    @media (max-width: 1000px) {
-      :root { --sw: 62px; }
-      .sidebar { width: 62px; overflow: visible; }
-      .nav-label, .brand-name, .sb-brand-text, .nav-section, .sb-status { display: none; }
-      .nav-item { justify-content: center; padding: 10px 0; margin: 2px 6px; width: calc(100% - 12px); }
-      .nav-item .nav-icon { margin: 0; }
-      .tb-metric:nth-of-type(1) { display: none; }
-    }
-    @media (max-width: 860px) {
-      .topbar { padding: 0 12px; gap: 10px; }
-      .tb-storm { display: none !important; }
-      .tb-metric { display: none; }
-      .tb-search { width: auto; flex: 1; min-width: 0; }
-      .tb-user-txt { display: none; }
-      .content { padding: 14px 12px; }
-    }
-    @media (max-width: 620px) {
-      :root { --sw: 0px; }
-      .app > .sidebar, aside.sidebar { position: fixed !important; left: 0; top: 0; bottom: 0; width: 210px !important; z-index: 1200; transform: translateX(-100%); transition: transform .22s; box-shadow: var(--sh-lg); }
-      .app > .sidebar.open, aside.sidebar.open { transform: none; }
-      .sidebar .nav-label, .sidebar .brand-name, .sidebar .sb-brand-text, .sidebar .nav-section { display: flex; }
-      .sidebar .nav-item { justify-content: flex-start; padding: 9px 16px; }
-      .mob-toggle { display: grid !important; }
-      .tb-search kbd { display: none; }
-    }
-    .mob-toggle { display: none; place-items: center; width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--ink-2); cursor: pointer; flex-shrink: 0; }
-    html { height: 100%; }
-    body {
-      height: 100%; background: var(--canvas);
-      color: var(--ink); font-family: var(--ff-b);
-      font-size: var(--fs-md); display: flex; flex-direction: column;
-      overflow: hidden;
-    }
-
-    .app { flex: 1; display: flex; overflow: hidden; }
-
-    /* ══════════════════════════════════════════════════════
-       SIDEBAR — Premium instrument panel
-    ══════════════════════════════════════════════════════ */
-    .sidebar {
-      width: var(--sw);
-      flex-shrink: 0;
-      background: var(--navy-deep);
-      display: flex; flex-direction: column;
-      height: 100%; overflow: hidden;
-      position: relative;
-    }
-
-    /* Layered depth effects */
-    .sidebar::before {
-      content: '';
-      position: absolute; inset: 0;
-      background:
-        radial-gradient(ellipse 100% 40% at 50% 100%, rgba(8,145,178,.14) 0%, transparent 60%),
-        radial-gradient(ellipse 80% 30% at 50% 0%,   rgba(8,145,178,.05) 0%, transparent 50%);
-      pointer-events: none; z-index: 0;
-    }
-
-    /* Fine noise texture — instrument panel feel */
-    .sidebar::after {
-      content: '';
-      position: absolute; inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-      background-size: 256px 256px;
-      pointer-events: none; z-index: 0; opacity: .6;
-    }
-
-    /* ── Brand area ── */
-    .sb-brand {
-      position: relative; z-index: 1;
-      padding: 20px 20px 16px;
-      border-bottom: 1px solid var(--sb-line);
-      display: flex; align-items: center; gap: 12px;
-      flex-shrink: 0;
-    }
-
-    /* Brand mark with glow halo */
-    .sb-mark-wrap {
-      position: relative;
-      width: 36px; height: 36px; flex-shrink: 0;
-    }
-
-    .sb-mark-wrap::before {
-      content: '';
-      position: absolute;
-      inset: -4px;
-      border-radius: 12px;
-      background: radial-gradient(circle, rgba(22,168,211,.18) 0%, transparent 70%);
-      animation: markGlow 3s ease-in-out infinite alternate;
-    }
-
-    @keyframes markGlow {
-      0%   { opacity: .6; transform: scale(.95); }
-      100% { opacity: 1;  transform: scale(1.05); }
-    }
-
-    .sb-mark { width: 36px; height: 36px; position: relative; z-index: 1; }
-
-    .sb-brand-text { min-width: 0; }
-    .sb-name {
-      font-family: var(--ff-d);
-      font-size: var(--fs-lg); font-weight: 700;
-      color: var(--sb-ink);
-      white-space: nowrap; letter-spacing: .01em;
-    }
-    .sb-sub {
-      font-size: var(--fs-2xs); font-weight: 700;
-      letter-spacing: 2.5px; text-transform: uppercase;
-      color: var(--blue); margin-top: 1px;
-      opacity: .9;
-    }
-
-    /* ── Live status pill in sidebar ── */
-    .sb-status {
-      position: relative; z-index: 1;
-      margin: 12px 14px 6px;
-      padding: 8px 12px;
-      background: rgba(22,168,211,.07);
-      border: 1px solid rgba(22,168,211,.12);
-      border-radius: 8px;
-      display: flex; align-items: center; gap: 8px;
-      flex-shrink: 0;
-    }
-
-    .sb-status-dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: var(--blue); flex-shrink: 0;
-      box-shadow: 0 0 0 3px rgba(22,168,211,.15);
-      animation: statusPulse 2.5s ease-in-out infinite;
-    }
-
-    @keyframes statusPulse {
-      0%,100% { box-shadow: 0 0 0 3px rgba(22,168,211,.15); }
-      50%      { box-shadow: 0 0 0 5px rgba(22,168,211,.08); }
-    }
-
-    .sb-status-text {
-      font-family: var(--ff-m);
-      font-size: var(--fs-2xs); font-weight: 500;
-      letter-spacing: .8px; text-transform: uppercase;
-      color: var(--blue); opacity: .85;
-    }
-
-    /* ── Nav ── */
-    .sb-nav {
-      flex: 1; overflow-y: auto; overflow-x: hidden;
-      padding: 6px 0 10px;
-      position: relative; z-index: 1;
-    }
-    .sb-nav::-webkit-scrollbar { width: 0; }
-
-    .nav-sect {
-      padding: 16px 20px 5px;
-      font-size: var(--fs-2xs); font-weight: 700;
-      letter-spacing: 2.5px; text-transform: uppercase;
-      color: var(--ink-4);
-      display: flex; align-items: center; gap: 8px;
-    }
-
-    .nav-sect::after {
-      content: '';
-      flex: 1; height: 1px;
-      background: var(--surface-2);
-    }
-
-    .nav-item {
-      display: flex; align-items: center; gap: 11px;
-      padding: 8px 14px 8px 16px;
-      margin: 1px 7px;
-      border-radius: var(--rs);
-      cursor: pointer; border: none;
-      background: transparent;
-      width: calc(100% - 16px);
-      text-align: left;
-      color: var(--sb-ink-2);
-      font-family: var(--ff-b);
-      font-size: var(--fs-base); font-weight: 500;
-      transition: all .18s;
-      position: relative; overflow: hidden;
-    }
-
-    /* Hover sweep reveal */
-    .nav-item::before {
-      content: '';
-      position: absolute; inset: 0;
-      background: linear-gradient(90deg, rgba(22,168,211,.1) 0%, rgba(22,168,211,.04) 50%, transparent 100%);
-      transform: translateX(-100%);
-      transition: transform .28s cubic-bezier(.22,1,.36,1);
-      border-radius: var(--rs);
-    }
-
-    .nav-item:hover::before { transform: translateX(0); }
-
-    .nav-item:hover {
-      color: var(--ink);
-    }
-
-    .nav-item.active {
-      background: rgba(22,168,211,.11);
-      color: var(--blue);
-      font-weight: 600;
-      border: 1px solid rgba(22,168,211,.18);
-      box-shadow: inset 0 0 20px rgba(22,168,211,.04);
-    }
-
-    .nav-item.active::before { display: none; }
-
-    /* Glowing left accent bar for active */
-    .nav-item.active::after {
-      content: '';
-      position: absolute;
-      left: -8px; top: 20%; bottom: 20%;
-      width: 3px;
-      background: var(--blue);
-      border-radius: 0 3px 3px 0;
-      box-shadow: 0 0 8px var(--blue), 0 0 16px rgba(22,168,211,.4);
-    }
-
-    .nav-icon {
-      width: 15px; height: 15px;
-      flex-shrink: 0; color: var(--sb-ink-3);
-      transition: color .18s; position: relative; z-index: 1;
-    }
-    .nav-item:hover .nav-icon { color: var(--blue-hi); }
-    .nav-item.active .nav-icon { color: var(--blue); }
-    .nav-label { flex: 1; position: relative; z-index: 1; }
-
-    .nav-badge {
-      background: var(--err); color: white;
-      font-size: var(--fs-2xs); font-weight: 700;
-      padding: 1px 6px; border-radius: 10px;
-      font-family: var(--ff-m);
-      position: relative; z-index: 1;
-      box-shadow: 0 0 8px rgba(220,38,38,.4);
-    }
-
-    /* ── User footer ── */
-    .sb-foot {
-      flex-shrink: 0;
-      padding: 10px 12px 14px;
-      border-top: 1px solid var(--sb-line);
-      position: relative; z-index: 1;
-    }
-
-    .user-chip {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 12px;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: var(--r); margin-bottom: 8px;
-      transition: background .18s;
-    }
-
-    .user-chip:hover { background: var(--sb-hover); }
-
-    .user-av {
-      width: 34px; height: 34px;
-      background: linear-gradient(135deg, var(--blue), var(--blue-dim));
-      border-radius: 9px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: var(--fs-xs); font-weight: 700; color: white;
-      flex-shrink: 0; font-family: var(--ff-m);
-      letter-spacing: .5px;
-      box-shadow: 0 0 0 1px rgba(22,168,211,.3), 0 2px 8px rgba(22,168,211,.2);
-    }
-
-    .user-info { min-width: 0; flex: 1; }
-    .user-name  { font-size: var(--fs-base); font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .user-role-el { font-size: var(--fs-2xs); color: var(--ink-3); margin-top: 1px; letter-spacing: .3px; }
-
-    .btn-logout {
-      width: 100%; padding: 8px;
-      background: transparent;
-      border: 1px solid var(--border);
-      border-radius: var(--rs);
-      color: var(--ink-3);
-      font-family: var(--ff-b); font-size: var(--fs-sm); font-weight: 500;
-      cursor: pointer; transition: all .2s;
-      display: flex; align-items: center; justify-content: center; gap: 7px;
-    }
-    .btn-logout:hover { border-color: rgba(220,38,38,.4); color: rgba(255,130,130,.8); background: rgba(220,38,38,.06); }
-
-    /* ══════════════════════════════════════════════════════
-       TOPBAR — Clean authority with brand accent
-    ══════════════════════════════════════════════════════ */
-    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-
-    .topbar {
-      height: var(--th);
-      background: var(--surface);
-      border-bottom: 1px solid var(--sb-line);
-      display: flex; align-items: center;
-      justify-content: space-between;
-      padding: 0 16px; flex-shrink: 0; gap: 10px;
-      position: relative; z-index: 1000;
-      /* Subtle bottom shadow + top brand line */
-      box-shadow: 0 1px 0 var(--border), var(--sh-xs);
-    }
-
-    /* Thin brand gradient line at very top of topbar */
-    .topbar::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0; height: 2px;
-      background: linear-gradient(90deg, transparent 0%, var(--navy) 15%, var(--blue) 50%, var(--blue-hi) 65%, transparent 100%);
-      opacity: .7;
-    }
-
-    .tb-left { display: flex; align-items: center; gap: 10px; }
-
-    .tb-eyebrow {
-      font-family: var(--ff-b);
-      font-size: var(--fs-xs); font-weight: 700;
-      letter-spacing: 1.5px; text-transform: uppercase;
-      color: var(--ink-3);
-    }
-
-    .tb-sep { color: var(--border-2); font-size: var(--fs-lg); font-weight: 300; }
-
-    .tb-title {
-      font-family: var(--ff-d);
-      font-size: var(--fs-lg); font-weight: 700;
-      color: var(--ink);
-      letter-spacing: -.015em;
-    }
-
-    .tb-right { display: flex; align-items: center; gap: 10px; }
-
-    /* Operational status pill */
-    .ops-status-pill {
-      display: flex; align-items: center; gap: 6px;
-      padding: 5px 12px;
-      background: var(--ok-bg);
-      border: 1px solid rgba(10,138,106,.18);
-      border-radius: 20px;
-    }
-
-    .ops-status-dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: var(--ok); flex-shrink: 0;
-      animation: opsPulse 2.5s ease-in-out infinite;
-    }
-
-    @keyframes opsPulse {
-      0%,100% { opacity: 1; }
-      50%      { opacity: .45; }
-    }
-
-    .ops-status-label {
-      font-size: var(--fs-2xs); font-weight: 700;
-      letter-spacing: 1.2px; text-transform: uppercase;
-      color: var(--ok);
-    }
-
-    /* demo-pill removed v3.2.1 */
-
-    #current-time {
-      font-family: var(--ff-m);
-      font-size: var(--fs-xs); color: var(--ink-3); letter-spacing: .3px;
-    }
-
-    .tb-btn {
-      width: 36px; height: 36px;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: var(--rs);
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; color: var(--ink-3);
-      transition: all .18s; position: relative;
-    }
-
-    .tb-btn:hover {
-      border-color: var(--blue); color: var(--blue);
-      background: rgba(22,168,211,.06);
-      transform: translateY(-1px); box-shadow: var(--sh-sm);
-    }
-
-    .tb-btn .badge {
-      position: absolute; top: -5px; right: -5px;
-      background: var(--err); color: white;
-      width: 16px; height: 16px; border-radius: 50%;
-      font-size: var(--fs-2xs); font-weight: 700;
-      display: flex; align-items: center; justify-content: center;
-      font-family: var(--ff-m); border: 1.5px solid var(--surface);
-      box-shadow: 0 0 6px rgba(220,38,38,.4);
-    }
-
-    /* ══════════════════════════════════════════════════════
-       CONTENT CANVAS
-    ══════════════════════════════════════════════════════ */
-    .content {
-      flex: 1; overflow-y: auto; overflow-x: hidden;
-      padding: 28px;
-      /* Very subtle paper texture — barely visible */
-      background:
-        radial-gradient(ellipse 60% 40% at 80% 10%, rgba(22,168,211,.025) 0%, transparent 55%),
-        radial-gradient(ellipse 50% 40% at 10% 90%, rgba(10,42,61,.025) 0%, transparent 55%),
-        var(--canvas);
-    }
-
-    .content::-webkit-scrollbar { width: 5px; }
-    .content::-webkit-scrollbar-track { background: transparent; }
-    .content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-    .content::-webkit-scrollbar-thumb:hover { background: var(--border-2); }
-
-    .tab-content { display: none; }
-    .tab-content.active { display: block; animation: tabIn .22s ease; }
-    @keyframes tabIn { from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);} }
-
-    @media (prefers-reduced-motion: reduce) {
-      .tab-content.active { animation: none; }
-      .sb-mark-wrap::before, .sb-status-dot,
-      .ops-status-dot, @keyframes markGlow,
-      .nav-item::before { animation: none; transition: none; }
-    }
-
-    /* ══════════════════════════════════════════════════════
-       ALERT TRAY
-    ══════════════════════════════════════════════════════ */
-    .alert-panel {
-      position: fixed; top: var(--th); right: -360px;
-      width: 340px; bottom: 0;
-      background: var(--surface); border-left: 1px solid var(--border);
-      z-index: 200; transition: right .3s cubic-bezier(.4,0,.2,1);
-      display: flex; flex-direction: column;
-    }
-    .alert-panel.open { right: 0; box-shadow: var(--sh-lg); }
-    .alert-panel-header { padding: 18px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-    .alert-panel-title { font-family: var(--ff-d); font-size: var(--fs-lg); font-weight: 700; color: var(--ink); }
-    .alert-panel-close { background: none; border: none; color: var(--ink-3); cursor: pointer; font-size: var(--fs-lg); padding: 4px 6px; border-radius: 4px; transition: all .2s; }
-    .alert-panel-close:hover { color: var(--err); background: var(--eb); }
-    .alert-panel-body { flex: 1; overflow-y: auto; padding: 14px; }
-
-    /* ══════════════════════════════════════════════════════
-       WELCOME STATE — Editorial, commanding
-    ══════════════════════════════════════════════════════ */
-    .welcome { display: flex; flex-direction: column; gap: 20px; }
-
-    /* Greeting — full bleed editorial header */
-    .greeting {
-      border-radius: var(--rl);
-      background: var(--navy-deep);
-      position: relative; overflow: hidden;
-      padding: 36px 40px;
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 24px;
-    }
-
-    .greeting::before {
-      content: '';
-      position: absolute; inset: 0;
-      background:
-        radial-gradient(ellipse 100% 100% at 110% 110%, rgba(13,127,160,.55) 0%, transparent 50%),
-        radial-gradient(ellipse 60% 50% at -10% -10%, rgba(22,168,211,.08) 0%, transparent 45%);
-      pointer-events: none;
-    }
-
-    /* Fine grid overlay */
-    .greeting::after {
-      content: '';
-      position: absolute; inset: 0;
-      background-image:
-        linear-gradient(rgba(22,168,211,.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(22,168,211,.03) 1px, transparent 1px);
-      background-size: 40px 40px;
-      pointer-events: none;
-    }
-
-    .greeting-left { position: relative; z-index: 1; }
-
-    .greeting-kicker {
-      font-family: var(--ff-b);
-      font-size: var(--fs-2xs); font-weight: 700;
-      letter-spacing: 3px; text-transform: uppercase;
-      color: var(--blue); margin-bottom: 10px;
-      display: flex; align-items: center; gap: 8px;
-    }
-
-    .greeting-kicker::before {
-      content: '';
-      width: 20px; height: 1.5px;
-      background: var(--blue);
-      border-radius: 1px;
-    }
-
-    .greeting-name {
-      font-family: var(--ff-d);
-      font-size: var(--fs-hero);
-      font-weight: 900; color: #ffffff;
-      letter-spacing: -.03em; line-height: 1.05;
-      margin-bottom: 10px;
-    }
-
-    .greeting-name span {
-      color: var(--blue);
-      font-style: italic;
-    }
-
-    .greeting-sub {
-      font-size: var(--fs-base); color: var(--ink-2);
-      line-height: 1.6; max-width: 380px;
-    }
-
-    /* Right side — live KPI strip */
-    .greeting-kpis {
-      position: relative; z-index: 1;
-      display: flex; gap: 1px;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      flex-shrink: 0;
-    }
-
-    .gkpi {
-      padding: 18px 22px;
-      display: flex; flex-direction: column; gap: 4px;
-      min-width: 90px;
-      position: relative;
-    }
-
-    .gkpi + .gkpi::before {
-      content: '';
-      position: absolute;
-      left: 0; top: 20%; bottom: 20%;
-      width: 1px;
-      background: var(--surface-h);
-    }
-
-    .gkpi-val {
-      font-family: var(--ff-d);
-      font-size: var(--fs-2xl); font-weight: 900;
-      color: #ffffff; line-height: 1;
-      letter-spacing: -.02em;
-    }
-
-    .gkpi-val.blue  { color: var(--blue); }
-    .gkpi-val.amber { color: var(--amber); }
-    .gkpi-val.red   { color: var(--err); }
-    .gkpi-val.green { color: var(--ok); }
-
-    .gkpi-lbl {
-      font-size: var(--fs-2xs); font-weight: 700;
-      letter-spacing: 1.5px; text-transform: uppercase;
-      color: var(--ink-3);
-    }
-
-    /* Decorative horizontal rule with brand mark */
-    .section-divider {
-      display: flex; align-items: center; gap: 16px;
-      margin: 4px 0 0;
-    }
-
-    .section-divider::before,
-    .section-divider::after {
-      content: '';
-      flex: 1; height: 1px;
-      background: linear-gradient(90deg, transparent, var(--border), transparent);
-    }
-
-    .section-divider-label {
-      font-size: var(--fs-2xs); font-weight: 700;
-      letter-spacing: 2.5px; text-transform: uppercase;
-      color: var(--ink-4);
-      white-space: nowrap;
-    }
-
-    /* Quick action grid */
-    .quick-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-    }
-
-    .qtile {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--r);
-      padding: 20px 18px 18px;
-      cursor: pointer;
-      transition: all .22s cubic-bezier(.22,1,.36,1);
-      display: flex; flex-direction: column; gap: 14px;
-      box-shadow: var(--sh-xs);
-      position: relative; overflow: hidden;
-    }
-
-    /* Bottom gradient line — reveals on hover */
-    .qtile::after {
-      content: '';
-      position: absolute;
-      bottom: 0; left: 0; right: 0;
-      height: 2px;
-      opacity: 0;
-      transition: opacity .22s;
-    }
-
-    .qtile:hover {
-      transform: translateY(-4px);
-      box-shadow: var(--sh-md);
-      border-color: var(--border-2);
-    }
-
-    .qtile:hover::after { opacity: 1; }
-
-    .qtile.qt-red::after    { background: linear-gradient(90deg, var(--err), #ff8080); }
-    .qtile.qt-blue::after   { background: linear-gradient(90deg, var(--blue), var(--blue-hi)); }
-    .qtile.qt-green::after  { background: linear-gradient(90deg, var(--ok), #34d399); }
-    .qtile.qt-amber::after  { background: linear-gradient(90deg, var(--amber), #fcd34d); }
-
-    .qtile-icon {
-      width: 40px; height: 40px;
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-    }
-
-    .qtile-content { flex: 1; }
-    .qtile-label { font-size: var(--fs-md); font-weight: 700; color: var(--ink); margin-bottom: 3px; }
-    .qtile-sub   { font-size: var(--fs-xs); color: var(--ink-3); line-height: 1.45; }
-
-    .qtile-arrow {
-      width: 20px; height: 20px;
-      border-radius: 50%;
-      background: var(--canvas);
-      display: flex; align-items: center; justify-content: center;
-      color: var(--ink-4);
-      transition: all .22s;
-      align-self: flex-start;
-    }
-
-    .qtile:hover .qtile-arrow {
-      background: var(--ink);
-      color: white;
-      transform: translateX(3px);
-    }
-
-    /* Lower grid */
-    .lower-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr 300px;
-      gap: 16px;
-    }
-
-    /* Status card */
-    .status-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--r);
-      box-shadow: var(--sh-xs);
-      overflow: hidden;
-    }
-
-    .sc-head {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--sb-line);
-      display: flex; align-items: center; justify-content: space-between;
-    }
-
-    .sc-title { font-family: var(--ff-d); font-size: var(--fs-md); font-weight: 700; color: var(--ink); }
-
-    .sc-row {
-      padding: 13px 20px;
-      border-bottom: 1px solid var(--sb-line);
-      display: flex; align-items: center; justify-content: space-between;
-      transition: background .12s;
-    }
-    .sc-row:last-child { border-bottom: none; }
-    .sc-row:hover { background: var(--surface-3); }
-
-    .sc-row-left { display: flex; align-items: center; gap: 12px; }
-
-    .sc-dot {
-      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-    }
-
-    .sc-row-label { font-size: var(--fs-base); font-weight: 600; color: var(--ink); }
-    .sc-row-sub   { font-size: var(--fs-xs); color: var(--ink-3); margin-top: 1px; }
-    .sc-row-val   { font-family: var(--ff-m); font-size: var(--fs-sm); color: var(--ink-2); }
-
-    /* Metric summary card */
-    .metrics-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--r);
-      box-shadow: var(--sh-xs);
-      overflow: hidden;
-    }
-
-    .mc-head {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--sb-line);
-      display: flex; align-items: center; justify-content: space-between;
-    }
-
-    .mc-title { font-family: var(--ff-d); font-size: var(--fs-md); font-weight: 700; color: var(--ink); }
-
-    .mc-row {
-      padding: 13px 20px;
-      border-bottom: 1px solid var(--sb-line);
-      display: flex; align-items: center; justify-content: space-between;
-      transition: background .12s;
-    }
-    .mc-row:last-child { border-bottom: none; }
-    .mc-row:hover { background: var(--surface-3); }
-
-    .mc-label { font-size: var(--fs-base); color: var(--ink-2); font-weight: 500; }
-
-    .mc-val {
-      font-family: var(--ff-d);
-      font-size: var(--fs-xl); font-weight: 800;
-      color: var(--ink); letter-spacing: -.01em;
-    }
-    .mc-val.blue  { color: var(--blue); }
-    .mc-val.amber { color: var(--amber); }
-    .mc-val.red   { color: var(--err); }
-    .mc-val.green { color: var(--ok); }
-
-    /* Recent activity feed */
-    .activity-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--r);
-      box-shadow: var(--sh-xs);
-      overflow: hidden;
-    }
-
-    .ac-head {
-      padding: 16px 18px;
-      border-bottom: 1px solid var(--sb-line);
-      display: flex; align-items: center; justify-content: space-between;
-    }
-
-    .ac-title { font-family: var(--ff-d); font-size: var(--fs-md); font-weight: 700; color: var(--ink); }
-
-    .ac-item {
-      padding: 11px 18px;
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: flex-start; gap: 10px;
-      transition: background .12s;
-    }
-    .ac-item:last-child { border-bottom: none; }
-    .ac-item:hover { background: var(--surface-3); }
-
-    .ac-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      flex-shrink: 0; margin-top: 5px;
-    }
-
-    .ac-text { flex: 1; }
-    .ac-label { font-size: var(--fs-base); color: var(--ink); font-weight: 500; line-height: 1.4; }
-    .ac-time  { font-size: var(--fs-xs); color: var(--ink-4); margin-top: 2px; font-family: var(--ff-m); }
-
-    /* ══════════════════════════════════════════════════════
-       COMPONENT LIBRARY (consumed by all JS modules)
-    ══════════════════════════════════════════════════════ */
-    .modern-card,.ops-card { background:var(--surface); border-radius:var(--r); border:1px solid var(--border); box-shadow:var(--sh-xs); }
-    .ops-card-header { padding:14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
-    .ops-card-title { font-family:var(--ff-d); font-size:var(--fs-md); font-weight:700; color:var(--ink); }
-    .ops-card-body { padding:18px 20px; }
-
-    .status-badge { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:var(--fs-xs); font-weight:700; letter-spacing:.3px; }
-    .status-badge.nominal  { background:var(--ok-bg); color:var(--ok); }
-    .status-badge.watch    { background:var(--wb);    color:var(--warn); }
-    .status-badge.warning  { background:var(--cb);    color:var(--caut); }
-    .status-badge.critical { background:var(--eb);    color:var(--err); }
-    .status-badge.offline  { background:var(--ob);    color:var(--off); }
-
-    /* ══ Shared page header — every module's opening H1 + subtitle ══
-       Properties and Clients each had their own identical copy of this
-       (.pr-header/.cl-header, byte-for-byte the same rules under different
-       prefixes); Sentinel and Alerts had no header at all and started cold
-       on their KPI strip. One class pair, used by all four. */
-    .fg-page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
-    .fg-page-title { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:800; color:var(--ink); letter-spacing:-.02em; margin-bottom:3px; }
-    .fg-page-sub { font-size:var(--fs-base); color:var(--ink-3); }
-
-    /* ══ Shared KPI strip — the ONE stat-card design every module uses ══
-       Built via OpsModal.kpiStrip()/kpiCard() (js/ops-modal.js). This
-       replaces five different bespoke KPI card implementations that used
-       to make Dashboard, Sentinel, Properties, Clients, and Alerts each
-       look like a different product (icon+sentence-case vs uppercase+
-       colored-border vs uppercase+colored-numerals, 5/5/4/4/5 card counts,
-       three different value type sizes). One card, one grid rhythm,
-       consumed everywhere. */
-    .fg-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px; margin-bottom:14px; }
-    .fg-kpi { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 14px; display:flex; gap:10px; align-items:flex-start; box-shadow:var(--sh-xs); transition:border-color .15s; min-width:0; }
-    .fg-kpi:hover { border-color:var(--border-2); }
-    .fg-kpi.clickable { cursor:pointer; }
-    .fg-kpi.active { border-color:var(--blue-dim); box-shadow:0 0 0 2px var(--neon-glow), var(--sh-xs); }
-    .fg-kpi-ic { width:32px; height:32px; border-radius:9px; display:grid; place-items:center; flex-shrink:0; }
-    .fg-kpi-ic svg { width:16px; height:16px; }
-    .fg-kpi-body { min-width:0; flex:1; }
-    .fg-kpi-label { font-size:var(--fs-2xs); font-weight:500; color:var(--ink-2); line-height:1.25; }
-    .fg-kpi-val { font-family:var(--ff-b); font-size:var(--fs-2xl); font-weight:700; color:var(--ink); margin-top:4px; line-height:1.15; letter-spacing:-.5px; }
-    /* sub-line WRAPS instead of silently ellipsis-truncating — a narrow
-       card used to cut "Deployed Sentinels" down to "Deployed Senti" with
-       no way to recover the rest of the sentence. */
-    .fg-kpi-sub { font-size:var(--fs-xs); color:var(--ink-3); margin-top:4px; display:flex; align-items:flex-start; gap:4px; line-height:1.35; }
-    .fg-kpi-sub.ok { color:var(--ok); } .fg-kpi-sub.err { color:var(--err); } .fg-kpi-sub.warn { color:var(--warn); }
-    .fg-kpi-sub .d { width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0; margin-top:5px; }
-
-    .metric-tile { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:18px; position:relative; overflow:hidden; box-shadow:var(--sh-xs); transition:all .2s; }
-    .metric-tile:hover { box-shadow:var(--sh-md); border-color:var(--border-2); transform:translateY(-2px); }
-    .metric-tile::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--navy),var(--blue)); opacity:.45; }
-    .metric-tile.watch::after { background:var(--warn); opacity:.7; }
-    .metric-tile.crit::after  { background:var(--err); opacity:.8; }
-    .metric-label { font-size:var(--fs-xs); font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--ink-3); margin-bottom:9px; }
-    .metric-value { font-family:var(--ff-d); font-size:var(--fs-3xl); font-weight:900; color:var(--ink); letter-spacing:-.03em; line-height:1; }
-    .metric-sub { font-size:var(--fs-xs); color:var(--ink-3); margin-top:5px; }
-
-    .ops-table { width:100%; border-collapse:collapse; }
-    .ops-table th { padding:9px 14px; text-align:left; font-size:var(--fs-xs); font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--ink-3); border-bottom:1.5px solid var(--border); white-space:nowrap; }
-    .ops-table td { padding:8px 14px; font-size:var(--fs-md); color:var(--ink-2); border-bottom:1px solid var(--border); transition:background .1s; }
-    .ops-table tr:last-child td { border-bottom:none; }
-    .ops-table tr:hover td { background:var(--surface-3); }
-    .ops-table tr:nth-child(even) td { background:var(--surface-2); }
-    .ops-table tr:nth-child(even):hover td { background:var(--surface-3); }
-    .ops-table td.bright { color:var(--ink); font-weight:600; }
-    /* one truncated line beats a name wrapping the row to 3 lines and
-       tripling its height — hover (title attr, set per-row) recovers the
-       full text without spending permanent vertical space on it. */
-    .ops-table td.trunc { max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    /* numeric columns should line up on the decimal/last digit, not sit
-       ragged — set on any cell holding a count, %, or currency value. */
-    .ops-table td.num { font-variant-numeric:tabular-nums; font-family:var(--ff-m); }
-
-    .btn-primary { padding:9px 18px; background:var(--navy); border:none; border-radius:var(--rs); color:white; font-family:var(--ff-b); font-size:var(--fs-base); font-weight:700; cursor:pointer; transition:all .18s; display:inline-flex; align-items:center; gap:7px; box-shadow:0 2px 8px rgba(10,31,46,.2); }
-    .btn-primary:hover { background:var(--navy-mid); box-shadow:0 4px 16px rgba(10,31,46,.28); transform:translateY(-1px); }
-    .btn-ghost { padding:8px 16px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--rs); color:var(--ink-2); font-family:var(--ff-b); font-size:var(--fs-base); font-weight:500; cursor:pointer; transition:all .18s; display:inline-flex; align-items:center; gap:7px; }
-    .btn-ghost:hover { border-color:var(--blue); color:var(--blue); background:rgba(22,168,211,.05); }
-    .btn-danger { padding:8px 16px; background:var(--eb); border:1px solid var(--err); border-radius:var(--rs); color:var(--err); font-family:var(--ff-b); font-size:var(--fs-base); font-weight:600; cursor:pointer; transition:all .18s; }
-    .btn-danger:hover { background:var(--err); color:white; }
-    .btn-success { padding:8px 16px; background:var(--ok); border:none; border-radius:var(--rs); color:white; font-family:var(--ff-b); font-size:var(--fs-base); font-weight:600; cursor:pointer; transition:all .18s; display:inline-flex; align-items:center; gap:7px; }
-    .btn-success:hover { opacity:.88; }
-    .btn-sm { padding:6px 12px; font-size:var(--fs-sm); }
-
-    .ops-input,.input-field { background:var(--surface-2); border:1px solid var(--border); border-radius:var(--rs); padding:9px 13px; font-family:var(--ff-b); font-size:var(--fs-md); color:var(--ink); outline:none; transition:all .2s; width:100%; }
-    .ops-input::placeholder,.input-field::placeholder { color:var(--ink-4); }
-    .ops-input:focus,.input-field:focus { border-color:var(--blue); background:var(--surface); box-shadow:0 0 0 3px rgba(22,168,211,.1); }
-    .ops-label { display:block; font-size:var(--fs-xs); font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--ink-3); margin-bottom:6px; }
-
-    .loading { width:22px; height:22px; border:2px solid var(--border); border-top-color:var(--blue); border-radius:50%; animation:spin .75s linear infinite; }
-    @keyframes spin { to{transform:rotate(360deg);} }
-
-    /* Modal */
-    .ops-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); backdrop-filter:blur(6px); z-index:10000; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .2s; padding:24px; }
-    .ops-modal-overlay.visible { opacity:1; }
-    .ops-modal { background:var(--surface); border:1px solid var(--border); border-radius:var(--rl); width:100%; max-width:560px; max-height:85vh; display:flex; flex-direction:column; box-shadow:var(--sh-lg); transform:scale(.96) translateY(10px); transition:transform .25s cubic-bezier(.22,1,.36,1); }
-    .ops-modal-overlay.visible .ops-modal { transform:scale(1) translateY(0); }
-    .ops-modal-header { padding:18px 22px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; position:relative; }
-    .ops-modal-header::before { content:none; }
-    .ops-modal-title { font-family:var(--ff-d); font-size:var(--fs-lg); font-weight:700; color:var(--ink); }
-    .ops-modal-close { background:none; border:none; color:var(--ink-3); cursor:pointer; font-size:var(--fs-lg); padding:4px 8px; border-radius:4px; transition:all .2s; }
-    .ops-modal-close:hover { color:var(--err); background:var(--eb); }
-    .ops-modal-body { padding:22px; overflow-y:auto; flex:1; }
-    .ops-modal-body::-webkit-scrollbar { width:4px; }
-    .ops-modal-body::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
-    .ops-modal-footer { padding:14px 22px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px; flex-shrink:0; }
-    .ops-modal-field { margin-bottom:14px; }
-    .ops-modal-field:last-child { margin-bottom:0; }
-    .ops-modal-detail { display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border); }
-    .ops-modal-detail:last-child { border-bottom:none; }
-    .ops-modal-detail .label { font-size:var(--fs-sm); color:var(--ink-3); }
-    .ops-modal-detail .value { font-size:var(--fs-md); color:var(--ink); font-weight:600; }
-
-    /* Toast */
-    .ops-toast { position:fixed; top:72px; right:20px; background:var(--surface); border:1px solid var(--border); border-left-width:3px; padding:13px 18px; border-radius:var(--r); display:flex; align-items:center; gap:11px; z-index:10001; box-shadow:var(--sh-md); animation:toastIn .3s cubic-bezier(.22,1,.36,1); }
-    @keyframes toastIn { from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);} }
-
-    .pulse-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-    .pulse-dot.nominal { background:var(--ok); } .pulse-dot.watch { background:var(--warn); }
-    .pulse-dot.warning { background:var(--caut); } .pulse-dot.critical { background:var(--err); }
-    .pulse-dot.offline { background:var(--off); }
-
-    .hidden{display:none!important;}
-    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
-    .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
-    .mb-4{margin-bottom:16px;} .mb-6{margin-bottom:24px;}
-    .section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
-    .section-title{font-family:var(--ff-d);font-size:var(--fs-lg);font-weight:700;color:var(--ink);}
-    .section-sub{font-size:var(--fs-sm);color:var(--ink-3);margin-top:2px;}
-
-    /* ── Responsive ── */
-    @media (max-width: 1200px) {
-      .quick-grid { grid-template-columns: repeat(2,1fr); }
-      .lower-grid { grid-template-columns: 1fr 1fr; }
-      .lower-grid > *:last-child { grid-column: 1 / -1; }
-    }
-
-    @media (max-width: 900px) {
-      :root { --sw: 54px; }
-      .sb-brand .sb-brand-text,
-      .sb-status,
-      .nav-label, .nav-badge,
-      .user-info, .btn-logout { display: none; }
-      .sb-brand { justify-content: center; padding: 14px 8px; }
-      .nav-item { justify-content: center; padding: 12px; margin: 1px 4px; width: calc(100% - 8px); }
-      .nav-item.active::after { display: none; }
-      .nav-sect { display: none; }
-      .user-chip { padding: 8px; justify-content: center; }
-      .greeting { padding: 24px; }
-      .greeting-kpis { display: none; }
-      .quick-grid { grid-template-columns: 1fr 1fr; }
-      .lower-grid { grid-template-columns: 1fr; }
-    }
-
-    @media (max-width: 600px) {
-      .content { padding: 16px; }
-      .greeting { padding: 20px; }
-      .greeting-name { font-size: var(--fs-2xl); }
-      .quick-grid { gap: 8px; }
-    }
-  </style>
-
-  <style>
-    /* ══ Neon Center shell — the mockup top bar is the whole-portal chrome ══ */
-    .app-neon{
-      flex:1; min-height:0; display:flex; flex-direction:row; align-items:stretch;
-      overflow:hidden;
-      padding:0;
-      background:#eef3f6;
-      background-image:radial-gradient(900px 500px at 12% -8%,rgba(28,184,232,.10),transparent),radial-gradient(700px 420px at 100% 0%,rgba(31,157,91,.06),transparent);
-    }
-    html[data-theme="dark"] .app-neon{ background:#111214; }
-    /* Left vertical sidebar (was the horizontal top bar). Permanently dark. */
-    .app-neon > .tnav{ width:var(--sw); flex-shrink:0; position:relative; z-index:60; height:100vh; }
-    .app-neon > .content{ flex:1; min-width:0; padding:0 !important; background:transparent !important; position:relative; z-index:1; display:flex; flex-direction:column; overflow-y:auto; }
-
-    /* Sidebar — scoped tokens (prefixed) so nothing leaks to other tabs' content */
-    .tnav{
-      /* Light theme (default): light sidebar. */
-      --pa:#ffffff; --pb:rgba(10,42,61,0.05); --ps:rgba(10,42,61,0.08);
-      --bd:rgba(10,42,61,0.10); --t1:#0e2c3d; --t2:#4d6d7d; --t3:#8aa2ae;
-      --cy:#16a8d3; --tl:#0d7fa0; --gr:#1f9d5b;
-      --sh:0 8px 30px rgba(0,0,0,.18);
-      display:flex; flex-direction:column; align-items:stretch; gap:14px;
-      padding:18px 12px; border-right:1px solid var(--bd);
-      background:var(--pa);
-      font-family:'Inter',system-ui,sans-serif;
-      overflow:visible;   /* let hover flyouts escape the rail */
-    }
-    html[data-theme="dark"] .tnav{
-      --pa:#17181c; --pb:rgba(255,255,255,0.05); --ps:rgba(255,255,255,0.09);
-      --bd:rgba(255,255,255,0.08); --t1:rgba(255,255,255,0.92); --t2:rgba(255,255,255,0.66); --t3:rgba(255,255,255,0.52);
-      --sh:0 8px 30px rgba(0,0,0,.45);
-    }
-    .tnav-brand{ display:flex; align-items:center; gap:11px; flex-shrink:0; padding:2px 8px 6px; }
-    .tnav-mark{ width:32px; height:32px; object-fit:contain; flex-shrink:0; }
-    /* Logo follows the theme (sidebar is light in light mode, dark in dark mode). */
-    .tnav-mark-dark{ display:none; }
-    html[data-theme="dark"] .tnav-mark-light{ display:none; }
-    html[data-theme="dark"] .tnav-mark-dark{ display:block; }
-    .tnav-name{ font-size:15px; font-weight:700; color:var(--t1); line-height:1; letter-spacing:.1px; }
-    .tnav-sub{ font-size:10px; letter-spacing:1.3px; text-transform:uppercase; color:var(--t3); margin-top:3px; }
-
-    .tnav-menu{ display:flex; flex-direction:column; align-items:stretch; gap:2px; }
-    .tnav-sec{ font-size:10px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--t3); padding:14px 12px 5px; }
-    .tnav-sec:first-child{ padding-top:4px; }
-    .tnav-div{ height:1px; background:var(--sb-line); margin:10px 10px; }
-    .tnav-grp{ position:relative; }
-    .tnav-item{ display:flex; align-items:center; gap:11px; width:100%; font-size:13px; font-weight:500; color:var(--t2); padding:9px 12px; border-radius:8px; cursor:pointer; background:transparent; border:none; font-family:inherit; white-space:nowrap; text-align:left; }
-    .tnav-ic{ width:18px; height:18px; flex-shrink:0; }
-    .tnav-grp > .tnav-item::after{ content:"›"; margin-left:auto; font-size:15px; color:var(--t3); }
-    .tnav-item:hover{ color:var(--t1); background:var(--pb); }
-    /* Active menu selector — exact client-portal selector colour (--brand #0891b2) */
-    .tnav-item.active, .tnav-grp.active > .tnav-item{ background:#0891b2; color:#fff; }
-    .tnav-item.active .tnav-ic, .tnav-grp.active > .tnav-item .tnav-ic{ color:#fff; }
-    .tnav-item.active:hover, .tnav-grp.active > .tnav-item:hover{ background:#0a7fa0; color:#fff; }
-    /* Hover flyout — pops the group's items out to the right of the rail. */
-    .tnav-drop{ position:absolute; top:-4px; left:calc(100% + 8px); min-width:190px; background:#ffffff; border:1px solid var(--bd); border-radius:14px; box-shadow:var(--sh); padding:6px; display:none; z-index:1200; }
-    /* Invisible bridge across the 8px gap so moving the cursor from the group
-       into the flyout doesn't drop the hover and close it. */
-    .tnav-drop::before{ content:""; position:absolute; top:0; bottom:0; left:-12px; width:12px; }
-    html[data-theme="dark"] .tnav-drop{ background:#141414; }
-    .tnav-grp:hover .tnav-drop{ display:block; }
-    .tnav-link{ display:flex; align-items:center; gap:8px; width:100%; text-align:left; font-size:12.5px; font-weight:600; color:var(--t2); padding:9px 11px; border-radius:9px; cursor:pointer; background:transparent; border:none; font-family:inherit; white-space:nowrap; }
-    .tnav-link:hover{ background:var(--pb); color:var(--t1); }
-    .tnav-link.active{ background:var(--ps); color:var(--t1); }
-
-    /* Profile row pinned to the bottom of the sidebar (moved from the top bar). */
-    .tnav-user{ margin-top:0; display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:12px; cursor:pointer; position:relative; }
-    .tnav-user:hover{ background:var(--pb); }
-    .tnav-user .fg-av{ width:34px; height:34px; }
-    .tnav-user-info{ flex:1; min-width:0; }
-    .tnav-user .user-name{ font-size:13px; font-weight:600; color:var(--t1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .tnav-user .user-role-el{ font-size:11px; color:var(--t3); margin-top:1px; }
-    .tnav-user-cx{ width:16px; height:16px; color:var(--t3); flex-shrink:0; }
-    .tnav .tb-user-menu{ top:auto; bottom:calc(100% + 8px); left:8px; right:8px; }
-
-    /* Slim top bar in the content column — holds the utility controls. */
-    .opsbar{
-      --pa:rgba(255,255,255,0.86); --pb:rgba(10,42,61,0.06); --ps:#ffffff;
-      --bd:rgba(10,42,61,0.10); --t1:#0e2c3d; --t2:#4d6d7d; --t3:#8aa2ae;
-      --cy:#16a8d3; --tl:#0d7fa0; --gr:#1f9d5b;
-      --sh:0 1px 2px rgba(10,42,61,.05),0 8px 24px rgba(10,42,61,.07);
-      position:sticky; top:0; z-index:55; display:flex; align-items:center; gap:16px;
-      padding:11px 22px; border-bottom:1px solid var(--bd);
-      background:var(--pa); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
-      font-family:'Inter',system-ui,sans-serif;
-    }
-    html[data-theme="dark"] .opsbar{
-      --pa:#18191b; --pb:rgba(255,255,255,0.06); --ps:#1c1d20;
-      --bd:rgba(255,255,255,0.08); --t1:#f2f2f2; --t2:#a8a8a8; --t3:#787878;
-      --sh:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.5);
-    }
-    .opsbar-title{ font-size:15px; font-weight:700; color:var(--t1); letter-spacing:.1px; }
-
-    .tnav-right{ display:flex; align-items:center; gap:12px; flex-shrink:0; margin-left:auto; position:relative; }
-    .fg-sync{ display:flex; align-items:center; gap:7px; font-size:11.5px; font-weight:600; color:var(--gr); background:rgba(31,157,91,.10); border:1px solid rgba(31,157,91,.22); padding:6px 12px; border-radius:20px; white-space:nowrap; }
-    .fg-heart{ width:6px; height:6px; border-radius:50%; background:var(--gr); animation:fgbeat 2s ease-in-out infinite; }
-    @keyframes fgbeat{ 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:.4;transform:scale(.7);} }
-    .fg-toggle{ width:42px; height:24px; border-radius:20px; background:var(--pb); border:1px solid var(--bd); position:relative; cursor:pointer; flex-shrink:0; }
-    .fg-knob{ position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:#c8ccd2; transition:left .2s ease; box-shadow:0 1px 3px rgba(0,0,0,.3); }
-    .tnav-theme{ display:flex; align-items:center; gap:11px; padding:12px 12px 9px; margin:auto 0 2px; border-radius:8px; cursor:pointer; color:var(--t2); border-top:1px solid var(--sb-line); }
-    .tnav-theme:hover{ color:var(--t1); background:var(--pb); }
-    .tnav-theme .tnav-theme-lbl{ flex:1; font-size:13px; font-weight:500; }
-    html[data-theme="dark"] .fg-toggle .fg-knob{ left:20px; }
-    .fg-iconbtn{ width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:var(--t2); cursor:pointer; background:transparent; border:none; position:relative; }
-    .fg-iconbtn:hover{ background:var(--pb); }
-    .fg-iconbtn svg{ width:17px; height:17px; }
-    .fg-av{ width:32px; height:32px; border-radius:50%; background:#3a3d42; display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700; color:#e8eaed; cursor:pointer; border:none; }
-    .opsbar .tb-badge{ position:absolute; top:-4px; right:-4px; min-width:16px; height:16px; padding:0 3px; border-radius:9px; background:#e5483c; color:#fff; font-size:10px; font-weight:800; line-height:16px; text-align:center; box-shadow:0 0 0 2px var(--surface,#0b2733); }
-    .opsbar .tb-user-menu{ right:0; left:auto; }
-
-    /* dashboard aligns flush under the top bar: no double padding, full width, bg shows through */
-    .app-neon .content .neon-dash{ padding:0 !important; background:transparent !important; }
-    .app-neon .content .neon-dash > .wrap{ max-width:none !important; margin:0 !important; }
-    /* Content gutter now that the outer page padding is gone (opsbar stays flush). */
-    .app-neon > .content > .tab-content{ padding:20px 24px 28px; }
-    /* Map popups follow the theme (were hardcoded light text → invisible on the dark popup). */
-    .leaflet-popup-content-wrapper{ background:var(--surface) !important; color:var(--ink) !important; border:1px solid var(--border); box-shadow:var(--sh-md); }
-    .leaflet-popup-tip{ background:var(--surface) !important; border:1px solid var(--border); }
-    .leaflet-popup-close-button{ color:var(--ink-3) !important; }
-    .leaflet-popup-content a{ color:var(--blue-hi); }
-
-    /* On narrow screens the sidebar becomes a horizontal scrolling strip. */
-    @media (max-width:820px){
-      .app-neon{ flex-direction:column; }
-      .app-neon > .tnav{ width:100%; height:auto; flex-direction:row; align-items:center; gap:10px; padding:10px 12px; border-right:none; border-bottom:1px solid var(--bd); overflow-x:auto; overflow-y:visible; }
-      .tnav-brand{ padding:0; }
-      .tnav-menu{ flex-direction:row; gap:4px; }
-      .tnav-grp > .tnav-item::after{ display:none; }
-      .tnav-drop{ top:calc(100% + 6px); left:0; }
-      .tnav-sub{ display:none; }
-      .app-neon > .content{ height:auto; }
-    }
-    @media (max-width:560px){
-      .fg-sync{ display:none; }
-      .opsbar{ padding:10px 14px; gap:10px; }
-      .tnav-right{ gap:8px; }
-    }
-  </style>
+  <link rel="stylesheet" href="css/foundation-tokens.css?v=system305">
+  <link rel="stylesheet" href="css/foundation.css?v=system305">
+
+  <link rel="stylesheet" href="css/chrome.css?v=system305">
+  <link rel="stylesheet" href="css/navigation.css?v=system305">
+<link rel="stylesheet" href="css/modules.css?v=system305">
+<link rel="stylesheet" href="css/shared-structure.css?v=system305">
+<link rel="stylesheet" href="css/operations-redesign.css?v=system305">
+<link rel="stylesheet" href="css/components.css?v=system305">
+<link rel="stylesheet" href="css/spatial.css?v=system305">
+  <link rel="stylesheet" href="css/command-workspace.css?v=cmd11">
+<link rel="stylesheet" href="css/command-polish.css?v=lists1">
+<link rel="stylesheet" href="css/charts.css?v=charts1">
+  <link rel="stylesheet" href="css/weather.css?v=geo1">
 </head>
-<body data-build="cmd16">
+<body class="ops-redesign" data-build="local-redesign1">
 
 <div class="app-neon">
   <aside class="tnav">
     <div class="tnav-brand">
       <img class="tnav-mark tnav-mark-light" src="fg-logo-light.png" alt="FlowGuard" onerror="this.style.display='none'">
       <img class="tnav-mark tnav-mark-dark" src="fg-logo-dark.png" alt="FlowGuard">
-      <div><div class="tnav-name">FlowGuard</div><div class="tnav-sub">Neon Center</div></div>
+      <div class="tnav-wordmark"><strong>FlowGuard</strong><span>Operations</span></div>
     </div>
     <nav class="tnav-menu">
       <div class="tnav-sec">Operate</div>
-      <button class="tnav-item" id="nav-dashboard" onclick="switchTab('dashboard')"><svg class="tnav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>Overview</button>
-      <button class="tnav-item" id="nav-situation" onclick="switchTab('situation')"><svg class="tnav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Situation</button>
-      <button class="tnav-item" id="nav-sensors" onclick="switchTab('sensors')"><svg class="tnav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>Devices</button>
+      <button class="tnav-item" id="nav-situation" onclick="switchTab('situation')">Command centre</button>
+      <button class="tnav-item" id="nav-alerts" onclick="switchTab('alerts')">Incidents<span class="nav-badge" id="nav-badge-alerts" style="display:none;">0</span></button>
+      <button class="tnav-item" id="nav-network" onclick="switchTab('network')">Network map</button>
+      <button class="tnav-item" id="nav-sensors" onclick="switchTab('sensors')">Device fleet</button>
+
+      <div class="tnav-sec">Respond</div>
+      <button class="tnav-item" id="nav-jobs" onclick="OpsServices.open()">Services<span class="nav-badge" id="nav-badge-jobs" style="display:none;">0</span></button>
+      <button class="tnav-item" id="nav-teams" onclick="switchTab('teams')">Teams</button>
+      <button class="tnav-item" id="nav-field-reports" onclick="switchTab('field-reports')">Field reports<span class="nav-badge" id="nav-badge-field-reports" style="display:none;">0</span></button>
       <div class="tnav-grp">
-        <span class="tnav-item" tabindex="0"><svg class="tnav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 11v6c0 1.66 4 3 9 3s9-1.34 9-3v-6"/></svg>Assets</span>
+        <span class="tnav-item" tabindex="0">Assets</span>
         <div class="tnav-drop">
           <button class="tnav-link" id="nav-assets" onclick="switchTab('assets')">Assets</button>
-          <button class="tnav-link" id="nav-properties" onclick="switchTab('properties')">Properties</button>
+          <button class="tnav-link" id="nav-properties" onclick="switchTab('properties')">Estates</button>
           <button class="tnav-link" id="nav-clients" onclick="switchTab('clients')">Clients</button>
           <button class="tnav-link" id="nav-billing" onclick="switchTab('billing')">Billing</button>
         </div>
       </div>
       <div class="tnav-grp">
-        <span class="tnav-item" tabindex="0"><svg class="tnav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>Field ops</span>
-        <div class="tnav-drop">
-          <button class="tnav-link" id="nav-field-reports" onclick="switchTab('field-reports')">Field Reports<span class="nav-badge" id="nav-badge-field-reports" style="display:none;">0</span></button>
-          <button class="tnav-link" id="nav-support" onclick="switchTab('support')">Support<span class="nav-badge" id="nav-badge-support" style="display:none;">0</span></button>
-          <button class="tnav-link" id="nav-teams" onclick="switchTab('teams')">Teams</button>
-          <button class="tnav-link" id="nav-team-members" onclick="switchTab('team-members')">Team Members</button>
-          <button class="tnav-link" id="nav-providers" onclick="switchTab('providers')">Service Providers<span class="nav-badge" id="nav-badge-providers" style="display:none;">0</span></button>
-          <button class="tnav-link" id="nav-jobs" onclick="switchTab('jobs')">Jobs<span class="nav-badge" id="nav-badge-jobs" style="display:none;">0</span></button>
-        </div>
-      </div>
-      <div class="tnav-grp">
-        <span class="tnav-item" tabindex="0"><svg class="tnav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>Reports</span>
+        <span class="tnav-item" tabindex="0">Reports</span>
         <div class="tnav-drop">
           <button class="tnav-link" id="nav-reports" onclick="switchTab('reports')">Reports</button>
-          <button class="tnav-link" id="nav-sla" onclick="switchTab('sla')">SLA Tracker</button>
-          <button class="tnav-link" id="nav-audit" onclick="switchTab('audit')">Audit Log</button>
+          <button class="tnav-link" id="nav-sla" onclick="switchTab('sla')">Service performance</button>
+          <button class="tnav-link" id="nav-audit" onclick="switchTab('audit')">Activity log</button>
         </div>
       </div>
 
-      <div class="tnav-sec">Intelligence</div>
-      <button class="tnav-item" id="nav-forecast" onclick="switchTab('forecast')"><svg class="tnav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>AI Forecast</button>
+      <div class="tnav-sec">Plan</div>
+      <button class="tnav-item" id="nav-forecast" onclick="switchTab('forecast')">Risk forecast</button>
+      <button class="tnav-item" id="nav-maintenance" hidden onclick="switchTab('maintenance')">Services</button>
       <div class="tnav-grp">
-        <span class="tnav-item" tabindex="0"><svg class="tnav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 010 20 15.3 15.3 0 010-20z"/></svg>Network</span>
+        <span class="tnav-item" tabindex="0">More</span>
         <div class="tnav-drop">
-          <button class="tnav-link" id="nav-network" onclick="switchTab('network')">Network Map</button>
-          <button class="tnav-link" id="nav-maintenance" onclick="switchTab('maintenance')">Maintenance Planner</button>
-          <button class="tnav-link" id="nav-alerts" onclick="switchTab('alerts')">Alerts<span class="nav-badge" id="nav-badge-alerts" style="display:none;">0</span></button>
+          <button class="tnav-link" id="nav-dashboard" onclick="switchTab('dashboard')">Portfolio health</button>
+          <button class="tnav-link" id="nav-support" onclick="switchTab('support')">Client support<span class="nav-badge" id="nav-badge-support" style="display:none;">0</span></button>
+          <button class="tnav-link" id="nav-team-members" onclick="switchTab('team-members')">Staff</button>
+          <button class="tnav-link" id="nav-providers" onclick="switchTab('providers')">Service providers<span class="nav-badge" id="nav-badge-providers" style="display:none;">0</span></button>
         </div>
       </div>
     </nav>
     <div class="tnav-theme" onclick="OpsTheme.toggle()" role="button" tabindex="0" aria-label="Toggle light/dark mode">
-      <svg class="tnav-ic" id="theme-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <svg class="tnav-ic" id="theme-ic" data-fg-icon="sun"></svg>
       <span class="tnav-theme-lbl" id="theme-lbl">Light mode</span>
       <div class="fg-toggle"><div class="fg-knob"></div></div>
     </div>
     <div class="tnav-user" onclick="toggleUserMenu(event)" role="button" tabindex="0">
       <span class="fg-av" id="user-avatar">--</span>
       <div class="tnav-user-info"><div class="user-name" id="user-name">—</div><div class="user-role-el" id="user-role">—</div></div>
-      <svg class="tnav-user-cx" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+      <svg class="tnav-user-cx" data-fg-icon="chevron"></svg>
       <div class="tb-user-menu" id="tb-user-menu">
-        <button id="nav-settings" onclick="event.stopPropagation();switchTab('settings');closeUserMenu()">Administration</button>
+        <button id="nav-settings" onclick="event.stopPropagation();switchTab('settings');closeUserMenu()">Settings</button>
         <button class="danger" onclick="event.stopPropagation();handleLogout()">Sign out</button>
       </div>
     </div>
@@ -1423,22 +96,21 @@
   <div class="content">
     <header class="opsbar">
       <span id="opsbar-title" style="display:none"></span>
-      <div style="display:flex;align-items:center;gap:12px;min-width:0">
-        <button class="opsbar-scope" style="display:flex;align-items:center;gap:7px;background:none;border:none;color:var(--ink);font-family:var(--ff-b);font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap">All estates
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg></button>
+      <div class="opsbar-context" style="display:flex;align-items:center;gap:12px;min-width:0">
+        <button class="opsbar-scope" style="display:flex;align-items:center;gap:7px;background:none;border:none;color:var(--ink);font-family:var(--ff-b);font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap">All estates</button>
         <span style="width:1px;height:18px;background:var(--border);flex:0 0 auto"></span>
         <span style="font-size:13px;color:var(--ink-2);font-weight:600;white-space:nowrap">Lagos · WAT</span>
       </div>
-      <div style="flex:1 1 auto"></div>
+      <div class="opsbar-spacer" style="flex:1 1 auto"></div>
       <div class="tb-search" id="tb-search-wrap" style="width:320px;flex:0 1 320px">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-        <input id="tb-search" type="text" autocomplete="off" placeholder="Jump to estate, device, incident…">
+        <svg data-fg-icon="search"></svg>
+        <input id="tb-search" type="text" autocomplete="off" aria-label="Search estates, devices and incidents" placeholder="Search the platform…">
         <kbd>⌘K</kbd>
         <div class="tb-search-drop" id="tb-search-drop"></div>
       </div>
       <div class="ntf-wrap" id="ntf-wrap">
         <button class="fg-iconbtn" onclick="OpsNotify.toggle(event)" aria-label="Notifications">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+          <svg data-fg-icon="notification"></svg>
           <span class="tb-badge" id="ntf-badge" style="display:none">0</span>
         </button>
       </div>
@@ -1478,50 +150,61 @@
 <!-- Alert Tray -->
 <div class="alert-panel" id="alertPanel">
   <div class="alert-panel-header">
-    <div class="alert-panel-title">Live Alerts</div>
+    <div class="alert-panel-title">Incident feed</div>
     <button class="alert-panel-close" onclick="toggleAlertPanel()" aria-label="Close">✕</button>
   </div>
   <div class="alert-panel-body" id="alertPanelBody">
     <div style="text-align:center;padding:52px 0;color:var(--ink-3);">
-      <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" style="margin:0 auto 12px;opacity:.3;display:block;"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-      <div style="font-size:var(--fs-sm);font-weight:600;color:var(--ink-2);">No active alerts</div>
-      <div style="font-size:var(--fs-xs);margin-top:3px;">All systems nominal</div>
+      <svg data-fg-icon="check" data-fg-size="36" style="margin:0 auto 12px;opacity:.3;display:block;"></svg>
+      <div style="font-size:var(--fs-sm);font-weight:600;color:var(--ink-2);">Incident feed not loaded</div>
+      <div style="font-size:var(--fs-xs);margin-top:3px;">Use the incident queue to review recorded activity.</div>
     </div>
   </div>
 </div>
 
 <!-- Scripts -->
 <script>
-    window.FG_BUILD = 'cmd8';
+    window.FG_BUILD = 'cmd10-polish';
     console.log('%c FlowGuard Ops ' + FG_BUILD + ' ', 'background:#6b8cff;color:#04222b;font-weight:700;border-radius:3px',
       '| tabs: dashboard, alerts, clients, properties, assets, sentinel, network, teams');
   </script>
-  <script src="js/config.js?v=sec4"></script>
-<script src="js/auth.js?v=sec6"></script>
-<script src="js/ops-modal.js?v=dsv5"></script>
+<script src="js/local-preview.js?v=geo1"></script>
+  <script src="js/config.js?v=local1"></script>
+  <script src="js/local-sandbox.js?v=local1"></script>
+<script src="js/auth.js?v=local3"></script>
+<script src="js/ops-modal.js?v=records2"></script>
+<script src="js/ops-charts.js?v=estate4"></script>
+<script src="js/ops-spatial.js?v=cmd10"></script>
 <script src="js/fg-ui.js?v=dsv5"></script>
-<script src="js/fg-paginator.js?v=sec2"></script>
-<script src="js/ops-dashboard.js?v=dsv5"></script>
-<script src="js/ops-situation.js?v=dsv5"></script>
-<script src="js/ops-user-management.js?v=dsv5"></script>
-<script src="js/ops-clients.js?v=dsv5"></script>
-<script src="js/ops-service-providers.js?v=dsv5"></script>
-<script src="js/ops-jobs.js?v=dsv5"></script>
-<script src="js/ops-properties.js?v=dsv5"></script>
-  <script src="js/ops-assets.js?v=dsv5"></script>
-  <script src="js/ops-network.js?v=dsv5"></script>
-  <script src="js/ops-sensors.js?v=dsv5"></script>
-<script src="js/ops-teams.js?v=dsv5"></script>
-<script src="js/ops-alerts-reports.js?v=dsv5"></script>
-<script src="js/ops-field-reports.js?v=dsv5"></script>
-<script src="js/ops-maintenance.js?v=dsv5"></script>
-<script src="js/ops-support.js?v=dsv5"></script>
-<script src="js/ops-forecast.js?v=dsv5"></script>
-<script src="js/ops-billing.js?v=dsv5"></script>
-<script src="js/ops-sla.js?v=dsv5"></script>
-<script src="js/ops-audit.js?v=dsv5"></script>
-<script src="js/ops-settings.js?v=dsv5"></script>
-<script src="js/ops-notify.js?v=dsv5"></script>
+<script src="js/fg-paginator.js?v=system305"></script>
+<script src="js/ops-dashboard.js?v=estate4"></script>
+<script src="js/ops-weather.js?v=estate4"></script>
+<script src="js/nigeria-states.js?v=geo1"></script>
+<script src="js/ops-geography.js?v=geo1"></script>
+<script src="js/ops-estate-monitoring.js?v=estate5"></script>
+<script src="js/ops-situation.js?v=estate4"></script>
+<script src="js/ops-local-shell.js?v=estate4"></script>
+<script src="js/ops-user-management.js?v=system305"></script>
+<script src="js/ops-clients.js?v=system305"></script>
+<script src="js/ops-service-providers.js?v=cmd9"></script>
+<script src="js/ops-jobs.js?v=cmd9"></script>
+<script src="js/ops-properties.js?v=estate4"></script>
+  <script src="js/ops-assets.js?v=system305"></script>
+  <script src="js/ops-network.js?v=system305"></script>
+  <script src="js/ops-sensors.js?v=system305"></script>
+<script src="js/ops-teams.js?v=system305"></script>
+<script src="js/ops-alerts-reports.js?v=system305"></script>
+<script src="js/ops-field-reports.js?v=realtime1"></script>
+<script src="js/ops-maintenance.js?v=system305"></script>
+<script src="js/ops-services.js?v=cmd9"></script>
+<script src="js/ops-service-intake.js?v=cmd9"></script>
+<script src="js/ops-support.js?v=system305"></script>
+<script src="js/ops-forecast.js?v=estate5"></script>
+<script src="js/ops-billing.js?v=cmd10"></script>
+<script src="js/ops-sla.js?v=system305"></script>
+<script src="js/ops-audit.js?v=system305"></script>
+<script src="js/ops-settings.js?v=system305"></script>
+<script src="js/ops-notify.js?v=cmd9"></script>
 
 <!-- three.js for the device 3D viewer — deferred so it parses in the background
      during page load and is ready before any device pop-out is opened -->
@@ -1541,289 +224,23 @@
   }
   Auth.install401Interceptor();
 
-  const TAB_META = {
-    dashboard:        { module:'Dashboard',    title:'Operations Overview'         },
-    situation:        { module:'Operations',   title:'Situation'                   },
-    clients:          { module:'Clients',      title:'Client Accounts'             },
-    providers:        { module:'Providers',    title:'Service Providers'           },
-    jobs:             { module:'Jobs',         title:'Field Jobs'                  },
-    properties:       { module:'Properties',   title:'Asset Registry'              },
-    assets:           { module:'Operations',   title:'Drainage Assets'             },
-    network:          { module:'Operations',   title:'Property Network'            },
-    sensors:          { module:'Operations',   title:'Sentinel'                    },
-    alerts:           { module:'Alerts',       title:'Incident Management'         },
-    teams:            { module:'Field',        title:'Team Dispatch'               },
-    'team-members':   { module:'Field',        title:'Team Members'                },
-    'field-reports':  { module:'Field',        title:'Field Reports'               },
-    maintenance:      { module:'Field',        title:'Maintenance Planner'         },
-    support:          { module:'Support',      title:'Support Inbox'               },
-    forecast:         { module:'Intelligence', title:'AI Risk Forecast'            },
-    reports:          { module:'Intelligence', title:'Reports & Analytics'         },
-    billing:          { module:'Intelligence', title:'Billing & Revenue'           },
-    sla:              { module:'Intelligence', title:'SLA Tracker'                 },
-    audit:            { module:'Intelligence', title:'Audit Log'                   },
-    settings:         { module:'Administration', title:'Administration'              },
-  };
+  const TAB_META = Object.fromEntries(Object.entries({
+    dashboard:'Portfolio',situation:'Monitor',clients:'Portfolio',providers:'Administration',
+    jobs:'Respond',properties:'Portfolio',assets:'Portfolio',network:'Monitor',sensors:'Monitor',
+    alerts:'Respond',teams:'Respond','team-members':'Administration','field-reports':'Respond',
+    maintenance:'Plan & analyse',support:'Respond',forecast:'Plan & analyse',reports:'Plan & analyse',
+    billing:'Portfolio',sla:'Plan & analyse',audit:'Administration',settings:'Administration'
+  }).map(([name,module])=>[name,{module,title:OpsModal.moduleTitles[name]}]));
 
   const ALL_TABS = Object.keys(TAB_META);
 
-  /* ── Welcome state ── */
-  function renderWelcome(container) {
-    const user    = Auth.getUser();
-    const first   = (user?.fullName || user?.full_name || 'there').split(' ')[0];
-    const hour    = new Date().getHours();
-    const tod     = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
-
-    container.innerHTML = `
-      <div class="welcome">
-
-        <!-- Greeting header -->
-        <div class="greeting">
-          <div class="greeting-left">
-            <div class="greeting-kicker">Good ${tod}</div>
-            <div class="greeting-name">
-              ${first},<br>
-              <span>let's operate.</span>
-            </div>
-            <div class="greeting-sub">
-              Your FlowGuard command centre is live. All systems operational.<br>
-              Select a module from the sidebar to get started.
-            </div>
-          </div>
-          <div class="greeting-kpis" id="g-kpis">
-            <div class="gkpi">
-              <div class="gkpi-val blue" id="g-sites">—</div>
-              <div class="gkpi-lbl">Active Sites</div>
-            </div>
-            <div class="gkpi">
-              <div class="gkpi-val red" id="g-alerts">—</div>
-              <div class="gkpi-lbl">Open Alerts</div>
-            </div>
-            <div class="gkpi">
-              <div class="gkpi-val" id="g-sensors">—</div>
-              <div class="gkpi-lbl">Sensors Online</div>
-            </div>
-            <div class="gkpi">
-              <div class="gkpi-val green" id="g-sla">—</div>
-              <div class="gkpi-lbl">SLA Compliance</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Section divider -->
-        <div class="section-divider">
-          <span class="section-divider-label">Quick Access</span>
-        </div>
-
-        <!-- Quick actions -->
-        <div class="quick-grid">
-          <div class="qtile qt-red" onclick="switchTab('alerts')">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;">
-              <div class="qtile-icon" style="background:var(--eb);">
-                <svg width="18" height="18" fill="none" stroke="var(--err)" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
-              </div>
-              <div class="qtile-arrow">
-                <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </div>
-            </div>
-            <div class="qtile-content">
-              <div class="qtile-label">Incident Management</div>
-              <div class="qtile-sub">Live alerts, triage and team dispatch</div>
-            </div>
-          </div>
-          <div class="qtile qt-blue" onclick="switchTab('properties')">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;">
-              <div class="qtile-icon" style="background:rgba(22,168,211,.09);">
-                <svg width="18" height="18" fill="none" stroke="var(--blue)" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-              </div>
-              <div class="qtile-arrow">
-                <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </div>
-            </div>
-            <div class="qtile-content">
-              <div class="qtile-label">Asset Registry</div>
-              <div class="qtile-sub">Inspection pipeline and deployments</div>
-            </div>
-          </div>
-          <div class="qtile qt-green" onclick="switchTab('teams')">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;">
-              <div class="qtile-icon" style="background:var(--ok-bg);">
-                <svg width="18" height="18" fill="none" stroke="var(--ok)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0112 0v2"/></svg>
-              </div>
-              <div class="qtile-arrow">
-                <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </div>
-            </div>
-            <div class="qtile-content">
-              <div class="qtile-label">Field Dispatch</div>
-              <div class="qtile-sub">Team status and deployment coordination</div>
-            </div>
-          </div>
-          <div class="qtile qt-amber" onclick="switchTab('reports')">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;">
-              <div class="qtile-icon" style="background:var(--amber-bg);">
-                <svg width="18" height="18" fill="none" stroke="var(--amber)" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-              </div>
-              <div class="qtile-arrow">
-                <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </div>
-            </div>
-            <div class="qtile-content">
-              <div class="qtile-label">Intelligence</div>
-              <div class="qtile-sub">SLA metrics, reports and analytics</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Section divider -->
-        <div class="section-divider">
-          <span class="section-divider-label">System Status</span>
-        </div>
-
-        <!-- Lower section -->
-        <div class="lower-grid">
-
-          <!-- Platform health -->
-          <div class="status-card">
-            <div class="sc-head">
-              <div class="sc-title">Platform Health</div>
-              <span class="status-badge nominal">All Systems</span>
-            </div>
-            <div class="sc-row">
-              <div class="sc-row-left">
-                <div class="sc-dot" style="background:var(--ok);box-shadow:0 0 0 3px var(--ok-bg);"></div>
-                <div>
-                  <div class="sc-row-label">Sentinel Network</div>
-                  <div class="sc-row-sub">IoT sensor infrastructure</div>
-                </div>
-              </div>
-              <span class="sc-row-val">Operational</span>
-            </div>
-            <div class="sc-row">
-              <div class="sc-row-left">
-                <div class="sc-dot" style="background:var(--ok);box-shadow:0 0 0 3px var(--ok-bg);"></div>
-                <div>
-                  <div class="sc-row-label">Alert Engine</div>
-                  <div class="sc-row-sub">Threshold monitoring & dispatch</div>
-                </div>
-              </div>
-              <span class="sc-row-val">Operational</span>
-            </div>
-            <div class="sc-row">
-              <div class="sc-row-left">
-                <div class="sc-dot" style="background:var(--ok);box-shadow:0 0 0 3px var(--ok-bg);"></div>
-                <div>
-                  <div class="sc-row-label">API Gateway</div>
-                  <div class="sc-row-sub">api.flowguard.ng</div>
-                </div>
-              </div>
-              <span class="sc-row-val">Operational</span>
-            </div>
-            <div class="sc-row">
-              <div class="sc-row-left">
-                <div class="sc-dot" style="background:var(--ok);box-shadow:0 0 0 3px var(--ok-bg);"></div>
-                <div>
-                  <div class="sc-row-label">Client Portal</div>
-                  <div class="sc-row-sub">app.flowguard.ng</div>
-                </div>
-              </div>
-              <span class="sc-row-val">Operational</span>
-            </div>
-          </div>
-
-          <!-- Service metrics -->
-          <div class="metrics-card">
-            <div class="mc-head">
-              <div class="mc-title">Service Overview</div>
-            </div>
-            <div class="mc-row">
-              <span class="mc-label">Active Deployments</span>
-              <span class="mc-val blue" id="m-sites">—</span>
-            </div>
-            <div class="mc-row">
-              <span class="mc-label">Sensors Online</span>
-              <span class="mc-val" id="m-sensors">—</span>
-            </div>
-            <div class="mc-row">
-              <span class="mc-label">Open Incidents</span>
-              <span class="mc-val amber" id="m-alerts">—</span>
-            </div>
-            <div class="mc-row">
-              <span class="mc-label">SLA Compliance</span>
-              <span class="mc-val green" id="m-sla">—</span>
-            </div>
-            <div class="mc-row">
-              <span class="mc-label">Monthly Revenue</span>
-              <span class="mc-val" id="m-mrr">—</span>
-            </div>
-          </div>
-
-          <!-- Recent activity -->
-          <div class="activity-card">
-            <div class="ac-head">
-              <div class="ac-title">Recent Activity</div>
-            </div>
-            <div class="ac-item">
-              <div class="ac-dot" style="background:var(--ok);"></div>
-              <div class="ac-text">
-                <div class="ac-label">Session started</div>
-                <div class="ac-time">Just now</div>
-              </div>
-            </div>
-            <div class="ac-item">
-              <div class="ac-dot" style="background:var(--blue);"></div>
-              <div class="ac-text">
-                <div class="ac-label">Dashboard loaded</div>
-                <div class="ac-time">Just now</div>
-              </div>
-            </div>
-            <div class="ac-item" id="ac-kpi-load" style="display:none;">
-              <div class="ac-dot" style="background:var(--ok);"></div>
-              <div class="ac-text">
-                <div class="ac-label">KPI data fetched</div>
-                <div class="ac-time" id="ac-kpi-time">—</div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    `;
-
-    loadWelcomeKPIs();
-  }
-
-  async function loadWelcomeKPIs() {
-    try {
-      if (typeof OpsModal === 'undefined') return;
-      const res  = await OpsModal.apiGet('/analytics/kpis');
-      const k    = res.data || {};
-      const set  = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-
-      set('g-sites',   k.activeSites   ?? '—');
-      set('g-alerts',  k.activeAlerts  ?? '—');
-      set('g-sensors', k.sensorsOnline?.online != null ? `${k.sensorsOnline.online}/${k.sensorsOnline.total}` : '—');
-      set('g-sla',     k.networkUptime != null ? k.networkUptime + '%' : '—');
-
-      set('m-sites',   k.activeSites   ?? '—');
-      set('m-sensors', k.sensorsOnline?.online != null ? `${k.sensorsOnline.online}/${k.sensorsOnline.total}` : '—');
-      set('m-alerts',  k.activeAlerts  ?? '—');
-      set('m-sla',     k.networkUptime != null ? k.networkUptime + '%' : '—');
-      set('m-mrr',     k.mrr != null ? '₦' + Number(k.mrr).toLocaleString() : '—');
-
-      const acLoad = document.getElementById('ac-kpi-load');
-      const acTime = document.getElementById('ac-kpi-time');
-      if (acLoad) acLoad.style.display = 'flex';
-      if (acTime) acTime.textContent = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-
-    } catch { /* silent */ }
-  }
+  // Each workspace owns its real read state; a missing module is not fabricated platform health.
 
   /* ── Nav & tab logic ── */
   function applyRoleNav() {
     ALL_TABS.forEach(tab => {
       const btn = document.getElementById(`nav-${tab}`);
-      if (btn) btn.style.display = Auth.hasNavAccess(tab) ? '' : 'none';
+      if (btn) btn.style.display = (tab === 'jobs' ? Auth.hasNavAccess('jobs') || Auth.hasNavAccess('maintenance') : Auth.hasNavAccess(tab)) ? '' : 'none';
     });
     // hide a top-nav group when all of its links are inaccessible
     document.querySelectorAll('.tnav-grp').forEach(grp => {
@@ -1842,9 +259,16 @@
   const _syncTimes  = {};    // tracks when each tab last fetched data
 
   var _fgScroll = {};
-  function switchTab(name) {
+  let _recordNavigation = 0;
+  let _visibleRoute = '';
+  function switchTab(name, options = {}) {
     if (!Auth.hasNavAccess(name)) return;
-    if (_switching) return; // ignore rapid clicks
+    if (!OpsModal.confirmLeave()) return;
+    if (_activeTab === 'settings' && !OpsSettings.confirmLeave(() => switchTab(name))) return;
+    if (_activeTab === 'field-reports' && !OpsFieldReports.confirmLeave(() => switchTab(name))) return;
+    if (!_deepLinking) _recordNavigation++;
+    if (document.querySelector('.ops-form-page')) OpsModal.close();
+    if (_switching && _activeTab === name && !_deepLinking) return; // deduplicate only the same destination
     _switching = true;
     setTimeout(() => { _switching = false; }, 300);
 
@@ -1858,6 +282,7 @@
 
     document.getElementById(`content-${name}`)?.classList.add('active');
     document.getElementById(`nav-${name}`)?.classList.add('active');
+    if (name === 'maintenance') document.getElementById('nav-jobs')?.classList.add('active');
     document.querySelectorAll('.tnav-grp.active').forEach(g => g.classList.remove('active'));
     document.getElementById(`nav-${name}`)?.closest('.tnav-grp')?.classList.add('active');
 
@@ -1866,14 +291,17 @@
     setTxt('topbar-module', m.module || name);
     setTxt('topbar-title', m.title || name);
     setTxt('opsbar-title', m.title || name);
+    if (window.OpsShell) OpsShell.refresh(name, m.title || name);
     document.title = `${m.title || name} · FlowGuard Ops`;
 
+    const previousTab = _activeTab;
     _activeTab = name;
+    _visibleRoute = '#' + name;
     updateSyncBadge(name);
 
     // Persist tab in URL hash — survives refresh without server roundtrip
-    if (window.location.hash !== '#' + name) {
-      history.replaceState(null, '', '#' + name);
+    if (options.history !== false && window.location.hash !== '#' + name) {
+      history[previousTab ? 'pushState' : 'replaceState'](null, '', '#' + name);
     }
 
     // Returning to a module should show its list — not the last record you had
@@ -1882,12 +310,14 @@
     if (!_deepLinking) {
       const c = document.getElementById(`content-${name}`);
       if (c) c.removeAttribute('data-rendered');
+      if (window.OpsShell) OpsShell.restoreList(name);
     }
 
     renderTab(name);
 
     // restore scroll position for the module we're returning to
     try { const c = document.querySelector('.app-neon > .content'); const y = _fgScroll[name]; if (c && y) requestAnimationFrame(() => { c.scrollTop = y; }); } catch (_) {}
+    return true;
   }
 
   function stampSync(name) {
@@ -1940,8 +370,6 @@
     try {
       if (mod) {
         mod.render(c);
-      } else if (name === 'dashboard') {
-        renderWelcome(c);
       } else {
         renderTabError(c, name, 'Module not loaded');
         return; // don't mark as rendered so retry works
@@ -1955,23 +383,12 @@
   }
 
   function renderTabError(container, name, message) {
-    container.innerHTML = `
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
-        height:300px;color:var(--ink-3);">
-        <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.3"
-          viewBox="0 0 24 24" style="margin-bottom:14px;opacity:.3;">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-        </svg>
-        <div style="font-size:var(--fs-md);font-weight:600;color:var(--ink-2);margin-bottom:6px;">
-          Failed to load ${name}
-        </div>
-        <div style="font-size:var(--fs-sm);margin-bottom:18px;">${message || 'Unknown error'}</div>
-        <button class="btn-ghost" onclick="reloadTab('${name}')">Retry</button>
-      </div>`;
+    container.innerHTML = OpsModal.failure(OpsModal.moduleTitles[name] || 'Workspace',{message:message || 'Module not loaded'},`reloadTab('${OpsModal.sid(name)}')`,true);
   }
 
   function reloadTab(name) {
+    if (name === 'settings' && !OpsSettings.confirmLeave(() => reloadTab(name))) return;
+    if (name === 'field-reports' && !OpsFieldReports.confirmLeave(() => reloadTab(name))) return;
     const c = document.getElementById(`content-${name}`);
     if (c) { c.removeAttribute('data-rendered'); c.innerHTML = ''; }
     delete _syncTimes[name];
@@ -1984,13 +401,11 @@
   }
 
   function updateAlertCount(n) {
-    const b = document.getElementById('nav-badge-alerts');
+    OpsModal.updateNavCount('alerts',n);
     const t = document.getElementById('topbar-alert-badge');
     if (n > 0) {
-      if (b) { b.textContent = n; b.style.display = 'inline-flex'; }
       if (t) { t.textContent = n; t.style.display = 'flex'; }
     } else {
-      if (b) b.style.display = 'none';
       if (t) t.style.display = 'none';
     }
   }
@@ -2007,10 +422,10 @@
       const res    = await fetch(`${CONFIG.API_BASE}/alerts`, {
         headers: { 'Authorization': 'Bearer ' + token }
       });
-      if (!res.ok) return;
+      if (!res.ok) throw new Error('Incident count unavailable');
       const data   = await res.json();
-      const alerts = data.data || data.alerts || [];
-      updateAlertCount(Array.isArray(alerts) ? alerts.length : 0);
+      const alerts = OpsModal.readArray(data,'Incident feed',['data','alerts']);
+      updateAlertCount(OpsModal.scopeCount(alerts,'alerts'));
 
       // If alerts tab is currently active and rendered, silently refresh it
       const alertTab = document.getElementById('content-alerts');
@@ -2021,7 +436,7 @@
         alertTab.setAttribute('data-rendered', 'true');
       }
     } catch {
-      // Silent — network issue, don't surface to user
+      updateAlertCount(null);
     }
 
     // Poll field reports awaiting review — update sidebar badge
@@ -2031,30 +446,20 @@
       const res = await fetch(`${CONFIG.API_BASE}/field-reports?status=submitted&limit=100`, {
         headers: { 'Authorization': 'Bearer ' + token }
       });
-      if (!res.ok) return;
+      if (!res.ok) throw new Error('Field report count unavailable');
       const data = await res.json();
-      const pending = (data.data || []).length;
-      const badge = document.getElementById('nav-badge-field-reports');
-      if (badge) {
-        if (pending > 0) { badge.textContent = pending; badge.style.display = 'inline-flex'; }
-        else             { badge.style.display = 'none'; }
-      }
-    } catch { /* silent */ }
+      OpsModal.updateNavCount('field-reports',OpsModal.scopeCount(OpsModal.readArray(data,'Field report feed'),'field-reports'));
+    } catch { OpsModal.updateNavCount('field-reports',null); }
 
     // Poll open client support tickets — update Support badge
     try {
       const token = Auth.getToken();
       if (!token || (typeof Auth.can === 'function' && !Auth.can('support.view'))) return;
       const res = await fetch(`${CONFIG.API_BASE}/tickets/support`, { headers: { 'Authorization': 'Bearer ' + token } });
-      if (!res.ok) return;
-      const rows = (await res.json()).data || [];
-      const open = rows.filter(t => !['resolved', 'closed'].includes(String(t.status || '').toLowerCase())).length;
-      const b = document.getElementById('nav-badge-support');
-      if (b) {
-        if (open > 0) { b.textContent = open; b.style.display = 'inline-flex'; }
-        else          { b.style.display = 'none'; }
-      }
-    } catch { /* silent */ }
+      if (!res.ok) throw new Error('Support count unavailable');
+      const rows = OpsModal.readArray(await res.json(),'Support request feed');
+      OpsModal.updateNavCount('support',OpsModal.scopeCount(rows,'support'));
+    } catch { OpsModal.updateNavCount('support',null); }
   }
 
   // ── Clock ─────────────────────────────────────────────────────────────
@@ -2087,9 +492,8 @@
         const ic = document.getElementById('theme-ic');
         // label + icon show the mode you'll switch TO (matches client portal)
         if (lbl) lbl.textContent = t === 'dark' ? 'Light mode' : 'Dark mode';
-        if (ic) ic.innerHTML = t === 'dark'
-          ? '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'
-          : '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
+        if (ic) ic.outerHTML = OpsModal.icon(t === 'dark' ? 'sun' : 'moon').replace('<svg ','<svg class="tnav-ic" id="theme-ic" ');
+
       }
       function set(t) {
         localStorage.setItem('ops_theme', t);
@@ -2132,7 +536,7 @@
         ]);
         idx = [
           ...(c.data || []).map(x => ({ kind: 'Client', tab: 'clients', name: x.company_name || x.name || x.estate_manager_name || '', sub: x.estate_manager_email || '' })),
-          ...(p.data || []).map(x => ({ kind: 'Property', tab: 'properties', name: x.property_name || x.property_id || '', sub: [x.city, x.state].filter(Boolean).join(', ') })),
+          ...(p.data || []).map(x => ({ kind: 'Estate', tab: 'properties', name: x.property_name || x.property_id || '', sub: [x.city, x.state].filter(Boolean).join(', ') })),
         ].filter(x => x.name);
         return idx;
       }
@@ -2200,7 +604,7 @@
       if (_activeTab && !Auth.hasNavAccess(_activeTab)) switchTab(Auth.getDefaultTab());
     });
     initTopbarWidgets();
-    if (typeof OpsNotify !== 'undefined') OpsNotify.init();
+    if (!window.FG_LOCAL_PREVIEW && typeof OpsNotify !== 'undefined') OpsNotify.init();
     updateClock();
     setInterval(updateClock, 1000);
     setInterval(() => { if (_activeTab) updateSyncBadge(_activeTab); }, 60000);
@@ -2209,20 +613,15 @@
     // ── Tab restore from URL hash ──────────────────────────────────────
     // If the URL has a hash (#alerts, #clients, etc.) restore that tab.
     // Falls back to the user's role-default tab if hash is invalid or inaccessible.
-    const hashTab = window.location.hash.replace('#', '');
-    const startTab = (hashTab && ALL_TABS.includes(hashTab) && Auth.hasNavAccess(hashTab))
-      ? hashTab
-      : Auth.getDefaultTab();
-
-    switchTab(startTab);
-
-    // Handle browser back/forward navigation updating the tab
-    window.addEventListener('popstate', () => {
-      const h = window.location.hash.replace('#', '');
-      if (h && ALL_TABS.includes(h) && Auth.hasNavAccess(h)) {
-        switchTab(h);
-      }
-    });
+    restoreRoute();
+    // Both events can fire for one back action; deduplicate the same URL.
+    const restoreHistory = () => {
+      if (_visibleRoute === window.location.hash) return;
+      const previous = _visibleRoute;
+      if (restoreRoute() !== true && previous) history.replaceState(null,'',previous);
+    };
+    window.addEventListener('popstate', restoreHistory);
+    window.addEventListener('hashchange', restoreHistory);
   });
 
   // ── Cross-module deep-link ────────────────────────────────────────────
@@ -2230,6 +629,7 @@
   // Powers the bold relationship links (OpsModal.link) across detail screens.
   const FG_OPEN = {
     clients:         ['OpsClients',        'open'],
+    providers:       ['OpsProviders',      'openDetail'],
     properties:      ['OpsProperties',     'open'],
     assets:          ['OpsAssets',         'open'],
     sensors:         ['OpsSensors',        'viewSensor'],
@@ -2237,20 +637,42 @@
     billing:         ['OpsBilling',        'open'],
     'team-members':  ['OpsUserManagement', 'open'],
     teams:           ['OpsTeams',          'viewTeam'],
+    jobs:            ['OpsJobs',           'openJob'],
     maintenance:     ['OpsMaintenance',    'openJob'],
     'field-reports': ['OpsFieldReports',   'openReport'],
+    reports:         ['OpsReports',       'open'],
     support:         ['OpsSupport',        'open'],
   };
-  function fgOpen(tab, id) {
+  function restoreRoute() {
+    const route = window.location.hash.slice(1);
+    const slash = route.indexOf('/');
+    const name = slash < 0 ? route : route.slice(0,slash);
+    const tab = ({'service-providers':'providers',incidents:'alerts',property:'properties',ticket:'support'})[name] || name;
+    if (!ALL_TABS.includes(tab) || !Auth.hasNavAccess(tab)) return switchTab(Auth.getDefaultTab(), {history:false});
+    if (slash >= 0 && FG_OPEN[tab]) {
+      try { return fgOpen(tab,decodeURIComponent(route.slice(slash+1)),{history:false}); }
+      catch (_) { OpsModal.toast('This record link is invalid.','watch'); }
+    }
+    return switchTab(tab,{history:false});
+  }
+  function fgOpen(tab, id, options = {}) {
     if (!tab || id == null || id === '') return;
+    tab = ({'service-providers':'providers',incidents:'alerts',property:'properties',ticket:'support'})[tab] || tab;
+    if (_activeTab === 'settings' && !OpsSettings.confirmLeave(() => fgOpen(tab,id))) return;
+    if (_activeTab === 'field-reports' && !OpsFieldReports.confirmLeave(() => fgOpen(tab,id))) return;
     if (typeof Auth !== 'undefined' && Auth.hasNavAccess && !Auth.hasNavAccess(tab)) {
       try { OpsModal.toast('You do not have access to that module', 'warning'); } catch (e) {}
       return;
     }
     // Don't reset this tab to its list — we're about to open a specific record.
     _deepLinking = true;
-    switchTab(tab);
+    const navigated = switchTab(tab, {history:false});
     _deepLinking = false;
+    if (!navigated) return;
+    const route = '#' + tab + '/' + encodeURIComponent(String(id));
+    _visibleRoute = route;
+    if (options.history !== false && window.location.hash !== route) history.pushState(null,'',route);
+    const navigation = ++_recordNavigation;
     const spec = FG_OPEN[tab];
     if (!spec) return;
     const [g, m] = spec;
@@ -2259,23 +681,33 @@
     // modules render detail from an in-memory list that loads asynchronously,
     // so we re-invoke open() until the record's detail actually appears.
     const shown = () => !!(content && content.querySelector(
-      '[class*="detail-top"], [class*="detail-screen"], .sn-drawer, .report-detail, .tmv-back'));
+      '[class*="detail-top"], [class*="detail-screen"], .fgd-header, .ald-header, .prd-header, .cld-header, .sn-drawer, .report-detail, .tmv-back'));
     let tries = 15;
     // Always invoke open() on the first tick (so same-module links re-navigate
     // even when a detail is already on screen); after that, only keep retrying
     // while no detail has rendered yet — this covers modules whose detail reads
     // from an in-memory list that is still loading.
-    (function attempt(first) {
+    (async function attempt(first) {
+      if (navigation !== _recordNavigation || _activeTab !== tab) return;
       if (!first && shown()) return;
-      const mod = window[g];
+      // Feature modules are top-level const bindings, not window properties.
+      const modules = { OpsClients, OpsProviders, OpsProperties, OpsAssets, OpsSensors, OpsAlerts, OpsBilling, OpsUserManagement, OpsTeams, OpsJobs, OpsMaintenance, OpsFieldReports, OpsSupport, OpsReports };
+      const mod = modules[g] || window[g];
       if (mod && typeof mod[m] === 'function') {
-        try { mod[m](id); } catch (e) { console.error('[FlowGuard] fgOpen', tab, id, e); }
+        try { if (tab === 'alerts') await mod[m](id, true); else await mod[m](id); } catch (e) { console.error('[FlowGuard] fgOpen', tab, id, e); }
       }
-      if (tries-- > 0) setTimeout(() => attempt(false), 180);
+      if (navigation === _recordNavigation && tries-- > 0) setTimeout(() => attempt(false), 180);
     })(true);
+    return true;
   }
 
   window.switchTab        = switchTab;
+  window.fgListRoute      = () => {
+    if (!_activeTab) return;
+    _recordNavigation++;
+    _visibleRoute = '#' + _activeTab;
+    if (window.location.hash !== _visibleRoute) history.pushState(null,'',_visibleRoute);
+  };
   window.fgOpen           = fgOpen;
   window.reloadTab        = reloadTab;
   window.updateAlertCount = updateAlertCount;

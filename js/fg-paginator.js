@@ -11,6 +11,19 @@
  */
 
 const FGPaginator = (function () {
+  const instances = new Map();
+
+  function snapshot(root) {
+    const pages = {};
+    instances.forEach((pg,id)=>{ if (root.contains(document.getElementById(id))) pages[id] = pg.page(); });
+    return pages;
+  }
+
+  function restore(root, pages = {}) {
+    Object.entries(pages).forEach(([id,page])=>{
+      if (root.contains(document.getElementById(id))) instances.get(id)?.setPage(page, {scroll:false});
+    });
+  }
 
   function create(items = [], options = {}) {
     const PAGE_SIZE   = options.pageSize    || 25;
@@ -45,14 +58,16 @@ const FGPaginator = (function () {
       const existing = document.getElementById(`${CONTAINER}-pgn`);
       if (existing) existing.remove();
 
-      if (_items.length <= PAGE_SIZE) return; // no controls needed
+      if (!_items.length) return;
 
       const total   = totalPages();
       const el      = document.createElement('div');
       el.id         = `${CONTAINER}-pgn`;
+      el.setAttribute('role', 'navigation');
+      el.setAttribute('aria-label', 'Record pages');
       el.style.cssText = `
-        display:flex; align-items:center; justify-content:space-between;
-        padding:12px 20px;
+        display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+        padding:8px 12px;
         border-top:1px solid var(--border,#dae6ef);
         background:var(--surface-2,#f7fafc);
         font-family:var(--ff-b,'Inter',sans-serif);
@@ -64,7 +79,7 @@ const FGPaginator = (function () {
       const end   = Math.min(_page * PAGE_SIZE, _items.length);
       const info  = document.createElement('span');
       info.style.cssText = 'color:var(--ink-3,#6b8fa3);';
-      info.textContent   = `Showing ${start}–${end} of ${_items.length}`;
+      info.textContent   = `Showing ${start}–${end} of ${_items.length} returned matches`;
 
       // Page buttons
       const btns = document.createElement('div');
@@ -72,14 +87,17 @@ const FGPaginator = (function () {
 
       function btn(label, page, active = false, disabled = false) {
         const b = document.createElement('button');
-        b.innerHTML  = label;
+        b.type = 'button';
+        b.textContent = label;
+        b.setAttribute('aria-label', label === '←' ? 'Previous page' : label === '→' ? 'Next page' : `Page ${page}`);
+        if (active) b.setAttribute('aria-current', 'page');
         b.disabled   = disabled;
         b.style.cssText = `
           min-width:32px; height:32px; padding:0 8px;
-          border-radius:var(--rs,9px);
-          border:1px solid ${active ? 'var(--navy,#0a2a3d)' : 'var(--border,#dae6ef)'};
-          background:${active ? 'var(--navy,#0a2a3d)' : 'var(--surface,#fff)'};
-          color:${active ? '#fff' : disabled ? 'var(--ink-4,#9eb8c8)' : 'var(--ink-2,#2d5068)'};
+          border-radius:var(--radius-control);
+          border:1px solid ${active ? 'var(--blue-hi)' : 'var(--border)'};
+          background:${active ? 'var(--neon-trace)' : 'var(--surface)'};
+          color:${active ? 'var(--blue-hi)' : disabled ? 'var(--ink-4)' : 'var(--ink-2)'};
           font-family:var(--ff-b,'Inter',sans-serif);
           font-size:var(--fs-base); font-weight:${active ? '700' : '500'};
           cursor:${disabled ? 'not-allowed' : 'pointer'};
@@ -120,18 +138,19 @@ const FGPaginator = (function () {
       btns.appendChild(btn('→', _page + 1, false, _page === total));
 
       el.appendChild(info);
-      el.appendChild(btns);
+      if(total>1) el.appendChild(btns);
 
       // Attach below the container
       const container = document.getElementById(CONTAINER);
       if (container) container.appendChild(el);
     }
 
-    function setPage(p) {
-      _page = Math.max(1, Math.min(p, totalPages()));
+    function setPage(p, options = {}) {
+      if (!Number.isFinite(Number(p))) return;
+      _page = Math.max(1, Math.min(Math.floor(Number(p)), totalPages()));
       _draw();
       // Scroll container into view
-      if (CONTAINER) {
+      if (CONTAINER && options.scroll !== false) {
         const c = document.getElementById(CONTAINER);
         if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
@@ -146,9 +165,11 @@ const FGPaginator = (function () {
     function count() { return _items.length; }
     function page()  { return _page; }
 
-    return { render, setPage, update, count, page };
+    const instance = { render, setPage, update, count, page };
+    if (CONTAINER) instances.set(CONTAINER, instance);
+    return instance;
   }
 
-  return { create };
+  return { create, snapshot, restore };
 
 })();

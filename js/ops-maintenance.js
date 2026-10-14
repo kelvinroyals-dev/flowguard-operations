@@ -1,45 +1,26 @@
 /* ══════════════════════════════════════════════════════════════
-   FlowGuard Ops — MAINTENANCE PLANNER
-   A kanban board over the same `tickets` rows the client portal and
-   field crews already use — this just gives ops a scheduling surface
-   over work that has a work_type/crew/date attached to it (see the
-   backend note in routes/tickets.js above GET /tickets/planner).
-   Columns: Scheduled → In Progress → Complete. Complete is read-only
-   here — closing a job stays on field.html's /complete endpoint,
-   which is where the client's outcome record actually gets written.
+   FlowGuard Services — LEGACY MAINTENANCE RECORDS
+   Existing ticket-based work retains its original identifiers,
+   assignments and completion lifecycle. New work uses provider work
+   orders; this compatibility reader is not a second scheduling system.
    ══════════════════════════════════════════════════════════════ */
 const OpsMaintenance = (function () {
   const canMng = () => !(window.Auth && Auth.can) || Auth.can('maintenance.manage');
+  function requireManage() { if (canMng()) return true; OpsModal.toast('You do not have permission to change maintenance work', 'watch'); return false; }
   let _jobs = [];
-  let _teams = [];
-  let _properties = [];
-  let _loaded = false;
   let _container = null;
+  let _teamScope = '';
+  function scopedJobs() { return _teamScope ? _jobs.filter(j=>String(j.assigned_team)===_teamScope) : _jobs; }
+  function forTeam(id) { if (!Auth.hasNavAccess('maintenance')) return OpsModal.toast('You do not have access to maintenance', 'watch');_teamScope=String(id);_mstatus='all';_mterm='';switchTab('maintenance');if (_container) render(_container); }
+  function clearScope() { _teamScope='';if (_container) render(_container); }
   const _dash = v => (v == null || v === '') ? '—' : v;
 
-  const MP_EXTRA = `<style>
-    .ops-table tbody tr.clickable { cursor:pointer; transition:background .12s; }
-    .ops-table tbody tr.clickable:hover { background:var(--surface-2,#f2f8fb); }
-    .mp-back { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:8px 13px; cursor:pointer; }
-    .mp-detail-top { display:flex; align-items:center; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
-    .mp-detail-name { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; }
-    .mp-detail-meta { font-size:var(--fs-sm); color:var(--ink-3); margin-top:3px; }
-    .mp-detail-actions { margin-left:auto; display:flex; gap:8px; }
-    .mp-sec { background:var(--surface); border:1px solid var(--border); border-radius:var(--r,14px); box-shadow:var(--sh-xs); margin-bottom:14px; overflow:hidden; }
-    .mp-sec-h { padding:12px 18px; border-bottom:1px solid var(--border); font-family:var(--ff-d); font-size:var(--fs-sm); font-weight:700; color:var(--ink); display:flex; justify-content:space-between; }
-    .mp-sec-b { padding:16px 18px; }
-    .mp-fgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px 22px; }
-    .mp-f .k { font-size:var(--fs-2xs); font-weight:700; letter-spacing:.9px; text-transform:uppercase; color:var(--ink-3); }
-    .mp-f .v { font-size:var(--fs-md); color:var(--ink); font-weight:600; margin-top:3px; }
-    .mp-e { color:var(--ink-3); font-size:var(--fs-sm); padding:6px 0; }
-    .mp-needs { font-size:var(--fs-xs); color:var(--ink-4); font-style:italic; }
-  </style>`;
 
   const WORK_TYPES = [
-    { value: 'silt_clearing', label: 'Silt Clearing' },
-    { value: 'enzyme_refill', label: 'Enzyme Refill' },
-    { value: 'node_repair',   label: 'Node Repair' },
-    { value: 'maintenance',   label: 'General Maintenance' },
+    { value: 'silt_clearing', label: 'Silt clearing' },
+    { value: 'enzyme_refill', label: 'Enzyme refill' },
+    { value: 'node_repair',   label: 'Device repair' },
+    { value: 'maintenance',   label: 'General maintenance' },
     { value: 'inspection',    label: 'Inspection' },
   ];
   const WORK_TYPE_LABEL = Object.fromEntries(WORK_TYPES.map(w => [w.value, w.label]));
@@ -48,30 +29,23 @@ const OpsMaintenance = (function () {
 
   async function render(container) {
     _container = container;
-    container.innerHTML = styles() + MP_EXTRA + shell();
+    container.innerHTML = shell();
     await load();
   }
   function back() { if (_container) render(_container); }
 
-  function progressOf(s) { return s === 'resolved' || s === 'closed' ? 100 : s === 'in_progress' ? 50 : s === 'scheduled' ? 0 : 0; }
+  function progressOf(s) { return OpsModal.label(s || 'unknown'); }
 
   async function load() {
-    const board = document.getElementById('mp-board');
+    const board = document.getElementById('mp-board-body');
     try {
-      const [jobsRes, teamsRes, propsRes] = await Promise.all([
-        OpsModal.apiGet('/tickets/planner'),
-        OpsModal.apiGet('/teams').catch(() => ({ data: [] })),
-        OpsModal.apiGet('/properties').catch(() => ({ data: [] })),
-      ]);
-      _jobs = jobsRes.data || [];
-      _teams = teamsRes.data || [];
-      _properties = (propsRes.data || propsRes.data?.properties || []);
-      if (!Array.isArray(_properties)) _properties = _properties.properties || [];
-      _loaded = true;
+      const jobsRes = await OpsModal.apiGet('/tickets/planner');
+      if (!Array.isArray(jobsRes.data)) throw new Error('Maintenance list was not supplied');
+      _jobs = jobsRes.data;
       drawKpis();
       drawBoard();
     } catch (err) {
-      if (board) board.innerHTML = `<div class="mp-empty">Couldn't load the planner — ${esc(err.message || 'network error')}.</div>`;
+      if (board) board.innerHTML = OpsModal.failure('Maintenance',err,"reloadTab('maintenance')");
     }
   }
 
@@ -80,21 +54,23 @@ const OpsMaintenance = (function () {
     if (!el) return;
     const scheduled = _jobs.filter(j => j.status === 'scheduled').length;
     const inProgress = _jobs.filter(j => j.status === 'in_progress').length;
-    const completedThisWeek = _jobs.filter(j => j.status === 'resolved' && j.completed_at &&
-      (Date.now() - new Date(j.completed_at).getTime()) < 7 * 24 * 3600 * 1000).length;
+    const completedThisWeek = _jobs.filter(j => {
+      const age = j.completed_at ? Date.now() - new Date(j.completed_at).getTime() : NaN;
+      return j.status === 'resolved' && age >= 0 && age < 7 * 24 * 3600 * 1000;
+    }).length;
     const overdue = _jobs.filter(j => j.status === 'scheduled' && j.scheduled_date &&
-      new Date(j.scheduled_date).getTime() < Date.now()).length;
+      OpsModal.pastDue(j.scheduled_date)).length;
     el.innerHTML = OpsModal.kpiStrip([
       { label: 'Scheduled', value: scheduled },
-      { label: 'In Progress', value: inProgress },
+      { label: 'In progress', value: inProgress },
       { label: 'Completed (7d)', value: completedThisWeek, subClass: 'ok' },
       { label: 'Overdue', value: overdue, sub: overdue ? 'Past scheduled date' : 'None', subClass: overdue ? 'err' : 'ok' },
-    ]);
+    ]) + OpsModal.provenance([['Scope',`${_jobs.length} maintenance tasks returned`],['Completion window','Previous 7 days']],'Counts precede list filters and are not platform-wide totals. Only supplied scheduled dates establish overdue tasks.');
   }
 
   const COLUMNS = [
     { key: 'scheduled',   title: 'Scheduled' },
-    { key: 'in_progress', title: 'In Progress' },
+    { key: 'in_progress', title: 'In progress' },
     { key: 'resolved',    title: 'Complete' },
   ];
 
@@ -102,43 +78,45 @@ const OpsMaintenance = (function () {
     const board = document.getElementById('mp-board-body');
     if (!board) return;
     if (!_jobs.length) {
-      board.innerHTML = `<div class="mp-empty"><b>No scheduled work.</b><br>Jobs appear here once they carry a work type, a crew, or a scheduled date.<br><br>${canMng() ? `<button class="mp-add" onclick="OpsMaintenance.newJob()">+ New Job</button>` : ''}</div>`;
+      board.innerHTML = OpsModal.emptyState('','No legacy maintenance records returned','New provider work is coordinated through Services → Provider work orders.');
       return;
     }
-    let rows = _jobs.slice().sort((a, b) => new Date(a.scheduled_date || a.created_at) - new Date(b.scheduled_date || b.created_at));
+    let rows = scopedJobs().slice().sort((a, b) => new Date(a.scheduled_date || a.created_at) - new Date(b.scheduled_date || b.created_at));
     if (_mstatus !== 'all') rows = rows.filter(j => (j.status || '') === _mstatus);
     if (_mterm) rows = rows.filter(j => `${j.ticket_id || ''} ${j.property_name || ''} ${j.title || ''} ${j.work_type || ''} ${j.team_name || ''}`.toLowerCase().includes(_mterm));
+    FGPaginator.create(rows,{pageSize:25,containerId:'mp-board-body'}).render(renderBoardRows);
+  }
+  function renderBoardRows(rows) {
+    const board=document.getElementById('mp-board-body'); if(!board) return;
     const pc = p => PRIORITY_COLOR[p] || PRIORITY_COLOR.normal;
-    const statusPill = s => { const m = { scheduled: 'warn', in_progress: 'warn', resolved: 'ok', closed: 'ok' }; return `<span class="lv-status ${m[s] || 'neutral'}">${(s || '').replace(/_/g, ' ') || '—'}</span>`; };
-    if (!rows.length) { board.innerHTML = `<div class="mp-empty">No work orders match this filter.</div>`; return; }
+    const statusPill = s => OpsModal.status(s,null,null,'maintenance');
+    if (!rows.length) { board.innerHTML = OpsModal.emptyState('',_mterm || _mstatus!=='all'?'No matching maintenance tasks':'No maintenance tasks returned',_mterm || _mstatus!=='all'?'Adjust the search or status filter to review other tasks.':'No maintenance tasks were returned by this feed.'); return; }
     const L = OpsModal.link;
     board.innerHTML = `
       <div class="lv-scroll">
-        <table class="lv-table">
+        <table class="lv-table fg-mobile-cards">
           <thead><tr>
-            <th>Work order</th><th>Property</th><th>Task</th><th>Priority</th>
-            <th>Team</th><th>Due date</th><th>Status</th><th>Progress</th>
+            <th scope="col">Maintenance task</th><th scope="col">Estate</th><th scope="col">Work type</th><th scope="col">Priority</th>
+            <th scope="col">Team</th><th scope="col">Due date</th><th scope="col">Status</th>
           </tr></thead>
           <tbody>
             ${rows.map(j => {
-              const overdue = j.status === 'scheduled' && j.scheduled_date && new Date(j.scheduled_date).getTime() < Date.now();
-              const prog = progressOf(j.status);
+              const overdue = j.status === 'scheduled' && OpsModal.pastDue(j.scheduled_date);
               const propCell = j.property_id ? L('properties', j.property_id, j.property_name || j.property_id) : esc(_dash(j.property_name));
               const teamCell = j.assigned_team ? L('teams', j.assigned_team, j.team_name || j.assigned_team) : (j.team_name ? esc(j.team_name) : '<span class="lv-dash">Unassigned</span>');
-              return `<tr class="clickable" onclick="OpsMaintenance.openJob('${OpsModal.sid(j.ticket_id)}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsMaintenance.openJob('${OpsModal.sid(j.ticket_id)}')}">
-                <td>
+              return `<tr class="clickable" onclick="OpsMaintenance.openJob('${OpsModal.sid(j.ticket_id)}')">
+                <td data-label="Maintenance task">
                   <div class="lv-name-cell">
-                    <div class="lv-avatar" style="background:var(--surface-3);color:var(--ink-3);border:1px solid var(--border);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 01-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 015.4-5.4l-2.6 2.6-1.7-1.7 2.6-2.6z"/></svg></div>
-                    <div style="min-width:0;"><div class="lv-name lv-mono">${esc(j.ticket_id)}</div></div>
+                    <div class="lv-avatar" aria-hidden="true">${OpsModal.entityIcon('maintenance')}</div>
+                    <div style="min-width:0;"><button type="button" class="record-link lv-name" onclick="event.stopPropagation();OpsMaintenance.openJob('${OpsModal.sid(j.ticket_id)}')">${esc(j.title || WORK_TYPE_LABEL[j.work_type] || 'Maintenance task')}</button><div class="lv-source lv-mono">${esc(j.ticket_id)}</div></div>
                   </div>
                 </td>
-                <td>${propCell}</td>
-                <td>${esc(j.title || WORK_TYPE_LABEL[j.work_type] || (j.work_type || '').replace(/_/g, ' ') || '—')}</td>
-                <td><span style="color:${pc(j.priority)};background:${pc(j.priority)}18;padding:2px 8px;border-radius:5px;font-size:var(--fs-2xs);font-weight:700;">${esc(j.priority || 'normal')}</span></td>
-                <td>${teamCell}</td>
-                <td class="lv-mono" style="${overdue ? 'color:var(--err);font-weight:700;' : ''}">${j.scheduled_date ? OpsModal.fmtDate(j.scheduled_date) : '—'}${overdue ? ' · overdue' : ''}</td>
-                <td>${statusPill(j.status)}</td>
-                <td><div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;min-width:40px;height:5px;border-radius:3px;background:var(--surface-3);overflow:hidden;"><div style="height:100%;width:${prog}%;background:var(--ok);"></div></div><span style="font-size:var(--fs-2xs);color:var(--ink-3);font-family:var(--ff-m);">${prog}%</span></div></td>
+                <td data-label="Estate">${propCell}</td>
+                <td data-label="Work type">${esc(WORK_TYPE_LABEL[j.work_type] || OpsModal.label(j.work_type))}</td>
+                <td data-label="Priority">${OpsModal.status(j.priority,null,null,'priority')}</td>
+                <td data-label="Team">${teamCell}</td>
+                <td data-label="Due date" class="lv-mono" style="${overdue ? 'color:var(--err);font-weight:700;' : ''}">${j.scheduled_date ? OpsModal.fmtDate(j.scheduled_date) : '—'}${overdue ? ' · overdue' : ''}</td>
+                <td data-label="Status">${statusPill(j.status)}</td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -147,7 +125,7 @@ const OpsMaintenance = (function () {
   }
 
   function jobCard(j) {
-    const overdue = j.status === 'scheduled' && j.scheduled_date && new Date(j.scheduled_date).getTime() < Date.now();
+    const overdue = j.status === 'scheduled' && OpsModal.pastDue(j.scheduled_date);
     const pc = PRIORITY_COLOR[j.priority] || PRIORITY_COLOR.normal;
     const canAdvance = j.status === 'scheduled' || j.status === 'in_progress';
     return `
@@ -157,7 +135,7 @@ const OpsMaintenance = (function () {
           <span class="mp-card-pri" style="color:${pc};background:${pc}18;">${esc(j.priority || 'normal')}</span>
         </div>
         <div class="mp-card-title">${esc(j.title)}</div>
-        <div class="mp-card-type">${esc(WORK_TYPE_LABEL[j.work_type] || (j.work_type || '').replace(/_/g, ' ') || 'Unspecified')}</div>
+        <div class="mp-card-type">${esc(WORK_TYPE_LABEL[j.work_type] || OpsModal.label(j.work_type || 'Unspecified'))}</div>
         <div class="mp-card-meta">
           ${j.property_name ? `<span class="mp-meta-row"><i class="mp-ic-site"></i>${esc(j.property_name)}</span>` : ''}
           ${j.team_name ? `<span class="mp-meta-row"><i class="mp-ic-team"></i>${esc(j.team_name)}${j.crew_size ? ` (${j.crew_size})` : ''}</span>` : '<span class="mp-meta-row mp-unassigned">Unassigned</span>'}
@@ -166,29 +144,26 @@ const OpsMaintenance = (function () {
         </div>
         ${canAdvance ? `
           <div class="mp-card-actions" onclick="event.stopPropagation()">
-            ${j.status === 'scheduled' ? `<button class="mp-act" onclick="OpsMaintenance.advance('${OpsModal.sid(j.ticket_id)}','in_progress')">Start →</button>` : ''}
-            ${j.status === 'in_progress' ? `<button class="mp-act mp-act-done" onclick="OpsMaintenance.completeJob('${OpsModal.sid(j.ticket_id)}')">Mark Complete →</button>` : ''}
+            ${canMng() && j.status === 'scheduled' ? `<button class="mp-act" onclick="OpsMaintenance.advance('${OpsModal.sid(j.ticket_id)}','in_progress')">Start →</button>` : ''}
+            ${canMng() && j.status === 'in_progress' ? `<button class="mp-act mp-act-done" onclick="OpsMaintenance.completeJob('${OpsModal.sid(j.ticket_id)}')">Mark complete →</button>` : ''}
           </div>` : ''}
       </div>`;
   }
 
   function shell() {
     return `
-      <div class="mp-head">
-        <div class="mp-head-title">
-          <h2>Maintenance Planner</h2>
-          <span>Scheduled field work across every crew and property</span>
-        </div>
-        ${canMng() ? `<button class="mp-add" onclick="OpsMaintenance.newJob()">+ New Job</button>` : ''}
-      </div>
+      ${OpsModal.pageHeader({title:'Services',subtitle:'Legacy maintenance records · Existing ticket-based work, retained for continuity'})}
+      ${typeof OpsServices !== 'undefined' ? OpsServices.navigation('maintenance') : ''}
+      <p class="capability-note">These existing records retain their original team assignments and lifecycle. Create new provider work orders in the provider view; legacy tickets have not been migrated or reclassified.</p>
+      ${_teamScope ? OpsModal.provenance([['Team filter',_teamScope],['Feed limit','Up to 300 returned maintenance tasks']],'This scoped feed is not a complete platform total.')+'<button class="fg-action" onclick="OpsMaintenance.clearScope()">Show all teams</button>' : ''}
       <div class="lv-wrap">
         <div class="lv-toolbar">
           <div class="lv-search">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input id="mp-search" placeholder="Search work orders…" oninput="OpsMaintenance.search(this.value)">
+            ${OpsModal.actionIcon("search")}
+            <input id="mp-search" aria-label="Search maintenance tasks" placeholder="Search maintenance tasks…" oninput="OpsMaintenance.search(this.value)">
           </div>
           <div class="lv-toolbar-right">
-            <select class="um-filter" onchange="OpsMaintenance.filterStatus(this.value)">
+            <select aria-label="Maintenance task state" class="um-filter" onchange="OpsMaintenance.filterStatus(this.value)">
               <option value="all">All statuses</option>
               <option value="scheduled">Scheduled</option>
               <option value="in_progress">In progress</option>
@@ -196,7 +171,7 @@ const OpsMaintenance = (function () {
             </select>
           </div>
         </div>
-        <div id="mp-board-body"><div class="mp-empty">Loading the planner…</div></div>
+        <div id="mp-board-body">${OpsModal.loading('Loading maintenance…')}</div>
       </div>`;
   }
 
@@ -216,171 +191,82 @@ const OpsMaintenance = (function () {
     const j = _jobs.find(x => x.ticket_id === ticketId);
     if (!j || !_container) return;
     const prog = progressOf(j.status);
-    const f = (k, v) => `<div class="mp-f"><div class="k">${k}</div><div class="v">${v}</div></div>`;
-    const sec = (t, b, needs) => `<div class="mp-sec"><div class="mp-sec-h">${t}${needs ? '<span class="mp-needs">pending backend data</span>' : ''}</div><div class="mp-sec-b">${b}</div></div>`;
+    const f = OpsModal.fact;
 
-    const jobDetails = `<div class="mp-fgrid">
-      ${f('Work Order', esc(j.ticket_id))}
-      ${f('Property', j.property_id ? OpsModal.link('properties', j.property_id, j.property_name || j.property_id) : esc(_dash(j.property_name)))}
+    const jobDetails = `<div class="fg-facts-grid">
       ${f('Location', esc(_dash(j.location || j.city)))}
-      ${f('Task', esc(j.title || WORK_TYPE_LABEL[j.work_type] || (j.work_type || '').replace(/_/g, ' ') || '—'))}
-      ${f('Priority', esc(j.priority || 'normal'))}
-      ${f('Assigned Team', j.assigned_team ? OpsModal.link('teams', j.assigned_team, j.team_name || j.assigned_team) : esc(_dash(j.team_name)))}
-      ${f('Due Date', j.scheduled_date ? OpsModal.fmtDate(j.scheduled_date) : '—')}
-      ${f('Status', `<span class="status-badge ${j.status === 'resolved' ? 'nominal' : j.status === 'in_progress' ? 'warning' : 'watch'}">${(j.status || '').replace(/_/g, ' ')}</span>`)}
-      ${f('Estimated Duration', j.estimated_hours ? j.estimated_hours + 'h' : '—')}
-      ${f('Progress', prog + '%')}
-      ${f('Created', OpsModal.fmtDate(j.created_at))}
-      ${j.completed_at ? f('Completed', OpsModal.fmtDate(j.completed_at)) : ''}
+      ${f('Work type', esc(WORK_TYPE_LABEL[j.work_type] || OpsModal.label(j.work_type)))}
+      ${f('Priority', OpsModal.status(j.priority,null,null,'priority'))}
+      ${f('Estimated duration', j.estimated_hours!=null ? esc(j.estimated_hours)+'h' : '—')}
     </div>`;
 
-    const notes = j.description || j.notes ? `<div class="mp-f"><div class="v" style="font-weight:400;white-space:pre-wrap;line-height:1.5;">${esc(j.description || j.notes)}</div></div>` : '<div class="mp-e">No notes.</div>';
-    const team = j.team_name ? `<div class="mp-fgrid">${f('Crew', j.assigned_team ? OpsModal.link('teams', j.assigned_team, j.team_name) : esc(j.team_name))}${j.crew_size ? f('Crew size', j.crew_size) : ''}</div>` : '<div class="mp-e">No crew assigned.</div>';
+    const notes = OpsModal.textBlock('Work scope',j.description || j.notes);
+    const team = j.team_name || j.assigned_team ? `<div class="fg-facts-grid">${f('Crew', j.assigned_team ? OpsModal.link('teams', j.assigned_team, j.team_name || j.assigned_team) : esc(j.team_name))}${j.crew_size != null ? f('Crew size', esc(j.crew_size)) : ''}</div>` : '<div class="capability-note">Crew assignment was not supplied.</div>';
 
-    const actions = [
-      j.status === 'scheduled' ? `<button class="btn-primary" onclick="OpsMaintenance.advance('${OpsModal.sid(j.ticket_id)}','in_progress')">Start Job</button>` : '',
-      j.status === 'in_progress' ? `<button class="btn-primary" onclick="OpsMaintenance.completeJob('${OpsModal.sid(j.ticket_id)}')">Mark Complete</button>` : '',
-    ].filter(Boolean).join('');
+    // Legacy records are retained for visibility, not an internal execution queue.
+    const actions = '';
 
-    _container.innerHTML = `
-      ${styles()}${MP_EXTRA}
-      <div class="mp-detail-top">
-        <button class="mp-back" onclick="OpsMaintenance.back()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Maintenance</button>
-        <div>
-          <div class="mp-detail-name">${esc(j.title || j.ticket_id)}</div>
-          <div class="mp-detail-meta">${esc(j.ticket_id)} · ${esc(_dash(j.property_name))}</div>
-        </div>
-        <div class="mp-detail-actions">${actions}</div>
-      </div>
-      ${sec('Job Details', jobDetails)}
-      ${sec('Checklist', '<div class="mp-e">No checklist items in this response.</div>', true)}
-      ${sec('Required Equipment', '<div class="mp-e">No equipment list in this response.</div>', true)}
-      ${sec('Before Photos', '<div class="mp-e">No before photos.</div>', true)}
-      ${sec('After Photos', '<div class="mp-e">No after photos.</div>', true)}
-      ${sec('Notes', notes)}
-      ${sec('Team', team)}
-      ${sec('Timeline', `<div class="mp-e">Created ${OpsModal.fmtDate(j.created_at)}${j.scheduled_date ? ' · Scheduled ' + OpsModal.fmtDate(j.scheduled_date) : ''}${j.completed_at ? ' · Completed ' + OpsModal.fmtDate(j.completed_at) : ''}.</div>`, true)}
-      ${sec('Attachments', '<div class="mp-e">No attachments.</div>', true)}
-    `;
+    _container.innerHTML = OpsModal.detailShell({
+      back:'OpsMaintenance.back()', crumbRoot:'Services / Legacy maintenance records', title:esc(j.title || j.ticket_id),
+      avatar:{text:OpsModal.entityIcon('maintenance')},
+      chips:[{label:esc(prog),cls:OpsModal.statusTone(j.status,'maintenance')}],
+      meta:[['Maintenance reference',esc(j.ticket_id)],['Estate',j.property_id ? OpsModal.link('properties',j.property_id,j.property_name || j.property_id) : esc(j.property_name || (j.property_id === null ? OpsModal.missing.unlinked : OpsModal.missing.absent))]], actions,
+      decision:[['Recorded assignment',j.team_name || 'Not supplied'],['Scheduled',OpsModal.fmtDate(j.scheduled_date)],['Next step','Review the retained work record; coordinate new provider work in Services']],
+      note:'Recorded completion is a lifecycle state, not an independent verification of work quality. Review scope and before/after evidence; absent attachments do not confirm that evidence was never collected.',
+      sections:[
+        {id:'details',title:'Work summary',body:jobDetails},
+        {id:'notes',title:'Scope & notes',body:notes},
+        {id:'outcome',title:'Recorded completion findings',body:j.resolution_notes ? OpsModal.textBlock('Findings',j.resolution_notes) : '<div class="capability-note">Completion findings have not been recorded.</div>'},
+        {id:'team',title:'Response ownership',body:team},
+        {id:'evidence',title:'Work evidence',state:OpsModal.collectionState(j.before_photos,j.after_photos,j.attachments),body:OpsModal.evidenceGroup([['Before work',j.before_photos],['After work',j.after_photos],['Supporting files',j.attachments]])},
+        {id:'timeline',title:'Recorded dates',body:[['Task created',j.created_at],['Work scheduled',j.scheduled_date],['Completion recorded',j.completed_at]].filter(([,date])=>date!=null && date!=='').map(([title,date])=>`<div class="fg-timeline-row"><div class="fg-timeline-icon">${OpsModal.entityIcon('maintenance')}</div><div class="fg-timeline-title">${title}</div><time class="fg-timeline-time">${OpsModal.fmtDateTime(date)}</time></div>`).join('') || '<div class="capability-note">Recorded task dates were not supplied. This record does not provide a complete activity history.</div>'},
+      ],
+    });
   }
 
   async function advance(ticketId, status) {
+    if (!requireManage()) return;
     try {
       await OpsModal.apiPut(`/tickets/${ticketId}/status`, { status });
-      OpsModal.toast('Job moved to ' + status.replace(/_/g, ' '), 'nominal');
+      OpsModal.toast('Maintenance state: ' + OpsModal.label(status), 'nominal');
       back();
     } catch (err) {
-      OpsModal.toast(err.message || 'Failed to update job', 'error');
+      OpsModal.toast(err.message || 'Failed to update maintenance task', 'error');
     }
   }
 
   function completeJob(ticketId) {
-    OpsModal.confirm('Mark this job complete? This records the outcome and releases the crew.', async () => {
-      try {
-        await OpsModal.apiPost(`/tickets/${ticketId}/complete`, {});
-        OpsModal.toast('Job marked complete', 'nominal');
-        back();
-      } catch (err) {
-        OpsModal.toast(err.message || 'Failed to complete job', 'error');
-      }
-    });
+    if (!requireManage()) return;
+    OpsModal.open('Record maintenance completion', '<p class="capability-note">Record the observed work and findings. Completion is your submitted outcome, not independent verification. Device-affecting refill updates are disabled locally.</p>'+OpsModal.field('Completion findings','resolution_notes','textarea',''),[
+      {label:'Cancel',class:'btn-ghost',onclick:'OpsModal.close()'},
+      {label:'Save completion',class:'btn-primary',onclick:`OpsMaintenance.confirmComplete('${OpsModal.sid(ticketId)}')`},
+    ]);
+  }
+  async function confirmComplete(ticketId) {
+    if (!requireManage()) return;
+    const data=OpsModal.getFormData();
+    if (!data.resolution_notes?.trim()) return OpsModal.toast('Completion findings are required','watch');
+    try {
+      const result=await OpsModal.apiPost(`/tickets/${ticketId}/complete`,{resolution_notes:data.resolution_notes.trim()});
+      if (result?.data?.ticket_id!==ticketId) throw new Error('Completion was not confirmed');
+      OpsModal.close();OpsModal.toast('Recorded completion saved','nominal');back();
+    } catch(err) {OpsModal.toast(err.message || 'Failed to complete work','error');}
   }
 
   // ── New job modal ──────────────────────────────────────────────
-  function newJob() {
-    const propOpts = [{ value: '', label: 'No specific property' }, ..._properties.map(p => ({ value: p.property_id, label: p.asset_code || p.property_name }))];
-    const teamOpts = [{ value: '', label: 'Unassigned' }, ..._teams.map(t => ({ value: t.team_id, label: t.team_name }))];
-    const body = `
-      ${OpsModal.field('Work Type', 'work_type', 'select', 'maintenance', { options: WORK_TYPES })}
-      ${OpsModal.field('Title (optional — auto-generated if left blank)', 'title', 'text', '', { required: false, placeholder: 'e.g. Silt clearing — Ikoyi Waterside' })}
-      ${OpsModal.row([
-        OpsModal.field('Priority', 'priority', 'select', 'normal', { options: [{ value: 'low', label: 'Low' }, { value: 'normal', label: 'Normal' }, { value: 'high', label: 'High' }, { value: 'urgent', label: 'Urgent' }] }),
-        OpsModal.field('Scheduled Date', 'scheduled_date', 'date', '', {}),
-      ])}
-      ${OpsModal.row([
-        OpsModal.field('Property', 'property_id', 'select', '', { required: false, options: propOpts }),
-        OpsModal.field('Crew', 'assigned_team', 'select', '', { required: false, options: teamOpts }),
-      ])}
-      ${OpsModal.field('Estimated Hours (optional)', 'estimated_hours', 'number', '', { required: false, placeholder: 'e.g. 4' })}
-      ${OpsModal.field('Notes (optional)', 'description', 'textarea', '', { required: false, rows: 3 })}`;
-    OpsModal.open('Schedule New Job', body, [
-      { label: 'Cancel', class: 'btn-ghost', onclick: 'OpsModal.close()' },
-      { label: 'Schedule', class: 'btn-primary', onclick: 'OpsMaintenance.submitNewJob()', id: 'mp-new-submit' },
-    ]);
+  async function newJob(context = {}) {
+    if (!Auth.can('jobs.manage') || !Auth.hasNavAccess?.('jobs')) return OpsModal.toast('New service work requires permission to prepare provider work orders', 'watch');
+    // Old callers may supply an internal crew: never reinterpret it as a provider.
+    if (context.assigned_team || _teamScope) OpsModal.toast('Select a service provider in the work-order form; internal crew assignments are not transferred', 'watch');
+    return OpsJobs.newJob({source:'estate',property_id:context.property_id,title:context.title,description:context.description});
   }
 
   async function submitNewJob() {
-    const data = OpsModal.getFormData();
-    if (!data.scheduled_date) { OpsModal.toast('Scheduled date is required', 'warning'); return; }
-    OpsModal.setLoading('mp-new-submit', true);
-    try {
-      await OpsModal.apiPost('/tickets/planner', {
-        work_type: data.work_type,
-        title: data.title || undefined,
-        priority: data.priority,
-        scheduled_date: data.scheduled_date,
-        property_id: data.property_id || null,
-        assigned_team: data.assigned_team || null,
-        estimated_hours: data.estimated_hours || null,
-        description: data.description || null,
-      });
-      OpsModal.toast('Job scheduled', 'nominal');
-      OpsModal.close();
-      await load();
-    } catch (err) {
-      OpsModal.toast(err.message || 'Failed to schedule job', 'error');
-    } finally {
-      OpsModal.setLoading('mp-new-submit', false);
-    }
+    OpsModal.toast('Legacy scheduling has been retired. Prepare new provider work in Services.', 'watch');
   }
 
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
-  function styles() {
-    return `<style>
-      .mp-head { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:14px; }
-      .mp-head-title h2 { margin:0; font-size:var(--fs-xl); font-weight:700; color:var(--ink); }
-      .mp-head-title span { font-size:var(--fs-xs); color:var(--ink-3); }
-      .mp-add { padding:9px 16px; border-radius:9px; border:1px solid var(--blue-dim); background:var(--neon-trace); color:var(--blue-hi); font-size:var(--fs-sm); font-weight:700; font-family:var(--ff-b); cursor:pointer; white-space:nowrap; }
-      .mp-add:hover { background:var(--blue-dim); color:#fff; }
-      .mp-kpis-wrap { margin-bottom:16px; }
 
-      .mp-board { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; align-items:start; }
-      @media (max-width: 900px) { .mp-board { grid-template-columns:1fr; } }
-      .mp-col { background:var(--surface-2); border:1px solid var(--border); border-radius:13px; overflow:hidden; display:flex; flex-direction:column; max-height:calc(100vh - 280px); }
-      .mp-col-h { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; font-size:var(--fs-xs); font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--ink-2); border-bottom:1px solid var(--border); background:var(--surface); flex-shrink:0; }
-      .mp-col-n { background:var(--surface-3); color:var(--ink-3); border-radius:100px; padding:1px 8px; font-family:var(--ff-m); font-weight:700; }
-      .mp-col-body { padding:10px; display:flex; flex-direction:column; gap:9px; overflow-y:auto; }
-      .mp-col-empty { text-align:center; padding:20px; color:var(--ink-4); font-size:var(--fs-xs); }
-
-      .mp-card { background:var(--surface); border:1px solid var(--border); border-radius:11px; padding:12px 13px; cursor:pointer; box-shadow:var(--sh-xs); transition:border-color .15s; }
-      .mp-card:hover { border-color:var(--blue-dim); }
-      .mp-card.is-overdue { border-left:3px solid var(--err); }
-      .mp-card-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
-      .mp-card-id { font-family:var(--ff-m); font-size:var(--fs-2xs); color:var(--ink-3); font-weight:700; }
-      .mp-card-pri { font-size:var(--fs-2xs); font-weight:800; letter-spacing:.4px; text-transform:uppercase; padding:2px 7px; border-radius:5px; }
-      .mp-card-title { font-size:var(--fs-sm); font-weight:700; color:var(--ink); margin-bottom:3px; line-height:1.35; }
-      .mp-card-type { font-size:var(--fs-2xs); color:var(--ink-3); text-transform:capitalize; margin-bottom:8px; }
-      .mp-card-meta { display:flex; flex-direction:column; gap:4px; }
-      .mp-meta-row { display:flex; align-items:center; gap:6px; font-size:var(--fs-2xs); color:var(--ink-3); }
-      .mp-meta-row i { width:5px; height:5px; border-radius:50%; background:var(--ink-4); flex-shrink:0; }
-      .mp-unassigned { color:var(--warn); }
-      .mp-overdue-txt { color:var(--err); font-weight:600; }
-      .mp-card-actions { margin-top:10px; padding-top:9px; border-top:1px solid var(--border); }
-      .mp-act { width:100%; padding:6px 10px; border-radius:7px; border:1px solid var(--blue-dim); background:transparent; color:var(--blue-hi); font-size:var(--fs-xs); font-weight:700; font-family:var(--ff-b); cursor:pointer; }
-      .mp-act:hover { background:var(--neon-trace); }
-      .mp-act-done { border-color:var(--ok); color:var(--ok); }
-      .mp-act-done:hover { background:var(--ok); color:#fff; }
-
-      .mp-empty { padding:40px; text-align:center; color:var(--ink-3); font-size:var(--fs-base); line-height:1.7; background:var(--surface); border:1px solid var(--border); border-radius:14px; grid-column:1/-1; }
-      .mp-empty b { color:var(--ink); }
-
-      .mp-detail-row { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); font-size:var(--fs-sm); }
-      .mp-detail-row:last-child { border-bottom:none; }
-      .mp-detail-row span { color:var(--ink-3); }
-      .mp-detail-row b { color:var(--ink); font-weight:600; text-align:right; }
-    </style>`;
-  }
-
-  return { render, back, search, filterStatus, newJob, submitNewJob, openJob, advance, completeJob };
+  return { render, back, search, filterStatus, forTeam, clearScope, newJob, submitNewJob, openJob, advance, completeJob, confirmComplete };
 })();

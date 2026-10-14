@@ -10,10 +10,12 @@
    still works — the Figma file is dark-only, this app isn't.
    ══════════════════════════════════════════════════════════════ */
 const OpsSensors = (function () {
-  const canMng = () => !(window.Auth && Auth.can) || Auth.can('devices.manage');
+  const canMng = () => !(typeof CONFIG !== 'undefined' && CONFIG.LOCAL_SANDBOX) && (!(window.Auth && Auth.can) || Auth.can('devices.manage'));
+  function requireDeviceManage() { if (Auth.hasNavAccess('sensors') && canMng()) return true; OpsModal.toast('You do not have permission to change devices', 'watch'); return false; }
   const __sid = v => String(v == null ? '' : v).replace(/[^A-Za-z0-9_\-.:]/g, '');
 
   let _all = [];
+  let _fleetReads = 0;
   let _filter = 'all';
   let _tag = '';
   let _q = '';
@@ -22,205 +24,75 @@ const OpsSensors = (function () {
   let _selected = new Set();
   let _filteredRows = [];
   let _drawerId = null;
+  let _drawerOpener=null,_drawerBackground=null,_drawerBackgroundInert=false;
 
-  const ICON = {
-    cpu:  '<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/>',
-    wifi: '<path d="M5 13a10 10 0 0114 0"/><path d="M8.5 16.5a5 5 0 017 0"/><path d="M12 20h.01"/>',
-    pulse:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
-    wifiOff: '<path d="M1 1l22 22"/><path d="M16.72 11.06A10.94 10.94 0 0119 12.55"/><path d="M5 12.55a10.94 10.94 0 015.17-2.39"/><path d="M10.71 5.05A16 16 0 0122.58 9"/><path d="M1.42 9a15.91 15.91 0 014.7-2.88"/><path d="M8.53 16.11a6 6 0 016.95 0"/><path d="M12 20h.01"/>',
-  };
-
-  const STYLES = `
-    <style>
-      .sn-toolbar { display:flex; gap:9px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
-      .sn-chip { padding:6px 13px; border-radius:100px; border:1px solid var(--border-2); background:var(--surface); font-size:var(--fs-xs); font-weight:600; color:var(--ink-2); cursor:pointer; user-select:none; }
-      .sn-chip.on { background:var(--neon-trace); border-color:var(--blue-dim); color:var(--blue-hi); }
-      .sn-search { display:flex; align-items:center; gap:7px; background:var(--surface); border:1px solid var(--border-2); border-radius:9px; padding:7px 12px; width:220px; color:var(--ink-3); margin-left:auto; }
-      .sn-search input { flex:1; min-width:0; background:transparent; border:none; outline:none; color:var(--ink); font-size:var(--fs-sm); font-family:var(--ff-b); }
-      .sn-add-btn { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:9px; border:none; background:var(--blue-hi); color:#04202b; font-size:var(--fs-sm); font-weight:700; font-family:var(--ff-b); cursor:pointer; }
-
-      .sn-table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; box-shadow:var(--sh-xs); }
-      .sn-fleet-head { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--border); }
-      .sn-fleet-title { font-family:var(--ff-d); font-size:var(--fs-md); font-weight:700; color:var(--ink); }
-      .sn-row { cursor:pointer; }
-      .sn-row:hover td { background:var(--surface-3); }
-      .sn-node-id { font-family:var(--ff-m); font-weight:700; color:var(--blue-hi); white-space:nowrap; }
-      .sn-fw { font-family:var(--ff-m); font-size:var(--fs-sm); }
-      .sn-fw.outdated { color:var(--warn); font-weight:600; }
-      .sn-fw.current { color:var(--ink-3); }
-      .sn-vitcell { display:flex; align-items:center; gap:8px; white-space:nowrap; }
-      .sn-bar { display:inline-block; width:46px; height:3px; border-radius:2px; background:var(--surface-3); overflow:hidden; flex-shrink:0; }
-      .sn-bar i { display:block; height:100%; border-radius:2px; }
-      .sn-vit-v { font-family:var(--ff-m); font-size:var(--fs-sm); font-weight:600; min-width:32px; text-align:right; }
-      .sn-temp { font-family:var(--ff-m); font-size:var(--fs-sm); color:var(--ink-2); }
-      .sn-last { font-family:var(--ff-m); font-size:var(--fs-sm); }
-      .hbadge { display:inline-block; padding:3px 10px; border-radius:100px; font-size:var(--fs-2xs); font-weight:700; font-family:var(--ff-m); text-transform:lowercase; }
-      .hbadge.healthy { background:var(--ok-bg); color:var(--ok); }
-      .hbadge.degraded { background:var(--wb); color:var(--warn); }
-      .hbadge.offline { background:var(--eb); color:var(--err); }
-      .sn-acts { display:flex; align-items:center; gap:6px; }
-      .sn-ota-btn { padding:4px 12px; border-radius:100px; border:none; background:var(--blue-hi); color:#04202b; font-size:var(--fs-2xs); font-weight:800; letter-spacing:.4px; font-family:var(--ff-m); cursor:pointer; }
-      .sn-icon-btn { width:26px; height:26px; border-radius:8px; border:1px solid var(--border-2); background:var(--surface); color:var(--ink-3); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
-      .sn-icon-btn:hover { border-color:var(--blue-dim); color:var(--blue-hi); }
-      .sn-cmd-badge { display:inline-flex; align-items:center; justify-content:center; min-width:15px; height:15px; padding:0 4px; border-radius:100px; background:var(--wb); color:var(--warn); font-size:9px; font-weight:800; margin-left:5px; vertical-align:middle; }
-
-      .sn-bulkbar { display:none; align-items:center; gap:9px; padding:9px 13px; margin-bottom:10px; background:var(--neon-trace); border:1px solid var(--blue-dim); border-radius:11px; flex-wrap:wrap; }
-      .sn-bulk-count { font-size:var(--fs-sm); font-weight:700; color:var(--blue-hi); margin-right:4px; }
-      .sn-bulk-clear { margin-left:auto; background:none; border:none; color:var(--ink-3); font-size:var(--fs-xs); font-weight:600; cursor:pointer; padding:4px 6px; }
-      .sn-bulk-clear:hover { color:var(--ink); }
-
-      .sn-empty { padding:40px; text-align:center; color:var(--ink-3); font-size:var(--fs-base); background:var(--surface); border:1px solid var(--border); border-radius:14px; }
-      .sn-note { padding:11px 14px; border-radius:10px; background:var(--wb); color:var(--warn); font-size:var(--fs-sm); margin-bottom:12px; line-height:1.5; }
-
-      /* ── Right-side detail drawer (matches Figma: slide-over, not a
-         full-page swap) — appended to <body> so it isn't clipped by the
-         table's horizontal scroll container. ── */
-      .sn-drawer-overlay { position:fixed; inset:0; z-index:2000; background:rgba(4,12,18,0); pointer-events:none; transition:background .22s; }
-      .sn-drawer-overlay.open { background:rgba(4,12,18,.45); pointer-events:auto; }
-      .sn-drawer { position:absolute; top:0; right:0; bottom:0; width:380px; max-width:92vw; background:var(--surface); border-left:1px solid var(--border); box-shadow:-8px 0 30px rgba(0,0,0,.25); transform:translateX(100%); transition:transform .24s cubic-bezier(.22,1,.36,1); display:flex; flex-direction:column; }
-      .sn-drawer-overlay.open .sn-drawer { transform:translateX(0); }
-      .sn-drawer-head { padding:18px 20px 14px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
-      .sn-drawer-title { font-family:var(--ff-d); font-size:var(--fs-lg); font-weight:800; color:var(--ink); }
-      .sn-drawer-sub { font-size:var(--fs-xs); color:var(--ink-3); margin-top:2px; }
-      .sn-drawer-close { background:none; border:none; color:var(--ink-3); cursor:pointer; padding:4px; flex-shrink:0; }
-      .sn-drawer-close:hover { color:var(--ink); }
-      .sn-drawer-body { flex:1; overflow-y:auto; padding:16px 20px 20px; }
-      .sn-drawer-status { margin-bottom:14px; }
-      .sn-metric-row { display:flex; align-items:center; justify-content:space-between; padding:9px 12px; background:var(--surface-2); border-radius:9px; margin-bottom:6px; }
-      .sn-metric-k { font-size:var(--fs-xs); color:var(--ink-3); }
-      .sn-metric-v { font-family:var(--ff-m); font-size:var(--fs-sm); font-weight:700; }
-      .sn-fw-row { display:flex; align-items:center; justify-content:space-between; padding:9px 12px; background:var(--surface-2); border-radius:9px; margin:12px 0 4px; }
-      .sn-fw-badge { padding:2px 9px; border-radius:100px; background:var(--wb); color:var(--warn); font-size:var(--fs-2xs); font-weight:700; }
-      .sn-acts-h { font-size:var(--fs-2xs); font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--ink-3); margin:18px 0 8px; }
-      .sn-act-row { display:flex; align-items:center; gap:10px; width:100%; padding:9px 4px; background:none; border:none; text-align:left; font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); cursor:pointer; font-family:var(--ff-b); border-radius:8px; }
-      .sn-act-row:hover { background:var(--surface-2); color:var(--blue-hi); }
-      .sn-act-row.danger { color:var(--err); }
-      .sn-act-row.danger:hover { background:var(--eb); }
-      .sn-act-row svg { flex-shrink:0; }
-      /* ── Redesigned drawer (ArtemisOS-style): breadcrumb, status tokens,
-         action bar, tabs, metric cards ── */
-      .sn-crumb { font-size:var(--fs-2xs); font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-3); display:flex; align-items:center; gap:6px; margin-bottom:6px; }
-      .sn-crumb span { opacity:.6; }
-      .sn-status-line { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px; font-family:var(--ff-m); font-size:var(--fs-2xs); font-weight:700; letter-spacing:.03em; }
-      .sn-tok { display:inline-flex; align-items:center; gap:5px; color:var(--ink-2); }
-      .sn-tok.id { color:var(--ink-3); }
-      .sn-tok.ok { color:var(--ok); } .sn-tok.warn { color:var(--warn); } .sn-tok.err { color:var(--err); } .sn-tok.blue { color:var(--blue-hi,#6b8cff); }
-      .sn-tok .tdot { width:7px; height:7px; border-radius:50%; background:currentColor; }
-      .sn-status-line .sep { color:var(--ink-4,#8494a0); opacity:.6; }
-      .sn-head-actions { display:flex; align-items:center; gap:2px; flex-shrink:0; }
-      .sn-icon-btn { background:none; border:none; color:var(--ink-3); cursor:pointer; padding:6px; border-radius:8px; display:grid; place-items:center; }
-      .sn-icon-btn:hover { background:var(--surface-2); color:var(--ink); }
-      /* action bar */
-      .sn-actionbar { display:flex; align-items:stretch; gap:8px; margin:14px 0 4px; }
-      .sn-ab-icon { flex:0 0 auto; width:46px; display:grid; place-items:center; background:var(--surface-2); border:1px solid var(--border); border-radius:11px; color:var(--ink-2); cursor:pointer; transition:.13s; }
-      .sn-ab-icon:hover { color:var(--blue-hi,#6b8cff); border-color:var(--blue-dim,#93a9ff); }
-      .sn-ab-main { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px 14px; background:var(--surface-2); border:1px solid var(--border); border-radius:11px; color:var(--ink); font-family:var(--ff-b); font-weight:700; font-size:var(--fs-sm); cursor:pointer; transition:.13s; }
-      .sn-ab-main:hover { border-color:var(--blue-dim,#93a9ff); color:var(--blue-hi,#6b8cff); }
-      /* tabs */
-      .sn-tabs { display:flex; gap:2px; border-bottom:1px solid var(--border); margin:16px 0 14px; }
-      .sn-tab { flex:1; background:none; border:none; padding:10px 4px; font-family:var(--ff-b); font-size:var(--fs-2xs); font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:.13s; }
-      .sn-tab:hover { color:var(--ink-2); }
-      .sn-tab.active { color:var(--ink); border-bottom-color:var(--blue-hi,#6b8cff); }
-      /* metric cards */
-      .sn-sec-h { font-size:var(--fs-2xs); font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--ink-3); margin:4px 0 9px; }
-      .sn-sec-h:not(:first-child) { margin-top:16px; }
-      .sn-cards { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
-      .sn-card { background:var(--surface-2); border:1px solid var(--border); border-radius:11px; padding:12px 13px; min-width:0; }
-      .sn-card-k { font-size:var(--fs-2xs); font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-3); }
-      .sn-card-v { margin-top:6px; font-family:var(--ff-m); font-size:var(--fs-lg); font-weight:800; color:var(--ink); overflow:hidden; text-overflow:ellipsis; }
-      .sn-card-badge { display:inline-block; margin-top:6px; padding:2px 8px; border-radius:100px; background:var(--wb); color:var(--warn); font-size:var(--fs-2xs); font-weight:700; }
-      /* ── 3D node model viewer (top of drawer) ── */
-      .sn-3d { position:relative; width:100%; height:220px; border-radius:12px; overflow:hidden; background:radial-gradient(120% 120% at 50% 20%, var(--surface-2), var(--surface)); border:1px solid var(--border); margin-bottom:14px; }
-      .sn-3d canvas { display:block; width:100% !important; height:100% !important; outline:none; cursor:grab; }
-      .sn-3d canvas:active { cursor:grabbing; }
-      .sn-3d-state { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:9px; font-size:var(--fs-xs); color:var(--ink-3); pointer-events:none; }
-      .sn-3d-spin { width:15px; height:15px; border:2px solid var(--border); border-top-color:var(--blue-hi,#6b8cff); border-radius:50%; animation:sn3dspin .7s linear infinite; }
-      @keyframes sn3dspin { to { transform:rotate(360deg); } }
-      .sn-3d-hint { position:absolute; left:0; right:0; bottom:6px; text-align:center; font-size:var(--fs-2xs); color:var(--ink-4,#8494a0); pointer-events:none; opacity:.75; }
-    </style>`;
 
   async function render(container) {
     _container = container;
     _drawerId = null;
-    _container.innerHTML = STYLES + shellHTML();
+    _container.innerHTML = shellHTML();
     await load();
   }
 
   function shellHTML() {
     return `
-      <div class="fg-page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
-        <div>
-          <div class="fg-page-title">Sentinel Devices</div>
-          <div class="fg-page-sub" id="sn-page-sub">Fleet management</div>
-        </div>
-        <div style="display:flex;gap:8px;flex-shrink:0">
-          <button class="btn-ghost" onclick="OpsSensors.fleetAnalytics()" title="Fleet-wide health, firmware, connectivity & integrity rollups">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:6px"><path stroke-linecap="round" stroke-linejoin="round" d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Analytics
+      ${typeof CONFIG !== 'undefined' && CONFIG.LOCAL_SANDBOX ? '<div class="capability-note">Local device review is read-only. Fleet, events and command history are available; ingestion, device commands, configuration and external delivery remain disabled.</div>' : ''}
+      ${OpsModal.pageHeader({title:'Device fleet',subtitle:'Fleet management',subtitleId:'sn-page-sub',actions:`<div class="fleet-tools">
+          <button class="fg-action" onclick="OpsSensors.fleetAnalytics()" title="Fleet-wide health, firmware, connectivity & integrity rollups">
+            ${OpsModal.entityIcon('analytics')}Analytics
           </button>
-          <button class="btn-ghost" onclick="OpsSensors.profilesManager()" title="Device configuration profiles">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:6px"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Profiles
+          <details class="fleet-management"><summary>Fleet management</summary><div class="fleet-management-menu">
+          <button class="fg-action" onclick="OpsSensors.profilesManager()" title="Device configuration profiles">
+            ${OpsModal.entityIcon('settings')}Profiles
           </button>
-          <button class="btn-ghost" onclick="OpsSensors.firmwareManager()" title="Firmware releases & staged rollouts">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:6px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>Firmware
+          <button class="fg-action" onclick="OpsSensors.firmwareManager()" title="Firmware releases & staged rollouts">
+            ${OpsModal.entityIcon('firmware')}Firmware
           </button>
-          <button class="btn-ghost" onclick="OpsSensors.driversManager()" title="Third-party device drivers & adapters">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:6px"><rect x="3" y="4" width="18" height="12" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M7 20h10M9 16v4M15 16v4"/></svg>Drivers
+          <button class="fg-action" onclick="OpsSensors.driversManager()" title="Third-party device drivers & adapters">
+            ${OpsModal.entityIcon('driver')}Drivers
           </button>
-          <button class="btn-ghost" onclick="OpsSensors.protectionWindows()" title="Pause reboots/firmware during storms or incidents">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:6px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Maintenance windows
+          <button class="fg-action" onclick="OpsSensors.protectionWindows()" title="Pause reboots/firmware during storms or incidents">
+            ${OpsModal.entityIcon('shield')}Maintenance windows
           </button>
-        </div>
-      </div>
+          </div></details>
+        </div>`})}
       <div id="sn-kpis"></div>
       <div id="sn-note-slot"></div>
       <div class="lv-wrap">
         <div class="lv-toolbar" id="sn-toolbar"></div>
         <div class="sn-bulkbar" id="sn-bulkbar" style="margin:0 20px 10px;"></div>
-        <div id="sn-body"><div class="sn-empty">Loading the Sentinel fleet…</div></div>
+        <div id="sn-body">${OpsModal.loading('Loading the device fleet…')}</div>
       </div>
     `;
   }
 
   async function load() {
+    _fleetReads++;
     try {
       const r = await OpsModal.apiGet('/monitoring/sensors/all');
-      _all = r.data || [];
+      if (!Array.isArray(r.data)) throw new Error('Device collection was not supplied');
+      _all = r.data;
       draw();
       preload3D(); // warm three.js + decoded model so the first drawer is instant
     } catch (err) {
-      if (_container) _container.innerHTML = STYLES + `<div class="sn-empty">Couldn't load the fleet — ${esc(err.message || 'network error')}.</div>`;
+      if (_container) _container.innerHTML = OpsModal.failure('Device fleet',err,"reloadTab('sensors')",true);
+    } finally {
+      _fleetReads--;
     }
   }
 
-  function rel(ts) {
-    if (!ts) return null;
-    const m = Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
-    if (m < 1) return 'now';
-    if (m < 60) return m + 'm ago';
-    if (m < 1440) return Math.floor(m / 60) + 'h ago';
-    return Math.floor(m / 1440) + 'd ago';
-  }
+  function rel(ts) { return ts ? OpsModal.relativeTime(ts) : null; }
 
-  // "online" = active status AND telemetry within 6h — the same freshness
-  // window already established elsewhere in this app, not a new number.
+  // Connectivity is the reported device assessment, not registration status,
+  // battery quality or an inferred heartbeat window. Missing stays unknown.
   function healthTier(x) {
-    const beat = x.reading_time || x.last_ping;
-    const stale = !beat || (Date.now() - new Date(beat).getTime()) > 6 * 3600 * 1000;
-    if (x.status !== 'active' || stale) return 'offline';
-    const lowBatt = x.battery_percent != null && x.battery_percent < 50;
-    const lowSig = x.signal_strength != null && x.signal_strength < 70;
-    if (lowBatt || lowSig) return 'degraded';
-    return 'healthy';
+    if (x.device_state === 'online') return 'healthy'; // Legacy CSS/filter key; displayed as Online.
+    if (['degraded','offline','maintenance'].includes(x.device_state)) return x.device_state;
+    return 'unknown';
   }
 
-  // water level is the inverse polarity of battery/signal — HIGH is the
-  // danger direction, so this can't reuse OpsModal.vitalColor().
-  function levelColor(v) {
-    if (v == null) return 'var(--ink-4)';
-    if (v >= 70) return 'var(--err)';
-    if (v >= 50) return 'var(--warn)';
-    return 'var(--ok)';
-  }
+  // Raw water levels do not imply uniform site-specific severity thresholds.
+  const levelColor = (v,trusted) => OpsModal.waterLevelColor(v,trusted);
 
   // The Property a node belongs to. Prefer the resolved customer property;
   // fall back to its primary asset or zone. NEVER the estate-account name.
@@ -241,22 +113,18 @@ const OpsSensors = (function () {
   // Three-state trust model (server-computed): Device alive? · Sensor data
   // trustworthy? · what's actually in the drain (UNKNOWN when data isn't trusted).
   function stateCards(x) {
-    const col = { ok:'var(--ok)', warn:'var(--warn)', err:'var(--err)', muted:'var(--ink-4)' };
-    const DS = { online:['ok','Online'], degraded:['warn','Degraded'], offline:['err','Offline'], maintenance:['muted','Maintenance'] };
-    const SS = { ok:['ok','Trusted'], stale:['warn','Stale'], frozen:['warn','Frozen'], implausible:['err','Implausible'], unknown:['muted','Unknown'] };
-    const IS = { normal:['ok','Normal'], elevated:['warn','Elevated'], high:['err','High'], critical:['err','Critical'], unknown:['warn','Unknown'] };
-    const pill = (m, mark) => `<span style="display:inline-flex;align-items:center;gap:5px;font-weight:700;color:${col[m[0]]}"><span style="width:7px;height:7px;border-radius:50%;background:${col[m[0]]}"></span>${mark||''}${m[1]}</span>`;
+    const pill = (value,domain,display) => OpsModal.status(value,display,null,domain);
     const c = (k, inner, reason) => `<div class="sn-card"><div class="sn-card-k">${k}</div><div class="sn-card-v" style="font-size:var(--fs-sm)">${inner}</div>${reason ? `<div style="font-size:var(--fs-2xs);color:var(--ink-4);margin-top:3px">${esc(reason)}</div>` : ''}</div>`;
-    return c('Device', pill(DS[x.device_state] || DS.offline), x.device_reason)
-         + c('Sensor data', pill(SS[x.sensor_state] || SS.unknown), x.sensor_reason)
-         + c('Drainage', pill(IS[x.infrastructure_state] || IS.unknown, x.infrastructure_state === 'unknown' ? '⚠ ' : ''), x.infra_reason);
+    return c('Device', pill(x.device_state || 'unknown','device'), x.device_reason)
+         + c('Sensor data', pill(x.sensor_state==='ok' && x.data_trust!==true ? 'unknown' : x.sensor_state || 'unknown','sensordata',x.sensor_state==='ok' && x.data_trust===true?'Trusted':null), x.sensor_reason)
+         + c('Drainage', pill(x.data_trust===true ? x.infrastructure_state || 'unknown' : 'unknown','drainage'), x.infra_reason || 'Assessment basis not supplied');
   }
 
   function draw() { drawList(); }
 
   function drawList() {
     if (!_container) return;
-    if (!document.getElementById('sn-kpis')) _container.innerHTML = STYLES + shellHTML();
+    if (!document.getElementById('sn-kpis')) _container.innerHTML = shellHTML();
 
     const el = document.getElementById('sn-body');
     const kp = document.getElementById('sn-kpis');
@@ -273,46 +141,51 @@ const OpsSensors = (function () {
     const properties = new Set(_all.map(propertyOf).filter(e => e && e !== '—')).size;
     const uptime = total ? Math.round(online / total * 100 * 10) / 10 : 0;
     const commonFw = fleetFirmware(_all);
-    const battKnown = _all.some(x => x.battery_percent != null);
-    const lowBatt = _all.filter(x => x.battery_percent != null && x.battery_percent < 20).length;
-    const unassigned = _all.filter(x => !x.assets || !x.assets.length).length;
+    const unknownBatt = _all.filter(x => OpsModal.reading(x.battery_percent,0,100)===null).length;
+    const lowBatt = _all.filter(x => criticalBattery(x.battery_percent)).length;
+    const unassigned = _all.filter(x => Array.isArray(x.assets) && !x.assets.length).length;
+    const unknownLinks = _all.filter(x => !Array.isArray(x.assets)).length;
     // "alive but lying" — device reachable, data not trustworthy (stale/frozen/implausible)
     const dataIssues = _all.filter(x => x.data_trust === false && (x.device_state === 'online' || x.device_state === 'degraded')).length;
 
-    if (sub) sub.textContent = `${total} nodes · ${commonFw ? 'firmware ' + commonFw + ' · ' : ''}fleet management`;
+    if (sub) sub.textContent = `${total} returned devices · ${commonFw ? 'firmware ' + commonFw + ' · ' : ''}fleet management`;
 
     if (kp) kp.innerHTML = '';
 
     const chips = [
-      ['all', `All (${total})`], ['healthy', `Healthy (${healthy})`],
+      ['all', `All (${total})`], ['healthy', `Online (${healthy})`],
       ['degraded', `Degraded (${degraded})`], ['offline', `Offline (${offline})`],
+      ['maintenance', `Maintenance (${tiers.filter(t=>t==='maintenance').length})`], ['unknown', `Unknown (${tiers.filter(t=>t==='unknown').length})`],
       ['dataissue', `Data issues (${dataIssues})`],
-      ['lowbatt', `Low battery (${battKnown ? lowBatt : 0})`],
-      ['unassigned', `Unassigned (${unassigned})`],
+      ['lowbatt', `Critical battery (${lowBatt})`], ['unknownbatt', `Battery not supplied (${unknownBatt})`],
+      ['unassigned', `No asset links (${unassigned})`], ['unknownlinks', `Links unknown (${unknownLinks})`],
     ];
     tb.innerHTML = `
       <div class="lv-search">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-        <input placeholder="Search Sentinels…" value="${_q.replace(/"/g, '&quot;')}" oninput="OpsSensors.setQuery(this.value)">
+        ${OpsModal.actionIcon("search")}
+        <input aria-label="Search devices" placeholder="Search devices…" value="${_q.replace(/"/g, '&quot;')}" oninput="OpsSensors.setQuery(this.value)">
       </div>
       <div class="lv-toolbar-right">
         ${(() => { const tags = [...new Set(_all.flatMap(s => s.tags || []))].sort();
-          return tags.length ? `<select class="um-filter" onchange="OpsSensors.setTag(this.value)">
+          return tags.length ? `<select aria-label="Device tag" class="um-filter" onchange="OpsSensors.setTag(this.value)">
             <option value="">All tags</option>
             ${tags.map(t => `<option value="${esc(t)}" ${_tag === t ? 'selected' : ''}>#${esc(t)}</option>`).join('')}
           </select>` : ''; })()}
-        <select class="um-filter" onchange="OpsSensors.setFilter(this.value)">${chips.map(([k, l]) =>
+        <select class="um-filter" aria-label="Device fleet state" onchange="OpsSensors.setFilter(this.value)">${chips.map(([k, l]) =>
         `<option value="${k}" ${_filter === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
-        ${canMng() ? `<button class="btn-ghost" onclick="OpsSensors.targetCohort()" title="Select a cohort by tag, state, firmware, lifecycle or integrity">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:5px"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>Target…</button>` : ''}</div>`;
+        ${canMng() ? `<button class="fg-action" onclick="OpsSensors.targetCohort()" title="Select a cohort by tag, state, firmware, lifecycle or integrity">
+          ${OpsModal.entityIcon('target')}Target…</button>` : ''}</div>`;
 
     let rows = _all.map((x, i) => ({ x, tier: tiers[i] }));
     if (_filter === 'healthy') rows = rows.filter(r => r.tier === 'healthy');
     else if (_filter === 'degraded') rows = rows.filter(r => r.tier === 'degraded');
     else if (_filter === 'offline') rows = rows.filter(r => r.tier === 'offline');
+    else if (['maintenance','unknown'].includes(_filter)) rows = rows.filter(r => r.tier === _filter);
     else if (_filter === 'dataissue') rows = rows.filter(r => r.x.data_trust === false && (r.x.device_state === 'online' || r.x.device_state === 'degraded'));
-    else if (_filter === 'lowbatt') rows = rows.filter(r => r.x.battery_percent != null && r.x.battery_percent < 20);
-    else if (_filter === 'unassigned') rows = rows.filter(r => !r.x.assets || !r.x.assets.length);
+    else if (_filter === 'lowbatt') rows = rows.filter(r => criticalBattery(r.x.battery_percent));
+    else if (_filter === 'unknownbatt') rows = rows.filter(r => OpsModal.reading(r.x.battery_percent,0,100)===null);
+    else if (_filter === 'unassigned') rows = rows.filter(r => Array.isArray(r.x.assets) && !r.x.assets.length);
+    else if (_filter === 'unknownlinks') rows = rows.filter(r => !Array.isArray(r.x.assets));
     if (_tag) rows = rows.filter(r => (r.x.tags || []).includes(_tag));
     if (_q) {
       const q = _q.toLowerCase();
@@ -321,14 +194,14 @@ const OpsSensors = (function () {
     rows = rows.map(r => r.x);
 
     document.getElementById('sn-note-slot').innerHTML = (offline === total && total)
-      ? '<div class="sn-note"><b>No Sentinel is reporting telemetry.</b> Devices are registered but no readings have reached the platform yet.</div>'
+      ? '<div class="sn-note"><b>No fresh device telemetry is available.</b> Readings may be stale or absent. Review each device’s last-seen timestamp and connection state.</div>'
       : '';
 
     _filteredRows = rows;
     renderBulkBar();
 
     if (!rows.length) {
-      el.innerHTML = `<div class="sn-empty">${total ? 'No Sentinels match this filter.' : 'No Sentinels deployed yet.'}</div>`;
+      el.innerHTML = OpsModal.emptyState(OpsModal.entityIcon('device'),total?'No matching devices':'No devices returned',total?'Change the search or state filter to review other returned devices.':'No devices were returned by this fleet feed. This does not establish physical deployment or coverage.');
       _pg = null;
       return;
     }
@@ -345,20 +218,21 @@ const OpsSensors = (function () {
     bar.style.display = 'flex';
     bar.innerHTML = `
       <span class="sn-bulk-count">${_selected.size} selected</span>
-      ${canMng() ? `<button class="btn-ghost" onclick="OpsSensors.bulkTag()">Tag…</button>
-      <button class="btn-ghost" onclick="OpsSensors.bulkCommand('firmware_update')">Push firmware</button>
-      <button class="btn-ghost" onclick="OpsSensors.bulkCommand('reset')">Remote reset</button>
-      <button class="btn-ghost" onclick="OpsSensors.bulkCommand('recalibrate')">Request recalibration</button>` : ''}
+      ${canMng() ? `<button class="fg-action" onclick="OpsSensors.bulkTag()">Tag…</button>
+      <button class="fg-action" onclick="OpsSensors.bulkCommand('firmware_update')">Push firmware</button>
+      <button class="fg-action danger" onclick="OpsSensors.bulkCommand('reset')">Remote reset</button>
+      <button class="fg-action" onclick="OpsSensors.bulkCommand('recalibrate')">Request recalibration</button>` : ''}
       <button class="sn-bulk-clear" onclick="OpsSensors.clearSelection()">Clear</button>
     `;
   }
 
   // Bulk add/remove a tag across the selected Sentinels.
   function bulkTag() {
+    if (!requireDeviceManage()) return;
     if (!_selected.size) return;
     const n = _selected.size;
-    OpsModal.open(`Tag ${n} Sentinel${n > 1 ? 's' : ''}`, `
-      <p style="margin:0 0 12px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">Add or remove a group tag across the ${n} selected node${n > 1 ? 's' : ''} (e.g. <code>lekki</code>, <code>ring-pilot</code>, <code>hw-v2</code>).</p>
+    OpsModal.open(`Tag ${n} device${n > 1 ? 's' : ''}`, `
+      <p style="margin:0 0 12px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">Add or remove a group tag across the ${n} selected device${n > 1 ? 's' : ''} (e.g. <code>lekki</code>, <code>ring-pilot</code>, <code>hw-v2</code>).</p>
       ${OpsModal.field('Add tag', 'add', 'text', '', { required: false, placeholder: 'tag to add' })}
       ${OpsModal.field('Remove tag', 'remove', 'text', '', { required: false, placeholder: 'tag to remove' })}
     `, [
@@ -367,6 +241,7 @@ const OpsSensors = (function () {
     ]);
   }
   async function confirmBulkTag() {
+    if (!requireDeviceManage()) return;
     const f = OpsModal.getFormData();
     if (!f.add && !f.remove) { OpsModal.toast('Enter a tag to add or remove.', 'warning'); return; }
     OpsModal.setLoading(true);
@@ -374,7 +249,7 @@ const OpsSensors = (function () {
       const r = await OpsModal.apiPost('/monitoring/sensors/tags/bulk', {
         sensor_ids: Array.from(_selected), add: f.add ? [f.add] : [], remove: f.remove ? [f.remove] : [] });
       OpsModal.close();
-      OpsModal.toast(`Tags updated on ${(r.data && r.data.updated) || _selected.size} node(s).`, 'success');
+      const outcome=bulkOutcome('tags',r.data?.updated,_selected.size);OpsModal.toast(outcome.text,outcome.tone);
       _selected.clear();
       await load();
     } catch (err) { OpsModal.setLoading(false); OpsModal.toast(err.message || 'Failed to update tags', 'error'); }
@@ -394,7 +269,7 @@ const OpsSensors = (function () {
       if (f.integrity === 'flagged' && !(x.integrity_state === 'warning' || x.integrity_state === 'critical')) return false;
       if (f.integrity === 'tamper' && !x.tamper_flagged) return false;
       if (f.integrity === 'geofence' && x.geofence_state !== 'breach') return false;
-      if (f.lowbatt === 'yes' && !(x.battery_percent != null && x.battery_percent < 25)) return false;
+      if (f.lowbatt === 'yes' && !criticalBattery(x.battery_percent)) return false;
       return true;
     }).map(x => x.sensor_id);
   }
@@ -407,18 +282,18 @@ const OpsSensors = (function () {
       <div onchange="OpsSensors._targetPreview()">
         ${OpsModal.field('Tag / group', 'tag', 'select', '', { options: [{ value: '', label: 'Any tag' }].concat(tags.map(t => ({ value: t, label: '#' + t }))) })}
         ${OpsModal.row([
-          OpsModal.field('Device state', 'device_state', 'select', 'any', { options: any.concat(['online', 'degraded', 'offline', 'maintenance'].map(v => ({ value: v, label: v }))) }),
+          OpsModal.field('Device state', 'device_state', 'select', 'any', { options: any.concat(['online', 'degraded', 'offline', 'maintenance'].map(v => ({ value: v, label: OpsModal.label(v) }))) }),
           OpsModal.field('Data trust', 'data', 'select', 'any', { options: [{ value: 'any', label: 'Any' }, { value: 'issues', label: 'Data issues only' }] }),
         ])}
         ${OpsModal.row([
-          OpsModal.field('Lifecycle', 'lifecycle', 'select', 'any', { options: any.concat(['inventory', 'warehouse', 'assigned', 'installed', 'active', 'maintenance', 'rma', 'retired'].map(v => ({ value: v, label: v }))) }),
+          OpsModal.field('Lifecycle', 'lifecycle', 'select', 'any', { options: any.concat(['inventory', 'warehouse', 'assigned', 'installed', 'active', 'maintenance', 'rma', 'retired'].map(v => ({ value: v, label: OpsModal.label(v) }))) }),
           OpsModal.field('Config', 'config', 'select', 'any', { options: any.concat([{ value: 'in_sync', label: 'In sync' }, { value: 'drift', label: 'Drift' }, { value: 'pending', label: 'Pending' }, { value: 'none', label: 'No profile' }]) }),
         ])}
         ${OpsModal.row([
           OpsModal.field('Firmware', 'fw', 'select', 'any', { options: [{ value: 'any', label: 'Any' }, { value: 'outdated', label: 'Outdated (≠ baseline)' }].concat(vers.map(v => ({ value: v, label: v }))) }),
           OpsModal.field('Integrity', 'integrity', 'select', 'any', { options: [{ value: 'any', label: 'Any' }, { value: 'flagged', label: 'Flagged (warn/critical)' }, { value: 'tamper', label: 'Tamper only' }, { value: 'geofence', label: 'Geofence breach' }] }),
         ])}
-        ${OpsModal.field('Battery', 'lowbatt', 'select', 'any', { options: [{ value: 'any', label: 'Any' }, { value: 'yes', label: 'Critical only (<25%)' }] })}
+        ${OpsModal.field('Battery', 'lowbatt', 'select', 'any', { options: [{ value: 'any', label: 'Any' }, { value: 'yes', label: 'Critical only (<20%)' }] })}
       </div>
       <div id="tg-count" style="margin-top:12px;font-size:var(--fs-sm);font-weight:700;color:var(--ink)"></div>
     `, [
@@ -462,13 +337,15 @@ const OpsSensors = (function () {
   }
 
   function bulkCommand(type) {
+    if (!requireDeviceManage()) return;
+    if(!['firmware_update','reset','recalibrate'].includes(type))return OpsModal.toast('Unsupported bulk command','watch');
     if (!_selected.size) return;
     const ids = Array.from(_selected);
     const verb = { firmware_update: 'Push a firmware update to', reset: 'Send a remote reset to', recalibrate: 'Request recalibration on' }[type];
     const needsVersion = type === 'firmware_update';
-    OpsModal.open(`${type === 'firmware_update' ? 'Push firmware' : type === 'reset' ? 'Remote reset' : 'Request recalibration'} — ${ids.length} Sentinel${ids.length > 1 ? 's' : ''}`, `
+    OpsModal.open(`${type === 'firmware_update' ? 'Push firmware' : type === 'reset' ? 'Remote reset' : 'Request recalibration'} — ${ids.length} device${ids.length > 1 ? 's' : ''}`, `
       <p style="margin:0 0 12px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">
-        ${verb} <b>${ids.length}</b> selected Sentinel${ids.length > 1 ? 's' : ''}. These nodes are store-and-forward — each picks this up on its next check-in, not instantly.
+        ${verb} <b>${ids.length}</b> selected device${ids.length > 1 ? 's' : ''}. Delivery depends on each device’s next check-in, not an immediate execution guarantee.
       </p>
       ${needsVersion ? OpsModal.field('Firmware version', 'firmware_version', 'text', '', { required: true, placeholder: 'e.g. 2.4.1' }) : ''}
       ${OpsModal.field('Note (optional)', 'note', 'textarea', '', { required: false, placeholder: 'Reason for this command' })}
@@ -479,6 +356,9 @@ const OpsSensors = (function () {
   }
 
   async function confirmBulkCommand(type) {
+    if (!requireDeviceManage()) return;
+    if(!['firmware_update','reset','recalibrate'].includes(type))return OpsModal.toast('Unsupported bulk command','watch');
+    if(!_selected.size)return OpsModal.toast('Select devices before queuing a bulk command','watch');
     const f = OpsModal.getFormData();
     if (type === 'firmware_update' && !f.firmware_version) {
       OpsModal.toast('Firmware version is required.', 'error');
@@ -491,8 +371,7 @@ const OpsSensors = (function () {
         sensor_ids: Array.from(_selected), command_type: type, payload, note: f.note || null,
       });
       OpsModal.close();
-      const n = (r.data && r.data.queued) || _selected.size;
-      OpsModal.toast(`Queued for ${n} Sentinel${n > 1 ? 's' : ''} — delivered on each device's next check-in.`, 'success');
+      const outcome=bulkOutcome('commands',r.data?.queued,_selected.size);OpsModal.toast(outcome.text,outcome.tone);
       _selected.clear();
       await load();
     } catch (err) {
@@ -501,25 +380,29 @@ const OpsSensors = (function () {
     }
   }
 
+  function bulkOutcome(kind,value,requested) {
+    const count=OpsModal.count(value),known=count!==null && count<=requested;
+    if(!known)return {text:kind==='tags'?'Tag request accepted; updated-device count was not supplied.':'Command request accepted; queued-device count was not supplied.',tone:'watch'};
+    if(count===0)return {text:kind==='tags'?'No devices were reported updated.':'No device commands were reported queued.',tone:'watch'};
+    return {text:kind==='tags'?`Tags updated on ${count} device${count===1?'':'s'}.`:`Queued for ${count} device${count===1?'':'s'} — delivery depends on each device's next check-in.`,tone:'success'};
+  }
+
   function renderTable(rows, commonFw) {
     const el = document.getElementById('sn-body');
     if (!el) return;
     const allChecked = rows.length > 0 && _filteredRows.every(x => _selected.has(x.sensor_id));
     el.innerHTML = `
       <div class="lv-scroll">
-        <table class="lv-table">
+        <table class="lv-table fg-device-fleet">
           <thead>
             <tr>
-              <th style="width:26px;"><input type="checkbox" ${allChecked ? 'checked' : ''} onclick="OpsSensors.toggleSelectAll(this.checked)" title="Select all matching this filter"></th>
-              <th>Node ID</th>
-              <th>Property</th>
-              <th>Firmware</th>
-              <th>Battery</th>
-              <th>Signal</th>
-              <th>Temp</th>
-              <th>Last seen</th>
-              <th>Health</th>
-              <th>Actions</th>
+              <th scope="col" style="width:44px;"><label class="fg-check-target"><input type="checkbox" ${allChecked ? 'checked' : ''} onclick="OpsSensors.toggleSelectAll(this.checked)" aria-label="Select all matching devices"></label></th>
+              <th scope="col">Device</th>
+              <th scope="col">Estate</th>
+              <th scope="col">Power / signal</th>
+              <th scope="col">Last reading</th>
+              <th scope="col">Device / data</th>
+              <th scope="col">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -529,37 +412,33 @@ const OpsSensors = (function () {
       </div>`;
   }
 
+  function criticalBattery(value) { const charge=OpsModal.reading(value,0,100);return charge!==null && charge<20; }
   function vitBar(v) {
+    v=OpsModal.reading(v,0,100);
+    if(v===null) return '<span class="lv-source">Unknown</span>';
     const color = OpsModal.vitalColor(v);
-    const pct = v == null ? 0 : Math.max(2, v);
+    const pct = v;
     return `<span class="sn-vitcell"><span class="sn-bar"><i style="width:${pct}%;background:${color}"></i></span><span class="sn-vit-v" style="color:${color}">${v != null ? v + '%' : '—'}</span></span>`;
   }
 
   function rowHTML(x, commonFw) {
     const tier = healthTier(x);
-    const beat = rel(x.reading_time || x.last_ping);
-    const outdated = commonFw && x.firmware_version && x.firmware_version !== commonFw;
+    const beat = rel(x.reading_time);
     return `
       <tr class="sn-row clickable" onclick="OpsSensors.viewSensor('${__sid(x.sensor_id)}')">
-        <td onclick="event.stopPropagation()"><input type="checkbox" ${_selected.has(x.sensor_id) ? 'checked' : ''} onclick="OpsSensors.toggleSelect('${__sid(x.sensor_id)}', this.checked); event.stopPropagation()"></td>
+        <td onclick="event.stopPropagation()"><label class="fg-check-target"><input type="checkbox" aria-label="Select ${esc(x.name || x.sensor_id)}" ${_selected.has(x.sensor_id) ? 'checked' : ''} onclick="OpsSensors.toggleSelect('${__sid(x.sensor_id)}', this.checked); event.stopPropagation()"></label></td>
         <td class="sn-node-id" style="cursor:pointer;" title="Open full details" onclick="event.stopPropagation();OpsSensors.openFull('${__sid(x.sensor_id)}')">
           <div class="lv-name-cell">
-            <div class="lv-avatar" style="background:var(--surface-3);color:var(--ink-3);border:1px solid var(--border);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg></div>
-            <div style="min-width:0;"><div class="lv-name">${esc(x.name || x.sensor_id)}</div>${x.pending_commands ? `<span class="lv-source" style="color:var(--blue-hi);">${x.pending_commands} queued</span>` : ''}</div>
+            <div class="lv-avatar" aria-hidden="true">${OpsSpatial.icon('device')}</div>
+            <div style="min-width:0;"><button type="button" class="record-link lv-name" onclick="event.stopPropagation();OpsSensors.openFull('${__sid(x.sensor_id)}')">${esc(x.name || x.sensor_id)}</button><span class="lv-source">${esc(x.sensor_id)}</span>${x.pending_commands ? `<span class="lv-source" style="color:var(--blue-hi);">${OpsModal.escape(x.pending_commands)} queued</span>` : ''}</div>
           </div>
         </td>
-        <td>${esc(propertyOf(x))}</td>
-        <td class="sn-fw ${outdated ? 'outdated' : 'current'}">${x.firmware_version ? esc(x.firmware_version) : '—'}</td>
-        <td>${vitBar(x.battery_percent)}</td>
-        <td>${vitBar(x.signal_strength)}</td>
-        <td class="sn-temp">${x.temperature != null ? Math.round(x.temperature) + '°C' : '—'}</td>
-        <td class="sn-last" style="color:${beat ? 'var(--ink-2)' : 'var(--err)'}">${beat || 'never'}</td>
-        <td><span class="hbadge ${tier}">${tier}</span></td>
+        <td><span class="fg-cell-copy">${esc(propertyOf(x))}</span></td>
+        <td><div class="lv-source sn-power-row">Battery ${vitBar(x.battery_percent)}</div><div class="lv-source sn-power-row">Signal ${vitBar(x.signal_strength)}</div></td>
+        <td class="sn-last" style="color:${beat ? 'var(--ink-2)' : 'var(--ink-3)'}">${beat || 'Not supplied'}</td>
+        <td>${OpsModal.status(tier==='healthy'?'online':tier,null,null,'device')}<div class="lv-source">Data: ${esc(x.sensor_state==='ok'?(x.data_trust===true?'Trusted':'Unknown'):OpsModal.label(x.sensor_state || 'unknown'))}</div></td>
         <td class="sn-acts" onclick="event.stopPropagation()">
-          <button class="sn-ota-btn" onclick="OpsSensors.sendCommand('${__sid(x.sensor_id)}', 'firmware_update')" title="Push firmware OTA">OTA</button>
-          <button class="sn-icon-btn" onclick="OpsSensors.sendCommand('${__sid(x.sensor_id)}', 'reset')" title="Restart node">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-          </button>
+          <button type="button" class="fg-action" onclick="OpsSensors.viewSensor('${__sid(x.sensor_id)}')">Review controls</button>
         </td>
       </tr>`;
   }
@@ -569,13 +448,14 @@ const OpsSensors = (function () {
   function setQuery(q) { _q = q; draw(); }
 
   // ── Fleet analytics — rollups across the whole device fleet ─────────────
-  const _AC = { ok: 'var(--ok)', warn: 'var(--warn)', err: 'var(--err)', info: 'var(--blue-hi)', muted: 'var(--ink-4)' };
+  const _AC = { ok: 'var(--ok)', warn: 'var(--warn)', caution: 'var(--caut)', err: 'var(--err)', info: 'var(--blue-hi)', muted: 'var(--ink-3)' };
   function fleetAnalytics() {
     const A = _all || [];
     const n = A.length;
-    if (!n) { OpsModal.open('Fleet analytics', '<p style="padding:20px;color:var(--ink-3)">No devices to analyse yet.</p>', [{ label: 'Close', class: 'btn-primary', onclick: 'OpsModal.close()' }]); return; }
+    if (!n) { OpsModal.open('Fleet analytics', OpsModal.emptyState(OpsModal.entityIcon('device'),'No devices returned','No devices were returned by the fleet feed. This does not establish network coverage or health.'), [{ label: 'Close', class: 'btn-ghost', onclick: 'OpsModal.close()' }]); return; }
     const c = pred => A.filter(pred).length;
     const pct = k => Math.round(k / n * 100);
+    const percent = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100;
 
     const seg = (label, cnt, color, filter) => ({ label, cnt, color, filter });
     const block = (title, segs, sub) => {
@@ -583,13 +463,13 @@ const OpsSensors = (function () {
       const max = Math.max(1, ...shown.map(s => s.cnt));
       const rows = (shown.length ? shown : [{ label: 'None', cnt: 0, color: _AC.muted }]).map(s => `
         <div style="display:flex;align-items:center;gap:8px;padding:3px 0">
-          <span style="width:9px;height:9px;border-radius:2px;background:${s.color};flex:0 0 auto"></span>
+          <span style="width:9px;height:9px;border-radius:var(--radius-micro);background:${s.color};flex:0 0 auto"></span>
           <span style="font-size:var(--fs-xs);color:var(--ink-2);flex:0 0 40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.label)}</span>
-          <span style="flex:1 1 auto;height:7px;background:var(--line);border-radius:4px;overflow:hidden"><span style="display:block;height:100%;width:${Math.round(s.cnt / max * 100)}%;background:${s.color}"></span></span>
+          <span style="flex:1 1 auto;height:7px;background:var(--line);border-radius:var(--radius-micro);overflow:hidden"><span style="display:block;height:100%;width:${Math.round(s.cnt / max * 100)}%;background:${s.color}"></span></span>
           <span style="font-size:var(--fs-xs);font-weight:700;color:var(--ink);width:26px;text-align:right">${s.cnt}</span>
-          ${s.filter ? `<button onclick="OpsModal.close();OpsSensors.setFilter('${s.filter}')" style="border:none;background:none;color:var(--blue-hi);cursor:pointer;font-size:var(--fs-2xs);padding:0 2px">view</button>` : '<span style="width:26px"></span>'}
+          ${s.filter ? `<button class="fg-action" aria-label="View ${esc(title)}: ${esc(s.label)}" onclick="OpsModal.close();OpsSensors.setFilter('${s.filter}')" style="cursor:pointer">View</button>` : '<span style="width:26px"></span>'}
         </div>`).join('');
-      return `<div style="background:var(--surface-2,transparent);border:1px solid var(--line);border-radius:10px;padding:13px 15px">
+      return `<div style="background:var(--surface-2,transparent);border:1px solid var(--line);border-radius:var(--radius-control);padding:13px 15px">
         <div style="font-size:var(--fs-sm);font-weight:700;color:var(--ink);margin-bottom:7px">${esc(title)}${sub ? ` <span style="color:var(--ink-4);font-weight:400;font-size:var(--fs-2xs)">${sub}</span>` : ''}</div>${rows}</div>`;
     };
 
@@ -597,78 +477,81 @@ const OpsSensors = (function () {
     const fwT = {}; A.forEach(x => { const k = x.firmware_version || '—'; fwT[k] = (fwT[k] || 0) + 1; });
     const commonFw = fleetFirmware(A);
     const fwSegs = Object.entries(fwT).sort((a, b) => b[1] - a[1]).slice(0, 6)
-      .map(([v, cnt]) => seg(v, cnt, v === commonFw ? _AC.ok : v === '—' ? _AC.muted : _AC.warn));
+      .map(([v, cnt]) => seg(v === '—' ? 'Not supplied' : v, cnt, _AC.muted));
 
     const tamper = c(x => x.tamper_flagged);
     const geo = c(x => x.geofence_state === 'breach');
     const skew = c(x => x.last_clock_skew_seconds != null && Math.abs(x.last_clock_skew_seconds) >= 300);
-    const pendingCmds = A.reduce((s, x) => s + (x.pending_commands || 0), 0);
+    const commandCounts = A.filter(x => Number.isInteger(x.pending_commands) && x.pending_commands >= 0);
+    const pendingCmds = commandCounts.reduce((s, x) => s + x.pending_commands, 0);
 
     const blocks = [
       block('Device health', [
         seg('Online', c(x => x.device_state === 'online'), _AC.ok),
         seg('Degraded', c(x => x.device_state === 'degraded'), _AC.warn, 'degraded'),
-        seg('Offline', c(x => x.device_state === 'offline'), _AC.err, 'offline'),
+        seg('Offline', c(x => x.device_state === 'offline'), _AC.muted, 'offline'),
         seg('Maintenance', c(x => x.device_state === 'maintenance'), _AC.muted),
+        seg('Unknown', c(x => !['online','degraded','offline','maintenance'].includes(x.device_state)), _AC.muted),
       ]),
       block('Data trust', [
-        seg('OK', c(x => x.sensor_state === 'ok'), _AC.ok),
+        seg('Trusted', c(x => x.sensor_state === 'ok' && x.data_trust === true), _AC.ok),
         seg('Stale', c(x => x.sensor_state === 'stale'), _AC.warn, 'dataissue'),
         seg('Frozen', c(x => x.sensor_state === 'frozen'), _AC.warn, 'dataissue'),
         seg('Implausible', c(x => x.sensor_state === 'implausible'), _AC.err, 'dataissue'),
-        seg('Unknown', c(x => x.sensor_state === 'unknown'), _AC.muted),
+        seg('Unknown', c(x => !['stale','frozen','implausible'].includes(x.sensor_state) && !(x.sensor_state === 'ok' && x.data_trust === true)), _AC.muted),
       ]),
       block('Infrastructure', [
-        seg('Normal', c(x => x.infrastructure_state === 'normal'), _AC.ok),
-        seg('Elevated', c(x => x.infrastructure_state === 'elevated'), _AC.info),
-        seg('High', c(x => x.infrastructure_state === 'high'), _AC.warn),
-        seg('Critical', c(x => x.infrastructure_state === 'critical'), _AC.err),
-        seg('Unknown', c(x => x.infrastructure_state === 'unknown' || x.infrastructure_state == null), _AC.muted),
+        seg('Normal', c(x => x.data_trust === true && x.infrastructure_state === 'normal'), _AC.ok),
+        seg('Elevated', c(x => x.data_trust === true && x.infrastructure_state === 'elevated'), _AC.warn),
+        seg('High', c(x => x.data_trust === true && x.infrastructure_state === 'high'), _AC.caution),
+        seg('Critical', c(x => x.data_trust === true && x.infrastructure_state === 'critical'), _AC.err),
+        seg('Unknown', c(x => x.data_trust !== true || !['normal','elevated','high','critical'].includes(x.infrastructure_state)), _AC.muted),
       ]),
       block('Integrity', [
         seg('OK', c(x => x.integrity_state === 'ok'), _AC.ok),
         seg('Warning', c(x => x.integrity_state === 'warning'), _AC.warn),
         seg('Critical', c(x => x.integrity_state === 'critical'), _AC.err),
-        seg('Unknown', c(x => x.integrity_state === 'unknown' || x.integrity_state == null), _AC.muted),
-      ], `${tamper} tamper · ${geo} geofence · ${skew} clock`),
+        seg('Unknown', c(x => !['ok','warning','critical'].includes(x.integrity_state)), _AC.muted),
+      ], `Reported: ${tamper} tamper · ${geo} geofence · ${skew} clock`),
       block('Firmware', fwSegs, commonFw ? `fleet baseline ${esc(commonFw)}` : ''),
       block('Config profiles', [
         seg('In sync', c(x => x.config_state === 'in_sync'), _AC.ok),
         seg('Drift', c(x => x.config_state === 'drift'), _AC.warn),
-        seg('Pending', c(x => x.config_state === 'pending'), _AC.info),
-        seg('No profile', c(x => x.config_state === 'none' || x.config_state == null), _AC.muted),
+        seg('Pending', c(x => x.config_state === 'pending'), _AC.muted),
+        seg('No profile', c(x => x.config_state === 'none'), _AC.muted),
+        seg('Unknown', c(x => !['in_sync','drift','pending','none'].includes(x.config_state)), _AC.muted),
       ]),
       block('Lifecycle', [
         seg('Active', c(x => x.lifecycle_state === 'active'), _AC.ok),
-        seg('Installed', c(x => x.lifecycle_state === 'installed'), _AC.info),
-        seg('Assigned', c(x => x.lifecycle_state === 'assigned'), _AC.info),
+        seg('Installed', c(x => x.lifecycle_state === 'installed'), _AC.muted),
+        seg('Assigned', c(x => x.lifecycle_state === 'assigned'), _AC.muted),
         seg('Warehouse', c(x => x.lifecycle_state === 'warehouse'), _AC.muted),
         seg('Inventory', c(x => x.lifecycle_state === 'inventory'), _AC.muted),
         seg('Maintenance', c(x => x.lifecycle_state === 'maintenance'), _AC.warn),
         seg('RMA', c(x => x.lifecycle_state === 'rma'), _AC.err),
         seg('Retired', c(x => x.lifecycle_state === 'retired'), _AC.muted),
+        seg('Unknown', c(x => !['active','installed','assigned','warehouse','inventory','maintenance','rma','retired'].includes(x.lifecycle_state)), _AC.muted),
       ]),
       block('Power', [
-        seg('Healthy (≥60%)', c(x => x.battery_percent != null && x.battery_percent >= 60), _AC.ok),
-        seg('Low (25–59%)', c(x => x.battery_percent != null && x.battery_percent >= 25 && x.battery_percent < 60), _AC.warn),
-        seg('Critical (<25%)', c(x => x.battery_percent != null && x.battery_percent < 25), _AC.err, 'lowbatt'),
-        seg('Unknown', c(x => x.battery_percent == null), _AC.muted),
+        seg('Healthy (≥50%)', c(x => percent(x.battery_percent) && x.battery_percent >= 50), _AC.ok),
+        seg('Low (20–49%)', c(x => percent(x.battery_percent) && x.battery_percent >= 20 && x.battery_percent < 50), _AC.warn),
+        seg('Critical (<20%)', c(x => percent(x.battery_percent) && x.battery_percent < 20), _AC.err, 'lowbatt'),
+        seg('Unknown', c(x => !percent(x.battery_percent)), _AC.muted),
       ]),
       block('Connectivity', [
-        seg('Good (≥50%)', c(x => x.device_state !== 'offline' && x.signal_strength != null && x.signal_strength >= 50), _AC.ok),
-        seg('Fair (25–49%)', c(x => x.device_state !== 'offline' && x.signal_strength != null && x.signal_strength >= 25 && x.signal_strength < 50), _AC.warn),
-        seg('Poor (<25%)', c(x => x.device_state !== 'offline' && x.signal_strength != null && x.signal_strength < 25), _AC.err),
-        seg('Offline / unknown', c(x => x.device_state === 'offline' || x.signal_strength == null), _AC.muted, 'offline'),
+        seg('Good (≥50%)', c(x => ['online','degraded'].includes(x.device_state) && percent(x.signal_strength) && x.signal_strength >= 50), _AC.ok),
+        seg('Fair (20–49%)', c(x => ['online','degraded'].includes(x.device_state) && percent(x.signal_strength) && x.signal_strength >= 20 && x.signal_strength < 50), _AC.warn),
+        seg('Poor (<20%)', c(x => ['online','degraded'].includes(x.device_state) && percent(x.signal_strength) && x.signal_strength < 20), _AC.err),
+        seg('Unavailable', c(x => !['online','degraded'].includes(x.device_state) || !percent(x.signal_strength)), _AC.muted),
       ]),
     ];
 
-    const summary = `
-      <div style="display:flex;flex-wrap:wrap;gap:18px;margin-bottom:14px">
-        <div><div style="font-size:var(--fs-2xl,26px);font-weight:800;color:var(--ink);line-height:1">${n}</div><div style="font-size:var(--fs-2xs);color:var(--ink-4)">devices</div></div>
-        <div><div style="font-size:var(--fs-2xl,26px);font-weight:800;color:var(--ok);line-height:1">${pct(c(x => x.device_state === 'online'))}%</div><div style="font-size:var(--fs-2xs);color:var(--ink-4)">online</div></div>
-        <div><div style="font-size:var(--fs-2xl,26px);font-weight:800;color:${tamper || geo ? 'var(--err)' : 'var(--ink)'};line-height:1">${tamper + geo + skew}</div><div style="font-size:var(--fs-2xs);color:var(--ink-4)">integrity flags</div></div>
-        <div><div style="font-size:var(--fs-2xl,26px);font-weight:800;color:var(--ink);line-height:1">${pendingCmds}</div><div style="font-size:var(--fs-2xs);color:var(--ink-4)">queued commands</div></div>
-      </div>`;
+    const summary = OpsModal.kpiStrip([
+      {label:'Devices returned',value:n},
+      {label:'Reported online share',value:n?pct(c(x=>x.device_state==='online'))+'%':'Not supplied',sub:'Of all returned devices, including unknown states'},
+      {label:'Reported integrity flags',value:tamper+geo+skew,sub:'Flags present in returned records, not a clean-fleet assessment'},
+      {label:'Queued commands reported',value:commandCounts.length?pendingCmds:'Unavailable',sub:commandCounts.length+' / '+n+' devices supplied command counts'}
+    ]);
 
     OpsModal.open('Fleet analytics',
       `${summary}<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">${blocks.join('')}</div>`,
@@ -685,37 +568,39 @@ const OpsSensors = (function () {
   async function refreshWindows() {
     const body = document.getElementById('pw-body');
     if (!body) return;
-    let list = [];
-    try { list = (await OpsModal.apiGet('/monitoring/protection-windows')).data || []; } catch (_) {}
-    const fmt = d => d ? new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
-    const scopeLabel = w => w.scope_type === 'fleet' ? 'Whole fleet' : `${w.scope_type}: ${esc(w.scope_value || '')}`;
+    let list;
+    try { list = (await OpsModal.apiGet('/monitoring/protection-windows')).data; if (!Array.isArray(list)) throw new Error('Maintenance window directory unavailable'); }
+    catch (err) { body.innerHTML = OpsModal.failure('Maintenance windows',err,'OpsSensors.refreshWindows()'); return; }
+    const fmt = d => d ? OpsModal.fmtDateTime(d) : '—';
+    const scopeLabel = w => w.scope_type === 'fleet' ? 'Whole fleet' : `${esc(OpsModal.label(w.scope_type || 'unknown'))}: ${esc(w.scope_value || 'Not supplied')}`;
     const rows = list.length ? list.map(w => `
       <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
-        <span class="lv-status ${w.active ? 'warn' : 'neutral'}" style="margin-top:2px">${w.active ? 'Active' : 'Scheduled'}</span>
+        ${OpsModal.status(w.active===true?'active':w.active===false?'scheduled':'unknown',null,w.active===true?'warn':'neutral')}
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;color:var(--ink)">${scopeLabel(w)}</div>
           ${w.reason ? `<div style="font-size:var(--fs-sm);color:var(--ink-2);margin-top:2px">${esc(w.reason)}</div>` : ''}
           <div style="font-size:var(--fs-2xs);color:var(--ink-3);margin-top:3px">${fmt(w.starts_at)} → ${fmt(w.ends_at)}${w.created_by_name ? ' · ' + esc(w.created_by_name) : ''}</div>
         </div>
-        <button class="btn-ghost" style="padding:4px 10px" onclick="OpsSensors.cancelWindow(${w.id})">End</button>
-      </div>`).join('') : '<div style="color:var(--ink-3);font-size:var(--fs-sm);padding:6px 0 14px">No active or scheduled windows.</div>';
+        <button class="fg-action" onclick="OpsSensors.cancelWindow(${w.id})">End</button>
+      </div>`).join('') : OpsModal.emptyState('','No protection windows returned','No active or scheduled protection windows were returned by this feed.');
 
     const form = `
       <div style="border-top:1px solid var(--border);margin-top:8px;padding-top:14px">
-        <div style="font-weight:600;margin-bottom:10px">New window</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <h3 class="fg-manager-title">Create protection window</h3>
+        <div class="ops-modal-row" style="--field-columns:2">
           ${OpsModal.field('Scope', 'scope_type', 'select', 'fleet', { options: [
             { value: 'fleet', label: 'Whole fleet' }, { value: 'tag', label: 'Tag / group' },
-            { value: 'property', label: 'Property' }, { value: 'sensor', label: 'One Sentinel' }] })}
-          ${OpsModal.field('Scope value (tag / property_id / sensor_id)', 'scope_value', 'text', '', { required: false, placeholder: 'leave blank for whole fleet' })}
+            { value: 'property', label: 'Estate' }, { value: 'sensor', label: 'One device' }] })}
+          ${OpsModal.field('Target reference', 'scope_value', 'text', '', { required: false, placeholder: 'Tag, estate reference or device reference' })}
         </div>
         ${OpsModal.field('Reason', 'reason', 'text', '', { required: false, placeholder: 'e.g. Heavy rain forecast tonight' })}
         ${OpsModal.field('Protect until', 'ends_at', 'datetime-local', '', { required: true })}
-        <div style="text-align:right;margin-top:10px"><button class="btn-primary" onclick="OpsSensors.createWindow()">Start protection</button></div>
+        <div style="text-align:right;margin-top:10px"><button class="fg-action fg-action-primary" onclick="OpsSensors.createWindow()">Start protection</button></div>
       </div>`;
     body.innerHTML = rows + form;
   }
   async function createWindow() {
+    if (!requireDeviceManage()) return;
     const f = OpsModal.getFormData();
     if (!f.ends_at) { OpsModal.toast('Set an end time.', 'warning'); return; }
     if (f.scope_type !== 'fleet' && !f.scope_value) { OpsModal.toast('This scope needs a value.', 'warning'); return; }
@@ -728,41 +613,46 @@ const OpsSensors = (function () {
     } catch (err) { OpsModal.toast(err.message || 'Failed to create window', 'error'); }
   }
   async function cancelWindow(id) {
+    if (!requireDeviceManage()) return;
     try { await OpsModal.apiPost(`/monitoring/protection-windows/${id}/cancel`, {}); OpsModal.toast('Window ended.', 'success'); refreshWindows(); }
     catch (err) { OpsModal.toast(err.message || 'Failed', 'error'); }
   }
 
   // ── Device configuration profiles ─────────────────────────────────────
   const CFG_FIELDS = [
-    ['telemetry_interval_sec', 'Telemetry interval (s)', 60],
-    ['water_poll_sec', 'Water polling (s)', 10],
-    ['offline_alert_min', 'Offline alert (min)', 5],
-    ['high_level_pct', 'High water (%)', 70],
-    ['critical_level_pct', 'Critical water (%)', 85],
+    ['telemetry_interval_sec', 'Telemetry interval (seconds)', 5,3600],
+    ['water_poll_sec', 'Water polling (seconds)', 1,600],
+    ['offline_alert_min', 'Offline alert (minutes)', 1,240],
+    ['high_level_pct', 'High water (%)', 1,100],
+    ['critical_level_pct', 'Critical water (%)', 1,100],
   ];
   function profilesManager() {
     OpsModal.open('Device profiles',
-      '<div id="pf-body" style="min-width:520px;max-width:640px"><div style="padding:20px;color:var(--ink-3)">Loading…</div></div>',
+      '<div id="pf-body"><div style="padding:20px;color:var(--ink-3)">Loading…</div></div>',
       [{ label: 'Close', onclick: 'OpsModal.close()' }]);
     pfHome();
   }
   async function pfHome() {
     const body = document.getElementById('pf-body'); if (!body) return;
-    let list = [];
-    try { list = (await OpsModal.apiGet('/device-profiles')).data || []; } catch (_) {}
-    const rows = list.length ? list.map(p => `<div class="sn-act-row" style="justify-content:space-between;cursor:pointer" onclick="OpsSensors.pfOpen(${p.id})">
-        <div><b>${esc(p.name)}</b> <span class="lv-mono" style="color:var(--ink-3);margin-left:6px">v${p.version}</span>
-          <div style="color:var(--ink-3);font-size:var(--fs-2xs);margin-top:2px">${p.assigned} assigned${p.drifted ? ` · <span style="color:var(--warn)">${p.drifted} drifted</span>` : ' · in sync'}</div></div>
-        <span style="color:var(--ink-3)">›</span></div>`).join('')
-      : '<div style="color:var(--ink-3);font-size:var(--fs-sm)">No profiles yet.</div>';
+    let list;
+    try { list = OpsModal.readArray(await OpsModal.apiGet('/device-profiles'),'Profiles'); if(list.some(p=>!p || typeof p!=='object' || Array.isArray(p)))throw new Error('Profile records unavailable'); }
+    catch (err) { body.innerHTML = OpsModal.failure('Profiles',err,'OpsSensors.pfHome()'); return; }
+    if(!document.contains(body))return;
+    const count = value => OpsModal.count(value) ?? 'Not supplied';
+    const rows = list.length ? list.map(p => `<button type="button" class="sn-act-row fg-action" style="width:100%;text-align:left" onclick="OpsSensors.pfOpen('${esc(String(p.id).replace(/[^a-zA-Z0-9_-]/g,''))}')">
+        <div><b>${esc(p.name || 'Unnamed profile')}</b> <span class="lv-mono" style="color:var(--ink-3);margin-left:6px">${OpsModal.count(p.version)!==null?'v'+OpsModal.count(p.version):'Version not supplied'}</span>
+          <div style="color:var(--ink-3);font-size:var(--fs-xs);margin-top:2px">Assignments: ${count(p.assigned)} · Drifted: ${count(p.drifted)}</div></div>
+        <span aria-hidden="true" style="color:var(--ink-3)">›</span></button>`).join('')
+      : OpsModal.emptyState('','No profiles returned','No device configuration profiles were returned by this directory.');
     body.innerHTML = `${rows}
       <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px">
-        <div style="font-weight:600;margin-bottom:8px">New profile</div>
-        ${OpsModal.field('Name', 'pf-name', 'text', '', { required: false, placeholder: 'e.g. Urban Drain Profile' })}
-        <div style="text-align:right;margin-top:8px"><button class="btn-primary" onclick="OpsSensors.pfCreate()">Create</button></div>
+        <h3 class="fg-manager-title">Create profile</h3>
+        ${OpsModal.field('Name', 'pf-name', 'text', '', { required: false, placeholder: 'e.g. Urban drainage profile',disabled:!canMng() })}
+        <div class="fg-diagnostic-actions"><button class="fg-action fg-action-primary" ${!canMng()?'disabled':''} onclick="OpsSensors.pfCreate()">${OpsModal.actionIcon('create')}Create profile</button></div>
       </div>`;
   }
   async function pfCreate() {
+    if (!requireDeviceManage()) return;
     const f = OpsModal.getFormData();
     if (!f['pf-name']) { OpsModal.toast('Name the profile.', 'warning'); return; }
     try { const r = await OpsModal.apiPost('/device-profiles', { name: f['pf-name'], config: {} }); OpsModal.toast('Profile created.', 'success'); pfOpen(r.data.id); }
@@ -771,172 +661,225 @@ const OpsSensors = (function () {
   async function pfOpen(id) {
     const body = document.getElementById('pf-body'); if (!body) return;
     body.innerHTML = '<div style="padding:20px;color:var(--ink-3)">Loading…</div>';
-    let d; try { d = (await OpsModal.apiGet('/device-profiles/' + id)).data; } catch (_) { body.innerHTML = '<div style="padding:20px;color:var(--err)">Couldn\'t load.</div>'; return; }
-    const cfg = d.config || {};
-    const fields = CFG_FIELDS.map(([k, label, def]) => `<div class="ops-modal-field"><label class="ops-label">${label}</label><input class="ops-input" id="pf-${k}" type="number" value="${cfg[k] != null ? cfg[k] : def}"></div>`).join('');
-    const drift = (d.devices || []).filter(x => x.drift).length;
+    let d; try { d = OpsModal.readRecord(await OpsModal.apiGet('/device-profiles/' + id),'Device profile'); } catch (err) { body.innerHTML = OpsModal.failure('Device profile',err,`OpsSensors.pfOpen('${__sid(id)}')`); return; }
+    if(!document.contains(body))return;
+    const cfg = d.config && typeof d.config==='object' && !Array.isArray(d.config)?d.config:{};
+    const enums={camera_mode:['off','event','continuous'],firmware_channel:['stable','beta','internal']};
+    const knownConfig=CFG_FIELDS.every(([key,,min,max])=>{const value=diagnosticNumber(cfg[key],min,max);return value!==null && Number.isInteger(value);}) && Object.entries(enums).every(([key,values])=>values.includes(cfg[key]));
+    const fields = CFG_FIELDS.map(([k, label,min,max]) => {const value=diagnosticNumber(cfg[k],min,max),known=value!==null && Number.isInteger(value);return `<div class="ops-modal-field"><label class="ops-label" for="pf-${k}">${label}</label><input class="ops-input" id="pf-${k}" type="number" min="${min}" max="${max}" step="1" value="${known?value:''}" ${!known || !canMng()?'disabled':''} ${known?'':'placeholder="Not supplied"'}></div>`;});
+    const records=value=>Array.isArray(value) && value.every(row=>row && typeof row==='object' && !Array.isArray(row))?value:null;
+    const assigned=records(d.devices),history=records(d.history);
+    const drift = assigned?.filter(x => x.drift===true).length;
+    const driftUnknown=assigned?.filter(x=>typeof x.drift!=='boolean').length;
+    const enumField=(key,label)=>`<div class="ops-modal-field"><label class="ops-label" for="pf-${key}">${label}</label><select class="ops-input" id="pf-${key}" ${!canMng() || !enums[key].includes(cfg[key])?'disabled':''}>${!enums[key].includes(cfg[key])?'<option value="" selected>Not supplied</option>':''}${enums[key].map(o=>`<option value="${o}" ${cfg[key]===o?'selected':''}>${OpsModal.label(o)}</option>`).join('')}</select></div>`;
+    const version=OpsModal.count(d.version);
     body.innerHTML = `
-      <div class="sn-crumb" style="cursor:pointer" onclick="OpsSensors.pfHome()">‹ Profiles</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin:6px 0 10px">
-        <span style="font-family:var(--ff-d);font-size:17px;font-weight:700">${esc(d.name)} <span class="lv-mono" style="color:var(--ink-3);font-size:var(--fs-sm)">v${d.version}</span></span>
-        <span style="font-size:var(--fs-2xs);color:${drift ? 'var(--warn)' : 'var(--ink-3)'}">${d.devices.length} assigned${drift ? ` · ${drift} drifted` : ''}</span>
+      <button type="button" class="fg-action" onclick="OpsSensors.pfHome()">Back to profiles</button>
+      <div class="fg-manager-header">
+        <h3 class="fg-manager-title">${esc(d.name || 'Device profile')} <span class="lv-mono">${version!==null?'v'+version:'Version not supplied'}</span></h3>
+        <span class="fg-timeline-meta">${assigned?assigned.length+' returned assignments · '+drift+' confirmed drifting'+(driftUnknown?' · '+driftUnknown+' with drift state not supplied':''):'Assignments unavailable'}</span>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${fields}
-        <div class="ops-modal-field"><label class="ops-label">Camera mode</label><select class="ops-input" id="pf-camera_mode">${['off', 'event', 'continuous'].map(o => `<option ${cfg.camera_mode === o ? 'selected' : ''}>${o}</option>`).join('')}</select></div>
-        <div class="ops-modal-field"><label class="ops-label">Firmware channel</label><select class="ops-input" id="pf-firmware_channel">${['stable', 'beta', 'internal'].map(o => `<option ${cfg.firmware_channel === o ? 'selected' : ''}>${o}</option>`).join('')}</select></div>
-      </div>
-      <div style="text-align:right;margin-top:10px"><button class="btn-primary" onclick="OpsSensors.pfSave(${id})">Save new version</button></div>
+      ${knownConfig?'':OpsModal.textBlock('Configuration unavailable','Some configuration values were not supplied or are invalid. They are not filled with defaults, and this profile cannot be saved or assigned from this view.')}
+      ${OpsModal.row([...fields,enumField('camera_mode','Camera mode'),enumField('firmware_channel','Firmware channel')],2)}
+      <div class="fg-diagnostic-actions"><button class="fg-action fg-action-primary" ${!knownConfig || !canMng()?'disabled':''} onclick="OpsSensors.pfSave('${__sid(id)}')">Save new version</button></div>
       <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px">
-        <div style="font-weight:600;margin-bottom:8px">Assign</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
-          ${OpsModal.field('Target', 'pf-target', 'select', 'fleet', { options: [{ value: 'fleet', label: 'Whole fleet' }, { value: 'tag', label: 'Tag / group' }] })}
-          ${OpsModal.field('Tag', 'pf-tag', 'text', '', { required: false, placeholder: 'if tag' })}
-          <button class="btn-ghost" style="height:40px" onclick="OpsSensors.pfAssign(${id})">Assign</button>
+        <h3 class="fg-manager-title">Assign profile</h3>
+        <div class="ops-modal-row fg-form-actions" style="--field-columns:3">
+          ${OpsModal.field('Assignment scope', 'pf-target', 'select', '', { options: [{value:'',label:'Choose scope'},{ value: 'fleet', label: 'Whole fleet' }, { value: 'tag', label: 'Tag / group' }],disabled:!knownConfig || !canMng() })}
+          ${OpsModal.field('Group tag', 'pf-tag', 'text', '', { required: false, placeholder: 'For tag / group',disabled:!knownConfig || !canMng() })}
+          <button class="fg-action" ${!knownConfig || !canMng()?'disabled':''} onclick="OpsSensors.pfAssign('${__sid(id)}')">Assign profile</button>
         </div>
       </div>
-      ${d.history && d.history.length ? `<div style="border-top:1px solid var(--border);margin-top:14px;padding-top:10px"><div style="font-weight:600;margin-bottom:6px;font-size:var(--fs-sm)">History</div>${d.history.map(h => `<div style="font-size:var(--fs-2xs);color:var(--ink-3)">v${h.version} · ${esc(h.note || '')} · ${new Date(h.changed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}${h.changed_by_name ? ' · ' + esc(h.changed_by_name) : ''}</div>`).join('')}</div>` : ''}`;
+      <h3 class="fg-manager-title">Version history</h3>${history?history.length?`<div class="fg-timeline">${history.map(h=>`<div class="fg-timeline-row"><span class="fg-timeline-icon">${OpsModal.entityIcon('settings')}</span><div><div class="fg-timeline-title">${OpsModal.count(h.version)!==null?'Version '+OpsModal.count(h.version):'Version not supplied'}</div><div class="fg-timeline-meta">${esc(h.changed_by_name || 'Actor not supplied')}${h.note?' · '+esc(h.note):''}</div></div><time class="fg-timeline-time">${OpsModal.fmtDateTime(h.changed_at)}</time></div>`).join('')}</div>`:OpsModal.emptyState('','No profile versions returned','The returned version history is empty.'):OpsModal.textBlock('History unavailable','Version history was not supplied; no absence of changes is inferred.')}`;
   }
   function _pfReadConfig() {
     const c = {};
-    CFG_FIELDS.forEach(([k]) => { const el = document.getElementById('pf-' + k); if (el) c[k] = el.value; });
+    CFG_FIELDS.forEach(([k,label,min,max]) => { const el = document.getElementById('pf-' + k),value=el && !el.disabled?diagnosticNumber(el.value,min,max):null;if(value===null || !Number.isInteger(value))throw new Error('Supply a valid whole-number '+label.toLowerCase());c[k]=value; });
     c.camera_mode = (document.getElementById('pf-camera_mode') || {}).value;
     c.firmware_channel = (document.getElementById('pf-firmware_channel') || {}).value;
+    if(!['off','event','continuous'].includes(c.camera_mode) || !['stable','beta','internal'].includes(c.firmware_channel))throw new Error('Camera mode and firmware channel must be supplied');
+    if(c.high_level_pct>c.critical_level_pct)throw new Error('High-water threshold cannot exceed the critical threshold');
     return c;
   }
   async function pfSave(id) {
-    try { const r = await OpsModal.apiPut('/device-profiles/' + id, { config: _pfReadConfig() });
-      OpsModal.toast(`Saved v${r.data.version} — re-pushed to ${r.data.repushed} device(s).`, 'success'); pfOpen(id); }
-    catch (err) { OpsModal.toast(err.message || 'Failed to save', 'error'); }
+    if (!requireDeviceManage()) return;
+    let config;try { config=_pfReadConfig(); }catch(err){return OpsModal.toast(err.message,'warning');}
+    OpsModal.confirm('Save a new profile version? This queues updated configuration for devices already assigned to this profile.',async()=>{
+      if(!requireDeviceManage())return;
+      try { const r = await OpsModal.apiPut('/device-profiles/' + id, { config });
+        const version=OpsModal.count(r.data?.version),affected=OpsModal.count(r.data?.repushed);
+        OpsModal.toast(`Profile saved${version!==null?' as v'+version:''}; ${affected!==null?'configuration queued for '+affected+' devices':'affected-device count not supplied'}.`, 'success');pfOpen(id);
+      }catch(err){OpsModal.toast(err.message || 'Failed to save','error');}
+    });
   }
   async function pfAssign(id) {
+    if (!requireDeviceManage()) return;
     const f = OpsModal.getFormData();
-    try { const r = await OpsModal.apiPost(`/device-profiles/${id}/assign`, { target_type: f['pf-target'], target_value: f['pf-target'] === 'tag' ? f['pf-tag'] : null });
-      OpsModal.toast(`Assigned to ${(r.data && r.data.assigned) || 0} device(s) — config queued.`, 'success'); pfOpen(id); await load(); }
-    catch (err) { OpsModal.toast(err.message || 'Failed to assign', 'error'); }
+    if(!['fleet','tag'].includes(f['pf-target']) || f['pf-target']==='tag' && !String(f['pf-tag'] || '').trim())return OpsModal.toast('Choose an assignment scope and supply a tag when using a group.','warning');
+    const target=f['pf-target']==='tag'?String(f['pf-tag']).trim():null;
+    OpsModal.confirm(`Assign this profile to ${target?'tag '+target:'the whole fleet'}? This queues device configuration changes.`,async()=>{
+      if(!requireDeviceManage())return;
+      try { const r = await OpsModal.apiPost(`/device-profiles/${id}/assign`, { target_type:f['pf-target'],target_value:target });
+        const assigned=OpsModal.count(r.data?.assigned);
+        OpsModal.toast(assigned!==null?`Assignment accepted for ${assigned} device${assigned===1?'':'s'}; configuration queued.`:'Assignment accepted; affected-device count was not supplied.','success');pfOpen(id);await load(); }
+      catch (err) { OpsModal.toast(err.message || 'Failed to assign', 'error'); }
+    });
   }
 
   // ── Firmware releases & staged rollouts ───────────────────────────────
-  const RO_CHIP = { active:['warn','Active'], paused:['neutral','Paused'], completed:['ok','Completed'], rolled_back:['danger','Rolled back'], cancelled:['neutral','Cancelled'] };
+  function rolloutProgress(record) {
+    const total=OpsModal.count(record?.total),updated=OpsModal.count(record?.updated);
+    if (total===null || total <= 0 || updated===null || updated > total) return null;
+    return Math.round(updated / total * 100);
+  }
+  const rolloutScope=record=>record.target_type==='fleet'?'Whole fleet':record.target_type==='tag' && typeof record.target_value==='string' && record.target_value.trim()?'Tag / group: '+record.target_value:'Scope not supplied';
   function firmwareManager() {
     OpsModal.open('Firmware & rollouts',
-      '<div id="fw-body" style="min-width:520px;max-width:640px"><div style="padding:20px;color:var(--ink-3)">Loading…</div></div>',
+      '<div id="fw-body"><div style="padding:20px;color:var(--ink-3)">Loading…</div></div>',
       [{ label: 'Close', onclick: 'OpsModal.close()' }]);
     fwHome();
   }
   async function fwHome() {
     const body = document.getElementById('fw-body'); if (!body) return;
-    let rel = [], ro = [];
-    try { rel = (await OpsModal.apiGet('/firmware/releases')).data || []; } catch (_) {}
-    try { ro = (await OpsModal.apiGet('/firmware/rollouts')).data || []; } catch (_) {}
+    let rel = [], ro = [], relError, roError;
+    try { rel = OpsModal.readArray(await OpsModal.apiGet('/firmware/releases'),'Releases'); if(rel.some(r=>!r || typeof r!=='object' || Array.isArray(r)))throw new Error('Release records unavailable'); } catch (err) { rel=[]; relError=err; }
+    try { ro = OpsModal.readArray(await OpsModal.apiGet('/firmware/rollouts'),'Rollouts'); if(ro.some(r=>!r || typeof r!=='object' || Array.isArray(r)))throw new Error('Rollout records unavailable'); } catch (err) { ro=[]; roError=err; }
+    if(!document.contains(body))return;
     const relRows = rel.length ? rel.map(r => `<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:var(--fs-sm)">
-        <div><b>${esc(r.version)}</b> <span class="lv-status neutral" style="margin-left:6px">${esc(r.channel)}</span>${r.notes ? `<div style="color:var(--ink-3);font-size:var(--fs-2xs);margin-top:2px">${esc(r.notes)}</div>` : ''}</div>
-        <div class="lv-mono" style="color:var(--ink-3)">${r.devices_on_version} on this</div></div>`).join('')
-      : '<div style="color:var(--ink-3);font-size:var(--fs-sm)">No releases yet.</div>';
-    const relOpts = rel.map(r => `<option value="${r.id}">${esc(r.version)} (${esc(r.channel)})</option>`).join('');
-    const roRows = ro.length ? ro.map(r => { const c = RO_CHIP[r.status] || RO_CHIP.active;
-        const pct = r.total ? Math.round((r.updated / r.total) * 100) : 0;
-        return `<div class="sn-act-row" style="justify-content:space-between;cursor:pointer" onclick="OpsSensors.fwOpenRollout(${r.id})">
-          <div><b>${esc(r.name || r.version)}</b> <span class="lv-status ${c[0]}" style="margin-left:6px">${c[1]}</span>
-            <div style="color:var(--ink-3);font-size:var(--fs-2xs);margin-top:2px">→ ${esc(r.version)} · ${r.target_type === 'fleet' ? 'whole fleet' : '#' + esc(r.target_value || '')} · ${r.updated}/${r.total} updated (${pct}%)</div></div>
-          <span style="color:var(--ink-3)">›</span></div>`; }).join('')
-      : '<div style="color:var(--ink-3);font-size:var(--fs-sm)">No rollouts yet.</div>';
+        <div><b>${esc(r.version || 'Version not supplied')}</b> <span class="lv-status neutral" style="margin-left:6px">${OpsModal.label(r.channel)}</span>${r.notes ? `<div style="color:var(--ink-3);font-size:var(--fs-xs);margin-top:2px">${esc(r.notes)}</div>` : ''}</div>
+        <div class="fg-number" style="color:var(--ink-3)">${OpsModal.count(r.devices_on_version) ?? 'Not supplied'} devices on version</div></div>`).join('')
+      : relError ? OpsModal.failure('Releases',relError,'OpsSensors.fwHome()') : OpsModal.emptyState('','No releases returned','No firmware release records were returned by this directory.');
+    const roRows = ro.length ? ro.map(r => {
+        const progress = rolloutProgress(r);
+        return `<button type="button" class="sn-act-row fg-action" style="width:100%;text-align:left" onclick="OpsSensors.fwOpenRollout('${esc(String(r.id).replace(/[^a-zA-Z0-9_-]/g,''))}')">
+          <div><b>${esc(r.name || r.version)}</b> ${OpsModal.status(r.status,null,null,'rollout')}
+            <div style="color:var(--ink-3);font-size:var(--fs-xs);margin-top:2px">Version ${esc(r.version || 'not supplied')} · ${esc(rolloutScope(r))} · ${progress === null ? 'Progress unavailable' : `${r.updated}/${r.total} updated (${progress}%)`}</div></div>
+          <span aria-hidden="true" style="color:var(--ink-3)">›</span></button>`; }).join('')
+      : roError ? OpsModal.failure('Rollouts',roError,'OpsSensors.fwHome()') : OpsModal.emptyState('','No rollouts returned','No staged firmware rollouts were returned by this directory.');
     body.innerHTML = `
-      <div style="font-weight:600;margin-bottom:8px">Releases</div>${relRows}
-      <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:end;margin:12px 0 20px">
-        ${OpsModal.field('New version', 'fw-version', 'text', '', { required: false, placeholder: '2.4.1' })}
-        ${OpsModal.field('Channel', 'fw-channel', 'select', 'stable', { options: ['stable', 'beta', 'internal'] })}
-        <button class="btn-ghost" style="height:40px" onclick="OpsSensors.fwCreateRelease()">Add</button>
+      <h3 class="fg-manager-title">Releases</h3>${relRows}
+      <div class="ops-modal-row fg-form-actions" style="--field-columns:3;margin:12px 0 20px">
+        ${OpsModal.field('New version', 'fw-version', 'text', '', { required: false, placeholder: '2.4.1',disabled:!canMng() })}
+        ${OpsModal.field('Channel', 'fw-channel', 'select', 'stable', { options: ['stable', 'beta', 'internal'].map(value=>({value,label:OpsModal.label(value)})),disabled:!canMng() })}
+        <button class="fg-action" ${!canMng()?'disabled':''} onclick="OpsSensors.fwCreateRelease()">${OpsModal.actionIcon('create')}Add release</button>
       </div>
-      <div style="font-weight:600;margin-bottom:8px;border-top:1px solid var(--border);padding-top:14px">Rollouts</div>${roRows}
+      <h3 class="fg-manager-title">Rollouts</h3>${roRows}
       ${rel.length ? `<div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px">
-        <div style="font-weight:600;margin-bottom:8px">New rollout</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          ${OpsModal.field('Release', 'ro-release', 'select', '', { options: rel.map(r => ({ value: String(r.id), label: r.version + ' (' + r.channel + ')' })) })}
-          ${OpsModal.field('Target', 'ro-target', 'select', 'fleet', { options: [{ value: 'fleet', label: 'Whole fleet' }, { value: 'tag', label: 'Tag / group' }] })}
+        <h3 class="fg-manager-title">Create rollout</h3>
+        <div class="ops-modal-row" style="--field-columns:2">
+          ${OpsModal.field('Release', 'ro-release', 'select', '', { options: [{value:'',label:'Choose release'},...rel.map(r => ({ value: String(r.id), label: (r.version || 'Version not supplied') + ' (' + OpsModal.label(r.channel) + ')' }))],disabled:!canMng() })}
+          ${OpsModal.field('Assignment scope', 'ro-target', 'select', '', { options: [{value:'',label:'Choose scope'},{ value: 'fleet', label: 'Whole fleet' }, { value: 'tag', label: 'Tag / group' }],disabled:!canMng() })}
         </div>
-        ${OpsModal.field('Tag (if target = tag)', 'ro-tag', 'text', '', { required: false, placeholder: 'e.g. lekki' })}
-        ${OpsModal.field('Rings (cumulative %)', 'ro-rings', 'text', '5, 25, 100', { required: false, placeholder: '5, 25, 100' })}
-        <div style="text-align:right;margin-top:10px"><button class="btn-primary" onclick="OpsSensors.fwCreateRollout()">Create rollout</button></div>
+        ${OpsModal.field('Group tag', 'ro-tag', 'text', '', { required: false, placeholder: 'Required for tag / group',disabled:!canMng() })}
+        ${OpsModal.field('Rings (cumulative %)', 'ro-rings', 'text', '5, 25, 100', { required: false, placeholder: '5, 25, 100',disabled:!canMng() })}
+        <p class="capability-note">Suggested rings are editable. Creating a rollout stages the selected devices; advancing a ring queues firmware updates.</p>
+        <div class="fg-diagnostic-actions"><button class="fg-action fg-action-primary" ${!canMng()?'disabled':''} onclick="OpsSensors.fwCreateRollout()">${OpsModal.actionIcon('create')}Create rollout</button></div>
       </div>` : ''}`;
   }
   async function fwCreateRelease() {
+    if (!requireDeviceManage()) return;
     const f = OpsModal.getFormData();
     if (!f['fw-version']) { OpsModal.toast('Enter a version.', 'warning'); return; }
     try { await OpsModal.apiPost('/firmware/releases', { version: f['fw-version'], channel: f['fw-channel'] }); OpsModal.toast('Release added.', 'success'); fwHome(); }
     catch (err) { OpsModal.toast(err.message || 'Failed', 'error'); }
   }
   async function fwCreateRollout() {
+    if (!requireDeviceManage()) return;
     const f = OpsModal.getFormData();
     if (!f['ro-release']) { OpsModal.toast('Pick a release.', 'warning'); return; }
-    const rings = (f['ro-rings'] || '5,25,100').split(',').map(s => parseInt(s.trim(), 10)).filter(n => n > 0);
+    const release=diagnosticNumber(f['ro-release'],1,Number.MAX_SAFE_INTEGER);
+    const rings = String(f['ro-rings'] || '').split(',').map(s => diagnosticNumber(s.trim(),1,100));
+    if(!Number.isSafeInteger(release) || !['fleet','tag'].includes(f['ro-target']) || f['ro-target']==='tag' && !String(f['ro-tag'] || '').trim())return OpsModal.toast('Choose a release and assignment scope; supply a tag for a group.','warning');
+    if(rings.some(n=>n===null || !Number.isInteger(n)) || rings.some((n,i)=>i && n<=rings[i-1]) || rings[rings.length-1]!==100)return OpsModal.toast('Supply ascending whole-number ring percentages ending at 100.','warning');
     try {
       const r = await OpsModal.apiPost('/firmware/rollouts', {
-        release_id: parseInt(f['ro-release'], 10), target_type: f['ro-target'],
-        target_value: f['ro-target'] === 'tag' ? f['ro-tag'] : null, rings });
-      OpsModal.toast(`Rollout created — ${(r.data && r.data.total) || 0} devices staged.`, 'success');
+        release_id: release, target_type: f['ro-target'],
+        target_value: f['ro-target'] === 'tag' ? String(f['ro-tag']).trim() : null, rings });
+      OpsModal.toast(`Rollout created; ${OpsModal.count(r.data?.total)!==null?OpsModal.count(r.data.total)+' devices staged':'staged-device count not supplied'}.`, 'success');
       fwOpenRollout(r.data.id);
     } catch (err) { OpsModal.toast(err.message || 'Failed to create rollout', 'error'); }
   }
   async function fwOpenRollout(id) {
     const body = document.getElementById('fw-body'); if (!body) return;
     body.innerHTML = '<div style="padding:20px;color:var(--ink-3)">Loading…</div>';
-    let d; try { d = (await OpsModal.apiGet('/firmware/rollouts/' + id)).data; } catch (_) { body.innerHTML = '<div style="padding:20px;color:var(--err)">Couldn\'t load.</div>'; return; }
-    const c = RO_CHIP[d.status] || RO_CHIP.active;
-    const bar = r => { const w = r.total ? (r.updated / r.total) * 100 : 0;
-      return `<div style="height:6px;border-radius:3px;background:var(--surface-3);overflow:hidden;margin-top:6px"><div style="height:100%;width:${w}%;background:var(--ok)"></div></div>`; };
-    const ringRows = d.rings.map(r => `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;font-size:var(--fs-sm)"><b>Ring ${r.index + 1} · ${r.percent}%</b>
-          <span style="color:var(--ink-3)">${r.open ? 'open' : 'not opened'}</span></div>
-        <div style="font-size:var(--fs-2xs);color:var(--ink-3);margin-top:3px">${r.total} devices · ${r.updated} updated · ${r.queued} queued · ${r.pending} pending${r.failed ? ` · <span style="color:var(--err)">${r.failed} failed</span>` : ''}</div>
+    let d; try { d = OpsModal.readRecord(await OpsModal.apiGet('/firmware/rollouts/' + id),'Firmware rollout'); } catch (err) { body.innerHTML = OpsModal.failure('Firmware rollout',err,`OpsSensors.fwOpenRollout('${__sid(id)}')`); return; }
+    if(!document.contains(body))return;
+    const records=value=>Array.isArray(value) && value.every(row=>row && typeof row==='object' && !Array.isArray(row))?value:null;
+    const rings = records(d.rings);
+    const count=value=>OpsModal.count(value) ?? 'Not supplied';
+    const bar = r => { const w = rolloutProgress(r); if (w === null) return '<p class="capability-note">Progress unavailable</p>';
+      return `<div style="height:6px;border-radius:var(--radius-micro);background:var(--surface-3);overflow:hidden;margin-top:6px"><div style="height:100%;width:${w}%;background:var(--ok)"></div></div>`; };
+    const ringRows = rings?.map(r => `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;gap:8px;font-size:var(--fs-sm)"><b>${OpsModal.count(r.index)!==null?'Ring '+(OpsModal.count(r.index)+1):'Ring index not supplied'} · ${diagnosticNumber(r.percent,1,100)!==null?diagnosticNumber(r.percent,1,100)+'%':'Percentage not supplied'}</b>
+          <span style="color:var(--ink-3)">${r.open===true?'Open':r.open===false?'Not opened':'Opening state not supplied'}</span></div>
+        <div style="font-size:var(--fs-xs);color:var(--ink-3);margin-top:3px">${count(r.total)} devices · ${count(r.updated)} updated · ${count(r.queued)} queued · ${count(r.pending)} pending · <span style="color:${OpsModal.count(r.failed)>0?'var(--err)':'var(--ink-3)'}">${count(r.failed)} failed</span></div>
         ${bar(r)}</div>`).join('');
-    const canAdvance = d.status === 'active' && d.current_ring < d.rings.length - 1;
+    const canAdvance = d.status === 'active' && OpsModal.count(d.current_ring)!==null && rings && d.current_ring < rings.length - 1;
+    const disabled=canMng()?'':'disabled';
+    const sid=__sid(id);
     const actions = [
-      canAdvance ? `<button class="btn-primary" onclick="OpsSensors.fwAdvance(${id})">Advance to ring ${d.current_ring + 2}</button>` : '',
-      d.status === 'active' ? `<button class="btn-ghost" onclick="OpsSensors.fwState(${id},'pause')">Pause</button>` : '',
-      d.status === 'paused' ? `<button class="btn-ghost" onclick="OpsSensors.fwState(${id},'resume')">Resume</button>` : '',
-      ['active', 'paused'].includes(d.status) ? `<button class="btn-danger" onclick="OpsSensors.fwRollback(${id})">Roll back</button>` : '',
-      ['active', 'paused'].includes(d.status) ? `<button class="btn-ghost" onclick="OpsSensors.fwState(${id},'cancel')">Cancel</button>` : '',
+      canAdvance ? `<button class="fg-action fg-action-primary" ${disabled} onclick="OpsSensors.fwAdvance('${sid}')">Advance to ring ${OpsModal.count(d.current_ring) + 2}</button>` : '',
+      d.status === 'active' ? `<button class="fg-action" ${disabled} onclick="OpsSensors.fwState('${sid}','pause')">Pause rollout</button>` : '',
+      d.status === 'paused' ? `<button class="fg-action" ${disabled} onclick="OpsSensors.fwState('${sid}','resume')">Resume rollout</button>` : '',
+      ['active', 'paused'].includes(d.status) ? `<button class="fg-action danger" ${disabled} onclick="OpsSensors.fwRollback('${sid}')">Roll back</button>` : '',
+      ['active', 'paused'].includes(d.status) ? `<button class="fg-action danger" ${disabled} onclick="OpsSensors.fwState('${sid}','cancel')">Cancel rollout</button>` : '',
     ].filter(Boolean).join(' ');
-    const failed = d.failed.length ? `<div style="margin-top:12px"><div style="font-weight:600;color:var(--err);font-size:var(--fs-sm);margin-bottom:4px">Failed (${d.failed.length})</div>${d.failed.map(x => `<div style="font-size:var(--fs-2xs);color:var(--ink-3)">${esc(x.name || x.sensor_id)}</div>`).join('')}</div>` : '';
+    const failures=records(d.failed);
+    const failed = failures===null?OpsModal.textBlock('Failed-device records unavailable','This feed cannot establish whether any devices failed.'):failures.length?OpsModal.textBlock('Returned failed devices ('+failures.length+')',failures.map(x=>x.name || x.sensor_id || 'Unnamed device').join('\n')):OpsModal.emptyState('','No failed-device records returned','This is the returned failure list, not proof that every device updated successfully.');
     body.innerHTML = `
-      <div class="sn-crumb" style="cursor:pointer" onclick="OpsSensors.fwHome()">‹ Firmware</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 4px">
-        <div><span style="font-family:var(--ff-d);font-size:17px;font-weight:700">${esc(d.name || d.version)}</span>
-          <div style="color:var(--ink-3);font-size:var(--fs-2xs)">→ ${esc(d.version)} · ${d.target_type === 'fleet' ? 'whole fleet' : '#' + esc(d.target_value || '')} · ${d.total} devices</div></div>
-        <span class="lv-status ${c[0]}">${c[1]}</span>
+      <button type="button" class="fg-action" onclick="OpsSensors.fwHome()">Back to firmware</button>
+      <div class="fg-manager-header">
+        <h3 class="fg-manager-title">${esc(d.name || 'Firmware rollout')}</h3>
+        <div class="fg-timeline-meta">Version ${esc(d.version || 'not supplied')} · ${esc(rolloutScope(d))} · ${count(d.total)} devices</div>
+        ${OpsModal.status(d.status,null,null,'rollout')}
       </div>
-      <div style="margin:12px 0">${ringRows}</div>
+      <h3 class="fg-manager-title">Rollout rings</h3>${rings?ringRows || OpsModal.emptyState('','No rollout rings returned','No stages were returned for this rollout.'):OpsModal.textBlock('Rollout rings unavailable','Stage records were missing or malformed. Progress is not inferred.')}
       ${failed}
-      <div class="actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">${actions}</div>`;
+      <div class="fg-diagnostic-actions">${actions}</div>`;
   }
   async function fwAdvance(id) {
-    try { const r = await OpsModal.apiPost(`/firmware/rollouts/${id}/advance`, {});
-      const m = r.data || {}; OpsModal.toast(`Ring ${m.ring} opened — ${m.queued} queued${m.deferred ? `, ${m.deferred} deferred (protected)` : ''}.`, 'success'); fwOpenRollout(id); }
-    catch (err) { OpsModal.toast(err.message || 'Failed to advance', 'error'); }
+    if (!requireDeviceManage()) return;
+    OpsModal.confirm('Advance this rollout? Firmware updates are queued for eligible devices in the next ring; protected devices may be deferred.',async()=>{
+      if(!requireDeviceManage())return;
+      try { const r = await OpsModal.apiPost(`/firmware/rollouts/${id}/advance`, {});
+        const m=r.data || {},ring=OpsModal.count(m.ring),queued=OpsModal.count(m.queued),deferred=OpsModal.count(m.deferred);
+        OpsModal.toast(`Advance accepted${ring!==null?' for ring '+ring:''}; ${queued!==null?queued+' updates queued':'queued count not supplied'}; ${deferred!==null?deferred+' protected devices deferred':'deferred count not supplied'}.`,'success');fwOpenRollout(id);
+      }catch(err){OpsModal.toast(err.message || 'Failed to advance','error');}
+    });
   }
   async function fwState(id, action) {
-    try { await OpsModal.apiPost(`/firmware/rollouts/${id}/${action}`, {}); OpsModal.toast('Updated.', 'success'); fwOpenRollout(id); }
-    catch (err) { OpsModal.toast(err.message || 'Failed', 'error'); }
+    if (!requireDeviceManage()) return;
+    if(!['pause','resume','cancel'].includes(action))return OpsModal.toast('Unsupported rollout action.','warning');
+    const descriptions={pause:'Pause this rollout? Already queued device commands are not recalled.',resume:'Resume this rollout? The rollout becomes active again; advancing a ring is a separate action.',cancel:'Cancel this rollout? Already queued device commands are not recalled, and cancellation does not roll back firmware.'};
+    OpsModal.confirm(descriptions[action],async()=>{
+      if(!requireDeviceManage())return;
+      try { await OpsModal.apiPost(`/firmware/rollouts/${id}/${action}`, {});OpsModal.toast('Rollout '+({pause:'paused',resume:'resumed',cancel:'cancelled'}[action])+'.','success');fwOpenRollout(id); }
+      catch(err){OpsModal.toast(err.message || 'Failed','error');}
+    });
   }
   function fwRollback(id) {
+    if (!requireDeviceManage()) return;
     OpsModal.confirm('Roll back this rollout? Devices already updated/queued get re-flashed to their previous firmware.', async () => {
-      try { const r = await OpsModal.apiPost(`/firmware/rollouts/${id}/rollback`, {}); OpsModal.toast(`Rollback queued for ${(r.data && r.data.reverted) || 0} device(s).`, 'success'); fwOpenRollout(id); }
+      if (!requireDeviceManage()) return;
+      try { const r = await OpsModal.apiPost(`/firmware/rollouts/${id}/rollback`, {});const affected=OpsModal.count(r.data?.reverted);OpsModal.toast(affected!==null?`Rollback queued for ${affected} devices.`:'Rollback accepted; affected-device count not supplied.', 'success'); fwOpenRollout(id); }
       catch (err) { OpsModal.toast(err.message || 'Failed to roll back', 'error'); }
     });
   }
 
   // Per-device tag editor (comma-separated).
   function editTags(sensorId) {
+    if (!requireDeviceManage()) return;
     const x = _all.find(s => s.sensor_id === sensorId) || {};
-    OpsModal.open(`Manage tags — ${esc(x.name || sensorId)}`, `
+    OpsModal.open(`Manage tags — ${x.name || sensorId}`, `
       <p style="margin:0 0 10px;font-size:var(--fs-sm);color:var(--ink-3)">Comma-separated group tags — used for filtering and bulk actions (e.g. <code>lekki, ring-pilot, hw-v2</code>).</p>
       ${OpsModal.field('Tags', 'tags', 'text', (x.tags || []).join(', '), { required: false, placeholder: 'lekki, ring-pilot, hw-v2' })}
     `, [
       { label: 'Cancel', onclick: 'OpsModal.close()' },
-      { label: 'Save', class: 'btn-primary', onclick: `OpsSensors.saveTags('${__sid(sensorId)}')` },
+      { label: 'Save tags', class: 'btn-primary', onclick: `OpsSensors.saveTags('${__sid(sensorId)}')` },
     ]);
   }
   async function saveTags(sensorId) {
+    if (!requireDeviceManage()) return;
     const f = OpsModal.getFormData();
     const tags = (f.tags || '').split(',').map(s => s.trim()).filter(Boolean);
     OpsModal.setLoading(true);
@@ -963,15 +906,16 @@ const OpsSensors = (function () {
   const _dval = v => v ? String(v).slice(0, 10) : '';
 
   function deviceRecord(sensorId) {
+    if (!requireDeviceManage()) return;
     const x = _all.find(s => s.sensor_id === sensorId) || {};
-    OpsModal.open(`Lifecycle &amp; hardware — ${esc(x.name || sensorId)}`, `
+    OpsModal.open(`Lifecycle & hardware — ${x.name || sensorId}`, `
       <p style="margin:0 0 12px;font-size:var(--fs-sm);color:var(--ink-3)">Lifecycle state is where the unit sits in its life — separate from its live health. Hardware identity is used for warranty, RMA and audit.</p>
-      ${OpsModal.field('Lifecycle state', 'lifecycle_state', 'select', x.lifecycle_state || 'active', { options: LIFECYCLE_OPTS })}
+      ${OpsModal.field('Lifecycle state', 'lifecycle_state', 'select', LIFECYCLE_OPTS.some(o=>o.value===x.lifecycle_state)?x.lifecycle_state:'', { options: [{value:'',label:'Not supplied — keep unchanged'},...LIFECYCLE_OPTS] })}
       ${OpsModal.field('Reason / note (optional)', 'lifecycle_note', 'text', '', { required: false, placeholder: 'e.g. moved to warehouse after site cancellation' })}
       <div style="height:1px;background:var(--line);margin:14px 0"></div>
       ${OpsModal.row([
         OpsModal.field('Serial number', 'serial_number', 'text', x.serial_number || '', { required: false, placeholder: 'FG-…' }),
-        OpsModal.field('Hardware rev', 'hardware_rev', 'text', x.hardware_rev || '', { required: false, placeholder: 'v2.1' }),
+        OpsModal.field('Hardware revision', 'hardware_rev', 'text', x.hardware_rev || '', { required: false, placeholder: 'v2.1' }),
       ])}
       ${OpsModal.row([
         OpsModal.field('Manufacturing batch', 'manufacturing_batch', 'text', x.manufacturing_batch || '', { required: false }),
@@ -985,12 +929,14 @@ const OpsSensors = (function () {
     `, [
       { label: 'Cancel', onclick: 'OpsModal.close()' },
       { label: 'View history', onclick: `OpsSensors.lifecycleLog('${__sid(sensorId)}')` },
-      { label: 'Save', class: 'btn-primary', onclick: `OpsSensors.saveDeviceRecord('${__sid(sensorId)}')` },
+      { label: 'Save device', class: 'btn-primary', onclick: `OpsSensors.saveDeviceRecord('${__sid(sensorId)}')` },
     ]);
   }
   async function saveDeviceRecord(sensorId) {
+    if (!requireDeviceManage()) return;
     const x = _all.find(s => s.sensor_id === sensorId) || {};
     const f = OpsModal.getFormData();
+    if(f.lifecycle_state && !LIFECYCLE_OPTS.some(o=>o.value===f.lifecycle_state))return OpsModal.toast('Choose a supplied lifecycle option or keep the state unchanged.','warning');
     OpsModal.setLoading(true);
     try {
       const hw = {
@@ -1003,7 +949,7 @@ const OpsSensors = (function () {
         warranty_expires_at: f.warranty_expires_at || null,
       };
       await OpsModal.apiPut(`/monitoring/sensors/${sensorId}/hardware`, hw);
-      if (f.lifecycle_state && f.lifecycle_state !== (x.lifecycle_state || 'active')) {
+      if (f.lifecycle_state && f.lifecycle_state !== x.lifecycle_state) {
         await OpsModal.apiPut(`/monitoring/sensors/${sensorId}/lifecycle`, { lifecycle_state: f.lifecycle_state, note: f.lifecycle_note || null });
       }
       OpsModal.close();
@@ -1015,45 +961,38 @@ const OpsSensors = (function () {
 
   async function lifecycleLog(sensorId) {
     const x = _all.find(s => s.sensor_id === sensorId) || {};
-    let resp;
-    try { resp = await OpsModal.apiGet(`/monitoring/sensors/${sensorId}/lifecycle`); }
-    catch (err) { OpsModal.toast(err.message || 'Failed to load history', 'error'); return; }
-    const events = (resp && resp.data) || [];
-    const EV = { state_change:['var(--blue-hi)','State change'], rma_out:['var(--err)','RMA out'], rma_in:['var(--ok)','RMA in'], replaced_by:['var(--warn)','Replaced'], note:['var(--ink-3)','Note'] };
-    const body = events.length ? `<div style="display:flex;flex-direction:column;gap:0">${events.map(e => {
-      const m = EV[e.event] || ['var(--ink-3)', e.event];
-      const when = e.created_at ? new Date(e.created_at).toLocaleString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
-      const trans = (e.from_state || e.to_state) ? ` <span style="color:var(--ink-3)">${esc(e.from_state || '—')} → ${esc(e.to_state || '—')}</span>` : '';
-      const note = e.detail && (e.detail.note || e.detail.reason) ? `<div style="font-size:var(--fs-xs);color:var(--ink-3);margin-top:2px">${esc(e.detail.note || e.detail.reason)}</div>` : '';
-      return `<div style="padding:10px 0;border-bottom:1px solid var(--line)">
-        <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
-          <span style="font-weight:700;color:${m[0]};font-size:var(--fs-sm)">${m[1]}${trans}</span>
-          <span style="font-size:var(--fs-2xs);color:var(--ink-4);white-space:nowrap">${when}</span>
-        </div>${note}</div>`;
-    }).join('')}</div>` : `<p style="color:var(--ink-4);font-size:var(--fs-sm);margin:8px 0">No lifecycle events recorded yet.</p>`;
-    OpsModal.open(`Lifecycle history — ${esc(x.name || sensorId)}`, body, [{ label: 'Close', class: 'btn-primary', onclick: 'OpsModal.close()' }]);
+    let events;
+    try { events = OpsModal.readArray(await OpsModal.apiGet(`/monitoring/sensors/${sensorId}/lifecycle`),'Lifecycle history'); }
+    catch (err) { OpsModal.open('Lifecycle history',OpsModal.failure('Lifecycle history',err,`OpsSensors.lifecycleLog('${__sid(sensorId)}')`),[{label:'Close',onclick:'OpsModal.close()'}]); return; }
+    const names = {state_change:'State change',rma_out:'RMA sent',rma_in:'RMA returned',replaced_by:'Replaced',note:'Note'};
+    const body = events.length ? events.map(e => `<div class="fg-timeline-row"><div class="fg-timeline-icon">${OpsModal.entityIcon('device')}</div><div><div class="fg-timeline-title">${esc(names[e.event] || OpsModal.label(e.event || 'Unknown event'))}</div>${e.from_state || e.to_state ? `<div class="fg-timeline-meta">${esc(OpsModal.label(e.from_state || 'unknown'))} → ${esc(OpsModal.label(e.to_state || 'unknown'))}</div>` : ''}${e.detail?.note || e.detail?.reason ? `<div class="fg-timeline-meta">${esc(e.detail.note || e.detail.reason)}</div>` : ''}</div><time class="fg-timeline-time">${OpsModal.fmtDateTime(e.created_at)}</time></div>`).join('') : OpsModal.emptyState('','No lifecycle events returned','No lifecycle records were returned for this device.');
+    OpsModal.open(`Lifecycle history — ${x.name || sensorId}`, body, [{ label: 'Close', onclick: 'OpsModal.close()' }]);
   }
 
   // ── Replace device (RMA transfer) ─────────────────────────────────
   function replaceDevice(sensorId) {
+    if (!requireDeviceManage()) return;
     const x = _all.find(s => s.sensor_id === sensorId) || {};
     const spares = _all.filter(s => s.sensor_id !== sensorId && ['inventory', 'warehouse', 'assigned'].includes(s.lifecycle_state));
     const pool = spares.length ? spares : _all.filter(s => s.sensor_id !== sensorId);
     if (!pool.length) { OpsModal.toast('No other device available to swap in.', 'error'); return; }
-    const opts = pool.map(s => ({ value: s.sensor_id, label: `${s.name || s.sensor_id} (${s.sensor_id})${s.lifecycle_state ? ' · ' + s.lifecycle_state : ''}` }));
-    OpsModal.open(`Replace device — ${esc(x.name || sensorId)}`, `
+    const opts = [{value:'',label:'Choose replacement'},...pool.map(s => ({ value: s.sensor_id, label: `${s.name || s.sensor_id} (${s.sensor_id})${s.lifecycle_state ? ' · ' + OpsModal.label(s.lifecycle_state) : ''}` }))];
+    OpsModal.open(`Replace device — ${x.name || sensorId}`, `
       <p style="margin:0 0 12px;font-size:var(--fs-sm);color:var(--ink-3)">Transfers this node's property, coverage, tags and config profile to the replacement. The faulty unit moves to <b>RMA</b>; the replacement goes <b>active</b>. Both are logged.</p>
       ${OpsModal.field('Replacement device', 'replacement_id', 'select', '', { options: opts })}
       ${OpsModal.field('Reason', 'reason', 'text', '', { required: false, placeholder: 'e.g. modem failure, no check-in for 9 days' })}
       ${spares.length ? '' : '<p style="margin:10px 0 0;font-size:var(--fs-xs);color:var(--warn)">No units in inventory/warehouse — showing all devices. Make sure the replacement is genuinely a spare.</p>'}
     `, [
       { label: 'Cancel', onclick: 'OpsModal.close()' },
-      { label: 'Replace &amp; transfer', class: 'btn-primary', onclick: `OpsSensors.doReplace('${__sid(sensorId)}')` },
+      { label: 'Replace & transfer', class: 'btn-primary', onclick: `OpsSensors.doReplace('${__sid(sensorId)}')` },
     ]);
   }
   async function doReplace(sensorId) {
+    if (!requireDeviceManage()) return;
     const f = OpsModal.getFormData();
-    if (!f.replacement_id) { OpsModal.toast('Choose a replacement device.', 'error'); return; }
+    if (!f.replacement_id || f.replacement_id===sensorId || !_all.some(s=>s.sensor_id===f.replacement_id)) { OpsModal.toast('Choose another returned device as the replacement.', 'warning'); return; }
+    OpsModal.confirm('Replace this device and transfer its estate, coverage, tags and profile assignments? The current device record moves to RMA and the replacement record becomes active. This does not prove the physical replacement has been installed.',async()=>{
+    if(!requireDeviceManage())return;
     OpsModal.setLoading(true);
     try {
       await OpsModal.apiPost(`/monitoring/sensors/${sensorId}/replace`, { replacement_sensor_id: f.replacement_id, note: f.reason || null });
@@ -1062,36 +1001,47 @@ const OpsSensors = (function () {
       await load();
       if (_drawerId === sensorId) { _drawerId = f.replacement_id; renderDrawer(); }
     } catch (err) { OpsModal.setLoading(false); OpsModal.toast(err.message || 'Failed to replace device', 'error'); }
+    });
   }
 
   // ── Component topology tree (derived client-side from the node payload) ──
-  const _TONE = { ok: 'var(--ok)', warn: 'var(--warn)', err: 'var(--err)', info: 'var(--blue-hi)', muted: 'var(--ink-4)' };
-  function _battTone(p) { return p == null ? 'muted' : p >= 60 ? 'ok' : p >= 25 ? 'warn' : 'err'; }
-  function _sigTone(p)  { return p == null ? 'muted' : p >= 50 ? 'ok' : p >= 25 ? 'warn' : 'err'; }
-  function _dataTone(s) { return ({ ok: 'ok', stale: 'warn', frozen: 'warn', implausible: 'err', unknown: 'muted' })[s] || 'muted'; }
+  const _TONE = { ok: 'var(--ok)', warn: 'var(--warn)', err: 'var(--err)', info: 'var(--blue-hi)', muted: 'var(--ink-3)' };
+  function diagnosticNumber(value,min=-Infinity,max=Infinity) {
+    if(!['number','string'].includes(typeof value) || typeof value==='string' && !value.trim())return null;
+    const number=Number(value);return Number.isFinite(number) && number>=min && number<=max?number:null;
+  }
+  function diagnosticPosition(lat,lng) {
+    const latitude=diagnosticNumber(lat,-90,90),longitude=diagnosticNumber(lng,-180,180);
+    return latitude!==null && longitude!==null?[latitude,longitude]:null;
+  }
+  function _battTone(p) { return ({'var(--err)':'err','var(--warn)':'warn','var(--ok)':'ok'})[OpsModal.vitalColor(p)] || 'muted'; }
+  const _sigTone=_battTone;
+  function diagnosticTone(value,domain) { return ({danger:'err',neutral:'muted'})[OpsModal.statusTone(value,domain)] || OpsModal.statusTone(value,domain); }
+  function _dataTone(s) { return diagnosticTone(s,'sensordata'); }
 
   function topologyTree(x) {
     const cap = x.capabilities || {};
     const offline = x.device_state === 'offline' || x.device_state === 'maintenance';
-    const rootTone = { online: 'ok', degraded: 'warn', offline: 'err', maintenance: 'muted' }[x.device_state] || 'muted';
+    const rootTone = diagnosticTone(x.device_state,'device');
     const comps = [];
     const add = (label, value, tone, sub) => comps.push({ label, value, tone, sub });
+    const level=diagnosticNumber(x.level,0,100),flow=diagnosticNumber(x.flow_rate,0),silt=diagnosticNumber(x.silt_depth_mm,0),enzyme=diagnosticNumber(x.enzyme_level_percent,0,100),ph=diagnosticNumber(x.water_quality_ph,0,14),turbidity=diagnosticNumber(x.turbidity_ntu,0),battery=diagnosticNumber(x.battery_percent,0,100),voltage=diagnosticNumber(x.battery_voltage,0),signal=diagnosticNumber(x.signal_strength,0,100),temperature=diagnosticNumber(x.temperature),gps=diagnosticPosition(x.latitude,x.longitude);
 
-    if (cap.water_level !== false)
-      add('Level sensor', x.level != null ? `${Math.round(x.level)}%` : '—', offline ? 'muted' : _dataTone(x.sensor_state), offline ? 'device ' + x.device_state : x.sensor_reason);
-    if (cap.flow_rate !== false)
-      add('Flow sensor', x.flow_rate != null ? `${x.flow_rate.toFixed(1)} L/s` : '—', offline ? 'muted' : (x.flow_rate != null ? 'ok' : 'muted'));
-    if (cap.silt)
-      add('Silt probe', x.silt_depth_mm != null ? `${x.silt_depth_mm} mm` : '—', offline ? 'muted' : (x.silt_depth_mm != null ? 'ok' : 'muted'));
-    if (x.enzyme_level_percent != null || cap.enzyme)
-      add('Enzyme dosing', x.enzyme_level_percent != null ? `${Math.round(x.enzyme_level_percent)}%` : (x.cartridge_status || '—'), x.enzyme_level_percent != null && x.enzyme_level_percent < 20 ? 'warn' : 'ok');
+    if (cap.water_level !== false && (cap.water_level === true || x.level != null))
+      add('Level sensor', level!==null ? `${Math.round(level)}%` : 'Not supplied', offline || level===null ? 'muted' : _dataTone(x.sensor_state), offline ? 'Device ' + OpsModal.label(x.device_state) : x.sensor_reason);
+    if (cap.flow_rate !== false && (cap.flow_rate === true || x.flow_rate != null))
+      add('Flow sensor', flow!==null ? `${flow.toFixed(1)} L/s` : 'Not supplied', 'muted');
+    if (cap.silt===true || x.silt_depth_mm!=null)
+      add('Silt probe', silt!==null ? `${silt} mm` : 'Not supplied', 'muted');
+    if (x.enzyme_level_percent != null || cap.enzyme===true)
+      add('Enzyme dosing', enzyme!==null ? `${Math.round(enzyme)}%` : (x.cartridge_status ? OpsModal.label(x.cartridge_status):'Not supplied'), enzyme===null || offline?'muted':enzyme<20?'warn':'ok');
     if (x.water_quality_ph != null || x.turbidity_ntu != null)
-      add('Water quality', [x.water_quality_ph != null ? `pH ${x.water_quality_ph}` : null, x.turbidity_ntu != null ? `${x.turbidity_ntu} NTU` : null].filter(Boolean).join(' · ') || '—', offline ? 'muted' : 'ok');
-    add('Battery / power', x.battery_percent != null ? `${x.battery_percent}%` : '—', _battTone(x.battery_percent), x.battery_voltage != null ? `${x.battery_voltage.toFixed(2)} V` : null);
-    add('Modem / uplink', offline ? 'offline' : (x.signal_strength != null ? `${x.signal_strength}%` : '—'), offline ? 'err' : _sigTone(x.signal_strength), x.link_type || null);
+      add('Water quality', [ph!==null ? `pH ${ph}` : null, turbidity!==null ? `${turbidity} NTU` : null].filter(Boolean).join(' · ') || 'Not supplied', 'muted');
+    add('Battery / power', battery!==null ? `${battery}%` : 'Not supplied', _battTone(battery), voltage!==null ? `${voltage.toFixed(2)} V` : null);
+    add('Modem / uplink', offline ? OpsModal.label(x.device_state) : (signal!==null ? `${signal}%` : 'Not supplied'), offline ? diagnosticTone(x.device_state,'device') : _sigTone(signal), x.link_type || null);
     if (x.temperature != null)
-      add('Temperature', `${Math.round(x.temperature)}°C`, x.temperature >= 40 ? 'err' : 'ok');
-    add('GPS / location', (x.latitude != null && x.longitude != null) ? `${(+x.latitude).toFixed(4)}, ${(+x.longitude).toFixed(4)}` : '—', (x.latitude != null && x.longitude != null) ? 'ok' : 'muted');
+      add('Reported temperature', temperature!==null?`${Math.round(temperature)}°C`:'Not supplied', 'muted');
+    add('Reported GPS', gps?gps.map(v=>v.toFixed(4)).join(', '):'Not supplied', 'muted');
 
     const dot = t => `<span style="width:8px;height:8px;border-radius:50%;background:${_TONE[t] || _TONE.muted};display:inline-block;flex:0 0 auto"></span>`;
     const rows = comps.map(c => `
@@ -1107,7 +1057,7 @@ const OpsSensors = (function () {
         <div style="display:flex;align-items:center;gap:10px;padding:6px 0;font-weight:700">
           ${dot(rootTone)}
           <span style="font-size:var(--fs-sm);color:var(--ink);flex:1 1 auto;min-width:0">${esc(x.name || x.sensor_id)}</span>
-          <span style="font-size:var(--fs-2xs);font-weight:700;color:${_TONE[rootTone]};text-transform:uppercase">${esc((x.device_state || 'unknown'))}</span>
+          ${OpsModal.status(x.device_state || 'unknown',null,null,'device')}
         </div>
         <div style="margin-left:4px">${rows}</div>
       </div>`;
@@ -1116,27 +1066,12 @@ const OpsSensors = (function () {
   // ── Unified event timeline (maintenance + commands + lifecycle) ──────────
   async function timeline(sensorId) {
     const x = _all.find(s => s.sensor_id === sensorId) || {};
-    let resp;
-    try { resp = await OpsModal.apiGet(`/monitoring/sensors/${sensorId}/timeline`); }
-    catch (err) { OpsModal.toast(err.message || 'Failed to load timeline', 'error'); return; }
-    const feed = (resp && resp.data) || [];
-    const SRC = { maintenance: ['var(--blue-hi)', 'Maintenance'], command: ['var(--ink-3)', 'Command'], lifecycle: ['var(--ink-3)', 'Lifecycle'], integrity: ['var(--err)', 'Integrity'] };
-    const body = feed.length ? `<div style="display:flex;flex-direction:column">${feed.map(e => {
-      const col = _TONE[e.tone] || SRC[e.source]?.[0] || 'var(--ink-3)';
-      const when = e.ts ? new Date(e.ts).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-      return `<div style="display:flex;gap:11px;padding:10px 0;border-bottom:1px solid var(--line)">
-        <span style="width:9px;height:9px;border-radius:50%;background:${col};flex:0 0 auto;margin-top:5px"></span>
-        <div style="flex:1 1 auto;min-width:0">
-          <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
-            <span style="font-weight:700;font-size:var(--fs-sm);color:var(--ink);text-transform:capitalize">${esc(e.title || e.kind || 'event')}</span>
-            <span style="font-size:var(--fs-2xs);color:var(--ink-4);white-space:nowrap">${when}</span>
-          </div>
-          ${e.detail ? `<div style="font-size:var(--fs-xs);color:var(--ink-3);margin-top:2px">${esc(e.detail)}</div>` : ''}
-          <div style="font-size:var(--fs-2xs);color:var(--ink-4);margin-top:2px">${esc(SRC[e.source]?.[1] || e.source)}${e.actor ? ' · ' + esc(e.actor) : ''}</div>
-        </div>
-      </div>`;
-    }).join('')}</div>` : `<p style="color:var(--ink-4);font-size:var(--fs-sm);margin:8px 0">No events recorded for this device yet.</p>`;
-    OpsModal.open(`Event timeline — ${esc(x.name || sensorId)}`, body, [{ label: 'Close', class: 'btn-primary', onclick: 'OpsModal.close()' }]);
+    let feed;
+    try { feed = OpsModal.readArray(await OpsModal.apiGet(`/monitoring/sensors/${sensorId}/timeline`),'Event timeline'); }
+    catch (err) { OpsModal.open('Event timeline',OpsModal.failure('Event timeline',err,`OpsSensors.timeline('${__sid(sensorId)}')`),[{label:'Close',onclick:'OpsModal.close()'}]); return; }
+    const SRC = {maintenance:['maintenance','Maintenance'],command:['device','Command'],lifecycle:['device','Lifecycle'],integrity:['device','Integrity']};
+    const body = feed.length ? feed.map(e => `<div class="fg-timeline-row"><div class="fg-timeline-icon">${OpsModal.entityIcon(SRC[e.source]?.[0] || 'device')}</div><div><div class="fg-timeline-title">${esc(e.title || OpsModal.label(e.kind || 'Unknown event'))}</div>${e.detail ? `<div class="fg-timeline-meta">${esc(e.detail)}</div>` : ''}<div class="fg-timeline-meta">${esc(SRC[e.source]?.[1] || OpsModal.label(e.source || 'Source not supplied'))}${e.actor ? ' · '+esc(e.actor) : ''}</div></div><time class="fg-timeline-time">${OpsModal.fmtDateTime(e.ts)}</time></div>`).join('') : OpsModal.emptyState('','No timeline events returned','No maintenance, command or lifecycle events were returned for this device.');
+    OpsModal.open(`Event timeline — ${x.name || sensorId}`, body, [{ label: 'Close', onclick: 'OpsModal.close()' }]);
   }
 
   // ── Per-domain drawer panels (connectivity / power / calibration) ────────
@@ -1146,106 +1081,109 @@ const OpsSensors = (function () {
       <span style="font-size:var(--fs-sm);color:var(--ink-3)">${esc(label)}</span>
       <span style="font-size:var(--fs-sm);font-weight:600;color:${tone ? (_TONE[tone] || 'var(--ink)') : 'var(--ink)'};text-align:right">${value}</span>
     </div>`;
-  const _qa = (sid, type, label) => `<button onclick="OpsSensors.sendCommand('${sid}','${type}')" style="flex:1 1 auto;min-width:120px;padding:9px 12px;border:1px solid var(--line);background:var(--surface-2,transparent);color:var(--ink-2);border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">${esc(label)}</button>`;
-  const _qaWrap = html => `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px">${html}</div>`;
+  const _qa = (sid, type, label) => `<button class="fg-action" ${!canMng()?'disabled':''} onclick="OpsSensors.sendCommand('${__sid(sid)}','${type}')">${esc(label)}</button>`;
+  const _qaWrap = html => `<div class="fg-diagnostic-actions">${html}</div>`;
 
   function connectivityPanel(sensorId) {
     const x = _all.find(s => s.sensor_id === sensorId) || {};
     const offline = x.device_state === 'offline' || x.device_state === 'maintenance';
-    const sig = x.signal_strength;
-    const band = offline ? ['No uplink', 'err'] : sig == null ? ['Unknown', 'muted'] : sig >= 75 ? ['Excellent', 'ok'] : sig >= 50 ? ['Good', 'ok'] : sig >= 25 ? ['Fair', 'warn'] : ['Poor', 'err'];
-    const dstate = { online: 'ok', degraded: 'warn', offline: 'err', maintenance: 'muted' }[x.device_state] || 'muted';
+    const sig = diagnosticNumber(x.signal_strength,0,100),position=diagnosticPosition(x.latitude,x.longitude);
+    const band = offline ? ['Reported offline', diagnosticTone(x.device_state,'device')] : sig === null ? ['Unknown', 'muted'] : sig>=50?['Healthy',_sigTone(sig)]:sig>=20?['Low',_sigTone(sig)]:['Critical',_sigTone(sig)];
+    const dstate = diagnosticTone(x.device_state,'device');
     const last = x.last_ping || x.reading_time;
     const body = `
-      ${_prow('Uplink state', `${esc((x.device_state || 'unknown').toUpperCase())}${x.device_reason ? ` <span style="color:var(--ink-4);font-weight:400">· ${esc(x.device_reason)}</span>` : ''}`, dstate)}
+      ${_prow('Uplink state', `${esc(OpsModal.label(x.device_state || 'unknown'))}${x.device_reason ? ` <span style="color:var(--ink-4);font-weight:400">· ${esc(x.device_reason)}</span>` : ''}`, dstate)}
       ${_prow('Signal quality', `${sig != null && !offline ? sig + '% · ' : ''}${band[0]}`, band[1])}
-      ${_prow('Link type', esc(x.link_type || '—'))}
-      ${_prow('Last check-in', `${_ago(last)}${last ? ` <span style="color:var(--ink-4);font-weight:400">· ${new Date(last).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>` : ''}`)}
+      ${_prow('Link type', esc(OpsModal.label(x.link_type)))}
+      ${_prow('Last check-in', `${_ago(last)}${last ? ` <span style="color:var(--ink-4);font-weight:400">· ${OpsModal.fmtDateTime(last)}</span>` : ''}`)}
       ${_prow('Modem IMEI', x.modem_imei ? esc(x.modem_imei) : '—')}
       ${_prow('SIM ICCID', x.sim_iccid ? esc(x.sim_iccid) : '—')}
-      ${_prow('GPS fix', (x.latitude != null && x.longitude != null) ? `${(+x.latitude).toFixed(4)}, ${(+x.longitude).toFixed(4)}` : 'No fix', (x.latitude != null && x.longitude != null) ? 'ok' : 'muted')}
+      ${_prow('Reported GPS', position ? position.map(v=>v.toFixed(4)).join(', ') : 'Not supplied',position?'info':'muted')}
       ${_qaWrap(_qa(sensorId, 'connectivity_test', 'Test uplink') + _qa(sensorId, 'reconnect_modem', 'Reconnect modem') + _qa(sensorId, 'refresh_gps', 'Refresh GPS') + _qa(sensorId, 'force_sync', 'Force sync'))}`;
-    OpsModal.open(`Connectivity — ${esc(x.name || sensorId)}`, body, [{ label: 'Close', class: 'btn-primary', onclick: 'OpsModal.close()' }]);
+    OpsModal.open(`Connectivity — ${x.name || sensorId}`, body, [{ label: 'Close', onclick: 'OpsModal.close()' }]);
   }
 
   function powerPanel(sensorId) {
     const x = _all.find(s => s.sensor_id === sensorId) || {};
-    const b = x.battery_percent;
-    const band = b == null ? ['Unknown', 'muted'] : b >= 60 ? ['Healthy', 'ok'] : b >= 25 ? ['Replace soon', 'warn'] : ['Critical', 'err'];
-    const t = x.temperature;
-    const tband = t == null ? ['—', undefined] : t >= 45 ? ['Hot', 'err'] : t >= 38 ? ['Warm', 'warn'] : ['Normal', 'ok'];
+    const b = diagnosticNumber(x.battery_percent,0,100),voltage=diagnosticNumber(x.battery_voltage,0);
+    const band = b === null ? ['Unknown', 'muted'] : b >= 50 ? ['Healthy', _battTone(b)] : b >= 20 ? ['Low', _battTone(b)] : ['Critical', _battTone(b)];
+    const t = diagnosticNumber(x.temperature);
     const body = `
       ${_prow('Battery charge', b != null ? `${b}% · ${band[0]}` : 'Unknown', band[1])}
-      ${_prow('Battery voltage', x.battery_voltage != null ? `${x.battery_voltage.toFixed(2)} V` : '—')}
-      ${_prow('Temperature', t != null ? `${Math.round(t)}°C · ${tband[0]}` : '—', tband[1])}
-      ${_prow('Power source', esc(x.link_type && /solar/i.test(x.link_type) ? 'Solar + battery' : 'Battery'))}
-      ${_prow('Reporting node', esc((x.device_state || 'unknown').toUpperCase()), { online: 'ok', degraded: 'warn', offline: 'err', maintenance: 'muted' }[x.device_state] || 'muted')}
-      ${b != null && b < 25 ? `<p style="margin:14px 0 0;font-size:var(--fs-sm);color:var(--err)">Battery critical — schedule a swap. Log it under Lifecycle &amp; Hardware once replaced.</p>` : ''}
+      ${_prow('Battery voltage', voltage!==null ? `${voltage.toFixed(2)} V` : 'Not supplied')}
+      ${_prow('Reported temperature', t!==null ? `${Math.round(t)}°C` : 'Not supplied')}
+      ${_prow('Power source', esc(x.power_source?OpsModal.label(x.power_source):'Not supplied'))}
+      ${_prow('Reporting node', esc(OpsModal.label(x.device_state || 'unknown')), diagnosticTone(x.device_state,'device'))}
+      ${b!==null && b<20 ? OpsModal.textBlock('Power review','Reported battery charge is critical. Confirm the power condition before scheduling a replacement; charge alone does not establish battery health.') : ''}
       ${_qaWrap(_qa(sensorId, 'self_test', 'Run self-test') + _qa(sensorId, 'force_sync', 'Force sync'))}`;
-    OpsModal.open(`Power & battery — ${esc(x.name || sensorId)}`, body, [{ label: 'Close', class: 'btn-primary', onclick: 'OpsModal.close()' }]);
+    OpsModal.open(`Power & battery — ${x.name || sensorId}`, body, [{ label: 'Close', onclick: 'OpsModal.close()' }]);
   }
 
   function calibrationPanel(sensorId) {
     const x = _all.find(s => s.sensor_id === sensorId) || {};
-    const due = x.calibration_due_at ? new Date(x.calibration_due_at) : null;
-    const overdueDays = due ? Math.round((Date.now() - due.getTime()) / 86400000) : null;
-    const dueTone = overdueDays == null ? 'muted' : overdueDays > 0 ? 'err' : overdueDays > -14 ? 'warn' : 'ok';
-    const dueTxt = due ? (overdueDays > 0 ? `Overdue ${overdueDays}d` : `in ${-overdueDays}d`) + ` · ${due.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : '—';
+    const dueText=OpsModal.fmtDateTime(x.calibration_due_at),due=dueText!=='—';
+    const overdue=due && OpsModal.pastDue(x.calibration_due_at);
+    const dueTone=due?overdue?'err':'muted':'muted';
+    const dueTxt=due?(overdue?'Overdue · ':'')+dueText:'Not supplied';
     const isBio = x.enzyme_level_percent != null || x.cartridge_status;
+    const enzyme=diagnosticNumber(x.enzyme_level_percent,0,100);
     const chan = [];
     if ((x.capabilities || {}).water_level !== false) chan.push(['Level', x.sensor_state, x.sensor_reason]);
-    const dt = s => ({ ok: 'ok', stale: 'warn', frozen: 'warn', implausible: 'err', unknown: 'muted' })[s] || 'muted';
+    const dt = s => diagnosticTone(s,'sensordata');
     const body = `
-      ${_prow('Last calibrated', x.last_calibrated_at ? `${_ago(x.last_calibrated_at)} · ${new Date(x.last_calibrated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : 'Never')}
+      ${_prow('Last calibrated', x.last_calibrated_at ? `${_ago(x.last_calibrated_at)} · ${OpsModal.fmtDate(x.last_calibrated_at)}` : 'Not supplied')}
       ${_prow('Next due', dueTxt, dueTone)}
-      ${chan.map(c => _prow(`${c[0]} channel`, `${esc(c[1] || 'unknown')}${c[2] ? ` <span style="color:var(--ink-4);font-weight:400">· ${esc(c[2])}</span>` : ''}`, dt(c[1]))).join('')}
-      ${isBio ? _prow('Enzyme level', x.enzyme_level_percent != null ? `${Math.round(x.enzyme_level_percent)}%` : '—', x.enzyme_level_percent != null && x.enzyme_level_percent < 20 ? 'warn' : 'ok') : ''}
-      ${isBio ? _prow('Cartridge', esc(x.cartridge_status ? String(x.cartridge_status).replace(/_/g, ' ') : '—')) : ''}
-      ${overdueDays != null && overdueDays > 0 ? `<p style="margin:14px 0 0;font-size:var(--fs-sm);color:var(--warn)">Calibration overdue — readings may drift. Run a calibration to reset the clock.</p>` : ''}
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px">
-        <button onclick="OpsSensors.calibrate('${sensorId}')" style="flex:1 1 auto;min-width:120px;padding:9px 12px;border:1px solid var(--line);background:var(--surface-2,transparent);color:var(--ink-2);border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">Log calibration</button>
+      ${chan.map(c => _prow(`${c[0]} channel`, `${esc(OpsModal.label(c[1] || 'unknown'))}${c[2] ? ` <span style="color:var(--ink-3);font-weight:400">· ${esc(c[2])}</span>` : ''}`, dt(c[1]))).join('')}
+      ${isBio ? _prow('Enzyme level', enzyme!==null ? `${Math.round(enzyme)}%` : 'Not supplied', enzyme===null?'muted':enzyme<20?'warn':'ok') : ''}
+      ${isBio ? _prow('Cartridge', esc(OpsModal.label(x.cartridge_status))) : ''}
+      ${overdue ? OpsModal.textBlock('Calibration review','The recorded calibration due date has passed. Confirm inspection and calibration evidence before updating the record; logging a calibration does not prove a device command ran.') : ''}
+      <div class="fg-diagnostic-actions">
+        <button class="fg-action" ${!canMng()?'disabled':''} onclick="OpsSensors.calibrate('${__sid(sensorId)}')">Log calibration</button>
         ${_qa(sensorId, 'recalibrate', 'Request recalibration')}
       </div>`;
-    OpsModal.open(`Calibration — ${esc(x.name || sensorId)}`, body, [{ label: 'Close', class: 'btn-primary', onclick: 'OpsModal.close()' }]);
+    OpsModal.open(`Calibration — ${x.name || sensorId}`, body, [{ label: 'Close', onclick: 'OpsModal.close()' }]);
   }
 
   // ── Integrity panel (time-sync / geofence / tamper) ─────────────────────
   function integrityPanel(sensorId) {
     const x = _all.find(s => s.sensor_id === sensorId) || {};
-    const skew = x.last_clock_skew_seconds;
+    const skew = diagnosticNumber(x.last_clock_skew_seconds);
     const skewTone = skew == null ? 'muted' : Math.abs(skew) >= 300 ? 'err' : Math.abs(skew) >= 60 ? 'warn' : 'ok';
-    const skewTxt = skew == null ? 'Never synced' : `${skew > 0 ? '+' : ''}${Math.abs(skew) < 120 ? skew + 's' : Math.round(skew / 60) + ' min'}${x.clock_synced_at ? ` · ${_ago(x.clock_synced_at)}` : ''}`;
+    const skewTxt = skew === null ? 'Not supplied' : `${skew > 0 ? '+' : ''}${Math.abs(skew) < 120 ? skew + ' s' : Math.round(skew / 60) + ' min'}${x.clock_synced_at ? ` · ${OpsModal.fmtDateTime(x.clock_synced_at)}` : ''}`;
+    const anchor=diagnosticPosition(x.geofence_center_lat,x.geofence_center_lng),gps=diagnosticPosition(x.latitude,x.longitude),radius=diagnosticNumber(x.geofence_radius_m,10,100000),distance=diagnosticNumber(x.geofence_distance_m,0);
     const gf = x.geofence_state;
     const gfTone = gf === 'breach' ? 'err' : gf === 'inside' ? 'ok' : 'muted';
-    const gfTxt = gf === 'breach' ? `Breach · ${x.geofence_distance_m ?? '?'} m from anchor`
-      : gf === 'inside' ? `Inside${x.geofence_distance_m != null ? ` · ${x.geofence_distance_m} m from anchor` : ''}`
-      : (x.geofence_center_lat != null ? 'Anchor set · awaiting GPS' : 'No anchor set');
-    const anchored = x.geofence_center_lat != null;
-    const tamper = !!x.tamper_flagged;
+    const gfTxt = gf === 'breach' ? `Breach${distance!==null?' · '+distance+' m from anchor':''}`
+      : gf === 'inside' ? `Inside${distance!==null?' · '+distance+' m from anchor':''}`
+      : 'Not supplied';
+    const tamper = typeof x.tamper_flagged==='boolean'?x.tamper_flagged:null;
     const body = `
-      <div style="font-size:var(--fs-2xs);font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:.04em;margin:2px 0 2px">Time sync</div>
+      <h3 class="fg-timeline-title">Time sync</h3>
       ${_prow('Clock skew', skewTxt, skewTone)}
-      <div style="font-size:var(--fs-2xs);font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 2px">Geofence</div>
-      ${_prow('Status', gfTxt, gfTone)}
-      ${_prow('Radius', `${x.geofence_radius_m ?? 150} m`)}
-      ${_prow('Anchor', anchored ? `${(+x.geofence_center_lat).toFixed(4)}, ${(+x.geofence_center_lng).toFixed(4)}` : '—')}
-      <div style="font-size:var(--fs-2xs);font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 2px">Tamper</div>
-      ${_prow('State', tamper ? `Flagged · ${_ago(x.tamper_at)}` : 'Clear', tamper ? 'err' : 'ok')}
+      <h3 class="fg-timeline-title">Geofence</h3>
+      ${_prow('Reported state', gfTxt, gfTone)}
+      ${_prow('Radius', radius!==null?`${radius} m`:'Not supplied')}
+      ${_prow('Anchor', anchor ? anchor.map(v=>v.toFixed(4)).join(', ') : 'Not supplied')}
+      <h3 class="fg-timeline-title">Tamper</h3>
+      ${_prow('Reported state', tamper===null?'Not supplied':tamper ? `Flagged${x.tamper_at?' · '+OpsModal.fmtDateTime(x.tamper_at):''}` : 'Clear', tamper===null?'muted':tamper ? 'err' : 'ok')}
       ${tamper && x.tamper_reason ? _prow('Reason', esc(x.tamper_reason)) : ''}
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px">
-        <button onclick="OpsSensors.setGeofenceAnchor('${sensorId}')" style="flex:1 1 auto;min-width:130px;padding:9px 12px;border:1px solid var(--line);background:var(--surface-2,transparent);color:var(--ink-2);border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">Anchor to current GPS</button>
-        <button onclick="OpsSensors.editGeofence('${sensorId}')" style="flex:1 1 auto;min-width:130px;padding:9px 12px;border:1px solid var(--line);background:var(--surface-2,transparent);color:var(--ink-2);border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">Edit geofence</button>
+      <div class="fg-diagnostic-actions">
+        <button class="fg-action" ${!canMng() || !gps?'disabled':''} onclick="OpsSensors.setGeofenceAnchor('${__sid(sensorId)}')">Anchor to reported GPS</button>
+        <button class="fg-action" ${!canMng()?'disabled':''} onclick="OpsSensors.editGeofence('${__sid(sensorId)}')">Edit geofence</button>
         ${tamper
-          ? `<button onclick="OpsSensors.clearTamper('${sensorId}')" style="flex:1 1 auto;min-width:130px;padding:9px 12px;border:1px solid var(--ok);background:transparent;color:var(--ok);border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">Clear tamper</button>`
-          : `<button onclick="OpsSensors.flagTamper('${sensorId}')" style="flex:1 1 auto;min-width:130px;padding:9px 12px;border:1px solid var(--err);background:transparent;color:var(--err);border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">Flag tamper</button>`}
+          ? `<button class="fg-action" ${!canMng()?'disabled':''} onclick="OpsSensors.clearTamper('${__sid(sensorId)}')">Clear tamper</button>`
+          : `<button class="fg-action danger" ${!canMng()?'disabled':''} onclick="OpsSensors.flagTamper('${__sid(sensorId)}')">Flag tamper</button>`}
       </div>`;
-    OpsModal.open(`Integrity — ${esc(x.name || sensorId)}`, body, [{ label: 'Close', class: 'btn-primary', onclick: 'OpsModal.close()' }]);
+    OpsModal.open(`Integrity — ${x.name || sensorId}`, body, [{ label: 'Close', onclick: 'OpsModal.close()' }]);
   }
 
   function setGeofenceAnchor(sensorId) {
+    if (!requireDeviceManage()) return;
     const x = _all.find(s => s.sensor_id === sensorId) || {};
-    if (x.latitude == null || x.longitude == null) { OpsModal.toast('Device has no reported GPS position to anchor to.', 'error'); return; }
-    OpsModal.confirm(`Pin the geofence anchor to this device's current position (${(+x.latitude).toFixed(4)}, ${(+x.longitude).toFixed(4)})? Future GPS reports are measured against it.`, async () => {
+    const position=diagnosticPosition(x.latitude,x.longitude);
+    if (!position) { OpsModal.toast('Device has no valid reported GPS position to anchor to.', 'error'); return; }
+    OpsModal.confirm(`Pin the geofence anchor to this device's reported position (${position.map(v=>v.toFixed(4)).join(', ')})? Future GPS reports are measured against it.`, async () => {
+      if (!requireDeviceManage()) return;
       try {
         await OpsModal.apiPut(`/monitoring/sensors/${sensorId}/geofence`, { anchor: true });
         OpsModal.toast('Geofence anchored.', 'success');
@@ -1254,27 +1192,32 @@ const OpsSensors = (function () {
     });
   }
   function editGeofence(sensorId) {
+    if (!requireDeviceManage()) return;
     const x = _all.find(s => s.sensor_id === sensorId) || {};
-    OpsModal.open(`Edit geofence — ${esc(x.name || sensorId)}`, `
+    const anchor=diagnosticPosition(x.geofence_center_lat,x.geofence_center_lng),radius=diagnosticNumber(x.geofence_radius_m,10,100000);
+    OpsModal.open(`Edit geofence — ${x.name || sensorId}`, `
       <p style="margin:0 0 12px;font-size:var(--fs-sm);color:var(--ink-3)">Set the fence centre and how far the device may report from it before a breach is raised. Leave the centre blank to keep the current anchor.</p>
       ${OpsModal.row([
-        OpsModal.field('Centre latitude', 'center_lat', 'text', x.geofence_center_lat != null ? String(+x.geofence_center_lat) : '', { required: false, placeholder: 'e.g. 6.4281' }),
-        OpsModal.field('Centre longitude', 'center_lng', 'text', x.geofence_center_lng != null ? String(+x.geofence_center_lng) : '', { required: false, placeholder: 'e.g. 3.4219' }),
+        OpsModal.field('Centre latitude', 'center_lat', 'number', anchor?anchor[0]:'', { required: false,min:-90,max:90,step:'any',placeholder:'-90 to 90' }),
+        OpsModal.field('Centre longitude', 'center_lng', 'number', anchor?anchor[1]:'', { required: false,min:-180,max:180,step:'any',placeholder:'-180 to 180' }),
       ])}
-      ${OpsModal.field('Radius (metres)', 'radius_m', 'number', String(x.geofence_radius_m ?? 150), { required: true, placeholder: '10–100000' })}
+      ${OpsModal.field('Radius (metres)', 'radius_m', 'number', radius!==null?radius:'', { required:true,min:10,max:100000,step:1,placeholder:'10–100000' })}
     `, [
       { label: 'Cancel', onclick: 'OpsModal.close()' },
-      { label: 'Save', class: 'btn-primary', onclick: `OpsSensors.saveGeofence('${__sid(sensorId)}')` },
+      { label: 'Save geofence', class: 'btn-primary', onclick: `OpsSensors.saveGeofence('${__sid(sensorId)}')` },
     ]);
   }
   async function saveGeofence(sensorId) {
+    if (!requireDeviceManage()) return;
     const f = OpsModal.getFormData();
-    const payload = {};
-    if (f.center_lat !== '' && f.center_lng !== '') { payload.center_lat = parseFloat(f.center_lat); payload.center_lng = parseFloat(f.center_lng); }
-    else if (f.center_lat !== '' || f.center_lng !== '') { OpsModal.toast('Set both latitude and longitude, or leave both blank.', 'error'); return; }
-    if (f.radius_m !== '') payload.radius_m = parseInt(f.radius_m, 10);
-    if (payload.center_lat == null && payload.radius_m == null) { OpsModal.toast('Nothing to save.', 'error'); return; }
-    if (payload.center_lat == null && x_hasAnchor(sensorId) === false) { OpsModal.toast('No anchor yet — set a centre or use Anchor to current GPS.', 'error'); return; }
+    const x=_all.find(s=>s.sensor_id===sensorId) || {};
+    const blank=v=>v==null || typeof v==='string' && !v.trim();
+    if(blank(f.center_lat)!==blank(f.center_lng)){OpsModal.toast('Set both latitude and longitude, or leave both blank.','error');return;}
+    const anchor=blank(f.center_lat)?diagnosticPosition(x.geofence_center_lat,x.geofence_center_lng):diagnosticPosition(f.center_lat,f.center_lng);
+    const radius=diagnosticNumber(f.radius_m,10,100000);
+    if(!anchor){OpsModal.toast('Supply a valid latitude and longitude, or preserve a supplied anchor.','error');return;}
+    if(radius===null || !Number.isInteger(radius)){OpsModal.toast('Enter a whole-metre radius from 10 to 100000.','error');return;}
+    const payload={center_lat:anchor[0],center_lng:anchor[1],radius_m:radius};
     OpsModal.setLoading(true);
     try {
       await OpsModal.apiPut(`/monitoring/sensors/${sensorId}/geofence`, payload);
@@ -1282,11 +1225,11 @@ const OpsSensors = (function () {
       await load(); if (_drawerId === sensorId) renderDrawer();
     } catch (err) { OpsModal.setLoading(false); OpsModal.toast(err.message || 'Failed to update geofence', 'error'); }
   }
-  function x_hasAnchor(sensorId) { const x = _all.find(s => s.sensor_id === sensorId); return !!(x && x.geofence_center_lat != null); }
 
   function flagTamper(sensorId) {
+    if (!requireDeviceManage()) return;
     const x = _all.find(s => s.sensor_id === sensorId) || {};
-    OpsModal.open(`Flag tamper — ${esc(x.name || sensorId)}`, `
+    OpsModal.open(`Flag tamper — ${x.name || sensorId}`, `
       <p style="margin:0 0 12px;font-size:var(--fs-sm);color:var(--ink-3)">Mark this device as suspected tampered — it stays flagged until an inspection clears it.</p>
       ${OpsModal.field('Reason', 'reason', 'text', '', { required: true, placeholder: 'e.g. enclosure found open on site visit' })}
     `, [
@@ -1295,8 +1238,9 @@ const OpsSensors = (function () {
     ]);
   }
   function clearTamper(sensorId) {
+    if (!requireDeviceManage()) return;
     const x = _all.find(s => s.sensor_id === sensorId) || {};
-    OpsModal.open(`Clear tamper — ${esc(x.name || sensorId)}`, `
+    OpsModal.open(`Clear tamper — ${x.name || sensorId}`, `
       <p style="margin:0 0 12px;font-size:var(--fs-sm);color:var(--ink-3)">Confirm the device has been inspected and is intact. This is logged against your name.</p>
       ${OpsModal.field('Note (optional)', 'reason', 'text', '', { required: false, placeholder: 'e.g. inspected, seal intact' })}
     `, [
@@ -1305,6 +1249,7 @@ const OpsSensors = (function () {
     ]);
   }
   async function doTamper(sensorId, flagged) {
+    if (!requireDeviceManage()) return;
     const f = OpsModal.getFormData();
     if (flagged && (!f.reason || !f.reason.trim())) { OpsModal.toast('A reason is required.', 'error'); return; }
     OpsModal.setLoading(true);
@@ -1322,6 +1267,11 @@ const OpsSensors = (function () {
   //  update badge, then an ACTIONS list (not buttons in a row).
   // ══════════════════════════════════════════════════════════════
   function viewSensor(sensorId, defaultCommand) {
+    // Exact-record navigation retries while the fleet read settles; loading is
+    // not evidence that the linked device is missing.
+    if (_fleetReads && !_all.some(s=>s.sensor_id===sensorId)) return;
+    if(!_all.some(s=>s.sensor_id===sensorId))return OpsModal.toast('Device record is unavailable; refresh the fleet before opening controls','watch');
+    if(!_drawerId){_drawerOpener=document.activeElement;_drawerBackground=document.querySelector('.app-neon');_drawerBackgroundInert=!!_drawerBackground?.inert;if(_drawerBackground)_drawerBackground.inert=true;}
     _drawerId = sensorId;
     renderDrawer();
     if (defaultCommand) sendCommand(sensorId, defaultCommand);
@@ -1331,77 +1281,80 @@ const OpsSensors = (function () {
     _drawerId = null;
     disposeViewer();
     const el = document.getElementById('sn-drawer-overlay');
-    if (el) { el.classList.remove('open'); setTimeout(() => el.remove(), 220); }
+    if (el) el.remove();
+    if(_drawerBackground)_drawerBackground.inert=_drawerBackgroundInert;
+    _drawerBackground=null;
+    if(_drawerOpener?.isConnected && typeof _drawerOpener.focus==='function')_drawerOpener.focus();
+    _drawerOpener=null;
   }
 
+  function eventDetail(detail) {
+    if (!detail || typeof detail !== 'object') return esc(detail ?? OpsModal.missing.absent);
+    const note=typeof detail.note==='string' ? detail.note : '';
+    const technical=Array.isArray(detail) || Object.keys(detail).some(key=>key!=='note');
+    return (note ? esc(note) : '')+(technical ? `<details class="fg-technical"><summary>Technical event details</summary><pre>${esc(JSON.stringify(detail,null,2))}</pre></details>` : note ? '' : OpsModal.missing.absent);
+  }
+
+  function telemetryMarkup(x) {
+    const cap=x.capabilities || {};
+    const value=(key,min=-Infinity,max=Infinity)=>diagnosticNumber(x[key],min,max);
+    const number=(key,unit,min=-Infinity,max=Infinity,precision=null)=>{const n=value(key,min,max);return n===null?'Not supplied':(precision===null?String(n):n.toFixed(precision))+unit;};
+    const card=(label,content)=>`<div class="sn-card"><div class="sn-card-k">${esc(label)}</div><div class="sn-card-v${['Water level','Flow rate','Silt depth','Battery','Signal','Reported temperature'].includes(label) && !content.includes('Not supplied')?'':' fg-device-text'}">${content}</div></div>`;
+    const reading=[];
+    if(cap.water_level===true || cap.water_level!==false && x.level!=null)reading.push(card('Water level',`<span style="color:${levelColor(value('level',0,100),x.data_trust)}">${number('level','%',0,100)}</span>`));
+    if(cap.flow_rate===true || cap.flow_rate!==false && x.flow_rate!=null)reading.push(card('Flow rate',number('flow_rate',' L/s',0,Infinity,1)));
+    if(cap.silt===true || x.silt_depth_mm!=null)reading.push(card('Silt depth',number('silt_depth_mm',' mm',0)));
+    const lifecycle=LIFECYCLE_OPTS.find(o=>o.value===x.lifecycle_state);
+    const driver=x.driver_native===true?'Sentinel (native)':typeof x.driver_name==='string' && x.driver_name.trim()?x.driver_name:'Not supplied';
+    const device=[
+      card('Battery',`<span style="color:${OpsModal.vitalColor(value('battery_percent',0,100))}">${number('battery_percent','%',0,100)}</span>`),
+      card('Signal',`<span style="color:${OpsModal.vitalColor(value('signal_strength',0,100))}">${number('signal_strength','%',0,100)}</span>`),
+      card('Reported temperature',number('temperature','°C')),
+      card('Firmware',esc(x.firmware_version || 'Not supplied')),
+      card('Config profile',esc(x.profile_name || 'Not supplied')+(x.config_state?' · '+OpsModal.label(x.config_state):'')),
+      card('Lifecycle',lifecycle?OpsModal.label(lifecycle.value):'Not supplied'),
+      card('Serial',esc(x.serial_number || 'Not supplied')),
+      card('Warranty',OpsModal.fmtDate(x.warranty_expires_at)),
+      card('Driver',esc(driver))
+    ];
+    return `<div class="sn-sec-h">State</div><div class="sn-cards">${stateCards(x)}</div>${reading.length?'<div class="sn-sec-h">Readings</div><div class="sn-cards">'+reading.join('')+'</div>':''}<div class="sn-sec-h">Device</div><div class="sn-cards">${device.join('')}</div><div class="sn-sec-h">Components</div>${topologyTree(x)}`;
+  }
   function renderDrawer() {
     const x = _all.find(s => s.sensor_id === _drawerId);
     if (!x) return;
     let overlay = document.getElementById('sn-drawer-overlay');
+    const focusOnOpen=!overlay;
     if (!overlay) {
       overlay = document.createElement('div');
       overlay.id = 'sn-drawer-overlay';
       overlay.className = 'sn-drawer-overlay';
       overlay.addEventListener('click', e => { if (e.target === overlay) closeDrawer(); });
+      overlay.addEventListener('keydown',drawerDialogKey);
       document.body.appendChild(overlay);
     }
     const tier = healthTier(x);
-    const commonFw = fleetFirmware(_all);
-    const outdated = commonFw && x.firmware_version && x.firmware_version !== commonFw;
-    const cap = x.capabilities || {};
-
     const sid = __sid(x.sensor_id);
-    const tierClass = tier === 'healthy' ? 'ok' : tier === 'degraded' ? 'warn' : 'err';
-    const online = (x.status || 'active') === 'active';
-    const connLabel = online ? 'CONNECTED' : String(x.status || 'offline').toUpperCase();
-    const card = (k, v) => `<div class="sn-card"><div class="sn-card-k">${k}</div><div class="sn-card-v">${v}</div></div>`;
-    const dash = '<span style="color:var(--ink-4)">—</span>';
-
-    const readings = [
-      cap.water_level !== false ? card('Water Level', x.level != null ? `<span style="color:${levelColor(x.level)}">${Math.round(x.level)}%</span>` : dash) : '',
-      cap.flow_rate !== false ? card('Flow Rate', x.flow_rate != null ? `${x.flow_rate.toFixed(1)} L/s` : dash) : '',
-      cap.silt ? card('Silt Depth', x.silt_depth_mm != null ? `${x.silt_depth_mm} mm` : dash) : '',
-    ].filter(Boolean).join('');
-
-    const device = [
-      card('Battery', x.battery_percent != null ? `<span style="color:${OpsModal.vitalColor(x.battery_percent)}">${x.battery_percent}%</span>` : dash),
-      card('Signal', x.signal_strength != null ? `<span style="color:${OpsModal.vitalColor(x.signal_strength)}">${x.signal_strength}%</span>` : dash),
-      card('Temperature', x.temperature != null ? `<span style="color:${x.temperature >= 40 ? 'var(--err)' : 'var(--ink)'}">${Math.round(x.temperature)}°C</span>` : dash),
-      `<div class="sn-card"><div class="sn-card-k">Firmware</div><div class="sn-card-v" style="font-size:var(--fs-sm)">${x.firmware_version ? esc(x.firmware_version) : dash}</div>${outdated ? '<span class="sn-card-badge">Update</span>' : ''}</div>`,
-      (() => { const st = { in_sync:['var(--ok)','in sync'], drift:['var(--warn)','drift'], pending:['var(--ink-3)','pending'] }[x.config_state];
-        const v = x.profile_name ? `${esc(x.profile_name)}${st ? ` <span style="color:${st[0]};font-weight:700;font-size:var(--fs-2xs)">· ${st[1]}</span>` : ''}` : dash;
-        return `<div class="sn-card"><div class="sn-card-k">Config profile</div><div class="sn-card-v" style="font-size:var(--fs-sm)">${v}</div></div>`; })(),
-      (() => { const L = { active:['var(--ok)','Active'], installed:['var(--blue-hi)','Installed'], assigned:['var(--blue-hi)','Assigned'], warehouse:['var(--ink-4)','Warehouse'], inventory:['var(--ink-4)','Inventory'], maintenance:['var(--warn)','Maintenance'], rma:['var(--err)','RMA'], retired:['var(--ink-4)','Retired'] }[x.lifecycle_state] || ['var(--ink-4)', x.lifecycle_state || '—'];
-        return `<div class="sn-card"><div class="sn-card-k">Lifecycle</div><div class="sn-card-v" style="font-size:var(--fs-sm);color:${L[0]};font-weight:700">${L[1]}</div></div>`; })(),
-      card('Serial', x.serial_number ? esc(x.serial_number) : dash),
-      card('Warranty', x.warranty_expires_at ? new Date(x.warranty_expires_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : dash),
-      (() => { const label = x.driver_native ? 'Sentinel (native)' : (x.driver_name ? esc(x.driver_name) : 'Sentinel (native)');
-        const vend = !x.driver_native && x.driver_vendor ? ` <span style="color:var(--ink-4);font-weight:400;font-size:var(--fs-2xs)">· ${esc(x.driver_vendor)}</span>` : '';
-        return `<div class="sn-card"><div class="sn-card-k">Driver</div><div class="sn-card-v" style="font-size:var(--fs-sm)">${label}${vend}</div></div>`; })(),
-    ].join('');
 
     overlay.innerHTML = `
-      <div class="sn-drawer" onclick="event.stopPropagation()">
+      <div class="sn-drawer" role="dialog" aria-modal="true" aria-labelledby="sn-drawer-title" tabindex="-1" onclick="event.stopPropagation()">
         <div class="sn-drawer-head">
           <div style="min-width:0">
-            <div class="sn-crumb">Devices <span>›</span> ${esc(propertyOf(x))}</div>
-            <div class="sn-drawer-title">${esc(x.name || x.sensor_id)}</div>
+            <div class="sn-crumb">Device fleet <span>›</span> ${esc(propertyOf(x))}</div>
+            <div class="sn-drawer-title" id="sn-drawer-title">${esc(x.name || x.sensor_id)}</div>
             <div class="sn-status-line">
               <span class="sn-tok id">${esc(x.sensor_id)}</span>
               <span class="sep">·</span>
-              <span class="sn-tok ${tierClass}"><span class="tdot"></span>${tier.toUpperCase()}</span>
-              <span class="sep">·</span>
-              <span class="sn-tok ${online ? 'ok' : 'err'}">${connLabel}</span>
-              ${(x.integrity_state === 'warning' || x.integrity_state === 'critical') ? `<span class="sep">·</span><span class="sn-tok ${x.integrity_state === 'critical' ? 'err' : 'warn'}" title="${esc((x.integrity_reasons || []).join('; '))}"><span class="tdot"></span>${x.integrity_state === 'critical' ? 'TAMPER' : 'INTEGRITY'}</span>` : ''}
+              ${OpsModal.status(tier==='healthy'?'online':tier,null,null,'device')}
+              ${(x.integrity_state === 'warning' || x.integrity_state === 'critical') ? `<span class="sep">·</span><span title="${esc((x.integrity_reasons || []).join('; '))}">${OpsModal.status(x.integrity_state,x.integrity_state==='critical'?'Critical integrity alert':'Integrity warning',null,'integrity')}</span>` : ''}
             </div>
-            ${(x.tags && x.tags.length) ? `<div style="margin-top:7px;display:flex;flex-wrap:wrap;gap:5px">${x.tags.map(t => `<span style="font-size:var(--fs-2xs);font-weight:600;color:var(--blue-hi);background:var(--neon-trace);border:1px solid var(--blue-dim);padding:2px 8px;border-radius:20px">#${esc(t)}</span>`).join('')}</div>` : ''}
+            ${(x.tags && x.tags.length) ? `<div style="margin-top:7px;display:flex;flex-wrap:wrap;gap:5px">${x.tags.map(t => `<span style="font-size:var(--fs-2xs);font-weight:600;color:var(--blue-hi);background:var(--neon-trace);border:1px solid var(--blue-dim);padding:2px 8px;border-radius:var(--radius-pill)">#${esc(t)}</span>`).join('')}</div>` : ''}
           </div>
           <div class="sn-head-actions">
             <button class="sn-icon-btn" title="Send command" onclick="OpsSensors.queueCommand('${sid}')" aria-label="Commands">
-              <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+              ${OpsModal.entityIcon('more')}
             </button>
             <button class="sn-drawer-close" onclick="OpsSensors.closeDrawer()" aria-label="Close">
-              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              ${OpsModal.entityIcon('close')}
             </button>
           </div>
         </div>
@@ -1412,119 +1365,110 @@ const OpsSensors = (function () {
           </div>
 
           <div class="sn-actionbar">
-            <button class="sn-ab-icon" title="Restart node" onclick="OpsSensors.sendCommand('${sid}', 'reset')" aria-label="Restart node">
-              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-            </button>
-            <button class="sn-ab-main" onclick="OpsSensors.openFull('${sid}')">Open full details
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>
-            </button>
-            <button class="sn-ab-icon" title="Command history" onclick="OpsSensors.commandHistory('${sid}')" aria-label="Command history">
-              <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            </button>
+            <button type="button" class="fg-action fg-action-primary" onclick="OpsSensors.openFull('${sid}')">Open full details</button>
           </div>
 
-          <div class="sn-tabs">
-            <button class="sn-tab active" data-tab="telemetry" onclick="OpsSensors.drawerTab('telemetry')">Telemetry</button>
-            <button class="sn-tab" data-tab="actions" onclick="OpsSensors.drawerTab('actions')">Actions</button>
+          <div class="sn-tabs" role="tablist" aria-label="Device inspector" onkeydown="OpsSensors.drawerKey(event)">
+            <button type="button" class="sn-tab active" id="sn-tab-telemetry" role="tab" aria-selected="true" aria-controls="sn-panel-telemetry" tabindex="0" data-tab="telemetry" onclick="OpsSensors.drawerTab('telemetry')">Telemetry</button>
+            <button type="button" class="sn-tab" id="sn-tab-actions" role="tab" aria-selected="false" aria-controls="sn-panel-actions" tabindex="-1" data-tab="actions" onclick="OpsSensors.drawerTab('actions')">Actions</button>
           </div>
 
-          <div class="sn-tabpanel" data-panel="telemetry">
-            <div class="sn-sec-h">State</div>
-            <div class="sn-cards">${stateCards(x)}</div>
-            ${readings ? `<div class="sn-sec-h">Readings</div><div class="sn-cards">${readings}</div>` : ''}
-            <div class="sn-sec-h">Device</div>
-            <div class="sn-cards">${device}</div>
-            <div class="sn-sec-h">Components</div>
-            ${topologyTree(x)}
+          <div class="sn-tabpanel" id="sn-panel-telemetry" role="tabpanel" aria-labelledby="sn-tab-telemetry" data-panel="telemetry">
+            ${telemetryMarkup(x)}
           </div>
 
-          <div class="sn-tabpanel" data-panel="actions" style="display:none">
-            <button class="sn-act-row" onclick="OpsSensors.sendCommand('${sid}', 'firmware_update')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 0l-6 6m6-6l6 6"/></svg>
-              Push Firmware OTA
+          <div class="sn-tabpanel" id="sn-panel-actions" role="tabpanel" aria-labelledby="sn-tab-actions" data-panel="actions" hidden>
+            <fieldset class="fg-choice-group" ${canMng() ? '' : 'disabled'}><legend>Device commands</legend>
+<button type="button" class="sn-act-row fg-action fg-action-attention" onclick="OpsSensors.sendCommand('${sid}', 'firmware_update')">
+              Push firmware (OTA)
             </button>
-            <button class="sn-act-row" onclick="OpsSensors.sendCommand('${sid}', 'reset')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-              Restart Node
+<button type="button" class="sn-act-row fg-action danger" onclick="OpsSensors.sendCommand('${sid}', 'reset')">
+              Restart device
             </button>
-            <button class="sn-act-row" onclick="OpsSensors.calibrate('${sid}')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-              Run Calibration
+<button type="button" class="sn-act-row fg-action fg-action-attention" onclick="OpsSensors.calibrate('${sid}')">
+              Run calibration
             </button>
-            <button class="sn-act-row" onclick="OpsSensors.sendCommand('${sid}', 'force_sync')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-              Force Sync / Diagnostics…
+<button type="button" class="sn-act-row fg-action" onclick="OpsSensors.sendCommand('${sid}', 'force_sync')">
+              Force sync / diagnostics
             </button>
-            <button class="sn-act-row" onclick="OpsSensors.sendCommand('${sid}', 'locate')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="2"/></svg>
-              Locate / Identify
+<button type="button" class="sn-act-row fg-action" onclick="OpsSensors.sendCommand('${sid}', 'locate')">
+              Locate / identify
             </button>
-            <button class="sn-act-row" onclick="OpsSensors.connectivityPanel('${sid}')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12.55a11 11 0 0114 0M8.5 16.11a6 6 0 017 0M2 8.82a15 15 0 0120 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg>
+            </fieldset>
+            <div class="sn-sec-h">Diagnostics</div>
+<button type="button" class="sn-act-row fg-action" onclick="OpsSensors.connectivityPanel('${sid}')">
               Connectivity
             </button>
-            <button class="sn-act-row" onclick="OpsSensors.powerPanel('${sid}')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path stroke-linecap="round" d="M22 10v4"/><path stroke-linecap="round" stroke-linejoin="round" d="M11 9l-2 3h3l-2 3"/></svg>
-              Power &amp; Battery
+<button type="button" class="sn-act-row fg-action" onclick="OpsSensors.powerPanel('${sid}')">
+              Power &amp; battery
             </button>
-            <button class="sn-act-row" onclick="OpsSensors.calibrationPanel('${sid}')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>
+<button type="button" class="sn-act-row fg-action" onclick="OpsSensors.calibrationPanel('${sid}')">
               Calibration
             </button>
-            <button class="sn-act-row" onclick="OpsSensors.integrityPanel('${sid}')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2l7 4v6c0 4.5-3 7.5-7 8-4-.5-7-3.5-7-8V6l7-4z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4"/></svg>
+<button type="button" class="sn-act-row fg-action" onclick="OpsSensors.integrityPanel('${sid}')">
               Integrity
             </button>
-            <button class="sn-act-row" onclick="OpsSensors.commandHistory('${sid}')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-              Command History
+<button type="button" class="sn-act-row fg-action" onclick="OpsSensors.commandHistory('${sid}')">
+              Command history
             </button>
-            <button class="sn-act-row" onclick="OpsSensors.timeline('${sid}')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3M3 12h3m12 0h3M12 3v3m0 12v3"/></svg>
-              Event Timeline
+<button type="button" class="sn-act-row fg-action" onclick="OpsSensors.timeline('${sid}')">
+              Event timeline
             </button>
-            <button class="sn-act-row" onclick="OpsSensors.history('${sid}')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2"/></svg>
-              View Diagnostics Log
+<button type="button" class="sn-act-row fg-action" onclick="OpsSensors.history('${sid}')">
+              Diagnostic history
             </button>
-            <button class="sn-act-row" onclick="OpsSensors.coverage('${sid}')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-              Manage Coverage
+            <fieldset class="fg-choice-group" ${canMng() ? '' : 'disabled'}><legend>Configuration &amp; hardware</legend>
+<button type="button" class="sn-act-row fg-action" onclick="OpsSensors.coverage('${sid}')">
+              Manage coverage
             </button>
-            <button class="sn-act-row" onclick="OpsSensors.editTags('${sid}')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M3 5v6.586a1 1 0 00.293.707l8.414 8.414a1 1 0 001.414 0l5.586-5.586a1 1 0 000-1.414L10.707 5.293A1 1 0 0010 5H4a1 1 0 00-1 1z"/></svg>
-              Manage Tags
+<button type="button" class="sn-act-row fg-action" onclick="OpsSensors.editTags('${sid}')">
+              Manage tags
             </button>
-            <button class="sn-act-row" onclick="OpsSensors.deviceRecord('${sid}')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h8M8 11h8M8 15h5"/></svg>
-              Lifecycle &amp; Hardware
+<button type="button" class="sn-act-row fg-action" onclick="OpsSensors.deviceRecord('${sid}')">
+              Lifecycle &amp; hardware
             </button>
-            <button class="sn-act-row" onclick="OpsSensors.setDriver('${sid}')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M7 20h10M9 16v4M15 16v4"/></svg>
-              Device Driver
+<button type="button" class="sn-act-row fg-action" onclick="OpsSensors.setDriver('${sid}')">
+              Device driver
             </button>
-            <button class="sn-act-row" onclick="OpsSensors.replaceDevice('${sid}')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v6h6M20 20v-6h-6"/><path stroke-linecap="round" stroke-linejoin="round" d="M20 8a8 8 0 00-14.9-2M4 16a8 8 0 0014.9 2"/></svg>
-              Replace Device (RMA)
+<button type="button" class="sn-act-row fg-action" onclick="OpsSensors.replaceDevice('${sid}')">
+              Replace device (RMA)
             </button>
-            <button class="sn-act-row danger" onclick="OpsSensors.decommission('${sid}')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9.5 4L10 3h4l.5 1M4 7h16"/></svg>
-              Decommission Node
+            <button type="button" class="sn-act-row danger fg-action" onclick="OpsSensors.decommission('${sid}')">
+              Record retirement event
             </button>
+            </fieldset>
           </div>
         </div>
       </div>`;
 
-    requestAnimationFrame(() => overlay.classList.add('open'));
+    requestAnimationFrame(() => {if(!overlay.isConnected)return;overlay.classList.add('open');if(focusOnOpen && !document.getElementById('ops-modal-overlay'))overlay.querySelector('.sn-drawer-close')?.focus();});
     mountModelViewer();
   }
 
   // Switch the drawer's Telemetry / Actions tabs (DOM-only, no re-render).
   function drawerTab(name) {
     const root = document.getElementById('sn-drawer-overlay');
-    if (!root) return;
-    root.querySelectorAll('.sn-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-    root.querySelectorAll('.sn-tabpanel').forEach(p => { p.style.display = (p.dataset.panel === name) ? '' : 'none'; });
+    if (!root || !['telemetry','actions'].includes(name)) return;
+    root.querySelectorAll('.sn-tab').forEach(b => {const active=b.dataset.tab===name;b.classList.toggle('active',active);b.setAttribute('aria-selected',String(active));b.tabIndex=active?0:-1;});
+    root.querySelectorAll('.sn-tabpanel').forEach(p => {p.hidden=p.dataset.panel!==name;});
+  }
+  function drawerKey(event) {
+    if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+    const root=document.getElementById('sn-drawer-overlay');if(!root)return;
+    const tabs=[...root.querySelectorAll('.sn-tab')];
+    const index=tabs.indexOf(event.target);if(index<0)return;
+    const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
+    event.preventDefault();drawerTab(tabs[next].dataset.tab);tabs[next].focus();
+  }
+  function drawerDialogKey(event) {
+    if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closeDrawer();return;}
+    if(event.key!=='Tab')return;
+    const root=document.getElementById('sn-drawer-overlay');if(!root)return;
+    const focusable=[...root.querySelectorAll('button,a[href],input,select,textarea,[tabindex]')].filter(el=>!el.disabled && el.tabIndex>=0 && el.getClientRects().length);
+    if(!focusable.length){event.preventDefault();return;}
+    const first=focusable[0],last=focusable[focusable.length-1];
+    if(event.shiftKey && document.activeElement===first){event.preventDefault();last.focus();}
+    else if(!event.shiftKey && document.activeElement===last){event.preventDefault();first.focus();}
   }
 
   // ── 3D node model viewer ──────────────────────────────────────
@@ -1691,13 +1635,15 @@ const OpsSensors = (function () {
   // supports 'decommission' — nothing fabricated) and marks intent clearly
   // since it's destructive.
   function decommission(sensorId) {
+    if (!requireDeviceManage()) return;
     const x = _all.find(s => s.sensor_id === sensorId);
-    OpsModal.confirm(`Decommission ${esc(x ? (x.name || sensorId) : sensorId)}? This logs the node as retired.`, async () => {
+    OpsModal.confirm(`Record a retirement event for ${x ? (x.name || sensorId) : sensorId}? This adds history only; registry lifecycle and device operation are not changed.`, async () => {
+      if (!requireDeviceManage()) return;
       OpsModal.setLoading(true);
       try {
-        await OpsModal.apiPost(`/monitoring/sensors/${sensorId}/events`, { event_type: 'decommission', detail: 'Decommissioned from Sentinel Devices' });
+        await OpsModal.apiPost(`/monitoring/sensors/${sensorId}/events`, { event_type: 'decommission', detail: 'Decommissioned from Device fleet' });
         OpsModal.close();
-        OpsModal.toast('Node marked as decommissioned.', 'success');
+        OpsModal.toast('Retirement event recorded; registry lifecycle is unchanged.', 'success');
         closeDrawer();
         await load();
       } catch (err) {
@@ -1709,34 +1655,36 @@ const OpsSensors = (function () {
 
   // ── Coverage: one Sentinel, several nearby assets ──
   async function coverage(sensorId) {
+    if (!requireDeviceManage()) return;
     const node = _all.find(x => x.sensor_id === sensorId);
     if (!node) return;
     let assets = [];
     try {
       const r = await OpsModal.apiGet('/properties/assets');
-      assets = (r.data || []).filter(a => !node.client_id || a.client_id === node.client_id || a.client_id == null);
-    } catch (_) {}
+      assets = OpsModal.readArray(r,'Asset directory').filter(a => !node.client_id || a.client_id === node.client_id || a.client_id == null);
+    } catch (err) { OpsModal.open('Device coverage',OpsModal.failure('Asset directory',err,`OpsSensors.coverage('${__sid(sensorId)}')`),[{label:'Close',onclick:'OpsModal.close()'}]); return; }
     if (!assets.length) {
-      OpsModal.toast('No assets registered yet — add drainage assets on the Assets screen first.', 'error');
+      OpsModal.open('Device coverage',OpsModal.emptyState('','No eligible assets returned','No eligible assets were returned for this device account. Review Assets and client links before configuring coverage.'),[{label:'Close',onclick:'OpsModal.close()'}]);
       return;
     }
-    const covered = new Set((node.assets || []).map(a => a.property_id));
-    const primary = (node.assets || []).find(a => a.is_primary);
+    if(!Array.isArray(node.assets)) { OpsModal.open('Device coverage',OpsModal.failure('Coverage links',new Error('Existing asset links were not supplied. Refresh the fleet before replacing this device configuration.'),'OpsSensors.back()'),[{label:'Close',onclick:'OpsModal.close()'}]);return; }
+    const covered = new Set(node.assets.map(a => a.property_id));
+    const primary = node.assets.find(a => a.is_primary);
 
-    OpsModal.open(`Coverage — ${esc(node.name || sensorId)}`, `
+    OpsModal.open(`Coverage — ${node.name || sensorId}`, `
       <p style="margin:0 0 12px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">
         Tick every asset this Sentinel monitors. Mark one as <b>primary</b> — the asset the device is physically installed on.
       </p>
-      <div style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:10px">
+      <div style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-control)">
         ${assets.map(a => `
           <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border)">
-            <input type="checkbox" name="cov" value="${a.property_id}" ${covered.has(a.property_id) ? 'checked' : ''}>
+            <label class="fg-check-target"><input type="checkbox" name="cov" aria-label="Link ${esc(a.asset_code || a.property_name || a.property_id)}" value="${esc(a.property_id)}" ${covered.has(a.property_id) ? 'checked' : ''}></label>
             <span style="flex:1;min-width:0">
               <span style="font-size:var(--fs-sm);font-weight:600;color:var(--ink)">${esc(a.asset_code || a.property_name)}</span>
-              <span style="display:block;font-size:var(--fs-2xs);color:var(--ink-3)">${(a.property_type || '').replace(/_/g, ' ')}${a.parent_name ? ' · ' + esc(a.parent_name) : ''}</span>
+              <span style="display:block;font-size:var(--fs-2xs);color:var(--ink-3)">${esc(OpsModal.label(a.property_type))}${a.parent_name ? ' · ' + esc(a.parent_name) : ''}</span>
             </span>
             <label style="display:flex;align-items:center;gap:5px;font-size:var(--fs-2xs);color:var(--ink-3);white-space:nowrap">
-              <input type="radio" name="primary" value="${a.property_id}" ${primary && primary.property_id === a.property_id ? 'checked' : ''}> primary
+              <input type="radio" name="primary" aria-label="Primary asset: ${esc(a.asset_code || a.property_name || a.property_id)}" value="${esc(a.property_id)}" ${primary && primary.property_id === a.property_id ? 'checked' : ''}> Primary
             </label>
           </div>`).join('')}
       </div>
@@ -1747,6 +1695,7 @@ const OpsSensors = (function () {
   }
 
   async function saveCoverage(sensorId) {
+    if (!requireDeviceManage()) return;
     const checks = Array.from(document.querySelectorAll('input[name="cov"]:checked')).map(i => i.value);
     const primaryEl = document.querySelector('input[name="primary"]:checked');
     const primaryId = primaryEl ? primaryEl.value : null;
@@ -1770,26 +1719,28 @@ const OpsSensors = (function () {
 
   async function history(sensorId) {
     const node = _all.find(x => x.sensor_id === sensorId);
-    OpsModal.open(`Diagnostics log — ${esc(node ? (node.name || sensorId) : sensorId)}`,
+    OpsModal.open(`Diagnostics log — ${node ? (node.name || sensorId) : sensorId}`,
       '<div style="padding:20px;color:var(--ink-3);font-size:var(--fs-base)">Loading…</div>',
       [{ label: 'Close', onclick: 'OpsModal.close()' }]);
     try {
       const r = await OpsModal.apiGet(`/monitoring/sensors/${sensorId}/events`);
-      const evts = r.data || [];
+      if (!Array.isArray(r.data)) throw new Error('Device history not supplied');
+      const evts = r.data;
       const body = document.querySelector('.ops-modal-body');
       if (!body) return;
       body.innerHTML = evts.length
         ? `<div>${evts.map(e => `
-            <div style="display:flex;gap:10px;padding:10px 2px;border-bottom:1px solid var(--border)">
-              <span style="font-size:var(--fs-2xs);font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--blue-hi);min-width:102px">${(e.event_type || '').replace(/_/g, ' ')}</span>
+            <div class="fg-history-row">
+              <span class="fg-history-type">${esc(OpsModal.label(e.event_type || 'Unknown event'))}</span>
               <span style="flex:1;min-width:0;font-size:var(--fs-sm);color:var(--ink-2)">${esc(e.detail || '—')}</span>
-              <span style="font-family:var(--ff-m);font-size:var(--fs-2xs);color:var(--ink-3);white-space:nowrap">${new Date(e.occurred_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
+              <time class="fg-history-time">${OpsModal.fmtDateTime(e.occurred_at)}</time>
             </div>`).join('')}</div>`
-        : '<div style="padding:22px;text-align:center;color:var(--ink-3);font-size:var(--fs-base)">No recorded history for this device yet.</div>';
-    } catch (_) {}
+        : OpsModal.emptyState('','No recorded history returned','No recorded history was returned for this device.');
+    } catch (err) { const body=document.querySelector('.ops-modal-body'); if(body) body.innerHTML=OpsModal.failure('Device history',err,`OpsSensors.history('${__sid(sensorId)}')`); }
   }
 
   function calibrate(sensorId) {
+    if (!requireDeviceManage()) return;
     OpsModal.open('Record calibration', `
       <p style="margin:0 0 12px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">
         Logs a calibration against this Sentinel and resets its calibration due date. To remotely request the device recalibrate itself, use "Run Calibration" via a queued command instead.
@@ -1797,12 +1748,13 @@ const OpsSensors = (function () {
       ${OpsModal.field('Notes', 'detail', 'textarea', '', { required: false, placeholder: 'What was calibrated, and against what reference' })}
     `, [
       { label: 'Cancel', onclick: 'OpsModal.close()' },
-      { label: 'Record', class: 'btn-ghost', onclick: `OpsSensors.confirmCalibrate('${sensorId}')` },
+      { label: 'Record', class: 'btn-primary', onclick: `OpsSensors.confirmCalibrate('${sensorId}')` },
       { label: 'Queue remote recalibration', class: 'btn-primary', onclick: `OpsModal.close();OpsSensors.sendCommand('${sensorId}','recalibrate')` },
     ]);
   }
 
   async function confirmCalibrate(sensorId) {
+    if (!requireDeviceManage()) return;
     const f = OpsModal.getFormData();
     OpsModal.setLoading(true);
     try {
@@ -1874,11 +1826,12 @@ const OpsSensors = (function () {
   }
 
   function sendCommand(sensorId, presetType) {
+    if (!requireDeviceManage()) return;
     const node = _all.find(x => x.sensor_id === sensorId);
     const type = presetType && CMD_DISRUPTIVE.concat(CMD_CATALOG.flatMap(g => g.items.map(i => i[0]))).includes(presetType) ? presetType : 'force_sync';
     const optionsHtml = CMD_CATALOG.map(g =>
       `<optgroup label="${esc(g.group)}">${g.items.map(([v, l]) => `<option value="${v}" ${v === type ? 'selected' : ''}>${esc(l)}</option>`).join('')}</optgroup>`).join('');
-    OpsModal.open(`Send command — ${esc(node ? (node.name || sensorId) : sensorId)}`, `
+    OpsModal.open(`Send command — ${node ? (node.name || sensorId) : sensorId}`, `
       <p style="margin:0 0 12px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">
         This Sentinel is store-and-forward — the command is queued here and delivered on its next check-in, not instantly.
       </p>
@@ -1923,6 +1876,7 @@ const OpsSensors = (function () {
   }
 
   async function confirmSendCommand(sensorId) {
+    if (!requireDeviceManage()) return;
     const sel = document.querySelector('select[name="cmdtype"]');
     const type = sel ? sel.value : 'force_sync';
     const f = OpsModal.getFormData();
@@ -1960,6 +1914,7 @@ const OpsSensors = (function () {
   // channel at high water. Force an explicit, logged override with a reason.
   let _ovrPayload = null;
   function safetyOverride(sensorId, type, payload, note, reasonMsg) {
+    if (!requireDeviceManage()) return;
     _ovrPayload = payload;
     OpsModal.open('⚠ Safety check', `
       <p style="margin:0 0 12px;color:var(--err);font-weight:600;line-height:1.5">${esc(reasonMsg)}</p>
@@ -1971,6 +1926,7 @@ const OpsSensors = (function () {
     ]);
   }
   async function _doOverride(sensorId, type) {
+    if (!requireDeviceManage()) return;
     const f = OpsModal.getFormData();
     if (!f.ovr || !f.ovr.trim()) { OpsModal.toast('A reason is required to override.', 'warning'); return; }
     OpsModal.setLoading(true);
@@ -1989,28 +1945,29 @@ const OpsSensors = (function () {
 
   async function commandHistory(sensorId) {
     const node = _all.find(x => x.sensor_id === sensorId);
-    OpsModal.open(`Commands — ${esc(node ? (node.name || sensorId) : sensorId)}`,
+    OpsModal.open(`Commands — ${node ? (node.name || sensorId) : sensorId}`,
       '<div style="padding:20px;color:var(--ink-3);font-size:var(--fs-base)">Loading…</div>',
       [{ label: 'Close', onclick: 'OpsModal.close()' }]);
     try {
       const r = await OpsModal.apiGet(`/monitoring/sensors/${sensorId}/commands`);
-      const cmds = r.data || [];
+      if (!Array.isArray(r.data)) throw new Error('Command history not supplied');
+      const cmds = r.data;
       const body = document.querySelector('.ops-modal-body');
       if (!body) return;
-      const statusColor = { queued: 'var(--warn)', delivered: 'var(--blue-hi)', acknowledged: 'var(--ok)', failed: 'var(--err)', cancelled: 'var(--ink-3)', expired: 'var(--ink-3)' };
       body.innerHTML = cmds.length
         ? `<div>${cmds.map(c => `
-            <div style="display:flex;gap:10px;align-items:center;padding:10px 2px;border-bottom:1px solid var(--border)">
-              <span style="font-size:var(--fs-2xs);font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:${statusColor[c.status] || 'var(--ink-3)'};min-width:96px">${esc(c.status)}${c.hold_reason && c.status === 'queued' ? ' · held' : ''}</span>
-              <span style="flex:1;min-width:0;font-size:var(--fs-sm);color:var(--ink-2)">${esc((c.command_type || '').replace(/_/g, ' '))}${c.payload && c.payload.firmware_version ? ` → v${esc(c.payload.firmware_version)}` : ''}${c.note ? ' — ' + esc(c.note) : ''}${c.hold_reason && c.status === 'queued' ? `<span style="display:block;font-size:var(--fs-2xs);color:var(--warn);margin-top:2px">⏸ ${esc(c.hold_reason)}</span>` : ''}${c.expires_at && c.status === 'queued' ? `<span style="display:block;font-size:var(--fs-2xs);color:var(--ink-3);margin-top:2px">expires ${OpsModal.fmtDate(c.expires_at)}</span>` : ''}</span>
-              <span style="font-family:var(--ff-m);font-size:var(--fs-2xs);color:var(--ink-3);white-space:nowrap">${OpsModal.fmtDate(c.created_at)}</span>
-              ${c.status === 'queued' ? `<button class="btn-ghost" style="padding:3px 9px;font-size:var(--fs-2xs);" onclick="OpsSensors.cancelCommand('${sensorId}', ${parseInt(c.id, 10)})">Cancel</button>` : ''}
+            <div class="fg-history-row">
+              ${OpsModal.status(c.status || 'unknown',OpsModal.label(c.status || 'unknown')+(c.hold_reason && c.status==='queued'?' · held':''),null,'command')}
+              <span style="flex:1;min-width:0;font-size:var(--fs-sm);color:var(--ink-2)">${esc(OpsModal.label(c.command_type))}${c.payload && c.payload.firmware_version ? ` → v${esc(c.payload.firmware_version)}` : ''}${c.note ? ' — ' + esc(c.note) : ''}${c.hold_reason && c.status === 'queued' ? `<span style="display:block;font-size:var(--fs-2xs);color:var(--warn);margin-top:2px">⏸ ${esc(c.hold_reason)}</span>` : ''}${c.expires_at && c.status === 'queued' ? `<span style="display:block;font-size:var(--fs-2xs);color:var(--ink-3);margin-top:2px">Expires ${OpsModal.fmtDateTime(c.expires_at)}</span>` : ''}</span>
+              <time class="fg-history-time">${OpsModal.fmtDateTime(c.created_at)}</time>
+              ${c.status === 'queued' ? `<button class="fg-action danger" onclick="OpsSensors.cancelCommand('${sensorId}', ${parseInt(c.id, 10)})">Cancel</button>` : ''}
             </div>`).join('')}</div>`
-        : '<div style="padding:22px;text-align:center;color:var(--ink-3);font-size:var(--fs-base)">No commands sent to this device yet.</div>';
-    } catch (_) {}
+        : OpsModal.emptyState('','No commands returned','No command records were returned for this device.');
+    } catch (err) { const body=document.querySelector('.ops-modal-body'); if(body) body.innerHTML=OpsModal.failure('Command history',err,`OpsSensors.commandHistory('${__sid(sensorId)}')`); }
   }
 
   async function cancelCommand(sensorId, commandId) {
+    if (!requireDeviceManage()) return;
     try {
       await OpsModal.apiPost(`/monitoring/sensors/${sensorId}/commands/${commandId}/cancel`, {});
       OpsModal.toast('Command cancelled.', 'success');
@@ -2025,9 +1982,9 @@ const OpsSensors = (function () {
   async function openAsset(assetId) {
     try {
       const r = await OpsModal.apiGet('/properties/assets');
-      const asset = (r.data || []).find(a => a.property_id === assetId);
-      if (asset && asset.parent_property_id) { OpsNetwork.open(asset.parent_property_id); return; }
-      OpsModal.toast('This asset is not attached to a property yet.', 'error');
+      const asset = OpsModal.readArray(r,'Asset directory').find(a => a.property_id === assetId);
+      if (asset && asset.parent_property_id) { OpsNetwork.viewRecord(asset.parent_property_id); return; }
+      OpsModal.toast('The asset’s parent estate was not supplied.', 'watch');
     } catch (_) { OpsModal.toast('Could not open the asset', 'error'); }
   }
 
@@ -2038,44 +1995,20 @@ const OpsSensors = (function () {
   //  (The slide-over drawer is now the "quick view".) Built on the
   //  shared detailShell so it matches Clients/Properties/Assets/etc.
   // ══════════════════════════════════════════════════════════════
-  const SND_CSS = `<style id="snd-css">
-    .snd-tele{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
-    @media(max-width:760px){.snd-tele{grid-template-columns:repeat(2,1fr);}}
-    .snd-tile{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;}
-    .snd-tile .l{font-size:var(--fs-2xs);color:var(--ink-3);margin-bottom:6px;}
-    .snd-tile .v{font-size:19px;font-weight:700;font-family:var(--ff-mono,monospace);color:var(--ink);line-height:1.1;}
-    .snd-tile .v .u{font-size:11px;color:var(--ink-3);font-family:var(--ff-b);font-weight:500;margin-left:2px;}
-    .snd-diag{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
-    .snd-diag:last-child{border-bottom:none;}
-    .snd-diag .l{width:140px;flex-shrink:0;font-size:var(--fs-sm);color:var(--ink-2);}
-    .snd-diag .track{flex:1;height:8px;border-radius:5px;background:var(--surface-2);overflow:hidden;}
-    .snd-diag .track i{display:block;height:100%;border-radius:5px;}
-    .snd-diag .v{width:84px;text-align:right;font-size:var(--fs-sm);font-weight:700;font-family:var(--ff-mono,monospace);flex-shrink:0;color:var(--ink);}
-    .snd-cmd,.snd-ev{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--border);}
-    .snd-cmd:last-child,.snd-ev:last-child{border-bottom:none;}
-    .snd-cmd .st{font-size:var(--fs-2xs);font-weight:700;padding:3px 9px;border-radius:20px;flex-shrink:0;text-transform:capitalize;}
-    .snd-cmd .st.queued,.snd-cmd .st.pending{background:var(--surface-2);color:var(--ink-2);}
-    .snd-cmd .st.delivered{background:rgba(28,184,232,.12);color:#3f63e6;}
-    .snd-cmd .st.acknowledged,.snd-cmd .st.completed{background:rgba(31,157,91,.12);color:var(--ok);}
-    .snd-cmd .st.failed,.snd-cmd .st.cancelled{background:rgba(217,70,60,.12);color:var(--err);}
-    .snd-cmd .t,.snd-ev .t{font-size:var(--fs-sm);font-weight:600;color:var(--ink);text-transform:capitalize;}
-    .snd-cmd .m,.snd-ev .m{font-size:var(--fs-2xs);color:var(--ink-3);margin-top:2px;}
-    .snd-ev .dot{width:9px;height:9px;border-radius:50%;background:var(--blue-hi,#3f63e6);margin-top:5px;flex-shrink:0;}
-  </style>`;
 
   const _cap = s => s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : s;
-  const _ago = d => { if (!d) return '—'; const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000); if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + 'm ago'; if (s < 86400) return Math.floor(s / 3600) + 'h ago'; return Math.floor(s / 86400) + 'd ago'; };
+  const _ago = d => OpsModal.relativeTime(d);
 
   async function openFull(sensorId) {
     if (!_container) return;
     closeDrawer();
     _container.innerHTML = `<div style="padding:60px;text-align:center;color:var(--ink-3);">Loading device…</div>`;
     let x = _all.find(s => s.sensor_id === sensorId);
-    if (!x) { try { const r = await OpsModal.apiGet('/monitoring/sensors/all'); _all = r.data || []; x = _all.find(s => s.sensor_id === sensorId); } catch (_) {} }
-    if (!x) { _container.innerHTML = `<div style="padding:48px;text-align:center;"><div style="color:var(--err);font-weight:700;margin-bottom:8px;">Device not found</div><button class="fgd-btn" onclick="OpsSensors.back()">← Back to fleet</button></div>`; return; }
+    if (!x) { try { const r = await OpsModal.apiGet('/monitoring/sensors/all'); _all = OpsModal.readArray(r,'Device fleet'); x = _all.find(s => s.sensor_id === sensorId); } catch (err) { _container.innerHTML=OpsModal.recordFailure('Device',err,`OpsSensors.openFull('${__sid(sensorId)}')`,'OpsSensors.back()');return; } }
+    if (!x) { _container.innerHTML = OpsModal.recordFailure('Device',new Error('The requested device was not returned by this fleet feed'),'OpsSensors.back()','OpsSensors.back()'); return; }
     const [events, commands] = await Promise.all([
-      OpsModal.apiGet('/monitoring/sensors/' + sensorId + '/events').then(r => r.data || []).catch(() => []),
-      OpsModal.apiGet('/monitoring/sensors/' + sensorId + '/commands').then(r => r.data || []).catch(() => []),
+      OpsModal.apiGet('/monitoring/sensors/' + sensorId + '/events').then(r => r.data).catch(() => null),
+      OpsModal.apiGet('/monitoring/sensors/' + sensorId + '/commands').then(r => r.data).catch(() => null),
     ]);
     renderFull(x, events, commands);
   }
@@ -2086,113 +2019,113 @@ const OpsSensors = (function () {
     const F = OpsModal.fact, L = OpsModal.link, E = OpsModal.emptyState;
     const sid = __sid(x.sensor_id);
     const tier = healthTier(x);
-    const chipCls = tier === 'healthy' ? 'ok' : tier === 'offline' ? 'danger' : 'warn';
+    const chipCls = OpsModal.statusTone(tier==='healthy'?'online':tier,'device');
     const last = x.reading_time || x.last_ping;
     const isBio = x.device_variant === 'bio_dispenser';
     const primary = x.primary_asset || (x.assets || []).find(a => a.is_primary) || null;
-    const secondary = (x.assets || []).filter(a => !a.is_primary);
+    const secondary = (x.assets || []).filter(a => !a.is_primary && (!primary || String(a.property_id)!==String(primary.property_id)));
 
-    const tile = (l, v, unit, color) => `<div class="snd-tile"><div class="l">${l}</div><div class="v"${color ? ` style="color:${color}"` : ''}>${v == null ? '—' : v}${(v != null && unit) ? `<span class="u">${unit}</span>` : ''}</div></div>`;
-    const bar = (l, pct, color) => `<div class="snd-diag"><span class="l">${l}</span><span class="track"><i style="width:${pct != null ? Math.max(0, Math.min(100, pct)) : 0}%;background:${color}"></i></span><span class="v">${pct != null ? Math.round(pct) + '%' : '—'}</span></div>`;
+    const tile = (l, v, unit, color) => {const supplied=v!=null && v!=='' && typeof v!=='boolean' && !(typeof v==='number' && !Number.isFinite(v));return `<div class="snd-tile"><div class="l">${l}</div><div class="v"${color ? ` style="color:${color}"` : ''}>${supplied ? esc(v) : 'Not supplied'}${supplied && unit ? `<span class="u">${unit}</span>` : ''}</div></div>`;};
+    const bar = (l, pct, color) => {const value=OpsModal.reading(pct,0,100);return `<div class="snd-diag"><span class="l">${l}</span><span class="track"><i style="width:${value ?? 0}%;background:${value!==null?color:'var(--ink-3)'}"></i></span><span class="v">${value!==null ? Math.round(value) + '%' : 'Unknown'}</span></div>`;};
     const drow = (l, v) => `<div class="snd-diag"><span class="l">${l}</span><span style="flex:1"></span><span class="v" style="width:auto;font-family:var(--ff-b);font-weight:600;">${v == null || v === '' ? '—' : v}</span></div>`;
 
     const overview = `<div class="snd-tele">
-      ${tile('Status', _cap(x.status || '—'), '', x.status === 'active' ? 'var(--ok)' : x.status === 'offline' ? 'var(--err)' : 'var(--warn)')}
-      ${tile('Last ping', last ? _ago(last) : null, '')}
+      ${tile('Registry state', _cap(x.status || 'Unknown'), '', 'var(--ink)')}
+      ${tile('Last ping', x.last_ping ? _ago(x.last_ping) : null, '')}
       ${tile('Firmware', x.firmware_version || null, '')}
-      ${tile('Calibration due', x.calibration_due_at ? OpsModal.fmtDate(x.calibration_due_at) : 'On schedule', '')}
+      ${tile('Calibration due', x.calibration_due_at ? OpsModal.fmtDate(x.calibration_due_at) : 'Not supplied', '')}
     </div>`;
 
-    const tele = `<div class="snd-tele">
-      ${tile('Water level', x.level != null ? Math.round(x.level) : null, '%', levelColor(x.level))}
-      ${tile('Level (volume)', x.level_liters != null ? Number(x.level_liters).toLocaleString() : null, 'L')}
-      ${tile('Inflow rate', x.flow_rate != null ? Number(x.flow_rate).toFixed(1) : null, 'L/s')}
-      ${tile('Outflow rate', x.outflow_rate != null ? Number(x.outflow_rate).toFixed(1) : null, 'L/s')}
-      ${tile('Temperature', x.temperature != null ? Math.round(x.temperature) : null, '°C')}
-      ${tile('Silt depth', x.silt_depth_mm != null ? x.silt_depth_mm : null, 'mm')}
-      ${tile('Rainfall', x.rainfall_mm != null ? x.rainfall_mm : null, 'mm')}
-      ${tile('Debris detected', x.debris_detected == null ? null : (x.debris_detected ? 'Yes' : 'No'), '', x.debris_detected ? 'var(--warn)' : null)}
-      ${tile('Water pH', x.water_quality_ph != null ? x.water_quality_ph : null, '')}
-      ${tile('Turbidity', x.turbidity_ntu != null ? x.turbidity_ntu : null, 'NTU')}
-    </div>`;
+    const cap = x.capabilities || {};
+    const channel = (key,value,html) => cap[key] !== false && (cap[key] === true || value != null) ? html : '';
+    const measured = (value,min,max,format=v=>v) => {const n=OpsModal.reading(value,min,max);return n===null?null:format(n);};
+    const tele = `${x.data_trust !== true ? '<div class="capability-note">Last received values are not a trusted current assessment: ' + esc(x.sensor_reason || x.sensor_state || 'quality not supplied') + '. Infrastructure state remains unknown.</div>' : ''}<div class="snd-tele">
+      ${channel('water_level',x.level,tile('Water level', measured(x.level,0,100,Math.round), '%', levelColor(x.level,x.data_trust)))}
+      ${channel('volume',x.level_liters,tile('Level (volume)', measured(x.level_liters,0,Infinity,v=>v.toLocaleString()), 'L'))}
+      ${channel('flow_rate',x.flow_rate,tile('Inflow rate', measured(x.flow_rate,0,Infinity,v=>v.toFixed(1)), 'L/s'))}
+      ${channel('flow_rate',x.outflow_rate,tile('Outflow rate', measured(x.outflow_rate,0,Infinity,v=>v.toFixed(1)), 'L/s'))}
+      ${channel('temperature',x.temperature,tile('Temperature', measured(x.temperature,-Infinity,Infinity,Math.round), '°C'))}
+      ${channel('silt',x.silt_depth_mm,tile('Silt depth', measured(x.silt_depth_mm,0,Infinity), 'mm'))}
+      ${channel('rainfall',x.rainfall_mm,tile('Rainfall', measured(x.rainfall_mm,0,Infinity), 'mm'))}
+      ${channel('debris',x.debris_detected,tile('Debris detected', typeof x.debris_detected!=='boolean' ? null : (x.debris_detected ? 'Yes' : 'No'), '', x.debris_detected===true ? 'var(--warn)' : null))}
+      ${channel('water_quality',x.water_quality_ph,tile('Water pH', measured(x.water_quality_ph,0,14), ''))}
+      ${channel('water_quality',x.turbidity_ntu,tile('Turbidity', measured(x.turbidity_ntu,0,Infinity), 'NTU'))}
+    </div>${OpsModal.provenance([['Reading timestamp',last ? OpsModal.fmtDateTime(last) : null],['Water-level reference',null]],'Channels shown were declared or supplied. Their measurement times may differ; a percentage without a reference scale is not a capacity assessment.')}`;
 
     const diag = `
       ${bar('Battery', x.battery_percent, OpsModal.vitalColor(x.battery_percent))}
       ${bar('Signal strength', x.signal_strength, OpsModal.vitalColor(x.signal_strength))}
-      ${bar('Capacity used', x.level, levelColor(x.level))}
+      ${drow('Hydraulic capacity', 'Not supplied')}
       ${isBio ? bar('Enzyme level', x.enzyme_level_percent, x.enzyme_level_percent != null && x.enzyme_level_percent < 20 ? 'var(--err)' : 'var(--ok)') : ''}
-      ${drow('Last calibrated', x.last_calibrated_at ? OpsModal.fmtDate(x.last_calibrated_at) : '—')}
-      ${isBio ? drow('Cartridge status', x.cartridge_status ? _cap(String(x.cartridge_status).replace(/_/g, ' ')) : '—') : ''}`;
+      ${drow('Last calibrated', x.last_calibrated_at ? OpsModal.fmtDate(x.last_calibrated_at) : 'Not supplied')}
+      ${isBio ? drow('Cartridge status', OpsModal.label(x.cartridge_status)) : ''}`;
 
     const install = `
       ${F('Primary asset', primary ? L('assets', primary.property_id, esc(primary.name || primary.property_id)) : '—')}
-      ${F('Asset class', primary && primary.asset_class ? _cap(String(primary.asset_class).replace(/_/g, ' ')) : '—')}
-      ${F('Property', x.property_ref ? L('properties', x.property_ref, esc(x.property_name || 'Property')) : esc(x.property_name || '—'))}
+      ${F('Asset class', OpsModal.label(primary && primary.asset_class))}
+      ${F('Estate', x.property_ref ? L('properties', x.property_ref, esc(x.property_name || 'Estate')) : esc(x.property_name || '—'))}
       ${F('Zone', esc(x.zone || '—'))}
-      ${F('Link type', esc(x.link_type || '—'))}
-      ${F('Variant', esc((x.device_variant || '—').replace(/_/g, ' ')))}
+      ${F('Link type', esc(OpsModal.label(x.link_type || 'Not supplied')))}
+      ${F('Variant', esc(OpsModal.label(x.device_variant || 'Not supplied')))}
       ${secondary.length ? F('Secondary coverage', secondary.map(a => L('assets', a.property_id, esc(a.name || a.property_id))).join(', ')) : ''}`;
 
     const evList = Array.isArray(events) ? events : [];
-    const evRow = e => `<div class="snd-ev"><span class="dot"></span><div><div class="t">${esc((e.event_type || 'event').replace(/_/g, ' '))}</div><div class="m">${esc(e.detail || '')}${e.performed_by_name ? ' · ' + esc(e.performed_by_name) : ''} · ${OpsModal.fmtDateTime ? OpsModal.fmtDateTime(e.occurred_at) : esc(e.occurred_at)}</div></div></div>`;
+    const evRow = e => `<div class="snd-ev"><span class="dot"></span><div><div class="t">${esc(OpsModal.label(e.event_type || 'event'))}</div><div class="m">${eventDetail(e.detail)}${e.performed_by_name ? ' · ' + esc(e.performed_by_name) : ''} · ${OpsModal.fmtDateTime(e.occurred_at)}</div></div></div>`;
     const maintEv = evList.filter(e => /calibrat|battery|install|repair|swap|mount|decommission/i.test(e.event_type || ''));
-    const maintBody = maintEv.length ? maintEv.map(evRow).join('') : E('', 'No maintenance logged', 'Calibration, battery swaps and installs will appear here.');
-    const eventsBody = evList.length ? evList.map(evRow).join('') : E('', 'No events yet', 'Device events are recorded here as they happen.');
+    const maintBody = !Array.isArray(events) ? '<div class="capability-note">Maintenance event feed unavailable or not supplied.</div>' : maintEv.length ? maintEv.map(evRow).join('') : E('', 'No maintenance returned', 'No matching maintenance events were returned by this feed.');
+    const eventsBody = !Array.isArray(events) ? '<div class="capability-note">Event history unavailable or not supplied. This does not mean no events occurred.</div>' : evList.length ? evList.map(evRow).join('') : E('', 'No events returned', 'No events were returned by this feed.');
 
     const cmdList = Array.isArray(commands) ? commands : [];
-    const cmdRow = c => { const st = String(c.status || 'queued').toLowerCase(); return `<div class="snd-cmd"><span class="st ${st}">${st}</span><div><div class="t">${esc((c.command_type || 'command').replace(/_/g, ' '))}</div><div class="m">${c.requested_by_name ? 'by ' + esc(c.requested_by_name) + ' · ' : ''}${OpsModal.fmtDateTime ? OpsModal.fmtDateTime(c.created_at) : esc(c.created_at)}${c.note ? ' · ' + esc(c.note) : ''}</div></div></div>`; };
-    const fwBody = `${F('Current firmware', esc(x.firmware_version || '—'))}${cmdList.length ? `<div style="margin-top:12px;">${cmdList.map(cmdRow).join('')}</div>` : `<div style="margin-top:8px;">${E('', 'No commands queued', 'Firmware pushes and other commands appear here.')}</div>`}`;
+    const cmdRow = c => `<div class="snd-cmd">${OpsModal.status(c.status || 'unknown',null,null,'command')}<div><div class="t">${esc(OpsModal.label(c.command_type || 'command'))}</div><div class="m">${c.requested_by_name ? 'by ' + esc(c.requested_by_name) + ' · ' : ''}${OpsModal.fmtDateTime(c.created_at)}${c.note ? ' · ' + esc(c.note) : ''}</div></div></div>`;
+    const fwBody = `${F('Current firmware', esc(x.firmware_version || '—'))}${!Array.isArray(commands) ? '<div class="capability-note">Command history unavailable or not supplied.</div>' : cmdList.length ? `<div style="margin-top:12px;">${cmdList.map(cmdRow).join('')}</div>` : `<div style="margin-top:8px;">${E('', 'No commands returned', 'No commands were returned by this feed.')}</div>`}`;
 
     const sidebar = `
-      <div class="fgd-card"><div class="fgd-card-head"><h2>Quick facts</h2></div>
-        ${F('Device ID', `<span class="lv-mono">${esc(x.sensor_id)}</span>`)}
-        ${F('Variant', esc((x.device_variant || '—').replace(/_/g, ' ')))}
-        ${F('Zone', esc(x.zone || '—'))}
-        ${F('Property', x.property_ref ? L('properties', x.property_ref, esc(x.property_name || 'Property')) : esc(x.property_name || '—'))}
-        ${F('Firmware', esc(x.firmware_version || '—'))}
-        ${F('Battery', x.battery_percent != null ? x.battery_percent + '%' : '—')}
-        ${F('Signal', x.signal_strength != null ? x.signal_strength + '%' : '—')}
-        ${F('Last ping', last ? _ago(last) : '—')}
+      <div class="fgd-card"><div class="fgd-card-head"><h2>Related records</h2></div>
+        ${F('Estate', x.property_ref || x.property_id ? L('properties', x.property_ref || x.property_id, x.property_name || 'Estate') : 'Not linked')}
+        ${F('Linked asset', primary ? L('assets',primary.property_id,primary.name || primary.property_id) : 'Not linked')}
       </div>
-      ${canMng() ? `<div class="fgd-card"><div class="fgd-card-head"><h2>Actions</h2></div>
+      ${canMng() ? `<div class="fgd-card"><div class="fgd-card-head"><h2>Device management</h2></div>
         <div style="display:flex;flex-direction:column;gap:8px;">
-          <button class="fgd-btn" onclick="OpsSensors.sendCommand('${sid}','firmware_update')">Push firmware (OTA)</button>
-          <button class="fgd-btn" onclick="OpsSensors.calibrate('${sid}')">Run calibration</button>
-          <button class="fgd-btn" onclick="OpsSensors.sendCommand('${sid}','reset')">Restart node</button>
-          <button class="fgd-btn" onclick="OpsSensors.coverage('${sid}')">Manage coverage</button>
+          <button class="fg-action fg-action-attention" onclick="OpsSensors.sendCommand('${sid}','firmware_update')">Push firmware (OTA)</button>
+          <button class="fg-action fg-action-attention" onclick="OpsSensors.calibrate('${sid}')">Run calibration</button>
+          <button class="fg-action danger" onclick="OpsSensors.sendCommand('${sid}','reset')">Restart device</button>
+          <button class="fg-action" onclick="OpsSensors.coverage('${sid}')">Manage coverage</button>
         </div>
       </div>` : ''}`;
 
-    _container.innerHTML = SND_CSS + OpsModal.detailShell({
+    _container.innerHTML = OpsModal.detailShell({
       back: 'OpsSensors.back()',
-      crumbRoot: 'Sentinel Devices',
+      crumbRoot: 'Device fleet',
+      decision:[['Data trust',x.data_trust===true && x.sensor_state==='ok'?'Trusted':x.sensor_state && x.sensor_state!=='ok'?OpsModal.label(x.sensor_state):'Unknown'],['Reading received',OpsModal.relativeTime(last)],['Next step',x.data_trust===true && x.sensor_state==='ok'?'Review drainage state and diagnostics':'Restore and validate telemetry before relying on readings']],
       title: esc(x.name || x.sensor_id),
-      avatar: { text: 'SN', bg: 'linear-gradient(135deg,#3f63e6,#5379ff)' },
+      reference:x.sensor_id,
+      avatar: { text: OpsModal.entityIcon('sensors') },
       chips: [
-        { cls: chipCls, dot: true, label: _cap(x.status || 'unknown') },
-        x.device_variant ? { cls: 'neutral', label: x.device_variant.replace(/_/g, ' ') } : null,
+        { cls: chipCls, dot: true, label: esc('Device: ' + OpsModal.label(tier === 'healthy' ? 'online' : tier)) },
+        { cls:'neutral',label:esc('Registry: ' + OpsModal.label(x.status)) },
+        x.device_variant ? { cls: 'neutral', label: esc(OpsModal.label(x.device_variant)) } : null,
       ].filter(Boolean),
-      meta: [['Zone', esc(x.zone || '—')], ['Primary asset', primary ? esc(primary.name || primary.property_id) : '—'], ['Property', esc(x.property_name || '—')], ['Link', esc(x.link_type || '—')]],
-      actions: `${primary && primary.property_id ? `<button class="fgd-btn" onclick="OpsNetwork.open('${__sid(primary.property_id)}')">View on map</button>` : ''}${canMng() ? `<button class="fgd-btn" style="background:linear-gradient(135deg,#5379ff,#3f63e6);color:#fff;border:none;" onclick="OpsSensors.queueCommand('${sid}')">Queue command</button>` : ''}`,
+      meta: [['Zone', esc(x.zone || '—')], ['Primary asset', primary ? esc(primary.name || primary.property_id) : '—'], ['Estate', esc(x.property_name || '—')], ['Link', esc(OpsModal.label(x.link_type))]],
+      actions: `${primary && primary.property_id ? `<button class="fg-action" onclick="OpsNetwork.viewRecord('${__sid(primary.property_id)}')">View on map</button>` : ''}${canMng() ? `<button class="fg-action" onclick="OpsSensors.queueCommand('${sid}')">Queue command</button>` : ''}`,
       sections: [
-        { id: 'overview', title: 'Device overview', meta: last ? 'Last ping ' + _ago(last) : '', body: overview },
-        { id: 'telemetry', title: 'Live telemetry', body: tele },
+        { id: 'telemetry', title: 'Latest telemetry', body: tele },
+        { id: 'overview', title: 'Device overview', meta: x.last_ping ? 'Last ping ' + _ago(x.last_ping) : 'Check-in not supplied', body: '<div class="snd-state-grid">' + stateCards(x) + '</div>' + overview },
         { id: 'diagnostics', title: 'Diagnostics', body: diag },
         { id: 'installation', title: 'Installation', body: install },
         { id: 'maintenance', title: 'Maintenance', body: maintBody },
         { id: 'firmware', title: 'Firmware', body: fwBody },
         { id: 'events', title: 'Event history', body: eventsBody },
-        { id: 'photos', title: 'Photos', body: E('', 'No photos attached', 'Install and site photos can be attached once file storage exists.') },
-        { id: 'documents', title: 'Documents', body: E('', 'No documents attached', 'Datasheets and warranty docs can be attached once file storage exists.') },
+        { id: 'evidence', title: 'Device evidence', state:OpsModal.collectionState(x.photos,x.documents), body: OpsModal.evidenceGroup([['Installation photos',x.photos],['Documents',x.documents]]) },
       ],
       sidebar,
     });
   }
 
   function queueCommand(sensorId) {
+    if (!requireDeviceManage()) return;
     OpsModal.open('Queue a command', `<p style="margin:0 0 4px;font-size:var(--fs-sm);color:var(--ink-3);">Send a command to this Sentinel.</p>`, [
       { label: 'Push firmware (OTA)', onclick: `OpsSensors.sendCommand('${__sid(sensorId)}','firmware_update')`, class: 'btn-primary' },
-      { label: 'Restart node', onclick: `OpsSensors.sendCommand('${__sid(sensorId)}','reset')` },
+      { label: 'Restart device', intent:'danger', onclick: `OpsSensors.sendCommand('${__sid(sensorId)}','reset')` },
       { label: 'Recalibrate', onclick: `OpsSensors.calibrate('${__sid(sensorId)}')` },
       { label: 'Cancel', onclick: 'OpsModal.close()', class: 'btn-ghost' },
     ]);
@@ -2207,7 +2140,8 @@ const OpsSensors = (function () {
 
   async function driversManager() {
     OpsModal.open('Device drivers', '<div style="padding:20px;color:var(--ink-3)">Loading…</div>', [{ label: 'Close', onclick: 'OpsModal.close()' }]);
-    try { const r = await OpsModal.apiGet('/device-drivers'); _drivers = r.data || []; } catch (err) { OpsModal.toast(err.message || 'Failed to load drivers', 'error'); return; }
+    try { const r = await OpsModal.apiGet('/device-drivers'); if (!Array.isArray(r.data)) throw new Error('Driver directory not supplied'); _drivers = r.data; }
+    catch (err) { OpsModal.open('Device drivers',OpsModal.failure('Device drivers',err,'OpsSensors.driversManager()'),[{label:'Close',onclick:'OpsModal.close()'}]); return; }
     drvHome();
   }
   function drvHome() {
@@ -2216,50 +2150,52 @@ const OpsSensors = (function () {
       const cmds = (d.commands || []).length;
       return `<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)">
         <div style="flex:1 1 auto;min-width:0">
-          <div style="font-weight:700;color:var(--ink);font-size:var(--fs-sm)">${esc(d.name)}${d.native ? ' <span style="font-size:var(--fs-2xs);color:var(--ok);font-weight:700">· NATIVE</span>' : ''}${!d.active ? ' <span style="font-size:var(--fs-2xs);color:var(--ink-4)">· inactive</span>' : ''}</div>
-          <div style="font-size:var(--fs-2xs);color:var(--ink-4)">${esc(d.key)}${d.vendor ? ' · ' + esc(d.vendor) : ''} · ${caps} caps · ${cmds} commands · ${d.device_count || 0} device${d.device_count === 1 ? '' : 's'}</div>
+          <div style="font-weight:700;color:var(--ink);font-size:var(--fs-sm)">${esc(d.name)}${d.native ? ' <span class="lv-status neutral">Native</span>' : ''}${OpsModal.status(d.active===true?'active':d.active===false?'inactive':'unknown',null,null,'account')}</div>
+          <div class="lv-source">${esc(d.key)}${d.vendor ? ' · ' + esc(d.vendor) : ''} · ${d.capabilities && typeof d.capabilities==='object'?caps+' capabilities':'Capabilities unavailable'} · ${Array.isArray(d.commands)?cmds+' commands':'Commands unavailable'} · ${Number.isInteger(d.device_count) && d.device_count>=0?d.device_count+' linked devices':'Device count unavailable'}</div>
         </div>
-        <button class="btn-ghost" onclick="OpsSensors.drvEdit(${d.id})">${d.native ? 'View' : 'Edit'}</button>
+        <button class="fg-action" onclick="OpsSensors.drvEdit(${d.id})">${d.native ? 'View' : 'Edit'}</button>
       </div>`;
     }).join('');
     OpsModal.open('Device drivers', `
       <p style="margin:0 0 12px;font-size:var(--fs-sm);color:var(--ink-3);line-height:1.5">Adapters that let third-party hardware report telemetry and take commands through the same model as a Sentinel. Each device binds to a driver.</p>
-      ${rows || '<p style="color:var(--ink-4)">No drivers yet.</p>'}
+      ${rows || OpsModal.emptyState('','No drivers returned','No device adapters were returned by this directory.')}
     `, [
-      { label: 'New driver', class: 'btn-primary', onclick: 'OpsSensors.drvEdit(0)' },
+      { label: 'Create driver', class: 'btn-primary', onclick: 'OpsSensors.drvEdit(0)' },
       { label: 'Close', onclick: 'OpsModal.close()' },
     ]);
   }
   function drvEdit(id) {
+    if (!requireDeviceManage()) return;
     const d = id ? (_drivers.find(x => x.id === id) || {}) : {};
     const ro = !!d.native;
-    const capBoxes = DRV_CAPS.map(c => `<label style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-xs);color:var(--ink-2);margin:0 10px 6px 0"><input type="checkbox" name="cap_${c}" ${(d.capabilities && d.capabilities[c]) ? 'checked' : ''}> ${c.replace(/_/g, ' ')}</label>`).join('');
-    const cmdBoxes = DRV_CMDS.map(c => `<label style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-xs);color:var(--ink-2);margin:0 10px 6px 0"><input type="checkbox" name="cmd_${c}" ${(d.commands || []).includes(c) ? 'checked' : ''} ${ro ? 'disabled' : ''}> ${c.replace(/_/g, ' ')}</label>`).join('');
-    OpsModal.open(id ? `Driver — ${esc(d.name || '')}` : 'New driver', `
+    const capBoxes = DRV_CAPS.map(c => `<label class="fg-choice"><input type="checkbox" name="cap_${c}" ${(d.capabilities && d.capabilities[c]) ? 'checked' : ''} ${ro?'disabled':''}> ${OpsModal.label(c)}</label>`).join('');
+    const cmdBoxes = DRV_CMDS.map(c => `<label class="fg-choice"><input type="checkbox" name="cmd_${c}" ${(d.commands || []).includes(c) ? 'checked' : ''} ${ro ? 'disabled' : ''}> ${OpsModal.label(c)}</label>`).join('');
+    OpsModal.open(id ? `Driver — ${d.name || ''}` : 'Create driver', `
       ${OpsModal.row([
-        OpsModal.field('Key (slug)', 'key', 'text', d.key || '', { required: !id, readonly: !!id, placeholder: 'acme-flow-v2' }),
-        OpsModal.field('Name', 'name', 'text', d.name || '', { required: true, placeholder: 'Acme Flow Meter v2' }),
+        OpsModal.field('Driver key', 'key', 'text', d.key || '', { required: !id, readonly: !!id, placeholder: 'acme-flow-v2' }),
+        OpsModal.field('Name', 'name', 'text', d.name || '', { required: true, readonly:ro, placeholder: 'Acme Flow Meter v2' }),
       ])}
       ${OpsModal.row([
-        OpsModal.field('Vendor', 'vendor', 'text', d.vendor || '', { required: false }),
-        OpsModal.field('Model', 'model', 'text', d.model || '', { required: false }),
+        OpsModal.field('Vendor', 'vendor', 'text', d.vendor || '', { required: false,readonly:ro }),
+        OpsModal.field('Model', 'model', 'text', d.model || '', { required: false,readonly:ro }),
       ])}
-      ${OpsModal.field('Auth type', 'auth_type', 'select', d.auth_type || 'device_key', { options: ['device_key', 'hmac', 'bearer'] })}
-      <div class="ops-modal-field"><label class="ops-label">Capabilities</label><div>${capBoxes}</div></div>
-      <div class="ops-modal-field"><label class="ops-label">Supported commands</label><div>${cmdBoxes}</div></div>
-      ${OpsModal.field('Field map (JSON: canonical → vendor path)', 'field_map', 'textarea', d.field_map ? JSON.stringify(d.field_map, null, 2) : '{}', { required: false, rows: 5, placeholder: '{ "water_level_percent": "level_pct" }' })}
-      ${OpsModal.field('Notes', 'notes', 'textarea', d.notes || '', { required: false, rows: 2 })}
+      ${OpsModal.field('Authentication method', 'auth_type', 'select', d.auth_type || 'device_key', {disabled:ro, options: [{value:'device_key',label:'Device key'},{value:'hmac',label:'HMAC signature'},{value:'bearer',label:'Bearer token'}] })}
+      <fieldset class="fg-choice-group"><legend>Capabilities</legend><div>${capBoxes}</div></fieldset>
+      <fieldset class="fg-choice-group"><legend>Supported commands</legend><div>${cmdBoxes}</div></fieldset>
+      ${OpsModal.field('Field mapping (JSON)', 'field_map', 'textarea', d.field_map ? JSON.stringify(d.field_map, null, 2) : '{}', { required: false,readonly:ro, rows: 5, placeholder: '{ "water_level_percent": "level_pct" }' })}
+      ${OpsModal.field('Notes', 'notes', 'textarea', d.notes || '', { required: false,readonly:ro, rows: 2 })}
       ${id && !ro ? OpsModal.field('Active', 'active', 'select', d.active === false ? 'no' : 'yes', { options: [{ value: 'yes', label: 'Active' }, { value: 'no', label: 'Inactive' }] }) : ''}
-    `, ro ? [{ label: 'Back', onclick: 'OpsSensors.drvHome()' }] : [
-      { label: 'Back', onclick: 'OpsSensors.drvHome()' },
-      { label: id ? 'Save' : 'Create', class: 'btn-primary', onclick: `OpsSensors.drvSave(${id || 0})` },
+    `, ro ? [{ label: 'Back to drivers', onclick: 'OpsSensors.drvHome()' }] : [
+      { label: 'Back to drivers', onclick: 'OpsSensors.drvHome()' },
+      { label: id ? 'Save driver' : 'Create driver', class: 'btn-primary', onclick: `OpsSensors.drvSave(${id || 0})` },
     ]);
   }
   async function drvSave(id) {
+    if (!requireDeviceManage()) return;
     const f = OpsModal.getFormData();
     let field_map;
     try { field_map = f.field_map && f.field_map.trim() ? JSON.parse(f.field_map) : {}; }
-    catch (_) { OpsModal.toast('Field map must be valid JSON.', 'error'); return; }
+    catch (_) { OpsModal.toast('Field mapping must be valid JSON.', 'error'); return; }
     const capabilities = {}; DRV_CAPS.forEach(c => { const el = document.querySelector(`input[name="cap_${c}"]`); if (el && el.checked) capabilities[c] = true; });
     const commands = DRV_CMDS.filter(c => { const el = document.querySelector(`input[name="cmd_${c}"]`); return el && el.checked; });
     const body = { name: f.name, vendor: f.vendor || null, model: f.model || null, auth_type: f.auth_type, capabilities, field_map, commands, notes: f.notes || null };
@@ -2271,31 +2207,41 @@ const OpsSensors = (function () {
       if (id) await OpsModal.apiPut(`/device-drivers/${id}`, body);
       else await OpsModal.apiPost('/device-drivers', body);
       OpsModal.toast('Driver saved.', 'success');
-      const r = await OpsModal.apiGet('/device-drivers'); _drivers = r.data || [];
-      drvHome();
+      await driversManager();
     } catch (err) { OpsModal.setLoading(false); OpsModal.toast(err.message || 'Failed to save driver', 'error'); }
   }
 
   async function setDriver(sensorId) {
+    if (!requireDeviceManage()) return;
     const x = _all.find(s => s.sensor_id === sensorId) || {};
-    if (!_drivers.length) { try { const r = await OpsModal.apiGet('/device-drivers'); _drivers = r.data || []; } catch (_) {} }
-    const opts = [{ value: '', label: 'Sentinel (native / unbound)' }].concat(_drivers.filter(d => d.active && !d.native).map(d => ({ value: String(d.id), label: `${d.name}${d.vendor ? ' · ' + d.vendor : ''}` })));
-    OpsModal.open(`Device driver — ${esc(x.name || sensorId)}`, `
+    if (!_drivers.length) { try { _drivers = OpsModal.readArray(await OpsModal.apiGet('/device-drivers'),'Driver directory'); } catch(err) { OpsModal.open('Assign device driver',OpsModal.failure('Driver choices',err,`OpsSensors.setDriver('${__sid(sensorId)}')`),[{label:'Close',onclick:'OpsModal.close()'}]);return; } }
+    const eligible=_drivers.filter(d=>d.active===true && d.native===false && Number.isSafeInteger(Number(d.id)) && Number(d.id)>0);
+    const current=eligible.some(d=>String(d.id)===String(x.driver_id))?String(x.driver_id):'';
+    const opts = [{ value: '', label: 'Choose assignment · unchanged until saved' },{value:'__unbound',label:'Remove driver binding'}].concat(eligible.map(d => ({ value: String(d.id), label: `${d.name || 'Unnamed driver'}${d.vendor ? ' · ' + d.vendor : ''}` })));
+    OpsModal.open(`Device driver — ${x.name || sensorId}`, `
       <p style="margin:0 0 12px;font-size:var(--fs-sm);color:var(--ink-3);line-height:1.5">Bind this device to a driver. Telemetry is remapped to canonical fields on ingest and commands are gated to the driver's supported set.</p>
-      ${OpsModal.field('Driver', 'driver_id', 'select', x.driver_id ? String(x.driver_id) : '', { options: opts })}
+      ${OpsModal.field('Driver', 'driver_id', 'select', current, { options: opts })}
     `, [
       { label: 'Cancel', onclick: 'OpsModal.close()' },
-      { label: 'Save', class: 'btn-primary', onclick: `OpsSensors.saveDriver('${__sid(sensorId)}')` },
+      { label: 'Save driver assignment', class: 'btn-primary', onclick: `OpsSensors.saveDriver('${__sid(sensorId)}')` },
     ]);
   }
   async function saveDriver(sensorId) {
+    if (!requireDeviceManage()) return;
     const f = OpsModal.getFormData();
-    OpsModal.setLoading(true);
-    try {
-      await OpsModal.apiPut(`/monitoring/sensors/${sensorId}/driver`, { driver_id: f.driver_id ? parseInt(f.driver_id, 10) : null });
-      OpsModal.close(); OpsModal.toast('Driver updated.', 'success');
-      await load(); if (_drawerId === sensorId) renderDrawer();
-    } catch (err) { OpsModal.setLoading(false); OpsModal.toast(err.message || 'Failed to set driver', 'error'); }
+    const unbind=f.driver_id==='__unbound';
+    const driver=_drivers.find(d=>String(d.id)===String(f.driver_id) && d.active===true && d.native===false && Number.isSafeInteger(Number(d.id)) && Number(d.id)>0);
+    if(!unbind && !driver)return OpsModal.toast('Choose an available driver or explicitly remove the binding. No assignment changed.','warning');
+    const node=_all.find(s=>s.sensor_id===sensorId);
+    OpsModal.confirm(`${unbind?'Remove the driver binding from':'Assign '+(driver.name || 'the selected driver')+' to'} ${node?.name || sensorId}? This changes telemetry mapping and the supported command set. It does not verify installed hardware.`,async()=>{
+      if(!requireDeviceManage())return;
+      OpsModal.setLoading(true);
+      try {
+        await OpsModal.apiPut(`/monitoring/sensors/${sensorId}/driver`, { driver_id: unbind?null:Number(driver.id) });
+        OpsModal.close(); OpsModal.toast('Driver assignment saved.', 'success');
+        await load(); if (_drawerId === sensorId) renderDrawer();
+      } catch (err) { OpsModal.setLoading(false); OpsModal.toast(err.message || 'Failed to set driver', 'error'); }
+    });
   }
 
   return {
@@ -2306,12 +2252,14 @@ const OpsSensors = (function () {
     connectivityPanel, powerPanel, calibrationPanel,
     integrityPanel, setGeofenceAnchor, editGeofence, saveGeofence, flagTamper, clearTamper, doTamper,
     driversManager, drvHome, drvEdit, drvSave, setDriver, saveDriver,
-    protectionWindows, createWindow, cancelWindow,
+    protectionWindows, refreshWindows, createWindow, cancelWindow,
     profilesManager, pfHome, pfCreate, pfOpen, pfSave, pfAssign,
     firmwareManager, fwHome, fwCreateRelease, fwCreateRollout, fwOpenRollout, fwAdvance, fwState, fwRollback,
-    viewSensor, closeDrawer, decommission, openFull, back, queueCommand, drawerTab,
+    viewSensor, closeDrawer, decommission, openFull, back, queueCommand, drawerTab, drawerKey,
     getSensor: (id) => _all.find(s => s.sensor_id === id),
-    loadAll: async () => { try { const r = await OpsModal.apiGet('/monitoring/sensors/all'); _all = r.data || []; } catch (_) {} return _all; },
+    telemetryMarkup,
+    canManage:canMng,
+    loadAll: async () => { _all = OpsModal.readArray(await OpsModal.apiGet('/monitoring/sensors/all'),'Device fleet'); return _all; },
     mount3D: (hostId) => mountModelViewer(hostId, (hostId || 'sn-3d') + '-state'),
     dispose3D: () => disposeViewer(),
     preload3D: () => preload3D(),

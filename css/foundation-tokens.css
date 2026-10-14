@@ -1,0 +1,39 @@
+:root{
+    --fg-bg:#111214; --fg-chrome:#18191b; --fg-card:#1c1d20; --fg-card-2:#212327;
+    --fg-line:#34363b; --fg-line-2:#3d4046;
+    --fg-t1:#f0f1f2; --fg-t2:#b5b8be; --fg-t3:#8b909a; --fg-t4:#6c727c;
+    --fg-blue:#5379ff; --fg-blue-h:#3f63e6;
+    --fg-crit:#f0616d; --fg-high:#f0913e; --fg-mod:#f2c14e; --fg-ok:#35c98a; --fg-neutral:#8b9099;
+    --fg-crit-bg:rgba(240,97,109,.12); --fg-ok-bg:rgba(53,201,138,.12); --fg-mod-bg:rgba(242,193,78,.12);
+    --fg-s1:4px; --fg-s2:8px; --fg-s3:12px; --fg-s4:16px; --fg-s5:24px; --fg-s6:32px;
+    --fg-r:var(--radius-panel); --fg-r-s:var(--radius-control);
+    --fg-fs-title:28px; --fg-fs-body:14px; --fg-fs-sm:13px; --fg-fs-xs:12px;
+  }
+  /* Light-theme overrides so shared-token surfaces follow the theme toggle */
+  html[data-theme="light"]{
+    --fg-bg:#f6f7f8; --fg-chrome:#ffffff; --fg-card:#ffffff; --fg-card-2:#f6f7f8;
+    --fg-line:#e5e8eb; --fg-line-2:#d7dbdf;
+    --fg-t1:#14171a; --fg-t2:#4b535a; --fg-t3:#767d84; --fg-t4:#9aa0a6;
+  }
+  /* Shared components (prefix fgc-). Any module can use these directly. */
+  .fgc-card{ background:var(--fg-card); border:1px solid var(--fg-line); border-radius:var(--fg-r); padding:var(--fg-s4); }
+  .fgc-h1{ font-size:var(--fg-fs-title); font-weight:600; letter-spacing:-.01em; color:var(--fg-t1); }
+  .fgc-sub{ font-size:var(--fg-fs-sm); color:var(--fg-t3); }
+  .fgc-k{ font-size:12px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--fg-t2); }
+  .fgc-link{ color:var(--fg-blue); font-weight:500; cursor:pointer; background:none; border:none; padding:0; font-family:inherit; font-size:var(--fg-fs-xs); text-decoration:none; }
+  .fgc-link:hover{ text-decoration:underline; }
+  .fgc-status{ display:inline-flex; align-items:center; gap:var(--fg-s2); font-size:var(--fg-fs-sm); color:var(--fg-t1); font-weight:500; }
+  .fgc-status .dot{ width:8px; height:8px; border-radius:50%; flex:0 0 auto; }
+  .fgc-seg{ display:flex; background:var(--surface-2); border:1px solid var(--fg-line-2); border-radius:var(--fg-r-s); overflow:hidden; }
+  .fgc-seg button{ font-size:var(--fg-fs-xs); font-weight:500; color:var(--fg-t3); padding:5px 12px; cursor:pointer; border:none; background:none; border-right:1px solid var(--fg-line-2); font-family:inherit; }
+  .fgc-seg button:last-child{ border-right:none; }
+  .fgc-seg button.active{ background:var(--selection-fill); color:var(--selection-ink); }
+  .fgc-seg .c{ color:inherit; font-weight:600; margin-left:5px; }
+  .fgc-table{ width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  .fgc-table thead th{ text-align:left; font-size:12px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--fg-t3); padding:0 8px 8px; border-bottom:1px solid var(--fg-line); }
+  .fgc-table tbody td{ padding:7px 8px; border-bottom:1px solid var(--fg-line); font-size:var(--fg-fs-sm); color:var(--fg-t1); }
+  .fgc-table tbody tr:last-child td{ border-bottom:none; }
+  .fgc-empty{ padding:var(--fg-s5) var(--fg-s3); text-align:center; color:var(--fg-t3); font-size:var(--fg-fs-sm); }
+  .fgc-empty .fgc-link{ font-size:var(--fg-fs-sm); }
+  .fgc-panel{ background:var(--fg-card); border:1px solid var(--fg-line); border-radius:var(--fg-r); padding:var(--fg-s4); }
+  .fgc-div{ height:1px; background:var(--fg-line); margin:var(--fg-s2) 0; }

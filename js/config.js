@@ -11,10 +11,14 @@
  *  • APP_VERSION bumped
  */
 
+// Only the dedicated loopback sandbox server selects the disposable API.
+// Ordinary localhost design preview and hosted builds retain their existing config.
+const FG_ISOLATED_LOCAL = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) && location.port === '3041';
 const CONFIG = Object.freeze({
 
   // ── API ──────────────────────────────────────────────────────────────
-  API_BASE:    'https://api.flowguard.ng/api/v1',
+  API_BASE:    FG_ISOLATED_LOCAL ? location.origin + '/api/v1' : 'https://api.flowguard.ng/api/v1',
+  LOCAL_SANDBOX: FG_ISOLATED_LOCAL,
   APP_NAME:    'FlowGuard Ops',
   APP_VERSION: 'v3.2.1',
 

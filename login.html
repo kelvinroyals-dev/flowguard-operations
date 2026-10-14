@@ -13,16 +13,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root{
-      --bg:#111214; --card:#1c1d20; --field:#141518;
+      --bg:#080808; --card:#121212; --field:#0c0c0c;
       --line:#34363b; --line-2:#3d4046;
       --t1:#f0f1f2; --t2:#b5b8be; --t3:#8b909a; --t4:#6c727c;
-      --blue:#5379ff; --blue-h:#3f63e6;
+      --blue:#62d9e5; --blue-h:#83e4ec; --button-ink:#080808;
       --err:#f0616d; --err-bg:rgba(240,97,109,.12);
       --ff:'Inter',system-ui,sans-serif; --ff-m:'JetBrains Mono',monospace;
     }
     *{box-sizing:border-box;margin:0;padding:0}
     body{background:var(--bg);color:var(--t1);font-family:var(--ff);-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 20px}
-    body::before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(900px 500px at 50% -10%,rgba(83,121,255,.06),transparent 60%)}
+    body::before{content:"";position:fixed;inset:0;pointer-events:none}
 
     .shell{position:relative;z-index:2;width:100%;max-width:520px;display:flex;flex-direction:column;align-items:center}
 
@@ -45,7 +45,7 @@
     .inp-wrap .lead svg{width:18px;height:18px}
     .field-inp{width:100%;padding:14px 16px 14px 46px;background:var(--field);border:1px solid var(--line-2);border-radius:10px;color:var(--t1);font-family:inherit;font-size:15px;transition:.15s}
     .field-inp::placeholder{color:var(--t4)}
-    .field-inp:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(83,121,255,.18)}
+    .field-inp:focus{outline:2px solid var(--blue);outline-offset:2px;box-shadow:none}
     .pw-tog{position:absolute;right:10px;background:none;border:none;color:var(--t3);cursor:pointer;padding:9px;display:grid;place-items:center}
     .pw-tog:hover{color:var(--t1)}
 
@@ -55,14 +55,15 @@
     .link{color:var(--blue);font-size:14.5px;font-weight:500;text-decoration:none}
     .link:hover{text-decoration:underline}
 
-    .btn-submit{width:100%;padding:15px;border-radius:11px;background:var(--blue);color:#fff;border:none;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:9px}
+    .btn-submit{width:100%;padding:15px;border-radius:11px;background:var(--blue);color:var(--button-ink);border:none;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:9px}
     .btn-submit:hover:not(:disabled){background:var(--blue-h)}
     .btn-submit:disabled{opacity:.75;cursor:default}
-    .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+    .spinner{width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
     @keyframes spin{to{transform:rotate(360deg)}}
 
     .msg{display:none;align-items:flex-start;gap:9px;margin-top:16px;padding:12px 14px;border-radius:10px;font-size:14px;line-height:1.45}
     .msg.error{display:flex;background:var(--err-bg);color:#f4959d;border:1px solid rgba(240,97,109,.3)}
+    .msg.info{display:flex;background:var(--card);color:var(--ink);border:1px solid var(--border)}
 
     .foot{margin-top:26px;font-family:var(--ff-m);font-size:12px;color:var(--t4);text-align:center}
     .foot b{color:var(--t3);font-weight:500}
@@ -80,7 +81,15 @@
     .loadscreen .foot{position:fixed;bottom:34px;left:0;right:0}
 
     @media(max-width:520px){.card{padding:28px 22px 30px}h1{font-size:30px}.brand-txt .n{font-size:22px}}
+    html[data-theme="light"] { --bg:#fff;--card:#fff;--field:#f6f6f6;--line:#dedede;--line-2:#a8a8a8;--t1:#171717;--t2:#363636;--t3:#626262;--t4:#686868;--blue:#075d70;--blue-h:#075d70;--button-ink:#fff;--err:#a3263a;--err-bg:#fce5e9; }
+    .brand-logo { width:44px;height:44px;border:0;border-radius:0;background:transparent; }
+    .brand-logo img { width:44px;height:44px; }
+    .brand-txt .t { font-size:11px;letter-spacing:.12em; }
+    html[data-theme="light"] .msg.error {color:var(--err);}
+    :is(button,input,a):focus-visible {outline:2px solid var(--blue);outline-offset:3px;}
+    @media(prefers-reduced-motion:reduce) {*,*::before,*::after {animation:none!important;transition:none!important;}}
   </style>
+  <link rel="stylesheet" href="css/auth-density.css?v=1">
 </head>
 <body>
   <div class="shell">
@@ -88,13 +97,14 @@
       <div class="brand-logo"><img src="fg-logo-dark.png" alt="FlowGuard"></div>
       <div class="brand-txt">
         <div class="n">FlowGuard</div>
-        <div class="t">Neon Center</div>
+        <div class="t">Operations Center</div>
       </div>
     </div>
 
     <div class="card">
       <h1>Sign in</h1>
       <p class="sub">Access your FlowGuard workspace.</p>
+      <p id="design-preview-link" hidden style="margin-bottom:20px"><a class="link" href="index.html?preview=design#situation">Open local design preview · no login needed →</a></p>
 
       <form id="lform" novalidate>
         <div class="field">
@@ -137,7 +147,7 @@
       <div class="brand-logo"><img src="fg-logo-dark.png" alt="FlowGuard"></div>
       <div class="brand-txt">
         <div class="n">FlowGuard</div>
-        <div class="t">Neon Center</div>
+        <div class="t">Operations Center</div>
       </div>
     </div>
     <h2>Loading your workspace…</h2>
@@ -146,7 +156,10 @@
     <div class="foot"><b>FlowGuard Solutions</b> &nbsp;|&nbsp; © 2026</div>
   </div>
 
+<script src="js/config.js?v=local1"></script>
 <script>
+  try { document.documentElement.setAttribute('data-theme',localStorage.getItem('ops_theme') === 'light' ? 'light' : 'dark'); } catch (_) {}
+  document.querySelectorAll('.brand-logo img').forEach(function(img) { img.src=document.documentElement.getAttribute('data-theme') === 'light' ? 'fg-logo-light.png' : 'fg-logo-dark.png'; });
   // password visibility toggle
   document.getElementById('pwtog').addEventListener('click', function () {
     var inp = document.getElementById('password');
@@ -167,6 +180,17 @@
   }
   function clearMsg() { document.getElementById('fmsg').className = 'msg'; }
 
+  // The design launcher uses this origin. Deployed CORS configuration must
+  // still be checked independently; an unexpected origin is not a bad password.
+  var isLocalPreview = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  var localPreviewUrl = 'http://localhost:5173/login.html';
+  document.getElementById('design-preview-link').hidden = !isLocalPreview;
+  if (CONFIG.LOCAL_SANDBOX) {
+    showMsg('Isolated local API — use disposable test credentials only. External delivery is disabled.', 'info');
+  } else if (isLocalPreview && (window.location.hostname !== 'localhost' || window.location.port !== '5173')) {
+    showMsg('The supported design launcher opens ' + localPreviewUrl + '. Other local origins may need API access configuration.');
+  }
+
   document.getElementById('lform').addEventListener('submit', async function (e) {
     e.preventDefault(); clearMsg();
     var email    = document.getElementById('email').value.trim();
@@ -178,31 +202,36 @@
     btn.disabled = true;
     btxt.innerHTML = '<span class="spinner"></span>Signing in…';
     try {
-      var r = await fetch('https://api.flowguard.ng/api/v1/auth/login', {
+      var r = await fetch(CONFIG.API_BASE + '/auth/login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email, password: password, portal: 'ops' })
       });
-      var d = await r.json();
-      if (d.success) {
+      var d;
+      try { d = await r.json(); } catch (_) { throw new Error('invalid-response'); }
+      if (r.ok && d.success) {
+        if (!d.data || !d.data.user || typeof d.data.token !== 'string' || !d.data.token) throw new Error('invalid-response');
         if (d.data.user.user_type !== 'internal') {
           btn.disabled = false; btxt.textContent = 'Sign in';
           showMsg('Invalid credentials. Please try again.'); return;
         }
         var store = remember ? localStorage : sessionStorage;
+        var otherStore = remember ? sessionStorage : localStorage;
+        otherStore.removeItem('token'); otherStore.removeItem('user');
         store.setItem('token', d.data.token);
         store.setItem('user', JSON.stringify(d.data.user));
-        if (!remember) { localStorage.removeItem('token'); localStorage.removeItem('user'); }
         var role = String(d.data.user.role || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
-        var dest = role === 'field_team' ? 'field.html' : 'index.html';
+        var dest = role === 'field_team' ? 'field.html' : CONFIG.LOCAL_SANDBOX ? 'index.html#alerts' : 'index.html';
         document.getElementById('loadscreen').classList.add('show');  // show loading screen
         setTimeout(function () { window.location.href = dest; }, 1400);
       } else {
         btn.disabled = false; btxt.textContent = 'Sign in';
-        showMsg(d.error || 'Invalid credentials. Please try again.');
+        showMsg(r.status >= 500 ? 'The sign-in service is unavailable. Please retry later.' : d.error || (r.status === 401 ? 'Invalid credentials. Please try again.' : 'Sign-in was not accepted. Please retry.'));
       }
     } catch (err) {
       btn.disabled = false; btxt.textContent = 'Sign in';
-      showMsg('Connection failed. Check your network and retry.');
+      showMsg(err.message === 'invalid-response' ? 'The sign-in service returned an unreadable response. No session was saved.' : isLocalPreview
+        ? 'The local page could not reach the sign-in API. Check your connection and the API origin configuration. Design preview is available without signing in.'
+        : 'Connection failed. Check your network and retry.');
     }
   });
 </script>

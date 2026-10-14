@@ -7,39 +7,12 @@
    ══════════════════════════════════════════════════════════════ */
 const OpsNotify = (function () {
   'use strict';
-  let _items = [], _open = false, _timer = null, _built = false;
+  let _items = [], _open = false, _timer = null, _built = false, _loadError = null;
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const $ = id => document.getElementById(id);
 
-  const CSS = `<style id="ntf-css">
-    .ntf-wrap { position:relative; flex-shrink:0; }
-    .ntf-panel { position:absolute; top:calc(100% + 8px); right:0; width:360px; max-width:92vw; max-height:70vh;
-      background:var(--surface); border:1px solid var(--border-2); border-radius:14px; box-shadow:var(--sh-lg);
-      z-index:3000; display:none; overflow:hidden; flex-direction:column; }
-    .ntf-panel.open { display:flex; }
-    .ntf-head { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--border); }
-    .ntf-head h3 { font-family:var(--ff-d); font-size:var(--fs-md); font-weight:700; color:var(--ink); }
-    .ntf-mark { font-size:var(--fs-2xs); font-weight:600; color:var(--blue-hi); background:none; border:none; cursor:pointer; }
-    .ntf-mark:hover { text-decoration:underline; }
-    .ntf-list { overflow-y:auto; }
-    .ntf-item { display:flex; gap:11px; padding:13px 16px; border-bottom:1px solid var(--border); cursor:pointer; transition:.12s; }
-    .ntf-item:hover { background:var(--surface-h); }
-    .ntf-item.unread { background:rgba(22,168,211,.06); }
-    .ntf-dot { width:8px; height:8px; border-radius:50%; background:var(--blue); flex-shrink:0; margin-top:5px; opacity:0; }
-    .ntf-item.unread .ntf-dot { opacity:1; }
-    .ntf-body { flex:1; min-width:0; }
-    .ntf-title { font-size:var(--fs-sm); font-weight:700; color:var(--ink); }
-    .ntf-msg { font-size:var(--fs-xs); color:var(--ink-2); margin-top:2px; line-height:1.45; }
-    .ntf-time { font-size:var(--fs-2xs); color:var(--ink-4); margin-top:4px; font-family:var(--ff-m); }
-    .ntf-empty { padding:36px 20px; text-align:center; color:var(--ink-3); font-size:var(--fs-sm); }
-  </style>`;
 
-  function fmtAgo(d) {
-    if (!d) return '';
-    const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
-    if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + 'm ago';
-    if (s < 86400) return Math.floor(s / 3600) + 'h ago'; return Math.floor(s / 86400) + 'd ago';
-  }
+  function fmtAgo(d) { return OpsModal.relativeTime(d); }
   // Deliberately uses XHR, NOT fetch: the app installs a global fetch 401
   // interceptor that force-logs-out on any 401. A background notification poll
   // must never be able to trigger that — a real session expiry is caught by the
@@ -52,10 +25,13 @@ const OpsNotify = (function () {
         const xhr = new XMLHttpRequest();
         xhr.open(m, base + p);
         xhr.setRequestHeader('Content-Type', 'application/json');
-        const tok = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+        const tok = sessionStorage.getItem('token') || localStorage.getItem('token') || '';
         if (tok) xhr.setRequestHeader('Authorization', 'Bearer ' + tok);
-        xhr.onload = () => { try { resolve(JSON.parse(xhr.responseText || '{}')); } catch (_) { resolve({ success: false }); } };
+        xhr.onload = () => { try { const response = JSON.parse(xhr.responseText || '{}'); resolve(xhr.status >= 200 && xhr.status < 300 ? response : { success: false, status: xhr.status }); } catch (_) { resolve({ success: false }); } };
         xhr.onerror = () => resolve({ success: false });
+        xhr.timeout = 15000;
+        xhr.ontimeout = () => resolve({ success: false });
+        xhr.onabort = () => resolve({ success: false });
         xhr.send(b ? JSON.stringify(b) : null);
       } catch (_) { resolve({ success: false }); }
     });
@@ -65,7 +41,6 @@ const OpsNotify = (function () {
     if (_built) return;
     const wrap = $('ntf-wrap');
     if (!wrap) return;
-    document.head.insertAdjacentHTML('beforeend', CSS);
     wrap.insertAdjacentHTML('beforeend', '<div class="ntf-panel" id="ntf-panel"></div>');
     document.addEventListener('click', e => { if (_open && !wrap.contains(e.target)) close(); });
     _built = true;
@@ -74,10 +49,18 @@ const OpsNotify = (function () {
   async function refreshBadge() {
     try {
       const r = await api('GET', '/notifications');
-      _items = (r && r.data) || [];
+      if (r?.success === false || !Array.isArray(r?.data)) {
+        _loadError = 'Notifications could not be refreshed. Previously loaded records are retained.';
+        const badge=$('ntf-badge');
+        if(badge)badge.title='Notification count could not be refreshed. Any visible count belongs to the previously loaded feed.';
+        if (_open) renderPanel();
+        return;
+      }
+      _loadError = null;
+      _items = r.data;
       const unread = _items.filter(n => !(n.is_read || n.read)).length;
       const b = $('ntf-badge');
-      if (b) { b.textContent = unread > 99 ? '99+' : unread; b.style.display = unread ? '' : 'none'; }
+      if (b) { b.textContent = unread > 99 ? '99+' : unread; b.style.display = unread ? '' : 'none'; b.title=unread+' unread in the returned notification feed; not a complete platform total'; }
       if (_open) renderPanel();
     } catch (_) {}
   }
@@ -86,17 +69,18 @@ const OpsNotify = (function () {
     const panel = $('ntf-panel'); if (!panel) return;
     const rows = _items.length ? _items.map(n => {
       const unread = !(n.is_read || n.read);
-      return `<div class="ntf-item ${unread ? 'unread' : ''}" onclick="OpsNotify.go('${esc(n.id || n.notification_id)}','${esc(n.link || '')}')">
-        <div class="ntf-dot"></div>
-        <div class="ntf-body">
-          <div class="ntf-title">${esc(n.title || 'Notification')}</div>
-          ${n.message ? `<div class="ntf-msg">${esc(n.message)}</div>` : ''}
-          <div class="ntf-time">${fmtAgo(n.created_at)}</div>
-        </div>
-      </div>`;
-    }).join('') : '<div class="ntf-empty">You\'re all caught up.</div>';
+      return `<button type="button" class="ntf-item ${unread ? 'unread' : ''}" onclick="OpsNotify.go(${esc(JSON.stringify(String(n.id || n.notification_id || '')))},${esc(JSON.stringify(String(n.link || '')))})">
+        <span class="ntf-dot" aria-hidden="true"></span>
+        <span class="ntf-body">
+          <span class="ntf-title">${esc(n.title || 'Notification')}</span>
+          ${n.message ? `<span class="ntf-msg">${esc(n.message)}</span>` : ''}
+          <span class="ntf-time">${fmtAgo(n.created_at)}</span>
+        </span>
+      </button>`;
+    }).join('') : _loadError ? '' : OpsModal.emptyState('', 'No notifications returned', 'No records were returned by the notification feed.', {compact:true});
     panel.innerHTML = `
-      <div class="ntf-head"><h3>Notifications</h3>${_items.some(n => !(n.is_read || n.read)) ? '<button class="ntf-mark" onclick="OpsNotify.markAll(event)">Mark all read</button>' : ''}</div>
+      <div class="ntf-head"><h3>Notifications</h3>${_items.some(n => !(n.is_read || n.read)) ? '<button class="fg-action fg-action-neutral ntf-mark" onclick="OpsNotify.markAll(event)">Mark all read</button>' : ''}</div>
+      ${_loadError ? '<div class="fg-state-compact">'+OpsModal.failure('Notifications',new Error(_loadError),'OpsNotify.refreshBadge()')+'</div>' : ''}
       <div class="ntf-list">${rows}</div>`;
   }
 
@@ -106,7 +90,11 @@ const OpsNotify = (function () {
 
   async function markAll(e) {
     if (e) e.stopPropagation();
-    try { await api('PUT', '/notifications/read-all'); } catch (_) {}
+    const result = await api('PUT', '/notifications/read-all');
+    if (result?.success !== true) {
+      OpsModal.toast('Notifications were not marked read. Retry when the connection is restored.', 'critical');
+      return;
+    }
     _items = _items.map(n => ({ ...n, is_read: true, read: true }));
     renderPanel(); refreshBadge();
   }
@@ -116,7 +104,10 @@ const OpsNotify = (function () {
     // link is either '#tab' (open the module) or '#tab/RECORD-ID' (open the
     // specific record straight away, not the list).
     if (link && link.charAt(0) === '#') {
-      const rest = link.slice(1);
+      const aliases = { 'service-providers':'providers', incidents:'alerts', property:'properties', ticket:'support' };
+      const parts = link.slice(1).split('/');
+      parts[0] = aliases[parts[0]] || parts[0];
+      const rest = parts.join('/');
       const slash = rest.indexOf('/');
       if (slash > 0 && typeof fgOpen === 'function') fgOpen(rest.slice(0, slash), rest.slice(slash + 1));
       else if (typeof switchTab === 'function') switchTab(rest.split('/')[0]);

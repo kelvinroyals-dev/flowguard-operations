@@ -11,7 +11,7 @@ const OpsAssets = (function () {
   const __sid = v => String(v == null ? '' : v).replace(/[^A-Za-z0-9_\-.:]/g, '');
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
   const dash = v => (v == null || v === '') ? '—' : v;
-  const fmtDate = d => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+  const fmtDate = d => OpsModal.fmtDate(d);
 
   let _assets = [];
   let _parents = [];
@@ -28,50 +28,20 @@ const OpsAssets = (function () {
     { value: 'detention_tank', label: 'Detention tank' }, { value: 'outfall', label: 'Outfall' },
   ];
 
-  const SHARED_CSS = `
-    <style>
-      .as-table-card { background:var(--surface,#fff); border:1px solid var(--border); border-radius:var(--r,14px); overflow:hidden; box-shadow:var(--sh-xs); }
-      .as-table-head { padding:14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
-      .as-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-      .as-chip { padding:6px 13px; border-radius:100px; border:1px solid var(--border-2); background:var(--surface); font-size:var(--fs-xs); font-weight:600; color:var(--ink-2); cursor:pointer; user-select:none; }
-      .as-chip.on { background:var(--neon-trace); border-color:var(--blue-dim); color:var(--blue-hi); }
-      .as-add { padding:8px 15px; border-radius:9px; border:1px solid var(--blue-dim); background:var(--neon-trace); color:var(--blue-hi); font-size:var(--fs-sm); font-weight:700; font-family:var(--ff-b); cursor:pointer; }
-      .ops-table tbody tr.clickable { cursor:pointer; transition:background .12s; }
-      .ops-table tbody tr.clickable:hover { background:var(--surface-2,#f2f8fb); }
-      .as-back { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:8px 13px; cursor:pointer; }
-      .as-detail-top { display:flex; align-items:center; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
-      .as-detail-name { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; }
-      .as-detail-meta { font-size:var(--fs-sm); color:var(--ink-3); margin-top:3px; }
-      .as-detail-actions { margin-left:auto; display:flex; gap:8px; }
-      .as-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--r,14px); box-shadow:var(--sh-xs); margin-bottom:14px; overflow:hidden; }
-      .as-section-h { padding:12px 18px; border-bottom:1px solid var(--border); font-family:var(--ff-d); font-size:var(--fs-sm); font-weight:700; letter-spacing:.4px; color:var(--ink); display:flex; align-items:center; justify-content:space-between; }
-      .as-section-b { padding:16px 18px; }
-      .as-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px 22px; }
-      .as-field .k { font-size:var(--fs-2xs); font-weight:700; letter-spacing:.9px; text-transform:uppercase; color:var(--ink-3); }
-      .as-field .v { font-size:var(--fs-md); color:var(--ink); font-weight:600; margin-top:3px; }
-      .as-empty { color:var(--ink-3); font-size:var(--fs-sm); padding:6px 0; }
-      .as-needs { font-size:var(--fs-xs); color:var(--ink-4); font-style:italic; }
-    </style>`;
 
   async function render(container) {
     _container = container;
     container.innerHTML = `
-      ${SHARED_CSS}
-      <div class="fg-page-header">
-        <div>
-          <div class="fg-page-title">Assets</div>
-          <div class="fg-page-sub">The drainage infrastructure your Sentinels monitor and your crews maintain</div>
-        </div>
-      </div>
+
+      ${OpsModal.pageHeader({title:'Assets',subtitle:'Drainage infrastructure, condition and linked monitoring devices',actions:canMng() ? '<button class="fg-action fg-action-primary" onclick="OpsAssets.add()">Register asset</button>' : ''})}
       <div class="lv-wrap">
         <div class="lv-toolbar">
           <div class="lv-search">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input id="as-search" placeholder="Search assets…" oninput="OpsAssets.search(this.value)">
+            ${OpsModal.actionIcon("search")}
+            <input id="as-search" aria-label="Search assets" placeholder="Search assets…" oninput="OpsAssets.search(this.value)">
           </div>
           <div class="lv-filters" id="as-chips"></div>
           <div class="lv-toolbar-right">
-            ${canMng() ? `<button class="as-add" onclick="OpsAssets.add()">+ Register asset</button>` : ''}
           </div>
         </div>
         <div id="as-body"><div style="padding:44px;text-align:center;color:var(--ink-3);"><div class="loading" style="margin:0 auto 12px;"></div>Loading assets…</div></div>
@@ -85,32 +55,39 @@ const OpsAssets = (function () {
         OpsModal.apiGet('/properties/assets'),
         OpsModal.apiGet('/properties'),
       ]);
-      _assets = (aRes.data || []).filter(a => a.asset_class === 'drainage_asset');
-      _parents = pRes.data || [];
+      _assets = OpsModal.readArray(aRes,'Asset directory').filter(a => a.asset_class === 'drainage_asset');
+      _parents = OpsModal.readArray(pRes,'Estate directory');
       draw();
     } catch (err) {
       const el = document.getElementById('as-body');
-      if (el) el.innerHTML = `<div style="padding:40px;text-align:center;color:var(--ink-3);">Couldn't load assets — ${esc(err.message || 'network error')}.</div>`;
+      if (el) el.innerHTML = OpsModal.failure('Assets',err,"reloadTab('assets')",false);
     }
   }
 
-  function catLabel(t) { const f = DRAINAGE_TYPES.find(d => d.value === t); return f ? f.label : (t || '').replace(/_/g, ' ') || '—'; }
-  function condBadge(r) { if (!r) return '<span style="color:var(--ink-4);">—</span>'; const m = { low: 'nominal', moderate: 'watch', high: 'warning', critical: 'critical' }; return `<span class="status-badge ${m[r] || 'offline'}">${r}</span>`; }
-  function statusOf(a) { return Number(a.node_count) > 0 ? '<span class="status-badge nominal">Monitored</span>' : '<span class="status-badge watch">No Sentinel</span>'; }
+  function catLabel(t) { const f = DRAINAGE_TYPES.find(d => d.value === t); return f ? f.label : OpsModal.label(t || 'unknown'); }
+  function assetIcon(type) { return OpsSpatial.icon(OpsSpatial.assetKind(type)); }
+  function reportedNodeCount(a) {
+    if(Array.isArray(a.devices)) return a.devices.length;
+    return OpsModal.count(a.node_count);
+  }
 
   function draw() {
     const chipsEl = document.getElementById('as-chips');
-    const unmonitored = _assets.filter(a => !Number(a.node_count)).length;
+    const linked = _assets.filter(a=>reportedNodeCount(a)>0).length;
+    const noLinks = _assets.filter(a=>reportedNodeCount(a)===0).length;
+    const unknown = _assets.filter(a=>reportedNodeCount(a)==null).length;
     const chips = [
       ['all', `All assets (${_assets.length})`],
-      ['monitored', `Monitored (${_assets.length - unmonitored})`],
-      ['unmonitored', `No Sentinel (${unmonitored})`],
+      ['monitored', `Device links reported (${linked})`],
+      ['unmonitored', `No device links reported (${noLinks})`],
+      ['unknown', `Device links unavailable (${unknown})`],
     ];
-    if (chipsEl) chipsEl.innerHTML = `<select class="um-filter" onchange="OpsAssets.setFilter(this.value)">${chips.map(([k, l]) => `<option value="${k}" ${_filter === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+    if (chipsEl) chipsEl.innerHTML = `<select class="um-filter" aria-label="Filter assets by reported device links" onchange="OpsAssets.setFilter(this.value)">${chips.map(([k, l]) => `<option value="${k}" ${_filter === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
 
     let rows = _assets;
-    if (_filter === 'monitored') rows = rows.filter(a => Number(a.node_count) > 0);
-    else if (_filter === 'unmonitored') rows = rows.filter(a => !Number(a.node_count));
+    if (_filter === 'monitored') rows = rows.filter(a => reportedNodeCount(a)>0);
+    else if (_filter === 'unmonitored') rows = rows.filter(a => reportedNodeCount(a)===0);
+    else if (_filter === 'unknown') rows = rows.filter(a => reportedNodeCount(a)==null);
     if (_term) rows = rows.filter(a => (a.asset_code || a.property_name || '').toLowerCase().includes(_term) || (a.parent_name || '').toLowerCase().includes(_term));
     _pg = FGPaginator.create(rows, { pageSize: 25, containerId: 'as-body' });
     _pg.render(renderTable);
@@ -122,39 +99,36 @@ const OpsAssets = (function () {
     const el = document.getElementById('as-body');
     if (!el) return;
     if (!rows.length) {
-      el.innerHTML = `<div style="padding:44px;text-align:center;color:var(--ink-3);line-height:1.6;">${_assets.length ? 'No assets match this filter.' : 'No drainage assets registered yet.<br><button class="as-add" style="margin-top:12px;" onclick="OpsAssets.add()">+ Register the first asset</button>'}</div>`;
+      el.innerHTML = OpsModal.emptyState('',_term || _filter!=='all'?'No matching assets':'No assets returned',_term || _filter!=='all'?'Adjust the search or device-link filter to review other assets.':'No drainage assets were returned by this feed. Use Register asset to add a record.');
       return;
     }
     const initials = n => (n || '?').replace(/[^A-Za-z0-9 ]/g, '').split(/[\s-]+/).filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2);
     const dc = '<span class="lv-dash">—</span>';
     el.innerHTML = `
       <div class="lv-scroll">
-        <table class="lv-table">
+        <table class="lv-table fg-asset-registry">
           <thead><tr>
-            <th>Asset</th><th>Property</th><th>Serial</th>
-            <th>Status</th><th>Condition</th><th>Warranty</th><th>Last maint.</th><th>Next maint.</th>
+            <th scope="col">Asset / type</th><th scope="col">Estate</th>
+            <th scope="col">Installed coverage</th><th scope="col">Recorded assessment</th><th scope="col">Inspection / maintenance</th>
           </tr></thead>
           <tbody>
             ${rows.map(a => {
               const propCell = a.parent_property_id ? OpsModal.link('properties', a.parent_property_id, a.parent_name || a.parent_property_id) : esc(a.parent_name || '—');
               return `
-              <tr class="clickable" onclick="OpsAssets.open('${__sid(a.property_id)}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsAssets.open('${__sid(a.property_id)}')}">
+              <tr class="clickable" onclick="OpsAssets.open('${__sid(a.property_id)}')">
                 <td>
                   <div class="lv-name-cell">
-                    <div class="lv-avatar" style="background:var(--surface-3);color:var(--ink-2);border:1px solid var(--border);">${initials(a.asset_code || a.property_name)}</div>
+                    <div class="lv-avatar" style="background:var(--surface-3);color:var(--ink-2);border:1px solid var(--border);">${assetIcon(a.property_type)}</div>
                     <div style="min-width:0;">
-                      <div class="lv-name">${esc(a.asset_code || a.property_name || '—')}</div>
-                      <span class="lv-source">${esc(catLabel(a.property_type))}</span>
+                      <button type="button" class="record-link lv-name" onclick="event.stopPropagation();OpsAssets.open('${__sid(a.property_id)}')">${esc(a.property_name || a.asset_code || '—')}</button>
+                      <span class="lv-source">${esc(a.asset_code || '')} · ${esc(catLabel(a.property_type))}</span>
                     </div>
                   </div>
                 </td>
                 <td>${propCell}</td>
-                <td class="lv-mono">${dash(a.serial_number || a.asset_code)}</td>
                 <td>${assetStatusPill(a)}</td>
-                <td>${condPill(a.risk_level)}</td>
-                <td class="lv-mono">${a.warranty_until ? fmtDate(a.warranty_until) : dc}</td>
-                <td class="lv-mono">${a.last_maintenance ? fmtDate(a.last_maintenance) : dc}</td>
-                <td class="lv-mono">${a.next_maintenance ? fmtDate(a.next_maintenance) : dc}</td>
+                <td>${a.condition ? condPill(a.condition) : '<span class="lv-dash">Condition not assessed</span>'}<span class="lv-source">Risk: ${esc(a.risk_level ? OpsModal.label(a.risk_level) : 'Not assessed')}</span></td>
+                <td>Inspected ${a.last_inspected_at ? fmtDate(a.last_inspected_at) : dc}<span class="lv-source">Maintenance ${a.next_maintenance ? fmtDate(a.next_maintenance) : dc}</span></td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -163,15 +137,12 @@ const OpsAssets = (function () {
   }
 
   function assetStatusPill(a) {
-    return Number(a.node_count) > 0
-      ? '<span class="lv-status ok">Monitored</span>'
-      : '<span class="lv-status warn">No Sentinel</span>';
+    const nodes=reportedNodeCount(a);
+    return OpsModal.detailPill(nodes==null?'Device links unavailable':nodes===0?'No device links reported':`${nodes} linked devices reported`,'neutral');
   }
   function condPill(r) {
     if (!r) return '<span class="lv-dash">—</span>';
-    const v = String(r).toLowerCase();
-    const c = (v === 'high' || v === 'critical') ? 'danger' : v === 'moderate' ? 'warn' : 'ok';
-    return `<span class="lv-status ${c}">${r}</span>`;
+    return OpsModal.status(r,null,null,'condition');
   }
 
   function setFilter(f) { _filter = f; draw(); }
@@ -180,85 +151,76 @@ const OpsAssets = (function () {
   // ─────────────────────────────────────────────── FULL DETAIL SCREEN
   async function open(assetId) {
     if (!_container) return;
-    _container.innerHTML = `${SHARED_CSS}<div style="padding:60px;text-align:center;color:var(--ink-3);"><div class="loading" style="margin:0 auto 12px;"></div>Loading asset…</div>`;
+    _container.innerHTML = `<div style="padding:60px;text-align:center;color:var(--ink-3);"><div class="loading" style="margin:0 auto 12px;"></div>Loading asset…</div>`;
     try {
       const res = await OpsModal.apiGet('/properties/' + assetId);
-      const a = res.data;
-      if (!a) { OpsModal.toast('Asset not found', 'warning'); back(); return; }
+      const a = OpsModal.readRecord(res,'Asset');
       renderDetail(a);
     } catch (err) {
-      _container.innerHTML = `${SHARED_CSS}<div style="padding:48px;text-align:center;"><div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load asset</div><button class="as-back" onclick="OpsAssets.back()">← Back to Assets</button></div>`;
+      _container.innerHTML = OpsModal.recordFailure('Asset',err,`OpsAssets.open('${OpsModal.sid(assetId)}')`,'OpsAssets.back()');
     }
   }
 
-  function section(title, body, needs) {
-    return `<div class="as-section"><div class="as-section-h">${title}${needs ? '<span class="as-needs">pending backend data</span>' : ''}</div><div class="as-section-b">${body}</div></div>`;
-  }
 
   function renderDetail(a) {
     const pid = __sid(a.property_id);
-    const inspections = a.inspections || [];
-    const devicesArr = a.devices || [];
-    const ticketsArr = a.tickets || [];
-    const nodes = devicesArr.length || Number(a.node_count) || 0;
+    const inspections = Array.isArray(a.inspections) ? a.inspections : [];
+    const devicesArr = Array.isArray(a.devices) ? a.devices : [];
+    const ticketsArr = Array.isArray(a.tickets) ? a.tickets : [];
+    const nodes = reportedNodeCount(a);
     const L = OpsModal.link, F = OpsModal.fact, E = OpsModal.emptyState;
-    const monitored = nodes > 0;
-    const rl = String(a.risk_level || '').toLowerCase();
-    const condCls = (rl === 'high' || rl === 'critical') ? 'danger' : rl === 'moderate' ? 'warn' : rl ? 'ok' : 'neutral';
-    const condPillD = r => r ? OpsModal.detailPill(r, condCls) : '—';
+    const condition = a.condition || (a.condition_score != null ? a.condition_score + '/10' : null);
+    const rl = String(condition || '').toLowerCase();
+    const condCls = OpsModal.statusTone(rl,'condition');
     const propLink = a.parent_property_id ? L('properties', a.parent_property_id, a.parent_name || a.parent_property_id) : esc(a.parent_name || '—');
     const clientLink = a.user_id ? L('clients', a.user_id, a.client_name || a.client_email || 'Client') : esc(a.client_name || '—');
     const initials = n => (n || '?').replace(/[^A-Za-z0-9 ]/g, '').split(/[\s-]+/).filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2);
-    const iBox = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>';
-    const iDoc = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>';
+    const iBox=OpsModal.entityIcon('asset'),iDoc=OpsModal.entityIcon('document');
 
-    const overview = `${F('Asset name', esc(a.asset_code || a.property_name || '—'))}${F('Category', esc(catLabel(a.property_type)))}${F('Property', propLink)}${F('Client', clientLink)}${F('Serial number', esc(a.serial_number || a.asset_code || '—'))}${F('Warranty', a.warranty_until ? fmtDate(a.warranty_until) : '—')}${F('Last maintenance', a.last_maintenance ? fmtDate(a.last_maintenance) : '—')}${F('Next maintenance', a.next_maintenance ? fmtDate(a.next_maintenance) : '—')}`;
-    const specs = `${F('Type', esc(catLabel(a.property_type)))}${F('Capacity', a.capacity_liters ? Number(a.capacity_liters).toLocaleString() + ' L' : '—')}${F('Condition', condPillD(a.risk_level))}${F('Sentinels', nodes)}`;
+    const overview = `<div class="fg-facts-grid">${F('Asset code',esc(a.asset_code || 'Not supplied'))}${F('Client', clientLink)}${F('Serial number', esc(a.serial_number || 'Not supplied'))}${F('Warranty', a.warranty_until ? fmtDate(a.warranty_until) : '—')}${F('Last maintenance', a.last_maintenance ? fmtDate(a.last_maintenance) : '—')}${F('Next maintenance', a.next_maintenance ? fmtDate(a.next_maintenance) : '—')}</div>`;
+    const capacity=OpsModal.reading(a.capacity_liters,0)===null ? OpsModal.missing.absent : Number(a.capacity_liters).toLocaleString()+' L';
+    const dimension=v=>OpsModal.reading(v,0)===null ? OpsModal.missing.absent : Number(v).toLocaleString()+' m';
+    const specs = `<div class="fg-facts-grid">${F('Recorded capacity',capacity)}${F('Length',dimension(a.length_m))}${F('Width',dimension(a.width_m))}${F('Depth',dimension(a.depth_m))}${F('Linked devices reported', nodes)}${F('Recorded flood risk', OpsModal.status(a.risk_level || 'unknown',null,null,'risk'))}</div><div class="capability-note">Capacity, dimensions and risk are registry values, not live hydraulic measurements. Construction material and type-specific operating limits are not supplied.</div>`;
+    const topology=`<div class="fg-facts-grid">${F('Downstream asset',a.downstream_asset_id ? L('assets',a.downstream_asset_id,a.downstream_asset_id) : 'Not supplied')}${F('Receiving water body',esc(a.water_body_id || 'Not supplied'))}${F('Recorded coordinates',OpsModal.reading(a.latitude,-90,90)!==null && OpsModal.reading(a.longitude,-180,180)!==null ? esc(a.latitude+', '+a.longitude) : 'Not supplied')}</div><div class="capability-note">Recorded topology is not proof of a surveyed hydraulic connection. Review its source in Network.</div>`;
 
     const devicesBody = devicesArr.length
-      ? `<table class="fgd-table"><thead><tr><th>Device</th><th>Sentinel ID</th><th>Status</th></tr></thead><tbody>${devicesArr.map(d => `<tr><td class="strong">${L('sensors', d.sensor_id, d.name || d.sensor_id)}</td><td class="fgd-mono">${d.sensor_id}</td><td>${d.status || '—'}</td></tr>`).join('')}</tbody></table>`
-      : E(iBox, 'No devices', 'No Sentinel devices monitor this asset yet.');
+      ? `<table class="fgd-table"><thead><tr><th scope="col">Device</th><th scope="col">Device reference</th><th scope="col">Connectivity</th></tr></thead><tbody>${devicesArr.map(d => `<tr><td class="strong">${L('sensors', d.sensor_id, d.name || d.sensor_id)}</td><td class="fgd-mono">${esc(d.sensor_id)}</td><td>${OpsModal.status(d.device_state,null,null,'device')}</td></tr>`).join('')}</tbody></table>`
+      : !Array.isArray(a.devices) ? '<div class="capability-note">Linked-device records unavailable. Missing records do not establish zero coverage.</div>' : E(iBox, 'No devices returned', 'No linked device records were returned. This does not establish physical installation or live coverage.');
     const workBody = ticketsArr.length
-      ? `<table class="fgd-table"><thead><tr><th>Work order</th><th>Type</th><th>Team</th><th>Status</th></tr></thead><tbody>${ticketsArr.map(t => `<tr><td class="strong">${L('maintenance', t.ticket_id, t.title || t.ticket_id)}</td><td>${(t.work_type || '').replace(/_/g, ' ') || '—'}</td><td>${t.assigned_team ? L('teams', t.assigned_team, t.assigned_team) : '—'}</td><td>${(t.status || '').replace(/_/g, ' ') || '—'}</td></tr>`).join('')}</tbody></table>`
-      : E(iBox, 'No work orders', 'No work orders are linked to this asset.');
+      ? `<table class="fgd-table"><thead><tr><th scope="col">Maintenance task</th><th scope="col">Type</th><th scope="col">Team</th><th scope="col">Status</th></tr></thead><tbody>${ticketsArr.map(t => `<tr><td class="strong">${L('maintenance', t.ticket_id, t.title || t.ticket_id)}</td><td>${esc(OpsModal.label(t.work_type || 'Not supplied'))}</td><td>${t.assigned_team ? L('teams', t.assigned_team, t.assigned_team) : 'Not assigned'}</td><td>${OpsModal.status(t.status,null,null,'maintenance')}</td></tr>`).join('')}</tbody></table>`
+      : !Array.isArray(a.tickets) ? '<div class="capability-note">Linked maintenance records unavailable.</div>' : E(iBox, 'No maintenance tasks returned', 'No linked maintenance records were returned for this asset.');
     const maintBody = inspections.length
-      ? `<table class="fgd-table"><thead><tr><th>Inspection</th><th>Status</th><th>Team</th><th>Score</th><th>Date</th></tr></thead><tbody>${inspections.map(i => `<tr><td class="strong fgd-mono">${i.inspection_id}</td><td>${OpsModal.detailPill(i.status, i.status === 'completed' ? 'ok' : 'warn')}</td><td>${i.assigned_team ? L('teams', i.assigned_team, i.assigned_team) : '—'}</td><td class="fgd-mono">${i.drainage_condition_score ? i.drainage_condition_score + '/10' : '—'}</td><td class="fgd-mono">${i.scheduled_date ? new Date(i.scheduled_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</td></tr>`).join('')}</tbody></table>`
-      : E(iDoc, 'No maintenance history', 'No inspections recorded for this asset yet.');
+      ? `<table class="fgd-table"><thead><tr><th scope="col">Inspection</th><th scope="col">Status</th><th scope="col">Team</th><th scope="col">Score</th><th scope="col">Date</th></tr></thead><tbody>${inspections.map(i => `<tr><td class="strong fgd-mono">${esc(i.inspection_id)}</td><td>${OpsModal.status(i.status)}</td><td>${i.assigned_team ? L('teams', i.assigned_team, i.assigned_team) : '—'}</td><td class="fg-number">${i.drainage_condition_score != null ? esc(i.drainage_condition_score + '/10') : '—'}</td><td class="fg-number">${i.scheduled_date ? OpsModal.fmtDate(i.scheduled_date) : '—'}</td></tr>`).join('')}</tbody></table>`
+      : !Array.isArray(a.inspections) ? '<div class="capability-note">Inspection history unavailable.</div>' : E(iDoc, 'No inspections returned', 'No inspection records were returned for this asset.');
 
     const sidebar = `
       <div class="fgd-card">
-        <div class="fgd-card-head"><h2 style="font-size:var(--fs-sm);">Quick facts</h2></div>
-        ${F('Asset code', `<span class="fgd-mono">${esc(a.asset_code || '—')}</span>`)}
-        ${F('Category', esc(catLabel(a.property_type)))}
-        ${F('Status', monitored ? '<span style="color:var(--ok);">Monitored</span>' : '<span style="color:var(--warn);">No Sentinel</span>')}
-        ${F('Condition', condPillD(a.risk_level))}
-        ${F('Sentinels', nodes)}
-      </div>
-      <div class="fgd-card">
-        <div class="fgd-card-head"><h2 style="font-size:var(--fs-sm);">Related</h2></div>
-        ${F('Devices', devicesArr.length)}
-        ${F('Work orders', ticketsArr.length)}
-        ${F('Parent property', propLink)}
+        <div class="fgd-card-head"><h2>Related records</h2></div>
+        ${F('Devices returned', Array.isArray(a.devices) ? devicesArr.length : 'Unavailable')}
+        ${F('Maintenance tasks returned', Array.isArray(a.tickets) ? ticketsArr.length : 'Unavailable')}
+        ${F('Estate', propLink)}
       </div>`;
 
     _container.innerHTML = OpsModal.detailShell({
       back: 'OpsAssets.back()',
       crumbRoot: 'Assets',
-      title: esc(a.asset_code || a.property_name || 'Asset'),
-      avatar: { text: initials(a.asset_code || a.property_name), bg: 'linear-gradient(135deg,#3f63e6,#1f9d5b)' },
+      title: esc(a.property_name || a.asset_code || 'Asset'),
+      avatar: { text: assetIcon(a.property_type) },
       chips: [
-        { cls: monitored ? 'ok' : 'neutral', label: monitored ? 'Monitored' : 'No Sentinel', dot: true },
-        a.risk_level ? { cls: condCls, label: a.risk_level + ' condition' } : null,
+        { cls: 'neutral', label: nodes == null ? 'Device links unavailable' : `${nodes} linked devices reported`, dot: true },
+        condition ? { cls: condCls, label: esc(OpsModal.label(condition)) + ' condition' } : null,
       ].filter(Boolean),
-      meta: [['Category', esc(catLabel(a.property_type))], ['Property', propLink], ['Serial', esc(a.serial_number || a.asset_code || '—')]],
-      actions: `<button class="fgd-btn" onclick="OpsNetwork.open('${pid}')">Network</button>`,
+      meta: [['Category', esc(catLabel(a.property_type))], ['Estate', propLink], ['Zone', esc(a.zone || 'Not supplied')]],
+      decision:[['Condition',condition?OpsModal.label(condition):'Not assessed'],['Last inspection',a.last_inspected_at?fmtDate(a.last_inspected_at):'Not supplied'],['Next step',['caution','danger'].includes(condCls)?'Review condition and plan field inspection':!condition?'Assess physical condition':nodes==null?'Confirm monitoring coverage':'Review condition and reading freshness']],
+      actions: `<button class="fg-action" onclick="OpsNetwork.viewRecord('${OpsModal.sid(a.property_id)}')">Locate on network</button>`,
       sections: [
-        { id: 'overview', title: 'Overview', meta: 'drainage_asset', body: overview },
+        { id: 'overview', title: 'Overview', body: overview },
+        { id: 'topology', title: 'Location & topology', body: topology },
         { id: 'specs', title: 'Specifications', body: specs },
-        { id: 'devices', title: 'Devices', meta: 'sentinel_coverage', body: devicesBody },
-        { id: 'work', title: 'Work orders', meta: 'tickets', body: workBody },
-        { id: 'maintenance', title: 'Maintenance history', meta: 'inspections', body: maintBody },
-        { id: 'documents', title: 'Documents', body: E(iDoc, 'No documents attached', 'Warranty and spec sheets can be attached once a documents table exists.') },
+        { id: 'devices', title: 'Devices', body: Array.isArray(a.devices) ? devicesBody : '<div class="capability-note">Linked device records were not supplied. Installed coverage does not confirm live health.</div>' },
+        { id: 'work', title: 'Maintenance tasks', body: workBody },
+        { id: 'maintenance', title: 'Maintenance history', body: Array.isArray(a.inspections) ? maintBody : '<div class="capability-note">Inspection history was not supplied.</div>' },
+        { id: 'documents', title: 'Documents', body: OpsModal.evidence(a.documents) },
       ],
       sidebar,
     });
@@ -267,11 +229,11 @@ const OpsAssets = (function () {
   // ─────────────────────────────────────────────── REGISTER (action)
   function add() {
     OpsModal.open('Register a drainage asset', `
-      <p style="margin:0 0 14px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">Assets are the infrastructure itself — a canal, a catch basin, a pump station. They sit under the customer property they serve.</p>
+      <p style="margin:0 0 14px;font-size:var(--fs-base);color:var(--ink-3);line-height:1.5">Assets are drainage infrastructure—a canal, catch basin or pump station. Link the estate they serve, or register standalone infrastructure.</p>
       ${OpsModal.field('Asset name', 'property_name', 'text', '', { placeholder: 'e.g. Canal 7' })}
       ${OpsModal.field('Asset code', 'asset_code', 'text', '', { required: false, placeholder: 'e.g. CB-12' })}
       ${OpsModal.field('Type', 'property_type', 'select', 'catch_basin', { options: DRAINAGE_TYPES })}
-      ${OpsModal.field('Serves which property', 'parent_property_id', 'select', '', { options: [{ value: '', label: '— None (standalone infrastructure) —' }].concat(_parents.map(p => ({ value: p.property_id, label: p.property_name }))) })}
+      ${OpsModal.field('Estate served', 'parent_property_id', 'select', '', { options: [{ value: '', label: 'None—standalone infrastructure' }].concat(_parents.map(p => ({ value: p.property_id, label: p.property_name }))) })}
       ${OpsModal.row([
         OpsModal.field('Capacity (litres)', 'capacity_liters', 'number', '', { required: false }),
         OpsModal.field('Risk level', 'risk_level', 'select', '', { required: false, options: [{ value: '', label: '— Not assessed —' }, { value: 'low', label: 'Low' }, { value: 'moderate', label: 'Moderate' }, { value: 'high', label: 'High' }, { value: 'critical', label: 'Critical' }] }),

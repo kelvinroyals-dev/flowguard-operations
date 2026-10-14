@@ -1,0 +1,22 @@
+.fg-weather-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:16px 0}
+.fg-weather-stats span,.fg-weather-context{font-size:12px;line-height:1.6;color:var(--ink-3)}
+.fg-weather-stats strong{display:block;font-size:24px;line-height:1.4;color:var(--ink);font-variant-numeric:tabular-nums}
+.fg-weather-stats small{font-size:14px;font-weight:500}
+.fg-weather-chart{height:230px;min-width:0;margin:18px 0}
+.fg-geography{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:16px 0 22px;padding:16px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface)}
+.fg-geography label{display:grid;gap:6px;font-size:12px;flex:1;min-width:140px}
+.fg-geography input{min-height:40px;border:1px solid var(--border);border-radius:var(--radius-control);padding:8px 12px;background:var(--surface-2);color:var(--ink);font:inherit;max-width:100%}
+.fg-geography select{width:100%;min-width:0;min-height:40px;border:1px solid var(--border);border-radius:var(--radius-control);padding:8px 12px;background-color:var(--surface-2);color:var(--ink);font:inherit}
+.fg-geography p{flex-basis:100%;margin:0}
+.fg-weather-select{display:flex;flex-direction:column;gap:8px;font-size:13px;margin:12px 0}
+.fg-weather-select select{width:100%;min-height:40px;background:var(--surface-2);color:var(--ink);border:1px solid var(--border);border-radius:var(--radius-control);padding:8px 12px;font:inherit}
+#estate-monitoring-panel .lv-table{min-width:1000px;table-layout:auto}
+#estate-monitoring-panel .lv-table th,#estate-monitoring-panel .lv-table td{word-break:normal;overflow-wrap:normal}
+#estate-monitoring-panel .lv-table td:not(:first-child){white-space:nowrap}
+.estate-metric-charts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:20px}
+.estate-metric-charts section{min-width:0;border:1px solid var(--border);border-radius:var(--radius-control);padding:16px;background:var(--surface)}
+.estate-metric-charts h3{font-size:var(--fs-sm);color:var(--ink);margin:0}
+.estate-metric-charts .fg-weather-chart{height:190px}
+@media(max-width:1100px){.estate-metric-charts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:720px){.estate-metric-charts{grid-template-columns:1fr}}
+@media(max-width:620px){.fg-weather-stats{grid-template-columns:1fr}.fg-weather-stats strong{font-size:22px}}

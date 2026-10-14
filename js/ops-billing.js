@@ -11,120 +11,53 @@ const OpsBilling = (function () {
   'use strict';
 
   let _invoices = [], _container = null, _filter = 'all', _term = '';
-  let _props = [], _draft = [], _editId = null;
+  let _props = [], _draft = [], _editId = null, _draftCurrency = 'NGN', _savingInvoice = false;
   const DEFAULT_VAT = 7.5;
 
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const dash = v => (v == null || v === '') ? '—' : v;
-  const NGN = n => '₦' + Number(n || 0).toLocaleString();
-  const money = n => { n = Number(n || 0); if (n >= 1e6) return '₦' + (n / 1e6).toFixed(2) + 'M'; if (n >= 1e3) return '₦' + Math.round(n / 1e3) + 'K'; return '₦' + n.toLocaleString(); };
-  const fmtDate = ds => ds ? new Date(ds).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
-  const inThisMonth = ds => { if (!ds) return false; const d = new Date(ds), n = new Date(); return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear(); };
+  const currencyMoney = (n,code) => OpsModal.money(n,code);
+  const NGN = n => currencyMoney(n,_draftCurrency);
+  const suppliedAmount = n => !['number','string'].includes(typeof n) || String(n).trim()==='' || !Number.isFinite(Number(n)) ? null : Number(n);
+  function invoiceAmounts(inv) {
+    return {total:suppliedAmount(inv.total_amount), balance:suppliedAmount(inv.balance_due), paid:suppliedAmount(inv.paid_total), subtotal:suppliedAmount(inv.subtotal), vat:suppliedAmount(inv.vat_amount), vatRate:suppliedAmount(inv.vat_rate)};
+  }
+  const balanceColour = n => n == null ? 'var(--ink-3)' : n > 0 ? 'var(--err)' : 'var(--ok)';
+  const fmtDate = ds => OpsModal.fmtDate(ds);
 
   // Gate write actions on the billing.manage permission (server also enforces).
   const canManage = () => (typeof Auth !== 'undefined' && Auth.can) ? Auth.can('billing.manage') : true;
 
   function payMeta(ps) {
     ps = String(ps || '').toLowerCase();
-    return ({ paid: { c: 'paid', l: 'Paid' }, overdue: { c: 'overdue', l: 'Overdue' }, pending: { c: 'pending', l: 'Pending' }, partial: { c: 'partial', l: 'Partially paid' }, unpaid: { c: 'pending', l: 'Pending' } })[ps]
-      || { c: 'pending', l: ps ? ps[0].toUpperCase() + ps.slice(1) : 'Pending' };
+    return { c:OpsModal.statusTone(ps,'payment'), l:ps==='partial'?'Partially paid':OpsModal.label(ps || 'unknown') };
   }
   // A pending/partial invoice past its due date reads as "overdue" for the operator.
-  function effStatus(inv) {
-    const ps = String(inv.payment_status || 'pending').toLowerCase();
-    if (ps !== 'paid' && (inv.days_overdue > 0 || (inv.due_date && new Date(inv.due_date) < new Date() && ps !== 'paid'))) return 'overdue';
+  function effStatus(inv,now=Date.now()) {
+    const ps = String(inv.payment_status || 'unknown').toLowerCase();
+    const late=inv.due_date ? OpsModal.pastDue(inv.due_date,now) : Number.isFinite(Number(inv.days_overdue)) && Number(inv.days_overdue)>0;
+    if (['pending','partial','unpaid'].includes(ps) && late) return 'overdue';
     return ps;
   }
 
-  const BL_CSS = `<style id="bl-css">
-    .bl-head { display:flex; align-items:center; gap:16px; margin-bottom:16px; flex-wrap:wrap; }
-    .bl-head h1 { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); }
-    .bl-head .sub { font-size:var(--fs-sm); color:var(--ink-3); margin-top:2px; }
-    .bl-head-actions { margin-left:auto; display:flex; gap:8px; }
-    .bl-btn { font-size:var(--fs-sm); font-weight:600; padding:9px 16px; border-radius:10px; cursor:pointer; border:1px solid var(--border-2); background:var(--surface); color:var(--ink-2); }
-    .bl-btn:hover { border-color:var(--blue-dim); color:var(--blue-hi); }
-    .bl-btn.primary { background:linear-gradient(135deg,#5379ff,#3f63e6); color:#fff; border:none; }
-    .bl-btn.primary:hover { filter:brightness(1.05); color:#fff; }
 
-    .bl-story { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:16px; }
-    @media (max-width:900px){ .bl-story{ grid-template-columns:repeat(2,1fr); } }
-    .bl-story-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--sh-xs); padding:16px 18px; }
-    .bl-story-label { font-size:var(--fs-xs); color:var(--ink-2); font-weight:600; margin-bottom:8px; }
-    .bl-story-value { font-size:22px; font-weight:800; font-family:var(--ff-d); color:var(--ink); letter-spacing:-.02em; }
-    .bl-story-value.danger{ color:var(--err); } .bl-story-value.green{ color:var(--ok); } .bl-story-value.amber{ color:var(--warn); }
-    .bl-story-sub { font-size:var(--fs-2xs); color:var(--ink-3); margin-top:4px; }
-
-    .bl-status { display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-2xs); font-weight:700; padding:3px 10px; border-radius:20px; }
-    .bl-status.paid{ background:rgba(31,157,91,.12); color:var(--ok); }
-    .bl-status.overdue{ background:rgba(217,70,60,.12); color:var(--err); }
-    .bl-status.pending{ background:rgba(224,142,18,.12); color:var(--warn); }
-    .bl-status.partial{ background:rgba(28,184,232,.14); color:var(--blue-hi,#3f63e6); }
-    .bl-raw { display:block; font-size:var(--fs-2xs); color:var(--ink-4); font-family:var(--ff-mono,monospace); margin-top:3px; }
-    .bl-flag { color:var(--warn); font-weight:700; cursor:help; }
-
-    .bl-gap { display:flex; gap:8px; align-items:flex-start; font-size:var(--fs-xs); color:var(--ink-3); background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:10px 12px; line-height:1.5; margin-top:12px; }
-    .bl-gap svg{ width:14px; height:14px; flex-shrink:0; margin-top:1px; color:var(--warn); }
-    .bl-gap .mono{ font-family:var(--ff-mono,monospace); color:var(--ink-2); }
-
-    .bl-tbl { width:100%; border-collapse:collapse; font-size:var(--fs-sm); }
-    .bl-tbl th { text-align:left; font-size:var(--fs-2xs); text-transform:uppercase; letter-spacing:.4px; color:var(--ink-3); font-weight:700; padding:0 8px 10px; border-bottom:1px solid var(--border); }
-    .bl-tbl td { padding:11px 8px; border-bottom:1px solid var(--border); color:var(--ink-2); }
-    .bl-tbl tr:last-child td { border-bottom:none; }
-    .bl-tbl td.strong{ color:var(--ink); font-weight:600; }
-    .bl-tbl td.num, .bl-tbl th.num{ text-align:right; font-family:var(--ff-mono,monospace); }
-
-    /* create form */
-    .bl-grid2 { display:grid; grid-template-columns:1fr 300px; gap:16px; align-items:start; }
-    @media (max-width:900px){ .bl-grid2{ grid-template-columns:1fr; } }
-    .bl-side { display:flex; flex-direction:column; gap:14px; position:sticky; top:70px; }
-    .bl-field { margin-bottom:14px; }
-    .bl-field:last-child { margin-bottom:0; }
-    .bl-field-label { font-size:var(--fs-sm); font-weight:600; color:var(--ink); margin-bottom:5px; display:flex; gap:8px; align-items:baseline; }
-    .bl-field-label .sub{ font-size:var(--fs-2xs); color:var(--ink-3); font-weight:500; }
-    .bl-input { width:100%; box-sizing:border-box; padding:9px 11px; border:1px solid var(--border); border-radius:9px; font-family:var(--ff-b); font-size:var(--fs-sm); color:var(--ink); background:var(--surface); }
-    .bl-input:focus{ outline:none; border-color:var(--blue-dim); }
-    .bl-derived { padding:9px 11px; border:1px dashed var(--border-2); border-radius:9px; font-size:var(--fs-sm); color:var(--ink-2); background:var(--surface-2); }
-    .bl-derived.warn{ color:var(--warn); border-color:var(--warn); background:rgba(224,142,18,.06); }
-    .bl-omit { font-size:var(--fs-xs); color:var(--ink-3); background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:9px 11px; margin-top:6px; line-height:1.5; }
-    .bl-omit .mono{ font-family:var(--ff-mono,monospace); }
-    .bl-li-head, .bl-li { display:grid; grid-template-columns:1fr 56px 116px 104px 26px; gap:8px; align-items:center; }
-    .bl-li-head { font-size:var(--fs-2xs); text-transform:uppercase; letter-spacing:.4px; color:var(--ink-3); font-weight:700; margin-bottom:8px; }
-    .bl-li { margin-bottom:8px; }
-    .bl-li .amt{ font-family:var(--ff-mono,monospace); font-weight:700; color:var(--ink); text-align:right; font-size:var(--fs-sm); }
-    .bl-li-rm{ cursor:pointer; color:var(--ink-4); font-size:18px; text-align:center; line-height:1; }
-    .bl-li-rm:hover{ color:var(--err); }
-    .bl-addrow{ font-size:var(--fs-sm); font-weight:600; color:var(--blue-hi,#3f63e6); background:var(--neon-trace,rgba(28,184,232,.08)); border:1px dashed var(--blue-dim,#93a9ff); border-radius:9px; padding:8px 12px; cursor:pointer; width:100%; margin-top:4px; }
-    .bl-totals{ margin-top:14px; border-top:1px solid var(--border); padding-top:12px; }
-    .bl-totrow{ display:flex; justify-content:space-between; font-size:var(--fs-sm); color:var(--ink-2); padding:4px 0; }
-    .bl-totrow.grand{ font-weight:800; color:var(--ink); font-size:var(--fs-md); border-top:1px solid var(--border); margin-top:6px; padding-top:10px; }
-    .bl-savebar{ display:flex; justify-content:flex-end; gap:8px; margin-top:16px; flex-wrap:wrap; }
-  </style>`;
-
-  const IWARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+  const IWARN = OpsModal.entityIcon('incident');
   const gap = html => `<div class="bl-gap">${IWARN}<span>${html}</span></div>`;
 
   // ────────────────────────────────────────────────── LIST
   function render(container) {
     _container = container;
-    container.innerHTML = BL_CSS + `
-      <div class="bl-head">
-        <div>
-          <h1>Billing</h1>
-          <div class="sub" id="bl-count">Loading invoices…</div>
-        </div>
-        <div class="bl-head-actions">
-          <button class="bl-btn" onclick="OpsBilling.exportCsv()">Export</button>
-          ${canManage() ? `<button class="bl-btn primary" onclick="OpsBilling.openCreate()">+ New invoice</button>` : ''}
-        </div>
-      </div>
+    container.innerHTML = `
+      ${OpsModal.pageHeader({title:'Billing',subtitle:'Review balances, reconcile payments and manage invoices',actions:'<button class="fg-action" onclick="OpsBilling.exportCsv()">Export invoices</button>' + (canManage() ? '<button class="fg-action fg-action-primary" onclick="OpsBilling.openCreate()">Create invoice</button>' : '')})}
       <div class="lv-wrap">
         <div class="lv-toolbar">
           <div class="lv-search">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input id="bl-search" placeholder="Search invoices…" oninput="OpsBilling.search(this.value)">
+            ${OpsModal.actionIcon("search")}
+            <input id="bl-search" aria-label="Search invoices" placeholder="Search invoices…" oninput="OpsBilling.search(this.value)">
           </div>
           <div class="lv-toolbar-right">
-            <select class="um-filter" onchange="OpsBilling.setFilter(this.value)">
+            <span id="bl-count" class="fg-result-count" aria-live="polite">Loading invoices…</span>
+            <select aria-label="Invoice payment state" class="um-filter" onchange="OpsBilling.setFilter(this.value)">
               <option value="all">All invoices</option>
               <option value="paid">Paid</option>
               <option value="pending">Pending</option>
@@ -141,32 +74,14 @@ const OpsBilling = (function () {
   async function loadAll() {
     try {
       const res = await OpsModal.apiGet('/billing/invoices');
-      _invoices = res.data || res.invoices || [];
-      const c = document.getElementById('bl-count'); if (c) c.textContent = `${_invoices.length} invoice${_invoices.length === 1 ? '' : 's'}`;
-      renderStory();
+      _invoices = OpsModal.readArray(res,'Invoice feed',['data','invoices']);
+      const c = document.getElementById('bl-count'); if (c) c.textContent = `${_invoices.length} returned invoice${_invoices.length === 1 ? '' : 's'}`;
       applyFilter();
     } catch (err) {
       const el = document.getElementById('bl-table-body');
-      if (el) el.innerHTML = `<div style="padding:48px;text-align:center;"><div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load billing data</div><div style="color:var(--ink-3);font-size:var(--fs-sm);">${esc(err.message)}</div></div>`;
+      if (el) el.innerHTML = OpsModal.failure('Billing',err,"reloadTab('billing')",false);
+      const count=document.getElementById('bl-count'); if(count) count.textContent='Unavailable';
     }
-  }
-
-  function renderStory() {
-    const unpaid = _invoices.filter(i => String(i.payment_status).toLowerCase() !== 'paid');
-    const outstanding = unpaid.reduce((s, i) => s + (Number(i.balance_due) || 0), 0);
-    const overdue = _invoices.filter(i => effStatus(i) === 'overdue');
-    const overdueAmt = overdue.reduce((s, i) => s + (Number(i.balance_due) || Number(i.total_amount) || 0), 0);
-    const paidMonth = _invoices.filter(i => String(i.payment_status).toLowerCase() === 'paid' && inThisMonth(i.paid_date));
-    const paidMonthAmt = paidMonth.reduce((s, i) => s + (Number(i.total_amount) || 0), 0);
-    const unlinked = _invoices.filter(i => !i.user_id && !i.client_name);
-    const cards = [
-      { label: 'Outstanding balance', value: money(outstanding), cls: '', sub: `Across ${unpaid.length} unpaid invoice${unpaid.length === 1 ? '' : 's'}` },
-      { label: 'Overdue', value: money(overdueAmt), cls: 'danger', sub: `${overdue.length} invoice${overdue.length === 1 ? '' : 's'} past due date` },
-      { label: 'Paid this month', value: money(paidMonthAmt), cls: 'green', sub: `${paidMonth.length} invoice${paidMonth.length === 1 ? '' : 's'} settled` },
-      { label: 'Unlinked to a client', value: unlinked.length, cls: 'amber', sub: 'Invoices with no client resolved' },
-    ];
-    const el = document.getElementById('bl-story');
-    if (el) el.innerHTML = cards.map(c => `<div class="bl-story-card"><div class="bl-story-label">${c.label}</div><div class="bl-story-value ${c.cls}">${c.value}</div><div class="bl-story-sub">${c.sub}</div></div>`).join('');
   }
 
   function setFilter(f) {
@@ -186,46 +101,49 @@ const OpsBilling = (function () {
   function renderTable(rows) {
     const el = document.getElementById('bl-table-body');
     if (!el) return;
-    if (!rows.length) { el.innerHTML = `<div style="padding:48px;text-align:center;color:var(--ink-3);"><div style="font-size:var(--fs-md);font-weight:600;color:var(--ink-2);">No invoices found</div></div>`; return; }
+    if (!rows.length) { el.innerHTML = OpsModal.emptyState('',_term || _filter!=='all'?'No matching invoices':'No invoices returned',_term || _filter!=='all'?'Adjust the search or settlement filter to review other invoices.':'No invoices were returned by this feed.'); return; }
     const L = OpsModal.link;
-    el.innerHTML = `<div class="lv-scroll"><table class="lv-table">
+    el.innerHTML = `<div class="lv-scroll billing-ledger"><table class="lv-table">
+      <colgroup><col class="bill-identity"><col class="bill-client"><col class="bill-estate"><col class="bill-amount"><col class="bill-amount"><col class="bill-date"><col class="bill-state"><col class="bill-state"></colgroup>
       <thead><tr>
-        <th>Invoice</th>
-        <th>Client <span class="bl-flag" title="Invoices have no client_id — resolved via the property's client / invoice.user_id">⚠</span></th>
-        <th>Property</th>
-        <th>Amount</th>
-        <th>Due date</th>
-        <th>Status</th>
-        <th>Payment method <span class="bl-flag" title="No payment_method column exists on invoices">⚠</span></th>
+        <th scope="col">Invoice</th>
+        <th scope="col">Client</th>
+        <th scope="col">Estate</th>
+        <th scope="col">Total</th>
+        <th scope="col">Balance due</th>
+        <th scope="col">Due date</th>
+        <th scope="col">Settlement</th>
+        <th scope="col">Invoice lifecycle</th>
       </tr></thead>
       <tbody>${rows.map(inv => {
         const id = inv.invoice_id;
         const eff = effStatus(inv), pm = payMeta(eff);
         const overdue = eff === 'overdue';
-        const client = inv.user_id ? L('clients', inv.user_id, inv.client_name || 'Client') : '<span style="color:var(--ink-4);">Unlinked</span>';
+        const client = inv.user_id ? L('clients', inv.user_id, inv.client_name || 'Client') : '<span class="lv-dash">'+(Object.hasOwn(inv,'user_id') && inv.user_id===null ? 'Not linked' : 'Not supplied')+'</span>';
         const prop = inv.property_id ? L('properties', inv.property_id, inv.property_name || inv.property_id) : dash(inv.property_name);
-        return `<tr class="clickable" onclick="OpsBilling.open('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsBilling.open('${id}')}">
+        return `<tr class="clickable" onclick="OpsBilling.open('${id}')">
           <td>
             <div class="lv-name-cell">
-              <div class="lv-avatar" style="background:var(--surface-3);color:var(--ink-3);border:1px solid var(--border);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 3 2V2l-3 2-3-2-3 2-3-2-3 2z"/><path d="M8 8h8M8 12h5"/></svg></div>
-              <div style="min-width:0;"><div class="lv-name lv-mono">${esc(id)}</div></div>
+              <div class="lv-avatar" aria-hidden="true">${OpsModal.entityIcon('billing')}</div>
+              <div style="min-width:0;"><button type="button" class="record-link lv-name lv-mono" onclick="event.stopPropagation();OpsBilling.open('${id}')">${esc(id)}</button></div>
             </div>
           </td>
           <td>${client}</td>
           <td>${prop}</td>
-          <td class="lv-mono" style="font-weight:700;color:${overdue ? 'var(--err)' : 'var(--ink)'};">${NGN(inv.total_amount)}</td>
+          <td class="lv-mono num" style="font-weight:700;color:${overdue ? 'var(--err)' : 'var(--ink)'};">${currencyMoney(inv.total_amount,inv.currency)}</td>
+          <td class="lv-mono num" style="font-weight:700;color:${overdue ? 'var(--err)' : 'var(--ink)'};">${currencyMoney(inv.balance_due,inv.currency)}</td>
           <td class="lv-mono" style="${overdue ? 'color:var(--err);font-weight:700;' : ''}">${fmtDate(inv.due_date)}</td>
-          <td><span class="bl-status ${pm.c}">${pm.l}</span><span class="bl-raw">status: ${esc(inv.status || '—')}</span></td>
-          <td class="lv-dash">—</td>
+          <td>${OpsModal.status(eff,pm.l,null,'payment')}</td>
+          <td>${esc(OpsModal.label(inv.status || 'Not supplied'))}</td>
         </tr>`;
       }).join('')}</tbody></table></div>`;
   }
 
   function exportCsv() {
     if (!_invoices.length) return OpsModal.toast('Nothing to export', 'watch');
-    const head = ['invoice_id', 'client', 'property', 'total_amount', 'balance_due', 'due_date', 'payment_status', 'status'];
+    const head = ['invoice_id', 'client', 'property', 'currency', 'total_amount', 'balance_due', 'due_date', 'payment_status', 'status'];
     const esc2 = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
-    const lines = [head.join(',')].concat(_invoices.map(i => [i.invoice_id, i.client_name || '', i.property_name || '', i.total_amount || 0, i.balance_due || 0, i.due_date || '', i.payment_status || '', i.status || ''].map(esc2).join(',')));
+    const lines = [head.join(',')].concat(_invoices.map(i => [i.invoice_id, i.client_name || '', i.property_name || '', i.currency || '', i.total_amount ?? '', i.balance_due ?? '', i.due_date || '', i.payment_status || '', i.status || ''].map(esc2).join(',')));
     const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'flowguard-invoices.csv'; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -236,116 +154,108 @@ const OpsBilling = (function () {
   // ────────────────────────────────────────────────── DETAIL
   async function open(id) {
     if (!_container) return;
-    _container.innerHTML = BL_CSS + `<div style="padding:60px;text-align:center;color:var(--ink-3);">Loading invoice…</div>`;
+    _container.innerHTML = `<div style="padding:60px;text-align:center;color:var(--ink-3);">Loading invoice…</div>`;
     try {
       const res = await OpsModal.apiGet('/billing/invoices/' + id);
-      renderDetail(res.data || {});
+      renderDetail(OpsModal.readRecord(res,'Invoice'));
     } catch (err) {
-      _container.innerHTML = BL_CSS + `<div style="padding:48px;text-align:center;"><div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load invoice</div><button class="bl-btn" onclick="OpsBilling.back()">← Back to Billing</button></div>`;
+      _container.innerHTML = OpsModal.recordFailure('Invoice',err,`OpsBilling.open('${OpsModal.sid(id)}')`,'OpsBilling.back()');
     }
   }
 
   function renderDetail(inv) {
+    const NGN = n => currencyMoney(n,inv.currency);
     const F = OpsModal.fact, L = OpsModal.link;
     const id = inv.invoice_id;
     const eff = effStatus(inv), pm = payMeta(eff);
-    const chipCls = { paid: 'ok', overdue: 'danger', pending: 'warn', partial: 'warn' }[pm.c] || 'neutral';
-    const items = Array.isArray(inv.line_items) ? inv.line_items : (() => { try { return JSON.parse(inv.line_items || '[]'); } catch { return []; } })();
-    const total = Number(inv.total_amount) || 0;
-    const balance = inv.balance_due != null ? Number(inv.balance_due) : total;
-    const paidSoFar = Math.max(0, total - balance);
+    const chipCls = pm.c;
+    const parsedItems = Array.isArray(inv.line_items) ? inv.line_items : (() => { try { return JSON.parse(inv.line_items); } catch { return null; } })();
+    const items = Array.isArray(parsedItems) ? parsedItems.filter(l=>l && typeof l === 'object') : null;
+    const amounts = invoiceAmounts(inv);
+    const {total, balance} = amounts;
     const q = inv.quote;
-    const clientLink = inv.user_id ? L('clients', inv.user_id, inv.client_name || 'Client') : '<span style="color:var(--warn);">Not linked to a clients row</span>';
+    const clientLink = inv.user_id ? L('clients', inv.user_id, inv.client_name || 'Client') : esc(inv.client_name ? inv.client_name+' · Account link not supplied' : Object.hasOwn(inv,'user_id') && inv.user_id===null ? 'Not linked' : 'Not supplied');
     const propLink = inv.property_id ? L('properties', inv.property_id, inv.property_name || inv.property_id) : dash(inv.property_name);
 
-    const detailsBody = `
-      ${F('Invoice ID', `<span class="lv-mono">${esc(id)}</span>`)}
-      ${F('Invoice type', `<span class="lv-mono">${esc(inv.invoice_type || '—')}</span>`)}
-      ${F('Property', propLink)}
+    const detailsBody = `<div class="fg-facts-grid">
+      ${F('Invoice type', esc(OpsModal.label(inv.invoice_type || 'Not supplied')))}
+      ${F('Estate', propLink)}
       ${F('Client', clientLink)}
-      ${F('Subtotal', NGN(inv.subtotal != null ? inv.subtotal : total))}
-      ${F('VAT rate', (inv.vat_rate != null ? inv.vat_rate : 7.5) + '%')}
-      ${F('VAT amount', NGN(inv.vat_amount || 0))}
+      ${F('Subtotal', NGN(amounts.subtotal))}
+      ${F('VAT rate', amounts.vatRate == null ? 'Not supplied' : amounts.vatRate + '%')}
+      ${F('VAT amount', NGN(amounts.vat))}
       ${F('Total amount', NGN(total))}
-      ${F('Balance due', `<b style="color:${balance > 0 ? 'var(--err)' : 'var(--ok)'}">${NGN(balance)}</b>`)}
-      ${F('Issue date', `<span class="lv-mono">${fmtDate(inv.issue_date || inv.created_at)}</span>`)}
+      ${F('Balance due', `<b style="color:${balanceColour(balance)}">${NGN(balance)}</b>`)}
+      ${F('Issue date', `<span class="lv-mono">${fmtDate(inv.issue_date)}</span>`)}
       ${F('Due date', `<span class="lv-mono">${fmtDate(inv.due_date)}</span>`)}
-      ${F('payment_status', `<span class="lv-mono">${esc(inv.payment_status || '—')}</span>`)}
-      ${F('status', `<span class="lv-mono">${esc(inv.status || '—')}</span>`)}
-      ${gap('Both <span class="mono">status</span> and <span class="mono">payment_status</span> are shown raw because nothing documents how they differ. The chip above uses <span class="mono">payment_status</span>.')}`;
+      ${F('Payment state', OpsModal.status(eff,pm.l,null,'payment'))}
+      ${F('Invoice lifecycle', esc(OpsModal.label(inv.status || 'Not supplied')))}</div>
+      ${gap('Payment state and invoice lifecycle are separate. Amounts shown are supplied invoice or ledger values; missing amounts are not inferred.')}`;
 
-    const servicesBody = items.length
-      ? `<table class="bl-tbl"><thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead>
+    const servicesBody = items && items.length
+      ? `<table class="bl-tbl"><thead><tr><th scope="col">Description</th><th scope="col" class="num">Qty</th><th scope="col" class="num">Unit price</th><th scope="col" class="num">Amount</th></tr></thead>
          <tbody>${items.map(l => `<tr>
            <td class="strong">${esc(l.description || '—')}</td>
            <td class="num">${l.qty != null ? esc(l.qty) : '—'}</td>
            <td class="num">${l.unit_price != null ? NGN(l.unit_price) : '—'}</td>
            <td class="num">${NGN(l.amount)}</td></tr>`).join('')}</tbody></table>
-         ${gap('Parsed from the <span class="mono">invoices.line_items</span> jsonb blob — no normalized line-items table, so shape isn\'t guaranteed.')}`
-      : OpsModal.emptyState('', 'No line items', 'This invoice has an empty <span class="mono">line_items</span> array.');
+         `
+      : OpsModal.emptyState('', items ? 'No line items returned' : 'Line items unavailable', items ? 'The returned service breakdown is empty.' : 'No service breakdown was supplied with this invoice.');
 
     const contractBody = q
       ? `${F('Nearest quote', `<span class="lv-mono">${esc(q.quote_id || '—')}</span>`)}
          ${F('Selected packages', esc(Array.isArray(q.selected_packages) ? q.selected_packages.join(', ') : (q.selected_packages || '—')))}
-         ${F('Monthly value', q.total_monthly != null ? NGN(q.total_monthly) : '—')}
-         ${F('Is latest', q.is_latest ? 'Yes' : 'No')}
-         ${gap('No contracts table exists. The closest real record is the <span class="mono">service_quotes</span> row above — a quote is not a signed contract.')}`
-      : `${OpsModal.emptyState('', 'No linked quote', 'No <span class="mono">service_quotes</span> row for this property.')}${gap('No contracts table exists anywhere in the schema.')}`;
+         ${F('Monthly value', currencyMoney(q.total_monthly,q.currency))}
+         ${F('Latest quote flag', q.is_latest===true ? 'Yes' : q.is_latest===false ? 'No' : 'Not supplied')}
+         ${gap('This is a service quote, not proof of a signed contract.')}`
+      : OpsModal.emptyState('', 'Quote unavailable', 'No linked service quote was supplied.');
 
-    const payments = Array.isArray(inv.payments) ? inv.payments : [];
-    const paidTotal = inv.paid_total != null ? Number(inv.paid_total) : paidSoFar;
-    const ledgerBal = Math.max(0, total - paidTotal);
-    const prettyMethod = m => String(m || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || '—';
-    const payChip = s => {
-      const m = { successful: ['var(--ok)', 'Successful'], pending: ['var(--warn)', 'Pending'], processing: ['var(--warn)', 'Processing'], failed: ['var(--err)', 'Failed'], refunded: ['var(--ink-3)', 'Refunded'] }[String(s || '').toLowerCase()] || ['var(--ink-3)', esc(s || '—')];
-      return `<span style="color:${m[0]};font-weight:600;">${m[1]}</span>`;
-    };
-    const ledgerTbl = payments.length
-      ? `<table class="bl-tbl"><thead><tr><th>Date</th><th>Method</th><th>Reference</th><th class="num">Amount</th><th>Status</th></tr></thead>
+    const payments = Array.isArray(inv.payments) ? inv.payments : null;
+    const paidTotal = amounts.paid;
+    const prettyMethod = m => OpsModal.label(m);
+    const payChip = s => OpsModal.status(s || 'unknown',null,null,'ledger');
+    const ledgerTbl = payments && payments.length
+      ? `<table class="bl-tbl"><thead><tr><th scope="col">Date</th><th scope="col">Method</th><th scope="col">Reference</th><th scope="col" class="num">Amount</th><th scope="col">Status</th></tr></thead>
          <tbody>${payments.map(p => `<tr>
-           <td>${fmtDate(p.payment_date || p.created_at)}</td>
+           <td>${OpsModal.fmtDateTime(p.payment_date || p.created_at)}</td>
            <td>${esc(prettyMethod(p.payment_method))}</td>
            <td class="lv-mono">${esc(p.transaction_reference || '—')}</td>
-           <td class="num">${NGN(p.amount)}</td>
+           <td class="num">${currencyMoney(p.amount,p.currency)}</td>
            <td>${payChip(p.status)}</td></tr>`).join('')}</tbody></table>`
-      : OpsModal.emptyState('', 'No payments recorded', 'Nothing in the <span class="mono">payments</span> ledger for this invoice yet.' + (canManage() ? ' Use <b>Record payment</b> to log one.' : ''));
+      : OpsModal.emptyState('', payments ? 'No payments returned' : 'Payment history unavailable', payments ? 'The returned payment ledger is empty.' : 'Payment history was not supplied with this invoice.');
 
-    const paymentsBody = `
+    const paymentsBody = `<div class="fg-facts-grid">
       ${F('Total amount', NGN(total))}
-      ${F('Paid to date', `<b style="color:var(--ok)">${NGN(paidTotal)}</b>`)}
-      ${F('Balance due', `<b style="color:${ledgerBal > 0 ? 'var(--err)' : 'var(--ok)'}">${NGN(ledgerBal)}</b>`)}
+      ${F('Successful ledger payments', `<b style="color:${paidTotal == null ? 'var(--ink-3)' : 'var(--ok)'}">${NGN(paidTotal)}</b>`)}
+      ${F('Invoice balance due', `<b style="color:${balanceColour(balance)}">${NGN(balance)}</b>`)}</div>
       <div style="margin-top:14px;">${ledgerTbl}</div>`;
 
     const sidebar = `
-      <div class="fgd-card"><div class="fgd-card-head"><h2>Quick facts</h2></div>
-        ${F('Invoice ID', `<span class="lv-mono">${esc(id)}</span>`)}
-        ${F('Type', `<span class="lv-mono">${esc(inv.invoice_type || '—')}</span>`)}
-        ${F('Total', NGN(total))}
-        ${F('Balance due', `<b style="color:${balance > 0 ? 'var(--err)' : 'var(--ok)'}">${NGN(balance)}</b>`)}
-        ${F('Due', `<span class="lv-mono">${fmtDate(inv.due_date)}</span>`)}
-        ${F('Client', inv.user_id ? L('clients', inv.user_id, inv.client_name || 'Client') : 'Unlinked')}
+      <div class="fgd-card"><div class="fgd-card-head"><h2>Billing context</h2></div>
+        ${F('Currency', esc(inv.currency || 'Not supplied'))}
+        ${F('Reported open tickets', esc(inv.open_tickets == null ? 'Not supplied' : inv.open_tickets))}
       </div>
       <div class="fgd-card"><div class="fgd-card-head"><h2>Related</h2></div>
-        ${F('Property', propLink)}
-        ${F('Nearest quote', q && q.quote_id ? `<span class="lv-mono">${esc(q.quote_id)}</span>` : '—')}
-        ${F('Open tickets', inv.property_id ? L('maintenance', inv.property_id, String(inv.open_tickets || 0)) : (inv.open_tickets || 0))}
+        ${F('Estate', propLink)}
+        ${F('Client',clientLink)}
       </div>`;
 
-    _container.innerHTML = BL_CSS + OpsModal.detailShell({
+    _container.innerHTML = OpsModal.detailShell({
       back: 'OpsBilling.back()',
       crumbRoot: 'Billing',
       title: esc(id),
-      avatar: { text: '₦', bg: 'linear-gradient(135deg,#5379ff,#3f63e6)' },
-      chips: [{ cls: chipCls, label: pm.l, dot: true }],
-      meta: [['Property', esc(inv.property_name || '—')], ['Client', inv.client_name ? esc(inv.client_name) : 'Unlinked'], ['Issued', fmtDate(inv.issue_date || inv.created_at)], ['Due', fmtDate(inv.due_date)], ['Sent', inv.sent_at ? fmtDate(inv.sent_at) : 'Not sent']],
-      actions: `<button class="fgd-btn" onclick="OpsBilling.downloadPdf('${id}')">Download PDF</button>${canManage() ? `<button class="fgd-btn" onclick="OpsBilling.openEdit('${id}')">Edit</button>${eff !== 'paid' ? `<button class="fgd-btn" onclick="OpsBilling.recordPayment('${id}')">Record payment</button>` : ''}<button class="fgd-btn" style="background:linear-gradient(135deg,#5379ff,#3f63e6);color:#fff;border:none;" onclick="OpsBilling.sendInvoiceEmail('${id}')">${inv.sent_at ? 'Resend to client' : 'Send to client'}</button>` : ''}`,
+      avatar: { text: OpsModal.entityIcon('billing') },
+      chips: [{ cls: chipCls, label: esc(pm.l), dot: true }],
+      decision:[['Settlement state',pm.l],['Due date',fmtDate(inv.due_date)],['Next step',inv.reconciliation_required?'Reconcile invoice totals with the payment ledger':balance==null?'Restore balance visibility':balance>0?'Review payment evidence before recording a receipt':'Review the recorded payment ledger']],
+      meta: [['Estate', esc(inv.property_name || '—')], ['Client', inv.client_name ? esc(inv.client_name) : inv.user_id ? 'Linked client · name not supplied' : Object.hasOwn(inv,'user_id') && inv.user_id===null ? 'Not linked' : 'Not supplied'], ['Issued', fmtDate(inv.issue_date)], ['Due', fmtDate(inv.due_date)], ['Sent', inv.sent_at ? fmtDate(inv.sent_at) : Object.hasOwn(inv,'sent_at') && inv.sent_at===null ? 'Not sent' : 'Not supplied']],
+      actions: `<button class="fg-action" onclick="OpsBilling.downloadPdf('${id}')">Download PDF</button>${canManage() ? `${paidTotal===0 && !inv.reconciliation_required ? `<button class="fg-action" onclick="OpsBilling.openEdit('${id}')">Edit</button>` : ''}${eff !== 'paid' && !inv.reconciliation_required && balance>0 ? `<button class="fg-action fg-action-primary" onclick="OpsBilling.recordPayment('${id}')">Record payment</button>` : ''}<button class="fg-action" onclick="OpsBilling.sendInvoiceEmail('${id}')">${inv.sent_at ? 'Retry email delivery' : 'Email invoice'}</button>` : ''}`,
+      note: inv.reconciliation_required ? 'Recorded invoice payment totals do not match the ledger. Reconciliation is required; further payments and edits are blocked. Do not treat either value as verified settlement.' : 'Payments are manual ledger records, not independently verified bank settlement. Paid invoices are protected from rewriting.',
       sections: [
-        { id: 'details', title: 'Invoice details', meta: 'invoices', body: detailsBody },
-        { id: 'services', title: 'Services', meta: 'invoices.line_items (jsonb)', body: servicesBody },
-        { id: 'contract', title: 'Contract', meta: 'service_quotes', body: contractBody },
-        { id: 'payments', title: 'Payments', meta: 'payments ledger', body: paymentsBody },
-        { id: 'credits', title: 'Credit notes', body: OpsModal.emptyState('', 'No credit notes table exists', 'Nothing in the schema stores adjustments, refunds, or waived charges. This tab needs new schema.') },
-        { id: 'attachments', title: 'Attachments', body: OpsModal.emptyState('', 'No attachments table exists', 'A signed quote PDF or proof-of-payment can\'t be attached until file storage is added — the same gap as every module.') },
+        { id: 'details', title: 'Invoice details', body: detailsBody },
+        { id: 'services', title: 'Services', body: servicesBody },
+        { id: 'contract', title: 'Service quote', body: contractBody },
+        { id: 'payments', title: 'Payments', body: paymentsBody },
+        { id: 'attachments', title: 'Supporting files', body: OpsModal.evidence(inv.attachments) },
       ],
       sidebar,
     });
@@ -374,14 +284,14 @@ const OpsBilling = (function () {
     let inv;
     try { inv = (await OpsModal.apiGet('/billing/invoices/' + id)).data; }
     catch (err) { return OpsModal.toast('Failed to load invoice: ' + err.message, 'critical'); }
-    const total = Number(inv.total_amount) || 0;
-    const paid = inv.paid_total != null ? Number(inv.paid_total) : Math.max(0, total - (Number(inv.balance_due) || 0));
-    const bal = Math.max(0, total - paid);
+    if (!/^[A-Z]{3}$/.test(String(inv.currency || '')) || inv.reconciliation_required) return OpsModal.toast('Invoice currency or ledger requires reconciliation before recording a payment','critical');
+    const NGN = n => currencyMoney(n,inv.currency);
+    const { total, balance: bal } = invoiceAmounts(inv);
     const today = new Date().toISOString().slice(0, 10);
     const body = `
       <div style="display:flex;flex-direction:column;gap:14px;">
-        <div style="font-size:var(--fs-sm);color:var(--ink-3);line-height:1.5;">Outstanding balance <b style="color:var(--ink);">${NGN(bal)}</b> of ${NGN(total)}. This writes a row to the <span class="mono">payments</span> ledger and recomputes the balance — partial payments are allowed.</div>
-        <label class="bl-field"><div class="bl-field-label">Amount (₦)</div><input class="bl-input" id="rp-amount" type="number" min="0" step="0.01" value="${bal || ''}"></label>
+        <div style="font-size:var(--fs-sm);color:var(--ink-3);line-height:1.5;">Reported outstanding balance <b style="color:var(--ink);">${bal == null ? 'Not supplied' : NGN(bal)}</b>. Invoice total: ${total == null ? 'Not supplied' : NGN(total)}. Recording a payment writes to the payments ledger; confirm the amount against your payment evidence.</div>
+        <label class="bl-field"><div class="bl-field-label">Amount (${esc(inv.currency)})</div><input class="bl-input" id="rp-amount" type="number" min="0" step="0.01" value="${bal || ''}"></label>
         <label class="bl-field"><div class="bl-field-label">Method</div>
           <select class="bl-input" id="rp-method">
             <option value="bank_transfer">Bank transfer</option>
@@ -401,8 +311,9 @@ const OpsBilling = (function () {
   }
 
   async function _submitPayment(id) {
+    if (!canManage()) return OpsModal.toast('You do not have permission to record payments', 'critical');
     const amount = Number((document.getElementById('rp-amount') || {}).value);
-    if (!(amount > 0)) return OpsModal.toast('Enter a positive amount', 'critical');
+    if (!Number.isFinite(amount) || !(amount > 0)) return OpsModal.toast('Enter a positive finite amount', 'critical');
     const payload = {
       amount,
       payment_method: (document.getElementById('rp-method') || {}).value || 'bank_transfer',
@@ -423,8 +334,8 @@ const OpsBilling = (function () {
     if (_props.length) return;
     try {
       const res = await OpsModal.apiGet('/properties/all');
-      _props = (res.data || []).filter(p => p.asset_class === 'customer_property' || p.asset_class == null);
-    } catch { _props = []; }
+      _props = OpsModal.readArray(res,'Estate directory').filter(p => p.asset_class === 'customer_property' || p.asset_class == null);
+    } catch (error) { _props = []; throw error; }
   }
 
   async function openCreate() {
@@ -432,105 +343,105 @@ const OpsBilling = (function () {
     if (!canManage()) return OpsModal.toast('You do not have permission to create invoices', 'critical');
     _editId = null;
     _draft = [{ description: '', qty: 1, unit_price: 0, amount: 0 }];
-    _container.innerHTML = BL_CSS + `<div style="padding:60px;text-align:center;color:var(--ink-3);">Loading…</div>`;
-    await ensureProps();
-    renderForm(null);
+    _container.innerHTML = `<div style="padding:60px;text-align:center;color:var(--ink-3);">Loading…</div>`;
+    try { await ensureProps(); renderForm(null); }
+    catch (error) { _container.innerHTML = OpsModal.recordFailure('Create invoice',error,'OpsBilling.openCreate()','OpsBilling.back()'); }
   }
 
   async function openEdit(id) {
     if (!_container) return;
     if (!canManage()) return OpsModal.toast('You do not have permission to edit invoices', 'critical');
-    _container.innerHTML = BL_CSS + `<div style="padding:60px;text-align:center;color:var(--ink-3);">Loading…</div>`;
-    await ensureProps();
+    _container.innerHTML = `<div style="padding:60px;text-align:center;color:var(--ink-3);">Loading…</div>`;
     let inv;
-    try { inv = (await OpsModal.apiGet('/billing/invoices/' + id)).data; }
-    catch { return OpsModal.toast('Failed to load invoice', 'critical'); }
+    try { await ensureProps(); inv = OpsModal.readRecord(await OpsModal.apiGet('/billing/invoices/' + id),'Invoice'); }
+    catch (error) { _container.innerHTML = OpsModal.recordFailure('Edit invoice',error,`OpsBilling.openEdit('${OpsModal.sid(id)}')`,'OpsBilling.back()'); return; }
+    if (invoiceAmounts(inv).paid!==0 || inv.reconciliation_required || ['paid','partial'].includes(String(inv.payment_status).toLowerCase())) {
+      _container.innerHTML=OpsModal.recordFailure('Edit invoice',new Error('Charge editing requires a confirmed zero-payment ledger and no reconciliation issues. Review the invoice and payment history first.'),`OpsBilling.openEdit('${OpsModal.sid(id)}')`,'OpsBilling.back()');return;
+    }
     _editId = id;
-    const items = Array.isArray(inv.line_items) ? inv.line_items : (() => { try { return JSON.parse(inv.line_items || '[]'); } catch { return []; } })();
-    _draft = items.length
-      ? items.map(l => ({ description: l.description || '', qty: l.qty != null ? Number(l.qty) : 1, unit_price: l.unit_price != null ? Number(l.unit_price) : (Number(l.amount) || 0), amount: Number(l.amount) || 0 }))
-      : [{ description: '', qty: 1, unit_price: 0, amount: 0 }];
+    const items = Array.isArray(inv.line_items) ? inv.line_items : (() => { try { return JSON.parse(inv.line_items); } catch { return null; } })();
+    if(!Array.isArray(items) || items.some(l=>!l || typeof l!=='object' || Array.isArray(l))) {
+      _container.innerHTML=OpsModal.recordFailure('Edit invoice',new Error('The service breakdown was not supplied as a valid list. Restore it before editing charges.'),`OpsBilling.openEdit('${OpsModal.sid(id)}')`,'OpsBilling.back()');return;
+    }
+    _draft = items.map(l => ({ description: l.description || '', qty: suppliedAmount(l.qty), unit_price: suppliedAmount(l.unit_price), amount: suppliedAmount(l.amount) }));
     renderForm(inv);
   }
 
   function renderForm(inv) {
     const isEdit = !!inv;
-    const today = (inv && inv.issue_date) ? String(inv.issue_date).slice(0, 10) : new Date().toISOString().slice(0, 10);
-    const due = (inv && inv.due_date) ? String(inv.due_date).slice(0, 10) : new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10);
+    _draftCurrency = isEdit ? inv.currency : 'NGN';
+    const today = isEdit ? String(inv.issue_date || '').slice(0,10) : new Date().toISOString().slice(0, 10);
+    const due = isEdit ? String(inv.due_date || '').slice(0,10) : new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10);
     const selType = inv ? inv.invoice_type : 'maintenance';
-    const selStatus = inv ? String(inv.status || 'open').toLowerCase() : 'open';
-    let selP = inv ? String(inv.payment_status || 'unpaid').toLowerCase() : 'unpaid';
-    if (selP === 'pending') selP = 'unpaid';
-    const vat = inv && inv.vat_rate != null ? Number(inv.vat_rate) : DEFAULT_VAT;
+    const selStatus = inv ? String(inv.status || '') : 'open';
+    const vat = isEdit ? suppliedAmount(inv.vat_rate) ?? '' : DEFAULT_VAT;
     const pid = inv ? inv.property_id : '';
     const o = (v, l, sel) => `<option value="${esc(v)}"${String(v) === String(sel) ? ' selected' : ''}>${esc(l)}</option>`;
 
-    _container.innerHTML = BL_CSS + `
-      <div class="fgd-crumb"><span class="lnk" onclick="OpsBilling.back()">Billing</span><span class="sep">/</span><span class="cur">${isEdit ? esc(inv.invoice_id) : 'New invoice'}</span></div>
-      <div class="bl-head">
-        <div><h1>${isEdit ? 'Edit invoice' : 'New invoice'}</h1><div class="sub">${isEdit ? esc(inv.invoice_id) : 'Invoice ID will be auto-generated on save'}</div></div>
-        <div class="bl-head-actions">
-          <button class="bl-btn" onclick="OpsBilling.back()">Cancel</button>
-          ${isEdit ? '' : `<button class="bl-btn" id="bl-draft-btn" onclick="OpsBilling.confirmSave(false)">Save as draft</button>`}
-          <button class="bl-btn primary" id="bl-create-btn" onclick="OpsBilling.confirmSave(${isEdit ? 'false' : 'true'})">${isEdit ? 'Save changes' : 'Create & send'}</button>
-        </div>
-      </div>
+    _container.innerHTML = `
+      <div class="fgd-crumb"><button type="button" class="lnk" onclick="OpsBilling.back()">Billing</button><span class="sep">/</span><span class="cur">${isEdit ? esc(inv.invoice_id) : 'Create invoice'}</span></div>
+      ${OpsModal.pageHeader({title:isEdit?'Edit invoice':'Create invoice',subtitle:isEdit?inv.invoice_id:'Invoice ID will be assigned on save',actions:`<div class="bl-head-actions">
+          <button class="fg-action fg-action-neutral" onclick="OpsBilling.back()">Cancel</button>
+          ${isEdit ? '' : `<button class="fg-action" id="bl-draft-btn" onclick="OpsBilling.confirmSave(false)">Save without sending</button>`}
+          <button class="primary fg-action fg-action-primary" id="bl-create-btn" onclick="OpsBilling.confirmSave(${isEdit ? 'false' : 'true'})">${isEdit ? 'Save invoice' : 'Create and send invoice'}</button>
+        </div>`})}
       <div class="bl-grid2">
         <div style="display:flex;flex-direction:column;gap:16px;">
           <div class="fgd-card">
-            <div class="fgd-card-head"><h2>Invoice details</h2><span class="cmeta">invoices</span></div>
+            <div class="fgd-card-head"><h2>Invoice details</h2><span class="cmeta">${esc(_draftCurrency || 'Currency not supplied')}</span></div>
             <div class="bl-field">
-              <div class="bl-field-label">Property <span class="sub">required · determines client</span></div>
+              <label class="bl-field-label" for="bl-c-property">Estate <span class="sub">required · determines client</span></label>
               <select class="bl-input" id="bl-c-property" onchange="OpsBilling.onProp()">
-                <option value="">— Select a property —</option>
+                <option value="">Select an estate</option>
                 ${_props.map(p => o(p.property_id, p.property_name || p.property_id, pid)).join('')}
               </select>
             </div>
             <div class="bl-field">
               <div class="bl-field-label">Client <span class="sub">derived, read-only</span></div>
-              <div class="bl-derived warn" id="bl-c-client">Select a property first</div>
+              <div class="bl-derived warn" id="bl-c-client">Select an estate first</div>
             </div>
             <div class="bl-field">
-              <div class="bl-field-label">Invoice type</div>
+              <label class="bl-field-label" for="bl-c-type">Invoice type</label>
               <select class="bl-input" id="bl-c-type">
-                ${['maintenance', 'installation', 'subscription', 'one_time'].map(t => o(t, t, selType)).join('')}
+                ${!selType ? o('','Select invoice type · not supplied','') : !['maintenance','installation','subscription','one_time'].includes(selType) ? o(selType,OpsModal.label(selType),selType) : ''}
+                ${['maintenance', 'installation', 'subscription', 'one_time'].map(t => o(t, OpsModal.label(t), selType)).join('')}
               </select>
             </div>
             <div style="display:flex;gap:12px;">
-              <div class="bl-field" style="flex:1;"><div class="bl-field-label">Issue date</div><input class="bl-input" type="date" id="bl-c-issue" value="${today}"></div>
-              <div class="bl-field" style="flex:1;"><div class="bl-field-label">Due date</div><input class="bl-input" type="date" id="bl-c-due" value="${due}"></div>
+              <div class="bl-field" style="flex:1;min-width:0;"><label class="bl-field-label" for="bl-c-issue">Issue date</label><input class="bl-input" type="date" id="bl-c-issue" value="${today}"></div>
+              <div class="bl-field" style="flex:1;min-width:0;"><label class="bl-field-label" for="bl-c-due">Due date</label><input class="bl-input" type="date" id="bl-c-due" value="${due}"></div>
             </div>
-            <div class="bl-omit">Payment method isn't collected — there's no column for it on <span class="mono">invoices</span>.</div>
+            <div class="bl-omit">Record payment method and transaction evidence separately in the payment ledger.</div>
           </div>
 
           <div class="fgd-card">
-            <div class="fgd-card-head"><h2>Services</h2><span class="cmeta">writes to invoices.line_items (jsonb)</span></div>
+            <div class="fgd-card-head"><h2>Services</h2><span class="cmeta">Itemised service charges</span></div>
             <div class="bl-li-head"><span>Description</span><span>Qty</span><span>Unit price</span><span style="text-align:right;">Amount</span><span></span></div>
             <div id="bl-items"></div>
-            <button class="bl-addrow" onclick="OpsBilling.addItem()">+ Add line</button>
+            <button class="bl-addrow fg-action" onclick="OpsBilling.addItem()">${OpsModal.actionIcon('create')}Add line item</button>
             <div class="bl-field" style="max-width:220px;margin-top:14px;margin-bottom:0;">
-              <div class="bl-field-label">VAT rate (%) <span class="sub">default 7.5</span></div>
+              <label class="bl-field-label" for="bl-c-vat">VAT rate (%) <span class="sub">${isEdit ? 'confirm the supplied rate' : 'draft default 7.5 · review before saving'}</span></label>
               <input class="bl-input" type="number" min="0" step="0.1" id="bl-c-vat" value="${vat}" oninput="OpsBilling.recalc()">
             </div>
             <div class="bl-totals" id="bl-totals"></div>
           </div>
 
           <div class="fgd-card">
-            <div class="fgd-card-head"><h2>Status</h2><span class="cmeta">two separate columns</span></div>
+            <div class="fgd-card-head"><h2>Status</h2><span class="cmeta">Invoice and payment state</span></div>
             <div style="display:flex;gap:12px;">
-              <div class="bl-field" style="flex:1;"><div class="bl-field-label">status</div>
-                <select class="bl-input" id="bl-c-status">${['open', 'closed'].map(s => o(s, s, selStatus)).join('')}</select></div>
-              <div class="bl-field" style="flex:1;"><div class="bl-field-label">payment_status</div>
-                <select class="bl-input" id="bl-c-pstatus" onchange="OpsBilling.recalc()">${['unpaid', 'partial', 'paid'].map(s => o(s, s, selP)).join('')}</select></div>
+              <div class="bl-field" style="flex:1;min-width:0;"><label class="bl-field-label" for="bl-c-status">Invoice state</label>
+                <select class="bl-input" id="bl-c-status" ${isEdit?'disabled':''}>${isEdit ? o(selStatus,selStatus?OpsModal.label(selStatus):'Not supplied',selStatus) : ['open', 'closed'].map(s => o(s, OpsModal.label(s), selStatus)).join('')}</select></div>
+              <div class="bl-field" style="flex:1;min-width:0;"><label class="bl-field-label" for="bl-c-pstatus">Payment handling</label>
+                <select class="bl-input" id="bl-c-pstatus" ${isEdit?'disabled':''}>${isEdit ? o(inv.payment_status || '',inv.payment_status ? OpsModal.label(inv.payment_status) : 'Not supplied',inv.payment_status || '') : o('unpaid','Unpaid · payments recorded separately','unpaid')}</select></div>
             </div>
-            <div class="bl-field" style="margin-bottom:0;"><div class="bl-field-label">Balance due <span class="sub">computed</span></div><input class="bl-input" id="bl-c-balance" disabled></div>
-            ${gap('Both fields exist on the row and are exposed because their relationship isn\'t documented. Pick one as source of truth before this ships.')}
+            <div class="bl-field" style="margin-bottom:0;"><label class="bl-field-label" for="bl-c-balance">Draft amount due <span class="sub">before ledger reconciliation</span></label><input class="bl-input" id="bl-c-balance" disabled></div>
+            ${gap('Invoice lifecycle and payment settlement are separate. Charge editing requires a confirmed zero-payment ledger. Sending and ledger payments have their own actions; this form does not reconcile payments and its draft is not payment evidence.')}
           </div>
 
           <div class="bl-savebar">
-            <button class="bl-btn" onclick="OpsBilling.back()">Cancel</button>
-            ${isEdit ? '' : `<button class="bl-btn" onclick="OpsBilling.confirmSave(false)">Save as draft</button>`}
-            <button class="bl-btn primary" onclick="OpsBilling.confirmSave(${isEdit ? 'false' : 'true'})">${isEdit ? 'Save changes' : 'Create & send'}</button>
+            <button class="fg-action fg-action-neutral" onclick="OpsBilling.back()">Cancel</button>
+            ${isEdit ? '' : `<button class="fg-action" onclick="OpsBilling.confirmSave(false)">Save without sending</button>`}
+            <button class="primary fg-action fg-action-primary" onclick="OpsBilling.confirmSave(${isEdit ? 'false' : 'true'})">${isEdit ? 'Save invoice' : 'Create and send invoice'}</button>
           </div>
         </div>
 
@@ -546,9 +457,9 @@ const OpsBilling = (function () {
     const pid = document.getElementById('bl-c-property').value;
     const p = _props.find(x => x.property_id === pid);
     const el = document.getElementById('bl-c-client');
-    if (!p) { el.className = 'bl-derived warn'; el.textContent = 'Select a property first'; }
+    if (!p) { el.className = 'bl-derived warn'; el.textContent = 'Select an estate first'; }
     else if (p.client_name || p.user_id) { el.className = 'bl-derived'; el.textContent = p.client_name || 'Linked client'; }
-    else { el.className = 'bl-derived warn'; el.textContent = 'No client linked to this property'; }
+    else { el.className = 'bl-derived warn'; el.textContent = Object.hasOwn(p,'user_id') && p.user_id===null ? 'No client linked to this estate' : 'Client link not supplied'; }
     recalc();
   }
 
@@ -556,11 +467,11 @@ const OpsBilling = (function () {
     const el = document.getElementById('bl-items');
     if (!el) return;
     el.innerHTML = _draft.map((l, i) => `<div class="bl-li">
-      <input class="bl-input" placeholder="Description" value="${esc(l.description || '')}" oninput="OpsBilling.editItem(${i},'description',this.value)">
-      <input class="bl-input" type="number" min="0" value="${l.qty != null ? l.qty : 1}" oninput="OpsBilling.editItem(${i},'qty',this.value)">
-      <input class="bl-input" type="number" min="0" value="${l.unit_price != null ? l.unit_price : 0}" oninput="OpsBilling.editItem(${i},'unit_price',this.value)">
+      <input class="bl-input" aria-label="Line ${i+1} description" placeholder="Description" value="${esc(l.description || '')}" oninput="OpsBilling.editItem(${i},'description',this.value)">
+      <input class="bl-input" aria-label="Line ${i+1} quantity" type="number" min="0" placeholder="Not supplied" value="${l.qty ?? ''}" oninput="OpsBilling.editItem(${i},'qty',this.value)">
+      <input class="bl-input" aria-label="Line ${i+1} unit price" type="number" min="0" placeholder="Not supplied" value="${l.unit_price ?? ''}" oninput="OpsBilling.editItem(${i},'unit_price',this.value)">
       <span class="amt">${NGN(l.amount)}</span>
-      <span class="bl-li-rm" onclick="OpsBilling.removeItem(${i})" title="Remove">×</span>
+      <button type="button" class="bl-li-rm" onclick="OpsBilling.removeItem(${i})" aria-label="Remove line ${i+1}">×</button>
     </div>`).join('');
     recalc();
   }
@@ -568,23 +479,23 @@ const OpsBilling = (function () {
   function removeItem(i) { _draft.splice(i, 1); if (!_draft.length) _draft.push({ description: '', qty: 1, unit_price: 0, amount: 0 }); renderItems(); }
   function editItem(i, k, v) {
     if (!_draft[i]) return;
-    _draft[i][k] = (k === 'description') ? v : (parseFloat(v) || 0);
-    _draft[i].amount = (parseFloat(_draft[i].qty) || 0) * (parseFloat(_draft[i].unit_price) || 0);
+    _draft[i][k] = (k === 'description') ? v : suppliedAmount(v);
+    if(k!=='description')_draft[i].amount = _draft[i].qty===null || _draft[i].unit_price===null ? null : _draft[i].qty * _draft[i].unit_price;
     // update just the amount + totals without wiping focus
     const row = document.querySelectorAll('#bl-items .bl-li')[i];
     if (row) row.querySelector('.amt').textContent = NGN(_draft[i].amount);
     recalc();
   }
 
-  function vatRateInput() { return Math.max(0, parseFloat((document.getElementById('bl-c-vat') || {}).value) || 0); }
+  function vatRateInput() { const rate=suppliedAmount((document.getElementById('bl-c-vat') || {}).value);return rate !== null && rate>=0 && rate<=100 ? rate : null; }
 
   function recalc() {
-    const subtotal = _draft.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+    const subtotal = _draft.some(l=>suppliedAmount(l.amount)===null) ? null : _draft.reduce((s,l)=>s+Number(l.amount),0);
     const vatRate = vatRateInput();
-    const vat = Math.round(subtotal * vatRate) / 100;
-    const total = subtotal + vat;
+    const vat = vatRate === null || subtotal === null ? null : Math.round(subtotal * vatRate) / 100;
+    const total = vat === null ? null : subtotal + vat;
     const tot = document.getElementById('bl-totals');
-    if (tot) tot.innerHTML = `<div class="bl-totrow"><span>Subtotal</span><span>${NGN(subtotal)}</span></div><div class="bl-totrow"><span>VAT (${vatRate}%)</span><span>${NGN(vat)}</span></div><div class="bl-totrow grand"><span>Total</span><span>${NGN(total)}</span></div>`;
+    if (tot) tot.innerHTML = `<div class="bl-totrow"><span>Subtotal</span><span>${NGN(subtotal)}</span></div><div class="bl-totrow"><span>${vatRate===null?'VAT rate not supplied':`VAT (${vatRate}%)`}</span><span>${NGN(vat)}</span></div><div class="bl-totrow grand"><span>Total</span><span>${NGN(total)}</span></div>`;
     const ps = (document.getElementById('bl-c-pstatus') || {}).value || 'unpaid';
     const balance = ps === 'paid' ? 0 : total;
     const bd = document.getElementById('bl-c-balance'); if (bd) bd.value = NGN(balance);
@@ -593,31 +504,39 @@ const OpsBilling = (function () {
     const F = OpsModal.fact;
     if (prev) prev.innerHTML = `
       ${F('Invoice ID', _editId ? esc(_editId) : 'Auto on save')}
-      ${F('Property', prop ? esc(prop.property_name || prop.property_id) : '—')}
-      ${F('Client', prop ? (prop.client_name || 'Unlinked') : '—')}
+      ${F('Estate', prop ? esc(prop.property_name || prop.property_id) : '—')}
+      ${F('Client', prop && prop.client_name ? esc(prop.client_name) : 'Not supplied')}
       ${F('Subtotal', NGN(subtotal))}
-      ${F('VAT (' + vatRate + '%)', NGN(vat))}
+      ${F(vatRate===null?'VAT rate not supplied':`VAT (${vatRate}%)`, NGN(vat))}
       ${F('Total', NGN(total))}
-      ${F('Balance due', NGN(balance))}`;
+      ${F('Draft amount due', NGN(balance))}`;
   }
 
   async function confirmSave(send) {
+    if (_savingInvoice) return;
+    if (!canManage()) return OpsModal.toast('You do not have permission to change invoices', 'critical');
     const pid = (document.getElementById('bl-c-property') || {}).value;
-    if (!pid) return OpsModal.toast('Select a property first', 'critical');
-    const items = _draft.filter(l => l.description || l.amount).map(l => ({ description: l.description, qty: Number(l.qty) || 0, unit_price: Number(l.unit_price) || 0, amount: Number(l.amount) || 0 }));
+    if (!pid) return OpsModal.toast('Select an estate first', 'critical');
+    const invoiceType=(document.getElementById('bl-c-type') || {}).value;
+    if (!invoiceType) return OpsModal.toast('Select an invoice type before saving; no type was supplied', 'watch');
+    if (vatRateInput() === null) return OpsModal.toast('Enter a valid VAT rate from 0 to 100 before saving', 'watch');
+    if(_draft.some(l=>[l.qty,l.unit_price,l.amount].some(v=>suppliedAmount(v)===null || Number(v)<0)))return OpsModal.toast('Confirm each line quantity, unit price and amount before saving', 'watch');
+    const items = _draft.filter(l => l.description || l.amount).map(l => ({ description: l.description, qty: Number(l.qty), unit_price: Number(l.unit_price), amount: Number(l.amount) }));
     if (!items.length) return OpsModal.toast('Add at least one line item', 'critical');
     const subtotal = items.reduce((s, l) => s + l.amount, 0);
     const payload = {
       property_id: pid,
-      invoice_type: (document.getElementById('bl-c-type') || {}).value || 'maintenance',
+      invoice_type: invoiceType,
       issue_date: (document.getElementById('bl-c-issue') || {}).value || null,
       due_date: (document.getElementById('bl-c-due') || {}).value || null,
       line_items: items, subtotal, vat_rate: vatRateInput(),
-      status: (document.getElementById('bl-c-status') || {}).value || 'open',
-      payment_status: (document.getElementById('bl-c-pstatus') || {}).value || 'unpaid',
+      ...(_editId ? {} : {status:(document.getElementById('bl-c-status') || {}).value || 'open'}),
+      ...(_editId ? {} : {payment_status:'unpaid'}),
     };
     const btnId = (send && !_editId) ? 'bl-create-btn' : (_editId ? 'bl-create-btn' : 'bl-draft-btn');
-    OpsModal.setLoading(btnId, true);
+    _savingInvoice = true;
+    OpsModal.setLoading('bl-create-btn', true);
+    OpsModal.setLoading('bl-draft-btn', true);
     try {
       const res = _editId
         ? await OpsModal.apiPut('/billing/invoices/' + _editId, payload)
@@ -632,18 +551,23 @@ const OpsBilling = (function () {
           OpsModal.toast('Invoice created, but sending failed: ' + e.message, 'watch');
         }
       } else {
-        OpsModal.toast(_editId ? 'Invoice updated' : 'Draft saved', 'nominal');
+        OpsModal.toast(_editId ? 'Invoice updated' : 'Invoice saved without sending', 'nominal');
       }
       if (newId) open(newId); else back();
     } catch (err) {
       OpsModal.toast('Failed to save invoice: ' + err.message, 'critical');
-      OpsModal.setLoading(btnId, false);
+    } finally {
+      _savingInvoice = false;
+      OpsModal.setLoading('bl-create-btn', false);
+      OpsModal.setLoading('bl-draft-btn', false);
     }
   }
 
   // Email the invoice (PDF + pay CTA) to the client from the detail view.
   function sendInvoiceEmail(id) {
+    if (!canManage()) return OpsModal.toast('You do not have permission to send invoices', 'critical');
     OpsModal.confirm('Email this invoice to the client? They\'ll get the PDF attached and a link to log in and pay.', async function () {
+      if (!canManage()) return OpsModal.toast('You do not have permission to send invoices', 'critical');
       OpsModal.setLoading('modal-confirm-btn', true);
       try {
         const res = await OpsModal.apiPost('/billing/invoices/' + id + '/send', {});
@@ -655,7 +579,7 @@ const OpsBilling = (function () {
         OpsModal.setLoading('modal-confirm-btn', false);
         OpsModal.toast('Failed to send: ' + err.message, 'critical');
       }
-    });
+    }, {tone:'neutral',title:'Email invoice',confirmLabel:'Email invoice',detail:'This requests delivery to the recorded client address. No payment or settlement is recorded.'});
   }
 
   return {

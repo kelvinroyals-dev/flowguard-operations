@@ -2,146 +2,32 @@
 //  FlowGuard Ops — Operations Overview
 //  Entry: OpsDashboard.render(container). Live view model from
 //  /analytics/overview (portfolio, device trust, estate risk, response desk,
-//  drainage, weather). Falls back to demo only if the feed is unreachable.
+//  drainage, weather). Sample data is provided only by explicit local preview.
 // ════════════════════════════════════════════════════════════════════════
 const OpsDashboard = (function () {
   let _root = null, _timer = null, _lastVM = null;
 
-  const SEV = { critical: 'var(--sev-crit)', high: 'var(--sev-high)', moderate: 'var(--sev-mod)', low: 'var(--sev-low)', unknown: 'var(--sev-unk)' };
-  const SEV_LABEL = { critical: 'Critical', high: 'High', moderate: 'Moderate', low: 'Low', unknown: 'Unknown' };
+  const SEV = { critical: 'var(--sev-crit)', high: 'var(--sev-high)', elevated:'var(--sev-mod)', moderate: 'var(--sev-mod)', low: 'var(--sev-low)', unknown: 'var(--sev-unk)' };
+  const SEV_LABEL = { critical: 'Critical', high: 'High', elevated:'Elevated', moderate: 'Moderate', low: 'Low', unknown: 'Unknown' };
+  const suppliedNumber = value => ['number','string'].includes(typeof value) && String(value).trim()!=='' && Number.isFinite(Number(value));
+  function estateAssessment(estate) {
+    const score = suppliedNumber(estate.score) && Number(estate.score) >= 0 && Number(estate.score) <= 100 ? Number(estate.score) : null;
+    const risk = Object.hasOwn(SEV_LABEL, String(estate.risk || '').toLowerCase()) ? String(estate.risk).toLowerCase() : 'unknown';
+    const change = suppliedNumber(estate.change) && Math.abs(Number(estate.change)) <= 100 ? Number(estate.change) : null;
+    return {score,risk,change};
+  }
+  function completeSnapshot(data) {
+    if (!data || !Array.isArray(data.estates) || !['portfolio','risk','confidence','response','drainage','weather'].every(key => data[key] && typeof data[key] === 'object' && !Array.isArray(data[key]))) return false;
+    const counts = {portfolio:['estates','assessed','unknown','online','offline','total'],risk:['highRisk','critical','high','moderate','low','unknown'],confidence:['valid','stale','invalid','total','needReview'],response:['open','workOrders','slaBreaches','unacknowledged']};
+    return Object.entries(counts).every(([group,keys]) => keys.every(key => suppliedNumber(data[group][key]) && Number.isSafeInteger(Number(data[group][key])) && Number(data[group][key]) >= 0)) && Array.isArray(data.response.priority);
+  }
   const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  const CSS = `
-  .ovx{ --bg:var(--fg-bg); --card:var(--fg-card); --line:var(--fg-line); --line-2:var(--fg-line-2);
-        --t1:var(--fg-t1); --t2:var(--fg-t2); --t3:var(--fg-t3); --t4:var(--fg-t4);
-        --link:var(--fg-blue); --btn:var(--fg-blue); --btn-h:var(--fg-blue-h);
-        --sev-crit:var(--fg-crit); --sev-high:var(--fg-high); --sev-mod:var(--fg-mod); --sev-low:var(--fg-neutral); --sev-unk:var(--fg-neutral);
-        --ok:var(--fg-ok);
-        background:var(--bg); min-height:100%; padding:14px 20px 30px; font-family:var(--ff-b); color:var(--t1);
-        font-variant-numeric:tabular-nums; }
-  .ovx *{ box-sizing:border-box; }
-  .ovx button{ font-family:inherit; }
-
-  .ov-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin:2px 0 14px; }
-  .ov-title{ font-size:22px; font-weight:700; letter-spacing:-.01em; color:var(--t1); line-height:1.1; }
-  .ov-sub{ margin-top:3px; font-size:12.5px; color:var(--t3); }
-  .ov-chip{ display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:600; color:var(--t2); background:var(--card); border:1px solid var(--line); border-radius:7px; padding:6px 11px; white-space:nowrap; }
-  .ov-chip .d{ width:6px; height:6px; border-radius:50%; }
-
-  .ov-grid{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; align-items:start; }
-  .ov-kpis{ grid-column:1 / 4; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
-  .ov-rail-cell{ grid-column:4 / 5; grid-row:1 / span 2; min-width:0; }
-  .ov-lower{ grid-column:1 / 4; grid-row:2; display:flex; flex-direction:column; gap:12px; min-width:0; }
-
-  .ovc{ background:var(--card); border:1px solid var(--line); border-radius:9px; padding:13px; min-width:0; }
-  .ovc-h{ display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:16px; }
-  .ovc-k{ font-size:10.5px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--t2); white-space:nowrap; }
-  .ovc-k .live{ color:var(--t4); }
-  .ovc-flag{ display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600; white-space:nowrap; }
-  .ovc-flag .d{ width:6px; height:6px; border-radius:50%; }
-  .ov-big{ display:flex; align-items:baseline; gap:8px; margin-top:11px; }
-  .ov-big .n{ font-size:30px; font-weight:700; letter-spacing:-.01em; line-height:1; color:var(--t1); }
-  .ov-big .u{ font-size:12px; color:var(--t3); font-weight:500; white-space:nowrap; }
-  .ov-lines{ margin-top:11px; }
-  .ov-line{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:3.5px 0; font-size:12.5px; }
-  .ov-line .l{ color:var(--t2); display:flex; align-items:center; gap:8px; min-width:0; }
-  .ov-line .l .d{ width:7px; height:7px; border-radius:50%; flex:0 0 auto; }
-  .ov-line .v{ color:var(--t1); font-weight:600; }
-  .ov-div{ height:1px; background:var(--line); margin:8px 0; }
-  .ov-subh{ font-size:12px; font-weight:600; text-transform:none; color:var(--t2); margin:2px 0 2px; }
-  .ov-note{ font-size:11px; color:var(--t3); margin-top:7px; }
-  .ov-links{ margin-top:10px; display:flex; flex-direction:column; gap:6px; }
-  .ov-link{ display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:500; color:var(--link); cursor:pointer; background:none; border:none; padding:0; text-align:left; }
-  .ov-link:hover{ text-decoration:underline; }
-  .ov-link svg{ width:12px; height:12px; }
-
-  /* estate table */
-  .ov-table-h{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
-  .ov-th-title{ font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--t2); }
-  .ov-th-sub{ font-size:11.5px; color:var(--t3); margin-top:3px; }
-  .ov-seg{ display:flex; background:var(--fg-card-2); border:1px solid var(--line-2); border-radius:7px; overflow:hidden; }
-  .ov-seg button{ font-size:12px; font-weight:500; color:var(--t3); padding:5px 12px; cursor:pointer; border:none; background:none; border-right:1px solid var(--line-2); }
-  .ov-seg button:last-child{ border-right:none; }
-  .ov-seg button.active{ background:var(--line-2); color:var(--t1); }
-  .ov-seg .c{ color:var(--t4); font-weight:600; margin-left:5px; }
-  .ov-tbl-wrap{ margin-top:11px; max-height:320px; overflow-y:auto; }
-  .ov-tbl-wrap::-webkit-scrollbar{ width:8px; } .ov-tbl-wrap::-webkit-scrollbar-thumb{ background:var(--line-2); border-radius:4px; }
-  table.ov-tbl{ width:100%; border-collapse:collapse; table-layout:fixed; }
-  .ov-tbl thead th{ text-align:left; font-size:10px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--t4); padding:0 8px 8px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--card); }
-  .ov-tbl tbody td{ padding:7px 8px; border-bottom:1px solid var(--line); font-size:13px; vertical-align:middle; color:var(--t1); }
-  .ov-tbl tbody tr:last-child td{ border-bottom:none; }
-  .ov-tbl tbody tr{ cursor:pointer; }
-  .ov-tbl tbody tr:hover td{ background:rgba(255,255,255,.02); }
-  .ov-tbl th:nth-child(1),.ov-tbl td:nth-child(1){ width:20%; }
-  .ov-tbl th:nth-child(2),.ov-tbl td:nth-child(2){ width:16%; white-space:nowrap; }
-  .ov-tbl th:nth-child(3),.ov-tbl td:nth-child(3){ width:12%; white-space:nowrap; }
-  .ov-tbl th:nth-child(4),.ov-tbl td:nth-child(4){ width:11%; white-space:nowrap; }
-  .ov-tbl th:nth-child(5),.ov-tbl td:nth-child(5){ width:23%; }
-  .ov-tbl th:nth-child(6),.ov-tbl td:nth-child(6){ width:18%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .ov-est{ font-weight:600; color:var(--t1); }
-  .ov-est .z{ display:block; font-size:11px; font-weight:400; color:var(--t3); margin-top:1px; }
-  .ov-score{ display:flex; align-items:center; gap:9px; }
-  .ov-score .n{ font-size:15px; font-weight:700; width:24px; color:var(--t1); }
-  .ov-bar{ width:52px; height:5px; border-radius:3px; background:var(--line-2); overflow:hidden; }
-  .ov-bar > span{ display:block; height:100%; border-radius:3px; }
-  .ov-risk{ display:inline-flex; align-items:center; gap:7px; font-weight:500; color:var(--t1); }
-  .ov-risk .d{ width:7px; height:7px; border-radius:50%; }
-  .ov-chg{ color:var(--t2); font-weight:500; }
-  .ov-resp{ color:var(--t2); }
-  .ov-foot{ margin-top:0; padding-top:10px; border-top:1px solid var(--line); font-size:11.5px; color:var(--t3); background:var(--card); }
-  .ov-tbl thead th{ background:var(--card); }
-
-  /* banner */
-  .ov-banner{ display:flex; align-items:center; gap:11px; background:rgba(242,193,78,.06); border:1px solid rgba(242,193,78,.24); border-radius:9px; padding:10px 14px; }
-  .ov-banner.ok{ background:transparent; border:1px solid var(--line); }
-  .ov-banner.ok .ic{ color:var(--ok); }
-  .ov-banner .ic{ color:var(--sev-mod); flex:0 0 auto; display:flex; }
-  .ov-banner .tx{ font-size:12.5px; color:var(--t2); flex:1 1 auto; min-width:0; }
-  .ov-banner .tx b{ color:var(--t1); font-weight:600; }
-  .ov-banner .tx .code{ font-family:var(--ff-m); font-size:11.5px; color:var(--t3); }
-
-  .ov-bottom{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .ov-mini-body{ display:flex; gap:14px; align-items:flex-end; margin-top:10px; }
-  .ov-mini-body .col{ flex:1 1 auto; }
-  .ov-mrow{ display:flex; align-items:center; justify-content:space-between; padding:3.5px 0; font-size:12.5px; }
-  .ov-mrow .l{ color:var(--t2); } .ov-mrow .v{ color:var(--t1); font-weight:600; }
-  .ov-vdiv{ width:1px; align-self:stretch; background:var(--line); margin:2px 0; }
-  .ov-spark{ width:130px; height:52px; flex:0 0 auto; }
-
-  /* response rail */
-  .ov-rail{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; position:sticky; top:12px; }
-  .ov-inc{ padding:11px 0; }
-  .ov-inc + .ov-inc{ border-top:1px solid var(--line); }
-  .ov-inc-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
-  .ov-inc-name{ display:flex; align-items:center; gap:8px; font-weight:600; font-size:13.5px; color:var(--t1); }
-  .ov-inc-name .d{ width:7px; height:7px; border-radius:50%; background:var(--sev-crit); flex:0 0 auto; }
-  .ov-inc-meta{ font-size:12px; color:var(--t3); margin-top:4px; }
-  .ov-ack{ font-size:12px; font-weight:600; color:var(--link); background:transparent; border:1px solid var(--link); border-radius:7px; padding:4px 10px; cursor:pointer; white-space:nowrap; }
-  .ov-ack:hover{ background:rgba(91,141,239,.1); }
-  .ov-inc-state{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:500; margin-top:7px; }
-  .ov-inc-state.unassigned{ color:var(--t3); }
-  .ov-inc-state.acked{ color:var(--ok); }
-  .ov-inc-state .tick{ width:15px; height:15px; border-radius:50%; background:var(--ok); display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; }
-  .ov-inc-state .tick svg{ width:9px; height:9px; color:#0b0c0e; }
-  .ov-inc-team{ font-size:12px; color:var(--t2); margin-top:5px; }
-  .ov-sec{ font-size:10px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--t3); margin:15px 0 7px; }
-  .ov-frow{ display:flex; align-items:center; justify-content:space-between; padding:6px 0; font-size:12.5px; }
-  .ov-frow .l{ color:var(--t2); } .ov-frow .v{ color:var(--t1); font-weight:600; display:inline-flex; align-items:center; gap:6px; }
-  .ov-frow .v .ad{ width:6px; height:6px; border-radius:50%; background:var(--sev-mod); }
-  .ov-next{ font-size:13.5px; font-weight:600; color:var(--t1); margin-bottom:11px; line-height:1.35; }
-  .ov-cta{ display:block; width:100%; text-align:center; background:var(--btn); color:#fff; font-size:13px; font-weight:600; border:none; border-radius:8px; padding:10px; cursor:pointer; }
-  .ov-cta:hover{ background:var(--btn-h); }
-  .ov-queue{ display:block; width:100%; text-align:left; margin-top:11px; font-size:12.5px; font-weight:500; color:var(--link); background:none; border:none; cursor:pointer; }
-  .ov-queue:hover{ text-decoration:underline; }
-
-  @media (max-width:1240px){ .ov-grid{ grid-template-columns:1fr; } .ov-kpis,.ov-lower{ grid-column:1 / -1; } .ov-rail-cell{ grid-column:1 / -1; grid-row:auto; order:3; } .ov-rail{ position:static; } }
-  @media (max-width:820px){ .ov-kpis{ grid-template-columns:1fr; } .ov-bottom{ grid-template-columns:1fr; } }
-  `;
 
   function demoVM() {
     return { live: false,
       portfolio: { estates: 24, assessed: 23, unknown: 1, online: 118, offline: 2, total: 120 },
-      risk: { critical: 2, high: 3, moderate: 7, low: 11, unknown: 1, highRisk: 5 },
+      risk: { critical: 2, high: 3, elevated: 1, moderate: 6, low: 11, unknown: 1, highRisk: 5 },
       confidence: { pct: 94, valid: 113, stale: 4, invalid: 3, total: 120, needReview: 7 },
       estates: [
         { name: 'Azure Estate', zone: 'Lekki', score: 92, risk: 'critical', change: 14, driver: 'Drain capacity 91%', response: 'Team en route' },
@@ -149,7 +35,7 @@ const OpsDashboard = (function () {
         { name: 'Harbour View', zone: 'Ikoyi', score: 78, risk: 'high', change: 6, driver: 'Rapid water rise', response: 'Assigned' },
         { name: 'Orchid Gardens', zone: 'Lekki', score: 74, risk: 'high', change: 4, driver: 'Silt build-up', response: 'Inspection due' },
         { name: 'Creekside Estate', zone: 'VI', score: 71, risk: 'high', change: 3, driver: 'High downstream level', response: 'Monitoring' },
-        { name: 'Victoria Court', zone: 'Ikoyi', score: 48, risk: 'moderate', change: -5, driver: 'Elevated inflow', response: 'Monitoring' },
+        { name: 'Victoria Court', zone: 'Ikoyi', score: 48, risk: 'elevated', change: -5, driver: 'Elevated inflow', response: 'Monitoring' },
       ],
       response: { open: 7, unacknowledged: 2,
         priority: [
@@ -167,37 +53,41 @@ const OpsDashboard = (function () {
     catch (_) { return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' WAT'; }
   }
   function sparkLine(series, color, unit) {
-    if (!series || series.length < 2) series = [0, 0];
+    if(typeof OpsCharts!=='undefined')return `<div class="ov-spark">${OpsCharts.series(series,{mini:true,width:150,height:64,color,unit,label:'Drainage trend'})}</div>`;
+    if (!series || series.length < 2) return '<span class="fg-chart-unavailable">Trend unavailable</span>';
     const w = 130, h = 52, p = 3, max = Math.max(...series, 1), min = Math.min(...series, 0), rng = (max - min) || 1;
     const pts = series.map((v, i) => `${(p + i * (w - 2 * p) / (series.length - 1)).toFixed(1)},${(h - p - ((v - min) / rng) * (h - 2 * p)).toFixed(1)}`).join(' ');
     const last = series[series.length - 1];
     return `<svg class="ov-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><title>Latest ${last}${unit || ''} · range ${min}–${max}${unit || ''}</title><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
   }
   function sparkBars(series, color, unit) {
-    if (!series || !series.length) series = [0];
+    if(typeof OpsCharts!=='undefined')return `<div class="ov-spark">${OpsCharts.series(series,{mini:true,type:'bar',width:150,height:64,color,unit,label:'Hourly rainfall'})}</div>`;
+    if (!series || !series.length) return '<span class="fg-chart-unavailable">Series unavailable</span>';
     const w = 130, h = 52, n = series.length, gap = 2, bw = Math.max(1, (w - gap * (n - 1)) / n), max = Math.max(...series, 1);
     return `<svg class="ov-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">${series.map((v, i) => { const bh = Math.max(1.5, (v / max) * (h - 3)); return `<rect x="${(i * (bw + gap)).toFixed(1)}" y="${(h - bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="1" fill="${color}"><title>+${i + 1}h · ${v}${unit || ''}</title></rect>`; }).join('')}</svg>`;
   }
 
   function template(vm) {
     const p = vm.portfolio, rk = vm.risk, cf = vm.confidence, rd = vm.response;
-    const liveTag = vm.live ? 'LIVE' : 'DEMO';
-    const riskLine = (k) => `<div class="ov-line"><span class="l"><span class="d" style="background:${SEV[k]}"></span>${SEV_LABEL[k]}</span><span class="v">${rk[k] || 0}</span></div>`;
-    const arrow = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>`;
+    if (OpsModal.count(p.estates)===0) return OpsModal.pageHeader({title:'Portfolio health',subtitle:'Estate risk, coverage and service performance'})+OpsModal.emptyState('','No estates returned','No estate assessment can be made from this returned snapshot. Register or select estates before reviewing portfolio health.');
+    const liveTag = vm.live ? 'Recorded' : 'Sample';
+    const riskLine = (k) => `<div class="ov-line"><span class="l"><span class="d" style="background:${SEV[k]}"></span>${SEV_LABEL[k]}</span><span class="v">${rk[k] ?? 'Not supplied'}</span></div>`;
+    const arrow = OpsModal.icon('arrow');
 
     const titleCase = s => String(s || '').replace(/\b([a-z])/g, m => m.toUpperCase());
     const rows = vm.estates.map(e => {
-      const chg = (e.change == null) ? `<span title="No comparable live assessments">—</span>` : (e.change > 0 ? `+${e.change} pts` : `${e.change} pts`);
+      const assessment = estateAssessment(e);
+      const chg = assessment.change == null ? `<span title="Comparable assessment change not supplied">—</span>` : (assessment.change > 0 ? `+${assessment.change} pts` : `${assessment.change} pts`);
       // Live estates show a definitive score + bar; unassessed show "—" (no fake score)
-      const scoreCell = e.score != null
-        ? `<div class="ov-score"><span class="n">${e.score}</span><span class="ov-bar"><span style="width:${Math.max(2, Math.min(100, e.score))}%;background:${SEV[e.risk]}"></span></span></div>`
+      const scoreCell = assessment.score != null
+        ? `<div class="ov-score"><span class="n">${assessment.score}</span><span class="ov-bar"><span style="width:${assessment.score}%;background:${SEV[assessment.risk]}"></span></span></div>`
         : `<div class="ov-score"><span class="n" style="color:var(--t4)" title="No live assessment">—</span></div>`;
-      return `<tr data-estate="${esc(e.name)}" data-risk="${e.risk}" data-id="${esc(e.property_id || '')}">
-        <td><div class="ov-est">${esc(titleCase(e.name))}${e.zone ? `<span class="z">${esc(e.zone)}</span>` : ''}</div></td>
+      return `<tr data-estate="${esc(e.name)}" data-risk="${assessment.risk}" data-id="${esc(e.property_id || '')}">
+        <td><div class="ov-est"><button type="button" class="record-link">${esc(titleCase(e.name))}</button>${e.zone ? `<span class="z">${esc(e.zone)}</span>` : ''}</div></td>
         <td>${scoreCell}</td>
-        <td><span class="ov-risk"><span class="d" style="background:${SEV[e.risk]}"></span>${SEV_LABEL[e.risk]}</span></td>
+        <td><span class="ov-risk"><span class="d" style="background:${SEV[assessment.risk]}"></span>${SEV_LABEL[assessment.risk]}</span></td>
         <td><span class="ov-chg">${chg}</span></td>
-        <td style="color:var(--t2)">${e.risk === 'unknown' ? 'No live assessment' : esc(e.driver)}</td>
+        <td style="color:var(--t2)">${assessment.risk === 'unknown' ? 'Risk assessment unavailable' : esc(e.driver || 'Driver not supplied')}</td>
         <td><span class="ov-resp">${esc(e.response)}</span></td>
       </tr>`;
     }).join('');
@@ -206,37 +96,36 @@ const OpsDashboard = (function () {
       <div class="ov-inc">
         <div class="ov-inc-top">
           <div>
-            <div class="ov-inc-name"><span class="d"></span>${esc(i.estate)}</div>
+            <div class="ov-inc-name">${esc(i.estate)}</div>
             <div class="ov-inc-meta">${esc(i.issue)} · ${esc(i.ago)}</div>
           </div>
-          ${i.acked ? '' : `<button class="ov-ack" data-ack="${esc(i.estate)}">Acknowledge</button>`}
+          <button class="ov-ack" data-incident="${esc(i.alert_id || '')}">Review incident</button>
         </div>
         ${i.acked
-          ? `${i.team ? `<div class="ov-inc-team">${esc(i.team)}</div>` : ''}<div class="ov-inc-state acked"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6L9 17l-5-5"/></svg></span>Acknowledged</div>`
+          ? `${i.team ? `<div class="ov-inc-team">${esc(i.team)}</div>` : ''}${OpsModal.status('assigned','Assigned',null,'workflow')}`
           : `<div class="ov-inc-state unassigned">${esc(i.state || 'Unassigned')}</div>`}
       </div>`).join('') || '<div class="ov-inc-meta" style="padding:8px 0">No priority incidents.</div>';
 
-    const confHealthy = (cf.needReview || 0) === 0;
+    const confHealthy = Number(cf.total)>0 && Number(cf.valid)===Number(cf.total) && Number(cf.stale)===0 && Number(cf.invalid)===0 && Number(cf.needReview)===0;
 
     return `
-    <div class="ov-head">
-      <div>
-        <div class="ov-title">Overview</div>
-        <div class="ov-sub">Live estate risk and response · Updated ${esc(nowWAT())}</div>
-      </div>
-      <div class="ov-chip"><span class="d" style="background:${vm.live ? 'var(--ok)' : 'var(--sev-mod)'}"></span>${vm.live ? 'Live data' : 'Demo mode · Simulated data'}</div>
-    </div>
+    ${OpsModal.pageHeader({title:'Portfolio health',subtitle:'Estate risk, coverage and service performance',actions:OpsModal.status('neutral',vm.live?'Recorded snapshot':'Sample data')})}
+    ${OpsModal.provenance([['Source',vm.live?'Recorded portfolio snapshot':'Sample data'],['Estate cohort',`${p.estates} returned`],['Fetched',nowWAT()]],'Fetch time is not measurement time. Stream quality is not predictive-model confidence. Review reporting period, eligibility and service terms in Service performance.')}
+    ${OpsModal.kpiStrip([
+      {icon:OpsModal.entityIcon('estate'),label:'Estates returned',value:esc(p.estates),sub:esc(p.assessed)+' with a sensor-backed assessment'},
+      {icon:OpsModal.entityIcon('forecast'),label:'High-risk estates',value:esc(rk.highRisk),sub:esc(rk.unknown)+' without a live assessment'},
+      {icon:OpsModal.entityIcon('device'),label:'Valid sensor streams',value:Number(cf.total)>0 && suppliedNumber(cf.pct) && Number(cf.pct)>=0 && Number(cf.pct)<=100 ? Number(cf.pct)+'%' : 'Unknown',sub:esc(cf.valid)+' valid of '+esc(cf.total)+' returned streams'},
+      {icon:OpsModal.entityIcon('incident'),label:'Open incidents',value:esc(rd.open),sub:esc(rd.unacknowledged)+' unassigned · '+esc(rd.workOrders)+' work orders'},
+    ])}
 
     <div class="ov-grid">
       <div class="ov-kpis">
         <!-- Portfolio -->
         <div class="ovc">
-          <div class="ovc-h"><span class="ovc-k">Portfolio · <span class="live">${liveTag}</span></span>
-            <span class="ovc-flag" style="color:var(--ok)"><span class="d" style="background:var(--ok)"></span>Monitoring</span></div>
-          <div class="ov-big"><span class="n">${p.estates}</span><span class="u">estates</span></div>
+          <div class="ovc-h"><h2 class="ovc-k">Portfolio composition</h2></div>
           <div class="ov-div"></div>
           <div class="ov-lines">
-            <div class="ov-line"><span class="l">Assessed <span style="color:var(--t4);font-size:11px">· sensor-backed</span></span><span class="v">${p.assessed}</span></div>
+            <div class="ov-line"><span class="l">Assessed <span style="color:var(--t4);font-size:var(--fs-2xs)">· sensor-backed</span></span><span class="v">${p.assessed}</span></div>
             <div class="ov-line"><span class="l">Without live assessment</span><span class="v">${p.unknown}</span></div>
           </div>
           <div class="ov-div"></div>
@@ -245,24 +134,21 @@ const OpsDashboard = (function () {
             <div class="ov-line"><span class="l">Online</span><span class="v">${p.online} / ${p.total}</span></div>
             <div class="ov-line"><span class="l">Offline</span><span class="v">${p.offline} / ${p.total}</span></div>
           </div>
-          <div class="ov-note">Online = heartbeat within 5 min</div>
+          <div class="ov-note">Online = active device with a non-future heartbeat within 6 hours. This is connectivity, not reading freshness.</div>
           <div class="ov-links"><button class="ov-link" data-go="estates">View estates ${arrow}</button></div>
         </div>
 
         <!-- Risk exposure -->
         <div class="ovc">
-          <div class="ovc-h"><span class="ovc-k">Risk exposure · <span class="live">${liveTag}</span></span>
-            ${rk.highRisk ? `<span class="ovc-flag" style="color:var(--sev-crit)"><span class="d" style="background:var(--sev-crit)"></span>Action required</span>` : `<span class="ovc-flag" style="color:var(--t3)"><span class="d" style="background:var(--sev-low)"></span>Monitoring</span>`}</div>
-          <div class="ov-big"><span class="n">${rk.highRisk}</span><span class="u">high-risk estates</span></div>
-          <div class="ov-note" style="margin-top:5px">${rk.highRisk} identified${rk.unknown ? ` · ${rk.unknown} without live assessment` : ''}</div>
-          <div class="ov-lines">${riskLine('critical')}${riskLine('high')}${riskLine('moderate')}${riskLine('low')}${riskLine('unknown')}</div>
+          <div class="ovc-h"><h2 class="ovc-k">Risk distribution</h2>
+            ${OpsModal.status(rk.critical>0?'critical':rk.highRisk>0?'high':'unknown',rk.highRisk>0?'Action required':rk.unknown>0?'Review assessment coverage':'No high-risk assessments',null,'risk')}</div>
+          <div class="ov-lines">${riskLine('critical')}${riskLine('high')}${riskLine('elevated')}${riskLine('moderate')}${riskLine('low')}${riskLine('unknown')}</div>
         </div>
 
         <!-- Data confidence -->
         <div class="ovc">
-          <div class="ovc-h"><span class="ovc-k">Data confidence · <span class="live">${liveTag}</span></span>
-            ${confHealthy ? `<span class="ovc-flag" style="color:var(--ok)"><span class="d" style="background:var(--ok)"></span>All valid</span>` : `<span class="ovc-flag" style="color:var(--sev-mod)"><span class="d" style="background:var(--sev-mod)"></span>${cf.needReview} need review</span>`}</div>
-          <div class="ov-big"><span class="n">${cf.pct}%</span><span class="u">valid sensor streams</span></div>
+          <div class="ovc-h"><h2 class="ovc-k">Stream quality</h2>
+            ${OpsModal.status(confHealthy?'ok':cf.needReview>0?'stale':'unknown',confHealthy?'All returned streams valid':cf.needReview>0?esc(cf.needReview)+' need review':'No assessed streams',null,'sensordata')}</div>
           <div class="ov-lines">
             <div class="ov-line"><span class="l">Valid</span><span class="v">${cf.valid}</span></div>
             <div class="ov-line"><span class="l">Stale</span><span class="v">${cf.stale}</span></div>
@@ -270,18 +156,17 @@ const OpsDashboard = (function () {
           </div>
           <div class="ov-div"></div>
           <div class="ov-line"><span class="l">Total streams</span><span class="v">${cf.total}</span></div>
-          <div class="ov-note">Valid = fresh + passed quality checks</div>
+          <div class="ov-note">Valid here = latest level within 0–100% and 30 minutes. Device diagnostics include additional checks.</div>
           <div class="ov-links">
-            <button class="ov-link" data-go="dataissues">${confHealthy ? 'View data quality' : 'Review ' + cf.needReview + ' data issues'} ${arrow}</button>
+            <button class="ov-link" data-go="dataissues">${cf.needReview>0 ? 'Review ' + cf.needReview + ' data issues' : 'View data quality'} ${arrow}</button>
             <button class="ov-link" data-go="integrity">View device integrity ${arrow}</button>
           </div>
         </div>
       </div>
 
       <div class="ov-rail-cell"><div class="ov-rail">
-        <div class="ovc-h"><span class="ovc-k">Response desk · <span class="live">${liveTag}</span></span>
-          ${rd.unacknowledged ? `<span class="ovc-flag" style="color:var(--sev-mod)"><span class="d" style="background:var(--sev-mod)"></span>${rd.unacknowledged} unacknowledged</span>` : ''}</div>
-        <div class="ov-big"><span class="n">${rd.open}</span><span class="u">open incidents</span></div>
+        <div class="ovc-h"><h2 class="ovc-k">Response desk</h2>
+          ${rd.unacknowledged ? `<span class="ovc-flag" style="color:var(--sev-mod)"><span class="d" style="background:var(--sev-mod)"></span>${rd.unacknowledged} unassigned</span>` : ''}</div>
         <div class="ov-div"></div>
         <div class="ov-sec" style="margin-top:2px">Priority incidents</div>
         ${priority}
@@ -289,74 +174,74 @@ const OpsDashboard = (function () {
         <div class="ov-sec" style="margin-top:2px">Field operations · ${liveTag}</div>
         <div class="ov-frow"><span class="l">Open work orders</span><span class="v">${rd.workOrders}</span></div>
         <div class="ov-frow"><span class="l">Teams deployed</span><span class="v"${rd.teamsConfigured === false ? ' style="color:var(--t3);font-weight:500"' : ''}>${esc(rd.teamsDeployed)}</span></div>
-        <div class="ov-frow"><span class="l">SLA breaches · today</span><span class="v">${rd.slaBreaches ? `<span class="ad"></span>${rd.slaBreaches}` : '0'}</span></div>
+        <div class="ov-frow"><span class="l">Recorded SLA breaches · this month</span><span class="v">${rd.slaBreaches ? `<span class="ad"></span>${rd.slaBreaches}` : '0'}</span></div>
         <div class="ov-div"></div>
         <div class="ov-sec" style="margin-top:2px">Next action</div>
         <div class="ov-next"${rd.dispatchable ? '' : ' style="color:var(--t2);font-weight:500"'}>${esc(rd.nextAction)}</div>
         ${rd.dispatchable
-          ? `<button class="ov-cta" data-go="incident">Dispatch team</button>`
-          : (p.unknown ? `<button class="ov-link" data-go="estates" style="font-size:12.5px">Review ${p.unknown} unassessed estate${p.unknown > 1 ? 's' : ''} ${arrow}</button>` : '')}
+          ? `<button class="ov-cta" data-go="incident">Review response</button>`
+          : (p.unknown ? `<button class="ov-link" data-go="estates" style="font-size:var(--fs-xs)">Review ${p.unknown} unassessed estate${p.unknown > 1 ? 's' : ''} ${arrow}</button>` : '')}
         <button class="ov-queue" data-go="queue"${rd.dispatchable ? '' : ' style="margin-top:11px"'}>View response queue →</button>
       </div></div>
 
       <div class="ov-lower">
         <div class="ovc">
           <div class="ov-table-h">
-            <div><div class="ov-th-title">Estate risk · ${liveTag}</div><div class="ov-th-sub">Highest risk first · Change over past 1 hour</div></div>
+            <div><h2 class="ov-th-title">Estate risk</h2><div class="ov-th-sub">Highest risk first · Change versus a recorded snapshot 40–80 minutes ago, when available</div></div>
             <div class="ov-seg">
-              <button class="active" data-filter="all">All <span class="c">${p.estates}</span></button>
-              <button data-filter="critical">Critical <span class="c">${rk.critical}</span></button>
-              <button data-filter="high">High <span class="c">${rk.high}</span></button>
-              <button data-filter="unknown">Unknown <span class="c">${rk.unknown}</span></button>
+              <button class="active" data-filter="all" aria-pressed="true">All <span class="c">${p.estates}</span></button>
+              <button data-filter="critical" aria-pressed="false">Critical <span class="c">${rk.critical}</span></button>
+              <button data-filter="high" aria-pressed="false">High <span class="c">${rk.high}</span></button>
+              <button data-filter="unknown" aria-pressed="false">Unknown <span class="c">${rk.unknown}</span></button>
             </div>
           </div>
           <div class="ov-tbl-wrap"${vm.estates.length > 10 ? '' : ' style="max-height:none;overflow:visible"'}><table class="ov-tbl">
-            <thead><tr><th>Estate</th><th>Score</th><th>Risk</th><th>Change · 1h</th><th>Risk driver / assessment</th><th>Response</th></tr></thead>
+            <thead><tr><th scope="col">Estate</th><th scope="col">Score</th><th scope="col">Risk</th><th scope="col">Recorded change</th><th scope="col">Risk driver / assessment</th><th scope="col">Response</th></tr></thead>
             <tbody id="ov-tbody">${rows}</tbody>
           </table>
-          <div id="ov-empty" style="display:none;padding:24px 12px;text-align:center;color:var(--t3);font-size:13px"></div></div>
+          <div id="ov-empty" style="display:none;padding:24px 12px;text-align:center;color:var(--t3);font-size:var(--fs-xs)"></div></div>
           <div class="ov-foot">Showing <span id="ov-shown">${Math.min(vm.estates.length, p.estates)}</span> of ${p.estates} estates · Score 0 – 100 · Higher means greater risk</div>
         </div>
 
         ${vm.lagoon
           ? `<div class="ov-banner">
-              <span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></span>
-              <span class="tx"><b>${esc(vm.lagoon.name)}</b> <span class="code">${esc(vm.lagoon.device)}</span> · Risk unavailable · Last valid reading ${esc(vm.lagoon.lastValid)}</span>
+              <span class="ic">${OpsModal.entityIcon('incident')}</span>
+              <span class="tx"><b>${esc(vm.lagoon.name)}</b> <span class="code">${esc(vm.lagoon.device)}</span> · Risk unavailable · Latest recorded reading ${esc(vm.lagoon.lastValid)}</span>
               <button class="ov-link" data-go="timeline" data-device="${esc(vm.lagoon.device)}">Device timeline ${arrow}</button>
             </div>`
           : `<div class="ov-banner ok">
-              <span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6L9 17l-5-5"/></svg></span>
+              <span class="ic">${OpsModal.entityIcon('check')}</span>
               <span class="tx"><b>${cf.valid} of ${cf.total}</b> sensor streams fresh · <b>${p.assessed} of ${p.estates}</b> estates have a sensor-backed assessment.</span>
             </div>`}
 
         <div class="ov-bottom">
-          ${(() => { const dr = vm.drainage, hasObs = (dr.series && dr.series.some(v => v > 0)) || dr.peak > 0;
+          ${(() => { const dr = vm.drainage, hasObs = dr.observations > 0 || (dr.series && dr.series.some(v => suppliedNumber(v) && Number(v)>=0));
           return `<div class="ovc">
             <div class="ovc-k">Drainage · Past 24h</div>
             ${hasObs ? `<div class="ov-mini-body">
               <div class="col">
-                <div class="ov-mrow"><span class="l">Peak utilisation</span><span class="v">${dr.peak}%</span></div>
-                <div class="ov-mrow"><span class="l">Restricted outfalls</span><span class="v">${dr.restricted}</span></div>
-                <div class="ov-mrow"><span class="l">Rising-level locations</span><span class="v">${dr.rising}</span></div>
+                <div class="ov-mrow"><span class="l">Peak recorded water level</span><span class="v">${dr.peak}%</span></div>
+                <div class="ov-mrow"><span class="l">Devices reaching ≥90% (24h)</span><span class="v">${dr.restricted}</span></div>
+                <div class="ov-mrow"><span class="l">Devices reaching ≥70% (2h)</span><span class="v">${dr.rising}</span></div>
               </div>
               <div class="ov-vdiv"></div>
               ${sparkLine(dr.series, 'var(--t2)', '%')}
             </div>` : `<div class="ov-note" style="margin-top:14px">No observations from monitored locations yet.</div>`}
-            <div class="ov-note" style="margin-top:9px">From monitored locations · % utilisation</div>
+            <div class="ov-note" style="margin-top:9px">Recorded observations · water level %, not hydraulic utilisation or verified restriction</div>
           </div>`; })()}
           ${(() => { const w = vm.weather; const hasW = w.updated && (w.series && w.series.length);
           return `<div class="ovc">
-            <div class="ovc-k">Weather · Next 6h</div>
+            <div class="ovc-k">Estate weather coverage · Next 6h</div>
             ${hasW ? `<div class="ov-mini-body">
               <div class="col">
-                <div class="ov-mrow"><span class="l">Forecast rainfall</span><span class="v">${w.rainfall} mm</span></div>
-                <div class="ov-mrow"><span class="l">Estates exposed</span><span class="v">${w.exposed}</span></div>
+                <div class="ov-mrow"><span class="l">${esc(w.reference?.name || 'Reference estate not supplied')}</span><span class="v">${w.rainfall} mm</span></div>
+                <div class="ov-mrow"><span class="l">Estates with weather</span><span class="v">${w.coverage ? esc(w.coverage.available)+' / '+esc(w.coverage.total) : 'Not supplied'}</span></div>
                 <div class="ov-mrow"><span class="l" style="color:var(--t3)">Updated ${esc(w.updated)}</span><span class="v"></span></div>
               </div>
               <div class="ov-vdiv"></div>
               ${sparkBars(w.series, 'var(--sev-low)', ' mm')}
             </div>` : `<div class="ov-note" style="margin-top:14px">Forecast unavailable.</div>`}
-            <div class="ov-note" style="margin-top:9px">Forecast · Open-Meteo · mm/h</div>
+            <div class="ov-note" style="margin-top:9px">${w.scope==='estate'?'Highest supplied estate forecast, not a national rainfall total.':'Legacy unscoped weather; do not interpret as nationwide rainfall.'} Total is mm over 6 hours; bars are hourly mm. Open an estate’s weather tab for details.</div>
           </div>`; })()}
         </div>
       </div>
@@ -382,15 +267,15 @@ const OpsDashboard = (function () {
           const r = await OpsModal.apiGet('/properties');
           const list = (r && r.data) || [];
           const nm = tr.dataset.estate;
-          const match = list.find(p => (p.property_name || p.name || p.asset_code) === nm);
-          if (match) id = match.property_id || match.id;
+          const matches = Array.isArray(list) ? list.filter(p => (p.property_name || p.name || p.asset_code) === nm) : [];
+          if (matches.length === 1) id = matches[0].property_id || matches[0].id;
         } catch (_) {}
       }
       if (id && typeof window.fgOpen === 'function') window.fgOpen('properties', id);  // open that estate directly
       else if (typeof window.switchTab === 'function') window.switchTab('properties');
     }));
     const applyFilter = (f) => {
-      root.querySelectorAll('.ov-seg button').forEach(x => x.classList.toggle('active', x.dataset.filter === f));
+      root.querySelectorAll('.ov-seg button').forEach(x => { const active=x.dataset.filter===f; x.classList.toggle('active',active); x.setAttribute('aria-pressed',String(active)); });
       let shown = 0;
       root.querySelectorAll('#ov-tbody tr').forEach(tr => {
         const vis = (f === 'all' || tr.dataset.risk === f);
@@ -410,10 +295,8 @@ const OpsDashboard = (function () {
     root.querySelectorAll('.ov-seg button').forEach(p => p.addEventListener('click', () => applyFilter(p.dataset.filter)));
     root.querySelectorAll('.ov-ack').forEach(b => b.addEventListener('click', (e) => {
       e.stopPropagation();
-      const inc = b.closest('.ov-inc'); b.remove();
-      const st = inc.querySelector('.ov-inc-state');
-      if (st) { st.className = 'ov-inc-state acked'; st.innerHTML = '<span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6L9 17l-5-5"/></svg></span>Acknowledged'; }
-      if (typeof OpsModal !== 'undefined' && OpsModal.toast) OpsModal.toast('Incident acknowledged.', 'success');
+      if (b.dataset.incident && window.fgOpen) window.fgOpen('alerts',b.dataset.incident);
+      else switchTab('alerts');
     }));
   }
 
@@ -424,9 +307,13 @@ const OpsDashboard = (function () {
     let vm;
     try {
       const r = await OpsModal.apiGet('/analytics/overview');
-      vm = (r && r.data) ? r.data : demoVM();
+      if (!r || !completeSnapshot(r.data)) throw new Error('Portfolio data is incomplete');
+      vm = r.data;
       if (vm && vm.live == null) vm.live = true;
-    } catch (_) { vm = demoVM(); }
+    } catch (error) {
+        host.innerHTML = OpsModal.failure('Portfolio health',error,"reloadTab('dashboard')",true);
+        return;
+    }
     _lastVM = vm;
     host.innerHTML = template(vm);
     wire(host);
@@ -434,10 +321,7 @@ const OpsDashboard = (function () {
   async function render(container) {
     _root = container;
     try { container.style.background = 'var(--fg-bg)'; container.style.minHeight = 'calc(100vh - 58px)'; } catch (_) {}   // theme-aware full-height surface
-    if (!document.getElementById('ovx-style')) {
-      const st = document.createElement('style'); st.id = 'ovx-style'; st.textContent = CSS; document.head.appendChild(st);
-    }
-    container.innerHTML = '<div class="ovx"><div style="padding:60px;text-align:center;color:#71767e">Loading overview…</div></div>';
+    container.innerHTML = '<div class="ovx"><div style="padding:60px;text-align:center;color:var(--ink-3)" role="status">Loading portfolio…</div></div>';
     await load();
     if (_timer) clearInterval(_timer);
     _timer = setInterval(load, 60000);

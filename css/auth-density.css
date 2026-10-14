@@ -1,0 +1,4 @@
+/* Keep sign-in density aligned with client and provider registration. */
+@media (min-width: 1024px) {
+  body { zoom: .8; min-height: 125svh; }
+}

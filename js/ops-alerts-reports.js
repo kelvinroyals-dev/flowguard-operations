@@ -11,181 +11,42 @@ const OpsAlerts = (function () {
   let _filter    = 'all';
   let _pg        = null;
   let _container = null;
-  const _dash = v => (v == null || v === '') ? '—' : v;
-  const _esc = s => (window.OpsModal && OpsModal.escape) ? OpsModal.escape(s) : String(s == null ? '' : s);
+  let _incidentMap = null;
+  let _incidentTheme = null;
+  let _detailId = null, _loadRevision = 0;
+  const _dash = v => (v == null || v === '') ? '—' : OpsModal.escape(v);
+  const _esc = s => OpsModal.escape(s);
+  let _queueScope = 'all', _queueTerm = '', _queueState = 'unresolved';
+  const closedIncident = a => ['resolved','closed','dismissed','cancelled'].includes(String(a.status || '').toLowerCase());
+  const stateMatches = a => _queueState === 'all' || (_queueState === 'resolved' ? closedIncident(a) : _queueState === 'in_progress' ? ['dispatched','assigned','acknowledged','in_progress','investigating'].includes(String(a.status || '').toLowerCase()) : !closedIncident(a));
+  function requireIncidentManage() { if (Auth.hasNavAccess('alerts') && Auth.can('alerts.manage')) return true; OpsModal.toast('You do not have permission to change incidents', 'watch'); return false; }
+  function queueFilter() {
+    _queueScope = document.getElementById('al-scope')?.value || 'all';
+    _queueTerm = document.getElementById('al-search')?.value.toLowerCase() || '';
+    _queueState = document.getElementById('al-state')?.value || 'unresolved';
+    setFilter(_filter);
+  }
+  function queuedAlerts() {
+    return _allAlerts.filter(a => stateMatches(a) && (_filter === 'all' || severityClass(a.severity) === _filter)
+      && (_queueScope !== 'unassigned' || !(a.assigned_team_id || a.assigned_team))
+      && (_queueScope !== 'owned' || !!(a.assigned_team_id || a.assigned_team))
+      && `${a.alert_id || a.id || ''} ${a.alert_type || a.type || ''} ${a.property_name || a.location || ''} ${a.assigned_team || ''}`.toLowerCase().includes(_queueTerm));
+  }
 
   function getToken() {
-    return localStorage.getItem('token') || sessionStorage.getItem('token');
+    return Auth.getToken();
   }
 
   function render(container) {
+    _detailId = null;
+    _loadRevision++;
+    if (_incidentTheme) { _incidentTheme.disconnect(); _incidentTheme = null; }
+    if (_incidentMap) { _incidentMap.remove(); _incidentMap = null; }
     _container = container;
     container.innerHTML = `
-      <style>
-        .ops-table tbody tr.clickable { cursor:pointer; transition:background .12s; }
-        .ops-table tbody tr.clickable:hover { background:var(--surface-2,#f2f8fb); }
-        .alert-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--err,#e5483c); margin-right:7px; vertical-align:middle; box-shadow:0 0 6px rgba(229,72,60,.55); }
-        .ops-table tbody tr.alert-unread td { font-weight:600; }
-        .al-back { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:8px 13px; cursor:pointer; }
-        .al-detail-top { display:flex; align-items:center; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
-        .al-detail-name { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; }
-        .al-detail-meta { font-size:var(--fs-sm); color:var(--ink-3); margin-top:3px; }
-        .al-detail-actions { margin-left:auto; display:flex; gap:8px; }
-        .al-section { background:var(--surface,#fff); border:1px solid var(--border); border-radius:var(--r,14px); box-shadow:var(--sh-xs); margin-bottom:14px; overflow:hidden; }
-        .al-section-h { padding:12px 18px; border-bottom:1px solid var(--border); font-family:var(--ff-d); font-size:var(--fs-sm); font-weight:700; letter-spacing:.4px; color:var(--ink); display:flex; align-items:center; justify-content:space-between; }
-        .al-section-b { padding:16px 18px; }
-        .al-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px 22px; }
-        .al-field .k { font-size:var(--fs-2xs); font-weight:700; letter-spacing:.9px; text-transform:uppercase; color:var(--ink-3); }
-        .al-field .v { font-size:var(--fs-md); color:var(--ink); font-weight:600; margin-top:3px; }
-        .al-empty { color:var(--ink-3); font-size:var(--fs-sm); padding:6px 0; }
-        .al-needs { font-size:var(--fs-xs); color:var(--ink-4); font-style:italic; }
-        /* ── Stats row — shared .fg-kpis/.fg-kpi (OpsModal.kpiStrip), and the
-           cards double as the severity filter, so the separate al-filters
-           button row underneath it is gone (was two rows doing the same
-           job, and the extra row was pure vertical space with nothing else
-           on it — the KPI-strip-eats-300px-before-a-single-record problem). ── */
-        .severity-high     { border-left-color: var(--caut, #c2410c) !important; }
-        .severity-moderate { border-left-color: var(--warn, #b45309) !important; }
-        .severity-minor    { border-left-color: var(--ink-3, #64748b) !important; }
 
-        /* ── Feed card ── */
-        .al-feed-card {
-          background: var(--surface, #fff);
-          border: 1px solid var(--border, #dae6ef);
-          border-radius: var(--r, 14px);
-          overflow: hidden;
-          box-shadow: var(--sh-xs, 0 1px 2px rgba(10,31,46,.06));
-        }
 
-        .al-feed-head {
-          padding: 14px 20px;
-          border-bottom: 1px solid var(--border, #dae6ef);
-          display: flex; align-items: center; justify-content: space-between;
-        }
-
-        .al-feed-title {
-          font-family: var(--ff-d, 'Inter', sans-serif);
-          font-size: var(--fs-md); font-weight: 700; color: var(--ink, #1c1d20);
-        }
-
-        .al-feed-body { display: flex; flex-direction: column; }
-
-        /* ── Individual alert row ── */
-        .al-row {
-          padding: 16px 20px;
-          border-bottom: 1px solid var(--border, #dae6ef);
-          display: flex; align-items: flex-start;
-          gap: 14px; transition: background .12s;
-          border-left: 3px solid transparent;
-        }
-
-        .al-row:last-child { border-bottom: none; }
-        .al-row:hover { background: var(--surface-2, #f7fafc); }
-
-        .al-row.severity-critical { border-left-color: var(--err, #dc2626); }
-        .al-row.severity-high,
-        .al-row.severity-warning  { border-left-color: var(--caut, #c2410c); }
-        .al-row.severity-moderate,
-        .al-row.severity-watch    { border-left-color: var(--warn, #b45309); }
-
-        .al-row-icon {
-          width: 36px; height: 36px; border-radius: 9px;
-          display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0; margin-top: 1px;
-        }
-
-        .al-row-body { flex: 1; min-width: 0; }
-
-        .al-row-top {
-          display: flex; align-items: center; gap: 8px;
-          margin-bottom: 4px; flex-wrap: wrap;
-        }
-
-        .al-row-title {
-          font-size: var(--fs-md); font-weight: 700;
-          color: var(--ink, #1c1d20);
-        }
-
-        .al-row-location {
-          font-size: var(--fs-base); color: var(--ink-3, #8b909a);
-          margin-bottom: 3px;
-          display: flex; align-items: center; gap: 4px;
-        }
-
-        .al-row-meta {
-          display: flex; align-items: center; gap: 10px;
-          font-size: var(--fs-xs); color: var(--ink-4, #b5b8be);
-          font-family: var(--ff-m, 'JetBrains Mono', monospace);
-        }
-
-        .al-row-assigned {
-          margin-top: 8px; padding: 6px 10px;
-          background: var(--surface-3, #eef4f8);
-          border-radius: 6px;
-          font-size: var(--fs-sm); color: var(--ink-2, #34363b);
-          display: flex; align-items: center; gap: 6px;
-        }
-
-        .al-row-actions {
-          display: flex; align-items: center;
-          gap: 6px; flex-shrink: 0;
-        }
-
-        .al-action-btn {
-          padding: 6px 14px;
-          border-radius: var(--rs, 9px);
-          border: 1px solid var(--border, #dae6ef);
-          background: var(--surface-2, #f7fafc);
-          font-family: var(--ff-b, 'Inter', sans-serif);
-          font-size: var(--fs-sm); font-weight: 600;
-          color: var(--ink-2, #34363b);
-          cursor: pointer; transition: all .18s;
-          white-space: nowrap;
-        }
-
-        .al-action-btn:hover { border-color: var(--blue, #5379ff); color: var(--blue, #5379ff); background: rgba(22,168,211,.05); }
-        .al-action-btn.primary { background: var(--navy, #17181b); border-color: var(--navy, #17181b); color: white; }
-        .al-action-btn.primary:hover { background: var(--navy-mid, #0d3a54); }
-        .al-action-btn.resolve { background: var(--ok-bg, #e2f5ee); border-color: var(--ok, #0a8a6a); color: var(--ok, #0a8a6a); }
-        .al-action-btn.resolve:hover { background: var(--ok, #0a8a6a); color: white; }
-
-        /* Empty state */
-        .al-empty {
-          padding: 60px 20px; text-align: center;
-          color: var(--ink-3, #8b909a);
-        }
-
-        .al-empty svg { margin: 0 auto 14px; display: block; opacity: .25; }
-        .al-empty-title { font-size: var(--fs-md); font-weight: 600; color: var(--ink-2, #34363b); margin-bottom: 4px; }
-        .al-empty-sub   { font-size: var(--fs-sm); }
-
-        /* ── Incident Intelligence — the "days flood-free" sweep already runs
-           every 15 minutes (utils/incidents.js) and raises a candidate the
-           moment a sensor holds a critical level for a sustained window.
-           That automation existed with a full confirm/dismiss API and had
-           never been surfaced anywhere in ops — this is the one place a
-           proactive "we already caught this, confirm or dismiss" signal
-           belongs, ahead of the reactive Active Incidents feed below it. ── */
-        .ic-card { background: var(--surface, #fff); border: 1px solid var(--blue-dim, #7dd3fc); border-radius: var(--r, 14px); overflow: hidden; box-shadow: var(--sh-xs, 0 1px 2px rgba(10,31,46,.06)); margin-bottom: 16px; }
-        .ic-head { padding: 14px 20px; border-bottom: 1px solid var(--border, #dae6ef); background: var(--neon-trace, rgba(22,168,211,.06)); }
-        .ic-title { font-family: var(--ff-d, 'Inter', sans-serif); font-size: var(--fs-md); font-weight: 700; color: var(--ink, #1c1d20); display: flex; align-items: center; gap: 8px; }
-        .ic-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 100px; background: var(--wb, #fef3c7); color: var(--warn, #b45309); font-size: var(--fs-2xs); font-weight: 800; }
-        .ic-sub { font-size: var(--fs-sm); color: var(--ink-3, #8b909a); margin-top: 3px; line-height: 1.5; max-width: 680px; }
-        .ic-row { padding: 14px 20px; border-bottom: 1px solid var(--border, #dae6ef); display: flex; align-items: center; gap: 14px; }
-        .ic-row:last-child { border-bottom: none; }
-        .ic-row-body { flex: 1; min-width: 0; }
-        .ic-row-title { font-size: var(--fs-md); font-weight: 700; color: var(--ink, #1c1d20); }
-        .ic-row-meta { font-size: var(--fs-xs); color: var(--ink-3, #8b909a); font-family: var(--ff-m, 'JetBrains Mono', monospace); margin-top: 2px; }
-        .ic-row-peak { font-family: var(--ff-m, 'JetBrains Mono', monospace); font-weight: 700; color: var(--warn, #b45309); white-space: nowrap; }
-        .ic-empty { padding: 20px; text-align: center; color: var(--ink-3, #8b909a); font-size: var(--fs-sm); }
-      </style>
-
-      <div class="fg-page-header">
-        <div>
-          <div class="fg-page-title">Alerts</div>
-          <div class="fg-page-sub">Active incidents raised by the Sentinel network, ranked by severity</div>
-        </div>
-      </div>
+      ${OpsModal.pageHeader({title:'Incidents',subtitle:'Response queue and recorded outcomes, ranked by severity'})}
 
       <!-- Stats/filter — matches alerts.severity CHECK constraint exactly: critical | high | moderate | minor -->
       <div id="al-stats"></div>
@@ -193,20 +54,25 @@ const OpsAlerts = (function () {
       <!-- Incident Intelligence — pattern-detected candidates, ahead of the reactive feed -->
       <div class="ic-card" id="ic-card">
         <div class="ic-head">
-          <div class="ic-title">Incident Intelligence <span class="ic-badge" id="ic-badge" style="display:none;"></span></div>
-          <div class="ic-sub">Sustained-breach patterns the network already caught — a sweep checks every 15 minutes. Confirm to write the incident, or dismiss as a false positive, before either touches Active Incidents below.</div>
+          <div class="ic-title">Detection candidates <span class="ic-badge" id="ic-badge" style="display:none;"></span></div>
+          <div class="ic-sub">Review detection candidates separately from the active incident queue above. Confirm a candidate to create an incident, or dismiss it with a reason after review.</div>
         </div>
         <div id="ic-body">
-          <div class="ic-empty">Checking for pattern-detected candidates…</div>
+          ${OpsModal.loading('Checking detection candidates…')}
         </div>
       </div>
 
       <!-- Feed -->
-      <div class="al-feed-card">
+      <div class="al-feed-card" id="al-feed-card">
+        <div class="lv-toolbar">
+          <div class="lv-search"><input id="al-search" aria-label="Search incidents" placeholder="Search incident, estate or owner…" oninput="OpsAlerts.queueFilter()"></div>
+          <select id="al-scope" class="um-filter" aria-label="Incident ownership" onchange="OpsAlerts.queueFilter()"><option value="all">All ownership</option><option value="unassigned">Needs an owner</option><option value="owned">Owner assigned</option></select>
+          <select id="al-state" class="um-filter" aria-label="Incident response state" onchange="OpsAlerts.queueFilter()"><option value="unresolved">Unresolved</option><option value="in_progress">Response in progress</option><option value="resolved">Recorded outcomes</option><option value="all">All returned incidents</option></select>
+        </div>
         <div class="al-feed-head">
-          <div class="al-feed-title">Active Incidents</div>
-          <button class="btn-ghost" onclick="OpsAlerts.refresh()" style="font-size:var(--fs-sm);padding:6px 12px;">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          <div class="al-feed-title">Incident response queue</div>
+          <button class="fg-action" onclick="OpsAlerts.refresh()">
+            ${OpsModal.actionIcon('refresh')}
             Refresh
           </button>
         </div>
@@ -219,6 +85,9 @@ const OpsAlerts = (function () {
       </div>
     `;
 
+    // Response comes first; detection candidates are a separate review queue.
+    const intelligence = container.querySelector('#ic-card');
+    if (intelligence) container.append(intelligence);
     loadAlerts();
     loadCandidates();
   }
@@ -229,11 +98,11 @@ const OpsAlerts = (function () {
   async function loadCandidates() {
     try {
       const r = await OpsModal.apiGet('/monitoring/incident-candidates?status=pending');
-      _candidates = r.data || [];
+      _candidates = OpsModal.readArray(r,'Detection candidates');
       renderCandidates();
     } catch (err) {
       const body = document.getElementById('ic-body');
-      if (body) body.innerHTML = `<div class="ic-empty">Couldn't load incident candidates — ${err.message || 'network error'}.</div>`;
+      if (body) body.innerHTML = OpsModal.failure('Detection candidates',err,'OpsAlerts.refresh()');
     }
   }
 
@@ -246,7 +115,7 @@ const OpsAlerts = (function () {
       badge.style.display = _candidates.length ? '' : 'none';
     }
     if (!_candidates.length) {
-      body.innerHTML = '<div class="ic-empty">No sustained-breach patterns awaiting review — the network is quiet.</div>';
+      body.innerHTML = OpsModal.emptyState(OpsModal.entityIcon('incident'),'No detection candidates returned','No pending candidates were returned for review. This is separate from the active incident queue.');
       return;
     }
     body.innerHTML = _candidates.map(c => {
@@ -261,8 +130,8 @@ const OpsAlerts = (function () {
           </div>
           <div class="ic-row-peak">${c.peak_level != null ? Math.round(c.peak_level) + '%' : '—'}</div>
           <div class="al-row-actions">
-            <button class="al-action-btn" onclick="OpsAlerts.dismissCandidate(${parseInt(c.id, 10)})">Dismiss</button>
-            <button class="al-action-btn resolve" onclick="OpsAlerts.confirmCandidate(${parseInt(c.id, 10)})">Confirm incident</button>
+            <button class="fg-action" onclick="OpsAlerts.dismissCandidate(${parseInt(c.id, 10)})">Dismiss</button>
+            <button class="resolve fg-action" onclick="OpsAlerts.confirmCandidate(${parseInt(c.id, 10)})">Confirm incident</button>
           </div>
         </div>`;
     }).join('');
@@ -292,7 +161,7 @@ const OpsAlerts = (function () {
       ${OpsModal.field('Reason (optional)', 'note', 'textarea', '', { required: false, placeholder: "Why this isn't a real incident" })}
     `, [
       { label: 'Cancel', onclick: 'OpsModal.close()' },
-      { label: 'Dismiss', class: 'btn-ghost', onclick: `OpsAlerts.resolveCandidate(${id}, false)` },
+      { label: 'Dismiss', class: 'btn-danger', onclick: `OpsAlerts.resolveCandidate(${id}, false)` },
     ]);
   }
 
@@ -313,6 +182,7 @@ const OpsAlerts = (function () {
   }
 
   async function loadAlerts() {
+    const revision=++_loadRevision;
     try {
       const res    = await fetch(`${CONFIG.API_BASE}/alerts`, {
         headers: { 'Authorization': `Bearer ${getToken()}` }
@@ -320,36 +190,46 @@ const OpsAlerts = (function () {
       if (!res.ok) throw new Error(`${res.status}`);
       const data   = await res.json();
       const _raw   = Array.isArray(data.data) ? data.data
-                   : Array.isArray(data.alerts) ? data.alerts : [];
+                   : Array.isArray(data.alerts) ? data.alerts : null;
+      if (!_raw) throw new Error('Incident records were not supplied');
+      if (revision !== _loadRevision) return;
       // "Active Incidents" means unresolved — resolved/closed alerts must not
       // appear in the feed nor inflate the severity counts or Total Active.
-      _allAlerts   = _raw.filter(a => !['resolved', 'closed', 'dismissed'].includes(String(a.status || 'active').toLowerCase()));
+      _allAlerts = _raw;
+      if (_detailId != null) {
+        if (typeof updateAlertCount === 'function') updateAlertCount(OpsModal.scopeCount(_allAlerts,'alerts'));
+        return;
+      }
+      const stateControl = document.getElementById('al-state'); if (stateControl) stateControl.value = _queueState;
       updateStats(_allAlerts);
-      _pg = FGPaginator.create(_allAlerts, { pageSize: 20, containerId: 'al-feed-card' });
+      _pg = FGPaginator.create(queuedAlerts(), { pageSize: 20, containerId: 'al-feed-card' });
       _pg.render((items) => renderFeed(items, _filter));
-      if (typeof updateAlertCount === 'function') updateAlertCount(_allAlerts.length);
+      if (typeof updateAlertCount === 'function') updateAlertCount(OpsModal.scopeCount(_allAlerts,'alerts'));
     } catch (err) {
+      if (revision !== _loadRevision || _detailId != null) return;
       renderError(err.message);
     }
   }
 
-  const WARN_ICON = '<path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/>';
-  const CHECK_ICON = '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>';
 
   // Shared KpiStrip, doubling as the severity filter (matches the Properties
   // pipeline pattern) — was a stat-card row PLUS a separate filter-button
   // row underneath doing the same job, costing an extra ~40px of vertical
   // space above the fold with nothing on it but redundant controls.
   function updateStats(alerts) {
+    const WARN_ICON = OpsModal.icon('incident');
+    const CHECK_ICON = OpsModal.icon('verify');
+    alerts = alerts.filter(stateMatches);
     // alerts.severity CHECK constraint: critical | high | moderate | minor.
     // One count per real value — no folding into legacy 3-bucket labels.
-    let critical = 0, high = 0, moderate = 0, minor = 0;
+    let critical = 0, high = 0, moderate = 0, minor = 0, unknown=0;
     alerts.forEach(a => {
       switch (severityClass(a.severity)) {
         case 'critical': critical++; break;
         case 'high':     high++;     break;
         case 'moderate': moderate++; break;
-        default:         minor++;
+        case 'minor': minor++; break;
+        default: unknown++; break;
       }
     });
     const el = document.getElementById('al-stats');
@@ -358,15 +238,16 @@ const OpsAlerts = (function () {
       { icon: WARN_ICON,  color: 'var(--err)',   label: 'Critical',    value: critical, active: _filter === 'critical', onClick: "OpsAlerts.setFilter('critical')" },
       { icon: WARN_ICON,  color: 'var(--caut)',  label: 'High',        value: high,     active: _filter === 'high',     onClick: "OpsAlerts.setFilter('high')" },
       { icon: WARN_ICON,  color: 'var(--warn)',  label: 'Moderate',    value: moderate, active: _filter === 'moderate', onClick: "OpsAlerts.setFilter('moderate')" },
-      { icon: WARN_ICON,  color: 'var(--ink-3)', label: 'Minor',       value: minor,    active: _filter === 'minor',    onClick: "OpsAlerts.setFilter('minor')" },
-      { icon: CHECK_ICON, color: 'var(--blue-hi)', label: 'Total Active', value: alerts.length, active: _filter === 'all', onClick: "OpsAlerts.setFilter('all')" },
-    ]);
+      { icon: WARN_ICON,  color: 'var(--ink-3)', label: 'Low',         value: minor,    active: _filter === 'minor',    onClick: "OpsAlerts.setFilter('minor')" },
+      ...(unknown ? [{icon:WARN_ICON,color:'var(--ink-3)',label:'Unknown severity',value:unknown,active:_filter==='unknown',onClick:"OpsAlerts.setFilter('unknown')"}] : []),
+      { icon: CHECK_ICON, color: 'var(--blue-hi)', label: 'Returned in state', value: alerts.length, active: _filter === 'all', onClick: "OpsAlerts.setFilter('all')" },
+    ])+OpsModal.provenance([['Metric cohort',`${alerts.length} returned incidents in the selected response state`]],'Severity counts precede severity, ownership and search filters. Returned matches below reflect those additional filters. The sidebar counts returned unresolved incidents, not a complete platform total.');
   }
 
   function setFilter(f) {
     _filter = f;
     updateStats(_allAlerts);
-    const filtered = f === 'all' ? _allAlerts : _allAlerts.filter(a => severityClass(a.severity) === f);
+    const filtered = queuedAlerts();
     if (_pg) _pg.update(filtered);
     else renderFeed(filtered, f);
   }
@@ -385,33 +266,18 @@ const OpsAlerts = (function () {
     switch ((s || '').toLowerCase()) {
       case 'critical': return 'critical';
       case 'high':     return 'high';
+      case 'medium':
       case 'moderate': return 'moderate';
+      case 'low':
       case 'minor':    return 'minor';
-      default:         return 'minor';
+      default:         return 'unknown';
     }
   }
 
   // one label, used everywhere, matching what the database actually stores
   function severityLabel(s) {
     const c = severityClass(s);
-    return c.charAt(0).toUpperCase() + c.slice(1);
-  }
-
-  function severityIcon(s) {
-    s = s?.toLowerCase();
-    const colors = { critical: 'var(--err)', high: 'var(--caut)', moderate: 'var(--warn)', minor: 'var(--ink-3)' };
-    const bgs    = { critical: 'var(--eb)',   high: 'var(--cb)',   moderate: 'var(--wb)',   minor: 'var(--surface-2)' };
-    const sc     = severityClass(s);
-    return { color: colors[sc] || 'var(--warn)', bg: bgs[sc] || 'var(--wb)' };
-  }
-
-  // maps the 4 real severities onto the shared .status-badge palette
-  // (index.html) instead of a 3-bucket approximation:
-  //   critical -> critical (red)   high -> warning (orange)
-  //   moderate -> watch (amber)    minor -> offline (grey)
-  function severityBadgeClass(s) {
-    const m = { critical: 'critical', high: 'warning', moderate: 'watch', minor: 'offline' };
-    return m[severityClass(s)] || 'watch';
+    return c==='minor'?'Low':OpsModal.label(c);
   }
 
   function renderFeed(alerts, filter) {
@@ -419,335 +285,140 @@ const OpsAlerts = (function () {
     if (!feed) return;
 
     if (!alerts || alerts.length === 0) {
-      feed.innerHTML = `
-        <div class="al-empty">
-          <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          <div class="al-empty-title">${filter === 'all' ? 'No active alerts' : `No ${filter} alerts`}</div>
-          <div class="al-empty-sub">All systems are operating normally</div>
-        </div>`;
+      feed.innerHTML = OpsModal.emptyState(OpsModal.entityIcon('incident'),_allAlerts.length?'No matching incidents':'No incidents returned',_allAlerts.length?'No returned incidents match the response state and filters. Change the filters to broaden this queue. This does not confirm device or network health.':'No incidents were returned by this feed. This does not confirm device or network health.');
       return;
     }
 
-    const sevPill = { critical: 'danger', high: 'danger', moderate: 'warn', minor: 'neutral' };
     const sevTile = { critical: 'var(--err)', high: 'var(--caut)', moderate: 'var(--warn)', minor: 'var(--ink-3)' };
-    const stPill = { active: 'warn', new: 'warn', dispatched: 'ok', acknowledged: 'ok', in_progress: 'ok' };
-    const TRI = '<path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/>';
     feed.innerHTML = `
       <div class="lv-scroll"><table class="lv-table">
         <thead><tr>
-          <th>Alert ID</th><th>Alert type</th><th>Property</th><th>Device</th>
-          <th>Severity</th><th>Trigger time</th><th>Status</th><th>Assigned to</th>
+          <th scope="col">Incident</th><th scope="col">Estate</th><th scope="col">Severity</th><th scope="col">Owner</th><th scope="col">Response state</th><th scope="col">Raised</th>
         </tr></thead>
         <tbody>
           ${alerts.map(a => {
-            const id = a.alert_id || a.id;
-            const type = a.alert_type || a.type || 'System Alert';
-            const location = a.location || a.property || a.property_name || a.site_name || '—';
-            const status = String(a.status || 'active').toLowerCase();
+            const id = OpsModal.sid(a.alert_id || a.id);
+            const type = a.alert_type || a.type || 'Incident';
+            const location = a.property_name || a.property || a.site_name || a.location || '—';
             const sc = severityClass(a.severity);
-            return `<tr class="clickable" onclick="OpsAlerts.open('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsAlerts.open('${id}')}">
-              <td><div class="lv-name-cell"><div class="lv-avatar" style="background:var(--surface-3);color:${sevTile[sc] || 'var(--ink-3)'};border:1px solid var(--border);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${TRI}</svg></div><div style="min-width:0;"><div class="lv-name lv-mono">${_esc(id)}</div></div></div></td>
-              <td>${_esc(type)}</td>
-              <td>${_dash(location)}</td>
-              <td>${_dash(a.sensor_name || a.device_name)}</td>
-              <td><span class="lv-status ${sevPill[sc] || 'neutral'}">${severityLabel(a.severity)}</span></td>
-              <td class="lv-mono">${formatTime(a.timestamp || a.created_at)}</td>
-              <td><span class="lv-status ${stPill[status] || 'neutral'}">${_esc(a.status || 'active')}</span></td>
+            return `<tr class="clickable" onclick="OpsAlerts.open('${id}')">
+              <td><button class="record-link" onclick="event.stopPropagation();OpsAlerts.open('${OpsModal.sid(id)}')">${_esc(type)}</button><div class="lv-source">${_esc(id)}${a.sensor_name ? ' · ' + _esc(a.sensor_name) : ''}</div></td>
+              <td><span class="fg-cell-copy">${_esc(location)}</span></td>
+              <td>${OpsModal.status(a.severity,severityLabel(a.severity),null,'severity')}</td>
               <td>${a.assigned_team ? _esc(a.assigned_team) : '<span class="lv-dash">Unassigned</span>'}</td>
+              <td>${OpsModal.status(a.status,null,['resolved','closed'].includes(a.status)?'ok':'neutral')}</td>
+              <td class="lv-mono">${formatTime(a.timestamp || a.created_at)}</td>
             </tr>`;
           }).join('')}
         </tbody>
       </table></div>`;
   }
 
-  function formatTime(ds) {
-    if (!ds) return '—';
-    const diff = Date.now() - new Date(ds).getTime();
-    const mins = Math.floor(diff / 60000);
-    const hrs  = Math.floor(diff / 3600000);
-    if (mins < 1)  return 'Just now';
-    if (mins < 60) return `${mins}m ago`;
-    if (hrs  < 24) return `${hrs}h ago`;
-    return new Date(ds).toLocaleDateString('en-GB', { day:'numeric', month:'short' });
-  }
+  function formatTime(ds) { return OpsModal.relativeTime(ds); }
 
   function back() { if (_container) render(_container); }
 
-  // ── FULL DETAIL SCREEN (no pop-up) ──
-  // ── Alert detail v2 — two-column glass layout (from mockup) ───────────
-  const ALD_CSS = `
-    <style>
-      .ald { display:flex; flex-direction:column; gap:16px; }
-      .ald-crumb { display:flex; align-items:center; gap:6px; font-size:var(--fs-2xs); color:var(--ink-3); padding:2px 2px; }
-      .ald-crumb .lnk { color:var(--ink-2); font-weight:600; cursor:pointer; }
-      .ald-crumb .lnk:hover { color:var(--ink); }
-      .ald-crumb .sep { opacity:.5; }
-      .ald-crumb .cur { color:var(--ink); font-weight:700; }
-      .ald-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--sh-xs); padding:20px 22px; scroll-margin-top:72px; }
-      .ald-header { display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; }
-      .ald-header-main { flex:1; min-width:0; }
-      .ald-header-top { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-      .ald-title { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; text-transform:capitalize; }
-      .ald-chip { font-size:var(--fs-2xs); font-weight:700; padding:4px 11px; border-radius:20px; display:inline-flex; align-items:center; gap:6px; }
-      .ald-chip .dot { width:6px; height:6px; border-radius:50%; background:currentColor; }
-      .ald-chip.ok { background:rgba(31,157,91,.12); color:var(--ok); }
-      .ald-chip.warn { background:rgba(224,142,18,.12); color:var(--warn); }
-      .ald-chip.danger { background:rgba(217,70,60,.12); color:var(--err); }
-      .ald-chip.neutral { background:var(--surface-2); color:var(--ink-3); }
-      .ald-meta { display:flex; gap:16px; flex-wrap:wrap; margin-top:8px; font-size:var(--fs-sm); color:var(--ink-2); }
-      .ald-meta b { color:var(--ink); font-weight:600; margin-right:5px; }
-      .ald-actions { display:flex; gap:8px; flex-shrink:0; flex-wrap:wrap; }
-      .ald-btn { font-size:var(--fs-sm); font-weight:600; padding:9px 16px; border-radius:10px; cursor:pointer; border:1px solid var(--border-2); color:var(--ink-2); background:var(--surface); }
-      .ald-btn:hover { border-color:var(--ink-4); color:var(--ink); }
-      .ald-btn.primary { background:var(--blue-hi); color:#fff; border:none; }
-      .ald-secnav { display:flex; gap:4px; padding:6px; flex-wrap:wrap; position:sticky; top:6px; z-index:6; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:var(--sh-xs); }
-      .ald-secnav a { font-size:var(--fs-xs); font-weight:600; color:var(--ink-2); padding:8px 13px; border-radius:9px; cursor:pointer; white-space:nowrap; }
-      .ald-secnav a:hover { background:var(--surface-2); }
-      .ald-secnav a.active { background:var(--surface-2); color:var(--ink); }
-      .ald-grid { display:grid; grid-template-columns:1fr 300px; gap:16px; align-items:start; }
-      .ald-main { display:flex; flex-direction:column; gap:16px; min-width:0; }
-      .ald-side { display:flex; flex-direction:column; gap:14px; position:sticky; top:72px; }
-      @media (max-width:900px){ .ald-grid{ grid-template-columns:1fr; } .ald-side{ position:static; } }
-      .ald-card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
-      .ald-card-head h2 { font-family:var(--ff-d); font-size:var(--fs-md); font-weight:700; color:var(--ink); }
-      .ald-card-head .cmeta { font-size:var(--fs-2xs); color:var(--ink-3); font-family:var(--ff-m); }
-      .ald-fact { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); font-size:var(--fs-sm); }
-      .ald-fact:last-child { border-bottom:none; }
-      .ald-fact .k { color:var(--ink-3); }
-      .ald-fact .v { font-weight:600; color:var(--ink); text-align:right; }
-      .ald-mono { font-family:var(--ff-m); }
-      .ald-desc { margin-top:14px; }
-      .ald-desc .dk { font-size:var(--fs-2xs); font-weight:700; letter-spacing:.9px; text-transform:uppercase; color:var(--ink-3); margin-bottom:6px; }
-      .ald-desc .dv { font-size:var(--fs-sm); color:var(--ink-2); line-height:1.6; white-space:pre-wrap; }
-      .ald-tl-row { display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); align-items:flex-start; }
-      .ald-tl-row:last-child { border-bottom:none; }
-      .ald-tl-icon { width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-      .ald-tl-icon svg { width:15px; height:15px; }
-      .ald-tl-title { font-size:var(--fs-sm); font-weight:600; color:var(--ink); }
-      .ald-tl-meta { font-size:var(--fs-xs); color:var(--ink-3); margin-top:2px; }
-      .ald-tl-time { margin-left:auto; font-size:var(--fs-2xs); color:var(--ink-3); font-family:var(--ff-m); white-space:nowrap; }
-      .ald-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:28px 20px; text-align:center; gap:8px; }
-      .ald-empty svg { width:28px; height:28px; color:var(--ink-3); opacity:.6; }
-      .ald-empty .t { font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); }
-      .ald-empty .s { font-size:var(--fs-xs); color:var(--ink-3); max-width:340px; line-height:1.5; }
-      .ald-mapbox { height:190px; border-radius:12px; overflow:hidden; background:var(--surface-2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; }
-    </style>`;
-
   function open(id) {
     if (!_container) return;
-    const a = _allAlerts.find(x => (x.alert_id || x.id) == id);
-    if (!a) { OpsModal.toast('Alert not found', 'warning'); return; }
-    const L = OpsModal.link;
-    const status = (a.status || 'active').toLowerCase();
-    const isResolved = status === 'resolved';
-    const created = a.timestamp || a.created_at;
-    const dt = v => v ? OpsModal.fmtDateTime(v) : '—';
-    const typeLabel = (a.alert_type || a.type || 'System Alert').replace(/_/g, ' ');
-    const sevCls = (() => { const v = String(a.severity || '').toLowerCase(); return (v === 'critical' || v === 'high') ? 'danger' : (v === 'moderate' || v === 'medium') ? 'warn' : v ? 'ok' : 'neutral'; })();
-    const statusCls = isResolved ? 'ok' : status === 'active' ? 'danger' : 'warn';
-    const statusLabel = isResolved ? 'Resolved' : (a.status || 'Active').charAt(0).toUpperCase() + (a.status || 'Active').slice(1);
-    const deviceLink = a.sensor_id ? L('sensors', a.sensor_id, a.sensor_name || a.device_name || a.sensor_id) : _dash(a.sensor_name || a.device_name);
-    const propLink = a.property_id ? L('properties', a.property_id, a.property_name || a.property || a.location) : _dash(a.location || a.property || a.property_name || a.site_name);
-
-    const fact = (k, v) => `<div class="ald-fact"><span class="k">${k}</span><span class="v">${v}</span></div>`;
-    const emptyBox = (icon, t, s) => `<div class="ald-empty">${icon}<div class="t">${t}</div><div class="s">${s}</div></div>`;
-    const iClip  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21.4 11.5l-9.2 9.2a5 5 0 01-7.1-7.1l9.2-9.2a3.5 3.5 0 015 5l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5"/></svg>';
-    const iList  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>';
-    const iDoc   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>';
-    const iAlert = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2.6 17.5a1.5 1.5 0 001.3 2.3h16.2a1.5 1.5 0 001.3-2.3L13.7 3.9a1.5 1.5 0 00-2.6 0z"/></svg>';
-    const iUser  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0113 0"/></svg>';
-    const iCheck = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>';
-
-    const infoBody = `
-      ${fact('Alert ID', `<span class="ald-mono">${a.alert_id || a.id}</span>`)}
-      ${fact('Alert type', `<span class="ald-mono">${a.alert_type || a.type || '—'}</span>`)}
-      ${fact('Severity', `<span style="color:var(--${sevCls === 'danger' ? 'err' : sevCls === 'warn' ? 'warn' : 'ok'});">${severityLabel(a.severity)}</span>`)}
-      ${fact('Status', `<span style="color:var(--${statusCls === 'ok' ? 'ok' : statusCls === 'danger' ? 'err' : 'warn'});">${statusLabel}</span>`)}
-      ${fact('Location', _dash(a.location || a.property || a.site_name))}
-      ${fact('Assigned team', a.assigned_team ? L('teams', a.assigned_team_id || a.assigned_team, a.assigned_team) : '—')}
-      ${a.time_to_overflow_min ? fact('Time to overflow', `<span style="color:var(--err);font-weight:700;">${a.time_to_overflow_min} min</span>`) : ''}
-      ${a.description ? `<div class="ald-desc"><div class="dk">Description</div><div class="dv">${a.description}</div></div>` : ''}`;
-
-    const mapBody = (a.latitude && a.longitude)
-      ? `<div class="ald-mapbox"><div style="text-align:center;">
-           <div class="ald-mono" style="font-size:var(--fs-md);color:var(--ink);font-weight:700;">${a.latitude}, ${a.longitude}</div>
-           <div style="font-size:var(--fs-xs);color:var(--ink-3);margin-top:4px;">Alert location</div>
-         </div></div>
-         <div style="margin-top:12px;"><button class="ald-btn" onclick="switchTab('dashboard')">Open on operational map →</button></div>`
-      : emptyBox(iDoc, 'No coordinates', 'This alert has no latitude/longitude to plot on the operational map.');
-
-    const deviceBody = a.sensor_id
-      ? `${fact('Device', deviceLink)}
-         ${fact('Sentinel ID', `<span class="ald-mono">${a.sensor_id}</span>`)}
-         ${a.sensor_name ? fact('Name', a.sensor_name) : ''}
-         <div style="margin-top:12px;"><button class="ald-btn" onclick="fgOpen('sensors','${String(a.sensor_id).replace(/'/g, "\\'")}')">Open device record →</button></div>`
-      : emptyBox(iAlert, 'No device linked', 'This alert is not tied to a Sentinel device.');
-
-    const propBody = a.property_id
-      ? `${fact('Property', propLink)}
-         ${fact('Property ID', `<span class="ald-mono">${a.property_id}</span>`)}
-         <div style="margin-top:12px;"><button class="ald-btn" onclick="fgOpen('properties','${String(a.property_id).replace(/'/g, "\\'")}')">Open property record →</button></div>`
-      : emptyBox(iAlert, 'No property linked', 'This alert is not tied to a property record.');
-
-    // Timeline — derived from the fields the alert carries
-    const tl = [];
-    if (created) tl.push({ t: 'Alert created', m: 'Raised from telemetry ingest', d: created, bg: 'rgba(217,70,60,.12)', c: 'var(--err)', ic: iAlert });
-    if (a.assigned_team) tl.push({ t: 'Assigned to ' + a.assigned_team, m: 'Dispatched to field crew', d: created, bg: 'rgba(28,184,232,.12)', c: 'var(--blue-hi)', ic: iUser });
-    if (isResolved) tl.push({ t: 'Resolved', m: a.outcome || 'Marked resolved', d: a.resolved_at || created, bg: 'rgba(31,157,91,.12)', c: 'var(--ok)', ic: iCheck });
-    const timelineBody = tl.length
-      ? tl.map(e => `<div class="ald-tl-row">
-          <div class="ald-tl-icon" style="background:${e.bg};color:${e.c};">${e.ic}</div>
-          <div><div class="ald-tl-title">${e.t}</div><div class="ald-tl-meta">${e.m}</div></div>
-          <div class="ald-tl-time">${dt(e.d)}</div>
-        </div>`).join('')
-      : emptyBox(iCheck, 'No timeline yet', 'Events appear here as the alert is assigned and resolved.');
-
-    const resolutionBody = isResolved
-      ? `${a.ticket_id ? fact('Linked ticket', L('maintenance', a.ticket_id, a.ticket_id)) : ''}
-         ${fact('Outcome', _dash(a.outcome))}
-         ${fact('Resolved at', `<span class="ald-mono">${dt(a.resolved_at || created)}</span>`)}
-         ${a.notes ? `<div class="ald-desc"><div class="dk">Resolution notes</div><div class="dv">${a.notes}</div></div>` : ''}`
-      : `${a.ticket_id ? fact('Linked ticket', L('maintenance', a.ticket_id, a.ticket_id)) : ''}`
-        + emptyBox(iCheck, 'Still open', 'This incident has not been resolved yet. Resolve it to record the outcome.') + (a.notes ? `<div class="ald-desc"><div class="dk">Field notes</div><div class="dv">${a.notes}</div></div>` : '');
-
-    const SECTIONS = [
-      ['info', 'Alert information', 'alerts', infoBody],
-      ['map', 'Map', 'alert location', mapBody],
-      ['device', 'Related device', 'sensor_id join', deviceBody],
-      ['property', 'Related property', 'property_id join', propBody],
-      ['timeline', 'Timeline', 'derived events', timelineBody],
-      ['resolution', 'Resolution', isResolved ? 'resolved' : 'open', resolutionBody],
-      ['attachments', 'Attachments', '', emptyBox(iClip, 'No attachments', 'No files are stored against this alert.')],
-      ['activity', 'Activity log', "audit_log · entity_type = 'alert'", emptyBox(iList, 'No activity log', 'A per-alert audit trail is not available in this response.')],
-    ];
-    const navHTML = SECTIONS.map((sec, idx) =>
-      `<a class="${idx === 0 ? 'active' : ''}" onclick="this.parentNode.querySelectorAll('a').forEach(function(x){x.classList.remove('active')});this.classList.add('active');var el=document.getElementById('ald-${sec[0]}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'})">${sec[1]}</a>`
-    ).join('');
-    const cardsHTML = SECTIONS.map(sec =>
-      `<div class="ald-card" id="ald-${sec[0]}">
-         <div class="ald-card-head"><h2>${sec[1]}</h2>${sec[2] ? `<span class="cmeta">${sec[2]}</span>` : ''}</div>
-         ${sec[3]}
-       </div>`
-    ).join('');
-
-    const sidebar = `
-      <div class="ald-card">
-        <div class="ald-card-head"><h2 style="font-size:var(--fs-sm);">Quick facts</h2></div>
-        ${fact('Alert ID', `<span class="ald-mono">${a.alert_id || a.id}</span>`)}
-        ${fact('Severity', severityLabel(a.severity))}
-        ${fact('Status', `<span style="color:var(--${statusCls === 'ok' ? 'ok' : statusCls === 'danger' ? 'err' : 'warn'});">${statusLabel}</span>`)}
-        ${fact('Created', `<span class="ald-mono">${dt(created)}</span>`)}
-        ${isResolved ? fact('Resolved', `<span class="ald-mono">${dt(a.resolved_at || created)}</span>`) : ''}
-      </div>
-      <div class="ald-card">
-        <div class="ald-card-head"><h2 style="font-size:var(--fs-sm);">Related</h2></div>
-        ${fact('Device', deviceLink)}
-        ${fact('Property', propLink)}
-        ${a.assigned_team ? fact('Team', L('teams', a.assigned_team_id || a.assigned_team, a.assigned_team)) : ''}
-      </div>`;
-
-    const ticketBtn = a.ticket_id
-      ? `<button class="ald-btn" onclick="fgOpen('maintenance','${String(a.ticket_id).replace(/'/g, "\\'")}')">View ticket</button>`
-      : '';
-    const actions = (isResolved
-      ? [ticketBtn, canMng() ? `<button class="ald-btn primary" onclick="OpsAlerts.reopenAlert('${id}')">Reopen</button>` : '']
-      : [canMng() ? `<button class="ald-btn primary" onclick="OpsAlerts.assignAlert('${id}')">Assign team</button>` : '',
-         canMng() ? `<button class="ald-btn" onclick="OpsAlerts.resolveAlert('${id}')">Resolve</button>` : '', ticketBtn]
-    ).filter(Boolean).join('');
-
-    _container.innerHTML = `
-      ${ALD_CSS}
-      <div class="ald">
-        <div class="ald-crumb">
-          <span class="lnk" onclick="OpsAlerts.back()">Alerts</span>
-          <span class="sep">/</span>
-          <span class="cur">${a.alert_id || a.id}</span>
-        </div>
-
-        <div class="ald-card ald-header">
-          <div class="ald-header-main">
-            <div class="ald-header-top">
-              <span class="ald-title">${typeLabel}</span>
-              <span class="ald-chip ${sevCls}">${severityLabel(a.severity)}</span>
-              <span class="ald-chip ${statusCls}"><span class="dot"></span>${statusLabel}</span>
-            </div>
-            <div class="ald-meta">
-              <span><b>Alert type</b>${a.alert_type || a.type || '—'}</span>
-              <span><b>Device</b>${deviceLink}</span>
-              <span><b>Property</b>${propLink}</span>
-              <span><b>Created</b>${dt(created)}</span>
-              <span><b>Assigned team</b>${a.assigned_team || '—'}</span>
-            </div>
-          </div>
-          <div class="ald-actions">${actions}</div>
-        </div>
-
-        <div class="ald-secnav">${navHTML}</div>
-
-        <div class="ald-grid">
-          <div class="ald-main">${cardsHTML}</div>
-          <div class="ald-side">${sidebar}</div>
-        </div>
-      </div>
-    `;
+    const a=_allAlerts.find(row=>String(row.alert_id || row.id)===String(id));
+    if (!a) return OpsModal.toast('Incident is no longer in this queue','watch');
+    _detailId=a.alert_id || a.id;
+    if (_incidentTheme) { _incidentTheme.disconnect(); _incidentTheme = null; }
+    if (_incidentMap) { _incidentMap.remove();_incidentMap=null; }
+    const sid=OpsModal.sid(_detailId), F=OpsModal.fact, linked=OpsModal.link;
+    const resolved=closedIncident(a), owner=a.assigned_team_name || a.assigned_team || (a.assigned_team === null ? 'Not assigned' : OpsModal.missing.absent);
+    const created=a.timestamp || a.created_at;
+    const coordinate=value=>value!=null && value!=='' && typeof value!=='boolean' && Number.isFinite(Number(value));
+    const hasCoordinates=coordinate(a.latitude) && coordinate(a.longitude) && Math.abs(Number(a.latitude))<=90 && Math.abs(Number(a.longitude))<=180;
+    const title=OpsModal.label(a.alert_type || a.type || 'Incident');
+    const device=a.sensor_id?linked('sensors',a.sensor_id,a.sensor_name || a.device_name || a.sensor_id):'Not linked';
+    const estate=a.property_id?linked('properties',a.property_id,a.property_name || a.property || a.site_name || a.property_id):_dash(a.property_name || a.location || a.site_name);
+    const work=a.job_id?linked('jobs',a.job_id,a.job_title || a.job_id):a.ticket_id?linked('maintenance',a.ticket_id,a.ticket_id):'Not linked';
+    const events=[['Raised',created,a.description],['Acknowledged',a.acknowledged_at,a.acknowledged_by_name],['Assigned',a.assigned_at,owner],['Resolved',a.resolved_at,a.outcome]].filter(([,date])=>date);
+    const timeline=events.map(([label,date,description])=>`<div class="fg-timeline-row"><div class="fg-timeline-icon" aria-hidden="true">${OpsSpatial.icon('incident')}</div><div><div class="fg-timeline-title">${_esc(label)}</div>${description?`<div class="fg-timeline-meta">${_esc(description)}</div>`:''}</div><time class="fg-timeline-time">${OpsModal.fmtDateTime(date)}</time></div>`).join('') || OpsModal.emptyState('','No recorded events','Event timestamps were not supplied.');
+    let actions='';
+    if (canMng()) actions=resolved?`<button class="fg-action" onclick="OpsAlerts.reopenAlert('${sid}')">Reopen incident</button>`:`<button class="fg-action fg-action-primary" onclick="OpsAlerts.assignAlert('${sid}')">${a.assigned_team?'Reassign team':'Assign team'}</button><button class="fg-action" onclick="OpsAlerts.resolveAlert('${sid}')">Record outcome</button>`;
+    if (Auth.hasNavAccess('jobs') && Auth.can('jobs.manage')) actions+=`<button class="fg-action" onclick="OpsAlerts.prepareWork('${sid}')">Prepare work order</button>`;
+    const locationBody=hasCoordinates?`<div id="incident-location-map" style="height:260px;border-radius:var(--radius-control);background:var(--surface-2)" role="region" aria-label="Incident location map"></div>${F('Reported coordinates',_esc(a.latitude+', '+a.longitude))}<button class="fg-action" onclick="switchTab('situation')">Open command centre</button>`:`<div class="capability-note">Coordinates were not supplied. ${_esc(a.location || a.site_name || 'Location requires confirmation')}.</div>`;
+    _container.innerHTML=OpsModal.detailShell({
+      back:'OpsAlerts.back()',crumbRoot:'Incidents',title:_esc(title),avatar:{text:OpsSpatial.icon('incident')},
+      chips:[{label:severityLabel(a.severity),cls:OpsModal.statusTone(a.severity,'severity')},{label:OpsModal.label(a.status),cls:['resolved','closed'].includes(a.status)?'ok':'neutral'}],
+      meta:[['Incident',_esc(_detailId)],['Estate',estate]],actions,
+      decision:[['Response owner',owner],['Raised',OpsModal.fmtDateTime(created)],['Next step',resolved?'Review recorded resolution':a.assigned_team?'Review response progress':'Assign a response team']],
+      note:'Assignment, acknowledgement and resolution are distinct steps. Review evidence before recording an outcome.',
+      sections:[
+        {id:'info',title:'Incident information',body:F('Incident reference',`<span class="lv-source lv-mono">${_esc(_detailId)}</span>`)+F('Type',_esc(title))+F('Severity',_esc(severityLabel(a.severity)))+F('State',OpsModal.status(a.status,null,['resolved','closed'].includes(a.status)?'ok':'neutral'))+F('Location',_dash(a.location || a.site_name || a.property_name))+(a.time_to_overflow_min!=null?F('Reported time to overflow',_esc(a.time_to_overflow_min+' min')):'')+(a.description?`<p class="fg-record-description">${_esc(a.description)}</p>`:'')},
+        {id:'map',title:'Reported location',body:locationBody},
+        {id:'timeline',title:'Response timeline',body:timeline},
+        {id:'resolution',title:'Recorded outcome',stateLabel:'Pending',body:resolved?F('Outcome',_esc(a.outcome?OpsModal.label(a.outcome):'Not supplied'))+F('Resolved',OpsModal.fmtDateTime(a.resolved_at))+F('Resolution note',_dash(a.notes || a.resolution_note)):'<div class="capability-note">An outcome has not yet been recorded. Confirm the observed outcome before resolving this incident.</div>'},
+        {id:'evidence',title:'Evidence',body:OpsModal.evidence(a.attachments || a.evidence)},
+        {id:'activity',title:'Activity log',body:'<div class="capability-note">A per-incident audit trail was not supplied with this record. Use Activity log for recorded platform events.</div>'}
+      ],
+      sidebar:`<div class="fgd-card"><div class="fgd-card-head"><h2>Related records</h2></div>${F('Estate',estate)}${F('Device',device)}${F('Work',work)}${a.assigned_team?F('Team',linked('teams',a.assigned_team_id || a.assigned_team,owner)):''}</div>`
+    });
+    if (hasCoordinates && typeof OpsNetwork!=='undefined') {
+      const target=document.getElementById('incident-location-map');
+      OpsNetwork.mapLibrary().then(()=>{
+        if (!target?.isConnected) return;
+        _incidentMap=L.map(target,{zoomControl:true}).setView([Number(a.latitude),Number(a.longitude)],15);
+        const styleUrl=()=>`https://tiles.openfreemap.org/styles/${document.documentElement.dataset.theme==='dark'?'dark':'positron'}`;
+        let basemap=L.maplibreGL({style:styleUrl(),attribution:'&copy; OpenFreeMap &copy; OSM'}).addTo(_incidentMap);
+        _incidentTheme=new MutationObserver(()=>{
+          if (!target.isConnected || !_incidentMap) { _incidentTheme?.disconnect(); return; }
+          _incidentMap.removeLayer(basemap);
+          basemap=L.maplibreGL({style:styleUrl(),attribution:'&copy; OpenFreeMap &copy; OSM'}).addTo(_incidentMap);
+        });
+        _incidentTheme.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+        const marker=L.marker([Number(a.latitude),Number(a.longitude)],{title:`Incident: ${title}`,alt:`Incident: ${title}`,icon:OpsSpatial.marker('incident',{state:a.severity,attention:a.severity==='critical'})}).addTo(_incidentMap);
+        marker.bindPopup(`<strong>${_esc(title)}</strong><br>Reported location: ${Number(a.latitude)}, ${Number(a.longitude)}`);
+        OpsModal.keyboardMarker(marker);
+      }).catch(error=>{if(target?.isConnected) target.textContent='Map unavailable. Reported coordinates are shown below.';console.warn('[FlowGuard] Incident map:',error.message);});
+    }
   }
 
   // ── Assign alert modal ──
   async function assignAlert(id) {
+    if (!requireIncidentManage()) return;
     // Load teams for the dropdown
     let teams = [];
     try {
       const res = await OpsModal.apiGet('/teams');
-      teams = res.data || res.teams || [];
-    } catch { /* show modal anyway with empty list */ }
+      teams = OpsModal.readArray(res,'Team choices',['data','teams']);
+    } catch { return OpsModal.toast('Team choices are unavailable. Retry before assigning.', 'watch'); }
+    if (!Array.isArray(teams)) return OpsModal.toast('Team choices were not supplied', 'watch');
 
     const a = _allAlerts.find(x => (x.alert_id || x.id) == id);
-    const alertLabel = a ? (a.alert_type || 'Alert') : 'Alert';
+    const alertLabel = a ? (a.alert_type || 'Incident') : 'Incident';
     const location   = a ? (a.location || a.property || a.site_name || '') : '';
 
     const teamOptions = teams.length > 0
-      ? teams.map(t => ({ value: t.team_id || t.id, label: t.team_name || t.name }))
+      ? [{value:'',label:'Select a team'}].concat(teams.map(t => ({ value: t.team_id || t.id, label: (t.team_name || t.name) + (t.status ? ' · reported ' + OpsModal.label(t.status) : ' · availability unknown') })))
       : [{ value: '', label: 'No teams available' }];
 
-    OpsModal.open(`Assign Incident`, `
-      <div style="padding:12px 14px;background:var(--surface-2);border-radius:8px;margin-bottom:18px;">
-        <div style="font-size:var(--fs-base);font-weight:600;color:var(--ink);">${alertLabel}</div>
-        ${location ? `<div style="font-size:var(--fs-sm);color:var(--ink-3);margin-top:2px;">${location}</div>` : ''}
+    OpsModal.open(`Assign incident`, `
+      <div style="padding:12px 14px;background:var(--surface-2);border-radius:var(--radius-control);margin-bottom:18px;">
+        <div style="font-size:var(--fs-base);font-weight:600;color:var(--ink);">${_esc(alertLabel)}</div>
+        ${location ? `<div style="font-size:var(--fs-sm);color:var(--ink-3);margin-top:2px;">${_esc(location)}</div>` : ''}
       </div>
-      ${OpsModal.field('Assign to Team', 'team_id', 'select', '', { options: teamOptions })}
-      ${OpsModal.field('Priority Instructions (optional)', 'notes', 'textarea', '', { placeholder: 'E.g. High-pressure hydro-jetting required. Report on arrival.', required: false, rows: 3 })}
-      ${OpsModal.field('ETA (minutes)', 'eta', 'number', '', { placeholder: '30', required: false })}
+      ${OpsModal.field('Assign to team', 'team_id', 'select', '', { options: teamOptions })}
+      <div class="capability-note">This records the assigned team. It does not confirm arrival, readiness or a crew ETA. Instructions and ETA are not saved by this assignment route.</div>
     `, [
       { label: 'Cancel',     class: 'btn-ghost',   onclick: 'OpsModal.close()' },
-      { label: 'Dispatch',   class: 'btn-primary',  onclick: `OpsAlerts.confirmAssign('${id}')`, id: 'modal-save-btn' },
+      { label: 'Assign team', class: 'btn-primary', onclick: `OpsAlerts.confirmAssign('${OpsModal.sid(id)}')`, id: 'modal-save-btn', disabled:!teams.length },
     ]);
   }
 
   async function confirmAssign(id) {
+    if (!requireIncidentManage()) return;
     const data = OpsModal.getFormData();
     if (!data.team_id) { OpsModal.toast('Please select a team', 'warning'); return; }
 
     OpsModal.setLoading('modal-save-btn', true);
     try {
-      await OpsModal.apiPost(`/alerts/${id}/assign`, {
-        team_id: data.team_id,
-        notes:   data.notes || null,
-        eta:     data.eta   ? parseInt(data.eta) : null,
-      });
+      await OpsModal.apiPut(`/alerts/${id}/assign`, {team_id:data.team_id});
       OpsModal.close();
-      OpsModal.toast('Team dispatched successfully', 'nominal');
-
-      // Update local state optimistically
-      const a = _allAlerts.find(x => (x.alert_id || x.id) == id);
-      if (a) {
-        const teams    = await OpsModal.apiGet('/teams').catch(() => ({ data: [] }));
-        const team     = (teams.data || []).find(t => (t.team_id || t.id) == data.team_id);
-        a.assigned_team = team ? (team.team_name || team.name) : 'Team dispatched';
-      }
-
-      renderFeed(_filter === 'all' ? _allAlerts : _allAlerts.filter(a => severityClass(a.severity) === _filter), _filter);
+      OpsModal.toast('Team assignment recorded', 'nominal');
+      render(_container);
     } catch (err) {
       OpsModal.toast('Failed to assign: ' + err.message, 'critical');
       OpsModal.setLoading('modal-save-btn', false);
@@ -756,41 +427,46 @@ const OpsAlerts = (function () {
 
   // ── Resolve alert ──
   function resolveAlert(id) {
+    if (!requireIncidentManage()) return;
     const a = _allAlerts.find(x => (x.alert_id || x.id) == id);
-    const label = a ? (a.alert_type || 'Alert') : 'Alert';
+    const label = a ? (a.alert_type || 'Incident') : 'Incident';
 
-    OpsModal.confirm(`Mark "${label}" as resolved?`, async function () {
-      OpsModal.setLoading('modal-confirm-btn', true);
+    OpsModal.open('Record incident outcome', `<div class="capability-note">${_esc(label)} · choose the observed outcome. Resolving the incident is distinct from verifying related work.</div>${OpsModal.field('Outcome','outcome','select','',{options:[{value:'',label:'Select an outcome'},{value:'prevented',label:'Flooding prevented'},{value:'flooded',label:'Flooding occurred'},{value:'false_alarm',label:'False alarm'}]})}${OpsModal.field('Outcome note','note','textarea','',{required:false})}`, [{label:'Cancel',class:'btn-ghost',onclick:'OpsModal.close()'},{label:'Record outcome',class:'btn-primary',onclick:`OpsAlerts.confirmResolve('${OpsModal.sid(id)}')`,id:'modal-save-btn'}]);
+  }
+  async function confirmResolve(id) {
+      if (!requireIncidentManage()) return;
+      const data = OpsModal.getFormData();
+      if (!['prevented','flooded','false_alarm'].includes(data.outcome)) return OpsModal.toast('Choose the observed outcome before resolving', 'watch');
+      OpsModal.setLoading('modal-save-btn', true);
       try {
-        await OpsModal.apiPost(`/alerts/${id}/resolve`, {});
+        await OpsModal.apiPost(`/alerts/${id}/resolve`, {outcome:data.outcome,note:data.note || ''});
         OpsModal.close();
-        OpsModal.toast('Alert resolved', 'nominal');
-        if (a) { a.status = 'resolved'; a.resolved_at = new Date().toISOString(); }
-        _afterAlertMutation(id);
+        OpsModal.toast('Incident resolved', 'nominal');
+        render(_container);
       } catch (err) {
         OpsModal.toast('Failed to resolve: ' + err.message, 'critical');
-        OpsModal.setLoading('modal-confirm-btn', false);
+        OpsModal.setLoading('modal-save-btn', false);
       }
-    });
   }
 
   function reopenAlert(id) {
+    if (!requireIncidentManage()) return;
     const a = _allAlerts.find(x => (x.alert_id || x.id) == id);
-    const label = a ? (a.alert_type || 'Alert') : 'Alert';
+    const label = a ? (a.alert_type || 'Incident') : 'Incident';
 
     OpsModal.confirm(`Reopen "${label}"? This puts the alert back into active state.`, async function () {
+      if (!requireIncidentManage()) return;
       OpsModal.setLoading('modal-confirm-btn', true);
       try {
         await OpsModal.apiPut(`/alerts/${id}/reopen`, {});
         OpsModal.close();
-        OpsModal.toast('Alert reopened', 'nominal');
-        if (a) { a.status = 'active'; a.resolved_at = null; }
-        _afterAlertMutation(id);
+        OpsModal.toast('Incident reopened', 'nominal');
+        render(_container);
       } catch (err) {
         OpsModal.toast('Failed to reopen: ' + err.message, 'critical');
         OpsModal.setLoading('modal-confirm-btn', false);
       }
-    });
+    }, {tone:'neutral',title:'Reopen incident',confirmLabel:'Reopen incident',detail:'The incident returns to the active queue. Related work orders remain unchanged.'});
   }
 
   // After resolve/reopen: refresh stats + badge, then re-render whichever view
@@ -798,28 +474,33 @@ const OpsAlerts = (function () {
   function _afterAlertMutation(id) {
     updateStats(_allAlerts);
     if (typeof updateAlertCount === 'function') {
-      updateAlertCount(_allAlerts.filter(x => (x.status || 'active') !== 'resolved' && (x.status || 'active') !== 'closed').length);
+      updateAlertCount(OpsModal.scopeCount(_allAlerts,'alerts'));
     }
-    if (_container && _container.querySelector('#ald-info')) {
+    if (_container && _detailId != null) {
       open(id);
     } else {
       renderFeed(_filter === 'all' ? _allAlerts : _allAlerts.filter(a => severityClass(a.severity) === _filter), _filter);
     }
   }
 
+  function prepareWork(id) {
+    const incident = _allAlerts.find(a=>String(a.alert_id || a.id) === String(id));
+    if (!incident) return OpsModal.toast('Incident is no longer in this queue', 'watch');
+    OpsJobs.newJob({
+      source:'incident',source_alert_id:incident.alert_id || incident.id,
+      property_id:incident.property_id,
+      title:`Review ${incident.alert_type || incident.type || 'incident'} — ${incident.property_name || incident.location || 'estate to confirm'}`,
+      description:`Incident reference: ${incident.alert_id || incident.id}\n${incident.description || ''}`,
+    });
+  }
   function renderError(message) {
     const feed = document.getElementById('al-feed');
     if (!feed) return;
-    feed.innerHTML = `
-      <div style="padding:48px;text-align:center;">
-        <div style="color:var(--err);font-weight:700;margin-bottom:8px;font-size:var(--fs-md);">Failed to load alerts</div>
-        <div style="color:var(--ink-3);font-size:var(--fs-sm);margin-bottom:18px;">${message}</div>
-        <button class="btn-ghost" onclick="OpsAlerts.refresh()">Retry</button>
-      </div>`;
+    feed.innerHTML = OpsModal.failure('Incidents',{message},"OpsAlerts.refresh()");
   }
 
   return {
-    render, setFilter, refresh, open, back, assignAlert, confirmAssign, resolveAlert, reopenAlert,
+    render, setFilter, queueFilter, refresh, open, back, assignAlert, confirmAssign, resolveAlert, confirmResolve, reopenAlert, prepareWork,
     confirmCandidate, dismissCandidate, resolveCandidate,
   };
 
@@ -836,119 +517,60 @@ const OpsReports = (function () {
 
   let _reports = [];
   let _rc = null;
-  const _d = v => (v == null || v === '') ? '—' : v;
+  const _d = v => (v == null || v === '') ? '—' : OpsModal.escape(v);
+  const reportCategory = value => ({daily:'Daily operations',weekly:'Weekly performance',financial:'Financial report',monthly:'Monthly report'})[value] || OpsModal.label(value || 'unclassified');
+  const reportKey = r => String(r.report_id || r.id || JSON.stringify([r.name,r.title,r.generated_at,r.created_at,r.report_type,r.type,r.download_url]));
+  let _reportTerm = '', _reportType = 'all', _reportPeriod = 'all';
+  function inGeneratedWindow(r,period,now=Date.now()) { if (period==='all') return true;const raw=r.generated_at || r.created_at;const time=raw?new Date(raw).getTime():NaN;return Number.isFinite(time) && time<=now && time>=now-Number(period)*864e5; }
+  function filterLibrary() {
+    _reportTerm = document.getElementById('rp-search')?.value.toLowerCase() || '';
+    _reportType = document.getElementById('rp-category')?.value || 'all';
+    _reportPeriod = document.getElementById('rp-period')?.value || 'all';
+    const rows=_reports.filter(r=>inGeneratedWindow(r,_reportPeriod) && (_reportType === 'all' || (r.type || r.report_type) === _reportType) && `${r.name || r.title || ''} ${r.property_name || ''}`.toLowerCase().includes(_reportTerm));
+    FGPaginator.create(rows,{pageSize:25,containerId:'rp-list'}).render(renderReports);
+  }
 
   function render(container) {
     _rc = container;
     container.innerHTML = `
-      <style>
-        .ops-table tbody tr.clickable { cursor:pointer; transition:background .12s; }
-        .ops-table tbody tr.clickable:hover { background:var(--surface-2,#f2f8fb); }
-        .rp-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 24px; }
 
-        .rp-card {
-          background: var(--surface, #fff);
-          border: 1px solid var(--border, #dae6ef);
-          border-radius: var(--r, 14px);
-          padding: 24px 20px;
-          cursor: pointer;
-          transition: all .22s cubic-bezier(.22,1,.36,1);
-          box-shadow: var(--sh-xs, 0 1px 2px rgba(10,31,46,.06));
-          position: relative; overflow: hidden;
-        }
 
-        .rp-card::after {
-          content: '';
-          position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
-          opacity: 0; transition: opacity .22s;
-        }
-
-        .rp-card:hover { transform: translateY(-3px); box-shadow: var(--sh-md, 0 4px 20px rgba(10,31,46,.09)); border-color: var(--border-2, #b8d0de); }
-        .rp-card:hover::after { opacity: 1; }
-
-        .rp-card.daily::after   { background: linear-gradient(90deg, var(--navy, #17181b), var(--blue, #5379ff)); }
-        .rp-card.weekly::after  { background: linear-gradient(90deg, var(--blue, #5379ff), var(--ok, #0a8a6a)); }
-        .rp-card.finance::after { background: linear-gradient(90deg, var(--ok, #0a8a6a), #34d399); }
-
-        .rp-icon {
-          width: 46px; height: 46px;
-          border-radius: 12px;
-          display: flex; align-items: center; justify-content: center;
-          margin-bottom: 16px;
-        }
-
-        .rp-card-title { font-family: var(--ff-d, 'Inter', sans-serif); font-size: var(--fs-lg); font-weight: 700; color: var(--ink, #1c1d20); margin-bottom: 4px; }
-        .rp-card-sub   { font-size: var(--fs-sm); color: var(--ink-3, #8b909a); line-height: 1.5; }
-
-        .rp-recent {
-          background: var(--surface, #fff);
-          border: 1px solid var(--border, #dae6ef);
-          border-radius: var(--r, 14px);
-          overflow: hidden;
-          box-shadow: var(--sh-xs, 0 1px 2px rgba(10,31,46,.06));
-        }
-
-        .rp-recent-head {
-          padding: 14px 20px;
-          border-bottom: 1px solid var(--border, #dae6ef);
-          display: flex; align-items: center; justify-content: space-between;
-        }
-
-        .rp-recent-title { font-family: var(--ff-d, 'Inter', sans-serif); font-size: var(--fs-md); font-weight: 700; color: var(--ink, #1c1d20); }
-
-        .rp-report-row {
-          padding: 14px 20px;
-          border-bottom: 1px solid var(--border, #dae6ef);
-          display: flex; align-items: center; gap: 14px;
-          transition: background .12s;
-        }
-
-        .rp-report-row:last-child { border-bottom: none; }
-        .rp-report-row:hover { background: var(--surface-2, #f7fafc); }
-
-        .rp-report-icon {
-          width: 36px; height: 36px; border-radius: 9px;
-          display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0;
-        }
-
-        .rp-report-name  { font-size: var(--fs-md); font-weight: 600; color: var(--ink, #1c1d20); margin-bottom: 2px; }
-        .rp-report-meta  { font-size: var(--fs-xs); color: var(--ink-3, #8b909a); font-family: var(--ff-m, 'JetBrains Mono', monospace); }
-      </style>
-
-      <div class="rp-grid">
-        <div class="rp-card daily" onclick="OpsReports.generate('daily')">
-          <div class="rp-icon" style="background:rgba(34,211,238,.13);">
-            <svg width="20" height="20" fill="none" stroke="var(--blue-hi,#22d3ee)" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
+      ${OpsModal.pageHeader({title:'Reports',subtitle:'Review the report library or generate a new operational summary',actions:'<button type="button" id="rp-generate-toggle" class="fg-action fg-action-primary" aria-expanded="false" aria-controls="rp-generator" onclick="OpsReports.toggleGenerator()">Generate a report</button>'})}
+      <section id="rp-generator" class="fg-report-generator" aria-labelledby="rp-generation-label" hidden>
+      <h2 id="rp-generation-label">Choose report type</h2><div class="rp-grid">
+        <button type="button" class="rp-card daily" aria-label="Generate daily operations report" ${canMng() ? '' : 'disabled'} onclick="OpsReports.generate('daily')">
+          <div class="rp-icon">
+            ${OpsModal.entityIcon('document')}
           </div>
-          <div class="rp-card-title">Daily Operations</div>
-          <div class="rp-card-sub">Today's alert activity, team deployment summary, and incident resolution rate</div>
-        </div>
+          <div class="rp-card-title">Daily operations</div>
+          <div class="rp-card-sub">Records raised today: incident severity and state, plus internal maintenance completion</div>
+        </button>
 
-        <div class="rp-card weekly" onclick="OpsReports.generate('weekly')">
-          <div class="rp-icon" style="background:rgba(22,168,211,.08);">
-            <svg width="20" height="20" fill="none" stroke="var(--blue)" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-            </svg>
+        <button type="button" class="rp-card weekly" aria-label="Generate weekly performance report" ${canMng() ? '' : 'disabled'} onclick="OpsReports.generate('weekly')">
+          <div class="rp-icon">
+            ${OpsModal.entityIcon('analytics')}
           </div>
-          <div class="rp-card-title">Weekly Performance</div>
-          <div class="rp-card-sub">Sensor uptime, SLA compliance, response times, and pipeline movement</div>
-        </div>
+          <div class="rp-card-title">Weekly performance</div>
+          <div class="rp-card-sub">Records raised over seven calendar days, with their status at generation time</div>
+        </button>
 
-        <div class="rp-card finance" onclick="OpsReports.generate('financial')">
-          <div class="rp-icon" style="background:var(--ok-bg, #e2f5ee);">
-            <svg width="20" height="20" fill="none" stroke="var(--ok)" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
+        <button type="button" class="rp-card finance" aria-label="Generate financial report" ${canMng() ? '' : 'disabled'} onclick="OpsReports.generate('financial')">
+          <div class="rp-icon">
+            ${OpsModal.entityIcon('billing')}
           </div>
-          <div class="rp-card-title">Financial Report</div>
-          <div class="rp-card-sub">MRR breakdown, client billing status, outstanding invoices, and revenue trends</div>
-        </div>
+          <div class="rp-card-title">Financial report</div>
+          <div class="rp-card-sub">Current-month invoice amounts and recorded balances; not reconciled cash collections</div>
+        </button>
       </div>
 
-      <div class="rp-recent">
+      </section>
+      <div class="rp-recent lv-wrap">
+        <div class="lv-toolbar">
+          <div class="lv-search"><input id="rp-search" aria-label="Search report library" placeholder="Search reports or estate…" oninput="OpsReports.filterLibrary()"></div>
+          <select id="rp-category" class="um-filter" aria-label="Report category" onchange="OpsReports.filterLibrary()"><option value="all">All categories</option></select>
+          <select id="rp-period" class="um-filter" aria-label="Report generation window" onchange="OpsReports.filterLibrary()"><option value="all">All generation dates</option><option value="30">Generated in last 30 days</option><option value="90">Generated in last 90 days</option></select>
+        </div>
+        <div class="fg-table-note">Dates refer to generation, not coverage. Undated records are excluded from dated filters.</div>
         <div id="rp-list">
           <div style="padding:40px;text-align:center;color:var(--ink-3);">
             <div class="loading" style="margin:0 auto 12px;"></div>
@@ -961,14 +583,25 @@ const OpsReports = (function () {
     loadReports();
   }
 
+  function toggleGenerator() {
+    const panel = document.getElementById('rp-generator');
+    const trigger = document.getElementById('rp-generate-toggle');
+    if (!panel || !trigger) return;
+    panel.hidden = !panel.hidden;
+    trigger.setAttribute('aria-expanded',String(!panel.hidden));
+  }
+
   async function loadReports() {
     try {
       const res  = await OpsModal.apiGet('/reports');
-      const list = res.data || res.reports || [];
+      const list = OpsModal.readArray(res,'Report library',['data','reports']);
       _reports = list;
-      renderReports(list);
-    } catch {
-      renderReports([]);
+      const select = document.getElementById('rp-category');
+      if (select) select.innerHTML = '<option value="all">All categories</option>' + [...new Set(list.map(r=>r.type || r.report_type).filter(Boolean))].map(type=>`<option value="${OpsModal.escape(type)}">${OpsModal.escape(reportCategory(type))}</option>`).join('');
+      filterLibrary();
+    } catch (err) {
+      const list = document.getElementById('rp-list');
+      if (list) list.innerHTML = OpsModal.failure('Report library',err,"reloadTab('reports')");
     }
   }
 
@@ -977,41 +610,29 @@ const OpsReports = (function () {
     if (!el) return;
 
     if (reports.length === 0) {
-      el.innerHTML = `
-        <div style="padding:48px;text-align:center;color:var(--ink-3);">
-          <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" style="margin:0 auto 12px;opacity:.25;display:block;">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-          </svg>
-          <div style="font-size:var(--fs-base);font-weight:600;color:var(--ink-2);">No reports generated yet</div>
-          <div style="font-size:var(--fs-sm);margin-top:3px;">Generate your first report above</div>
-        </div>`;
+      el.innerHTML = OpsModal.emptyState(OpsModal.entityIcon('report'),_reports.length?'No matching reports':'No reports returned',_reports.length?'Change the search, category or reporting-period filter to review other reports.':'No generated report records were returned by this library feed.');
       return;
     }
 
-    const typeConfig = {
-      daily:     { icon: 'var(--navy)',    bg: 'rgba(10,42,61,.07)',     label: 'Daily Operations' },
-      weekly:    { icon: 'var(--blue)',    bg: 'rgba(22,168,211,.08)',   label: 'Weekly Performance' },
-      financial: { icon: 'var(--ok)',      bg: 'var(--ok-bg)',           label: 'Financial Report' },
-    };
-
-    const fmtOf = r => (r.format || (r.download_url ? (r.download_url.split('.').pop() || '').toUpperCase().slice(0, 4) : '')) || '—';
+    const fmtOf = r => OpsModal.label(r.format || (r.download_url ? (r.download_url.split('.').pop() || '').toUpperCase().slice(0, 4) : ''));
     // Columns per spec: Report, Category, Property, Date, Generated By, Format
     el.innerHTML = `
       <div class="lv-scroll">
         <table class="lv-table">
-          <thead><tr><th>Report</th><th>Category</th><th>Property</th><th>Date</th><th>Generated by</th><th>Format</th></tr></thead>
+          <thead><tr><th scope="col">Report</th><th scope="col">Category</th><th scope="col">Estate</th><th scope="col">Date</th><th scope="col">Generated by</th><th scope="col">Format</th></tr></thead>
           <tbody>
             ${reports.map((r, i) => {
-              const tc = typeConfig[r.type] || typeConfig.daily;
-              const date = r.generated_at ? new Date(r.generated_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+              const tc = {label:reportCategory(r.type || r.report_type)};
+              const date = r.generated_at || r.created_at ? OpsModal.fmtDateTime(r.generated_at || r.created_at) : '—';
               const propCell = r.property_id ? OpsModal.link('properties', r.property_id, r.property_name || r.property_id) : _d(r.property_name);
-              return `<tr class="clickable" onclick="OpsReports.open(${i})" tabindex="0" onkeydown="if(event.key==='Enter'){OpsReports.open(${i})}">
-                <td class="lv-name">${r.name || tc.label}</td>
-                <td>${tc.label}</td>
+              const key = encodeURIComponent(reportKey(r)).replace(/'/g,'%27');
+              return `<tr class="clickable" onclick="OpsReports.open(decodeURIComponent('${key}'))">
+                <td><button type="button" class="record-link lv-name" onclick="event.stopPropagation();OpsReports.open(decodeURIComponent('${key}'))">${OpsModal.escape(r.name || r.title || tc.label)}</button></td>
+                <td>${OpsModal.escape(tc.label)}</td>
                 <td>${propCell}</td>
                 <td class="lv-mono">${date}</td>
                 <td>${_d(r.generated_by || r.generated_by_name)}</td>
-                <td class="lv-mono">${fmtOf(r)}</td>
+                <td class="lv-mono">${OpsModal.escape(fmtOf(r))}</td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -1022,48 +643,36 @@ const OpsReports = (function () {
   function back() { if (_rc) render(_rc); }
 
   // ── FULL DETAIL SCREEN (no pop-up) ──
-  function open(i) {
-    const r = _reports[i];
+  function open(key) {
+    const r = _reports.find(record=>reportKey(record) === String(key));
     if (!_rc || !r) return;
-    const typeConfig = { daily: { label: 'Daily Operations' }, weekly: { label: 'Weekly Performance' }, financial: { label: 'Financial Report' }, monthly: { label: 'Monthly Report' } };
-    const date = r.generated_at ? new Date(r.generated_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+    const date = r.generated_at || r.created_at ? OpsModal.fmtDateTime(r.generated_at || r.created_at) : '—';
     const F = OpsModal.fact, E = OpsModal.emptyState;
-    const label = (typeConfig[r.type] || typeConfig.daily).label;
-    const fmt = (r.format || (r.download_url ? (r.download_url.split('.').pop() || '').toUpperCase().slice(0, 4) : '')) || '—';
-    const iDoc = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>';
-    const iChart = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/></svg>';
+    const label = OpsModal.escape(reportCategory(r.type || r.report_type));
+    const fmt = OpsModal.label(r.format || (r.download_url ? (r.download_url.split('.').pop() || '').toUpperCase().slice(0, 4) : ''));
+    const iDoc = OpsModal.entityIcon('document');
+    const iChart = OpsModal.entityIcon('analytics');
 
-    const previewBody = `
-      ${F('Report', r.name || label)}
-      ${F('Category', label)}
-      ${F('Property', r.property_id ? OpsModal.link('properties', r.property_id, r.property_name || r.property_id) : _d(r.property_name))}
-      ${F('Date', date)}
+    const previewBody = `<div class="fg-facts-grid">
+      ${F('Estate', r.property_id ? OpsModal.link('properties', r.property_id, r.property_name || r.property_id) : _d(r.property_name))}
+      ${F('Generated / created', date)}
       ${F('Generated by', _d(r.generated_by || r.generated_by_name))}
-      ${F('Format', `<span class="fgd-mono">${fmt}</span>`)}
-      ${r.download_url ? `<div style="margin-top:14px;"><a href="${r.download_url}" target="_blank" rel="noopener"><button class="fgd-btn primary">Open / download report →</button></a></div>` : ''}`;
-
-    const sidebar = `
-      <div class="fgd-card">
-        <div class="fgd-card-head"><h2 style="font-size:var(--fs-sm);">Quick facts</h2></div>
-        ${F('Category', label)}
-        ${F('Format', `<span class="fgd-mono">${fmt}</span>`)}
-        ${F('Generated', `<span class="fgd-mono">${r.generated_at ? new Date(r.generated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</span>`)}
-        ${F('Downloadable', r.download_url ? '<span style="color:var(--ok);">Yes</span>' : '<span style="color:var(--ink-3);">No</span>')}
-      </div>`;
+      ${F('Format', `<span>${OpsModal.escape(fmt)}</span>`)}</div>`;
 
     _rc.innerHTML = OpsModal.detailShell({
       back: 'OpsReports.back()',
       crumbRoot: 'Reports',
-      title: r.name || label,
-      chips: [{ cls: 'primary', label: label }],
+      title: OpsModal.escape(r.name || r.title || label),
+      avatar:{text:OpsModal.entityIcon('reports')},
+      chips: [{ cls: 'neutral', label: label }],
       meta: [['Date', date], ['Generated by', _d(r.generated_by || r.generated_by_name)]],
-      actions: r.download_url ? `<a href="${r.download_url}" target="_blank" rel="noopener"><button class="fgd-btn primary">Download</button></a>` : '',
+      decision:[['Content',r.metrics?.schema_version===1?'Recorded snapshot':r.download_url?'Hosted file supplied':'Unavailable'],['Coverage period',r.period_start && r.period_end?OpsModal.fmtDate(r.period_start)+' – '+OpsModal.fmtDate(r.period_end):'Not supplied'],['Next step',r.metrics?.schema_version===1?'Review the snapshot and its coverage':r.download_url?'Review the supplied report file':'Restore report content before relying on it']],
+      actions: '',
       sections: [
-        { id: 'preview', title: 'Report preview', meta: 'reports', body: previewBody },
-        { id: 'export', title: 'Export', body: r.download_url ? `<a href="${r.download_url}" target="_blank" rel="noopener" style="color:var(--blue-hi);font-weight:700;">Download file →</a>` : E(iDoc, 'No export available', 'This report has no downloadable file attached.') },
-        { id: 'charts', title: 'Charts', body: E(iChart, 'No chart payload', 'Chart previews render from the report payload once available.') },
+        { id: 'preview', title: 'Report metadata', body: previewBody },
+        { id: 'content', title: 'Recorded report snapshot', body: reportContent(r) },
+        { id: 'export', title: 'Hosted report file', body: r.metrics?.schema_version===1 && !r.download_url ? '<div class="capability-note">Download the snapshot JSON above. No separately hosted report file or PDF is supplied.</div>' : OpsModal.evidence(r.download_url ? [{url:r.download_url,name:'Open / download report'}] : [], 'No report file supplied') },
       ],
-      sidebar,
     });
   }
 
@@ -1071,14 +680,43 @@ const OpsReports = (function () {
     if (!canMng()) return OpsModal.toast('You do not have permission to generate reports', 'critical');
     OpsModal.toast(`Generating ${type} report…`, 'watch');
     try {
-      await OpsModal.apiPost('/reports/generate', { type });
-      OpsModal.toast('Report generated successfully', 'nominal');
+      const result = await OpsModal.apiPost('/reports/generate', { type });
+      if (!result?.data?.report_id || result.data.metrics?.schema_version !== 1) throw new Error('The server did not confirm a report with content');
+      OpsModal.toast('Recorded report snapshot saved', 'nominal');
       loadReports();
     } catch (err) {
       OpsModal.toast('Failed to generate report: ' + err.message, 'critical');
     }
   }
 
-  return { render, generate, open, back };
+  function reportContent(r) {
+    const m=r.metrics;
+    if (m?.schema_version!==1) return '<div class="capability-note">Report content not supplied. Metadata alone does not establish a completed report.</div>';
+    const n=value=>OpsModal.count(value)===null ? OpsModal.missing.absent : OpsModal.escape(Number(value).toLocaleString('en-GB'));
+    const money=(value,currency)=>OpsModal.escape(OpsModal.money(value,currency));
+    const f=OpsModal.fact;
+    const rows=m.invoice_snapshot
+      ? f('Invoices in period',n(m.invoice_snapshot.invoice_count))+(Array.isArray(m.invoice_currency_groups) ? m.invoice_currency_groups.map(g=>f('Invoice total',money(g.total_invoiced,g.currency))+f('Outstanding balance',money(g.outstanding_balance,g.currency))).join('') : f('Recorded invoice total',money(m.invoice_snapshot.total_invoiced,m.invoice_snapshot.currency))+f('Recorded outstanding balance',money(m.invoice_snapshot.outstanding_balance,m.invoice_snapshot.currency)))+f('Invoices with an amount / balance',n(m.invoice_snapshot.amount_record_count)+' / '+n(m.invoice_snapshot.balance_record_count))
+      : f('Incidents raised in period',n(m.incidents?.raised))+f('Critical incidents in cohort',n(m.incidents?.critical))+f('Cohort incidents currently active',n(m.incidents?.currently_active))+f('Cohort recorded resolutions',n(m.incidents?.recorded_resolutions))+f('Internal maintenance created',n(m.maintenance?.created))+f('Cohort recorded completions',n(m.maintenance?.recorded_completions));
+    const limitations=Array.isArray(m.limitations) ? m.limitations.map(text=>`<li>${OpsModal.escape(text)}</li>`).join('') : '<li>Source limitations not supplied.</li>';
+    return `<div class="fg-facts-grid">${rows}</div><details class="fg-technical"><summary>Snapshot limitations</summary><div class="capability-note"><ul>${limitations}</ul></div></details><details class="fg-technical"><summary>Snapshot source data</summary><pre>${OpsModal.escape(JSON.stringify(m,null,2))}</pre></details><button class="fg-action" type="button" onclick="OpsReports.exportSnapshot('${OpsModal.sid(r.report_id || r.id)}')">Download snapshot JSON</button>`;
+  }
+  async function exportSnapshot(id) {
+    let r = _reports.find(x=>String(x.report_id || x.id)===String(id));
+    if (!r || r.metrics?.schema_version !== 1) return OpsModal.toast('Report content unavailable','watch');
+    if (typeof r.snapshot_download_path==='string' && /^\/reports\/snapshot\?t=/.test(r.snapshot_download_path)) {
+      try {
+        const refreshed=(await OpsModal.apiGet('/reports')).data;
+        r=Array.isArray(refreshed) ? refreshed.find(x=>String(x.report_id || x.id)===String(id)) : null;
+      }
+      catch (err) { return OpsModal.toast('Could not authorise download: '+err.message,'critical'); }
+      if (!r || !/^\/reports\/snapshot\?t=/.test(r.snapshot_download_path || '')) return OpsModal.toast('Download authorisation unavailable','critical');
+      const a=document.createElement('a');a.href=CONFIG.API_BASE.replace(/\/$/,'')+r.snapshot_download_path;a.download=OpsModal.sid(id)+'.json';a.referrerPolicy='no-referrer';document.body.appendChild(a);a.click();a.remove();return;
+    }
+    const url = URL.createObjectURL(new Blob([JSON.stringify(r.metrics,null,2)],{type:'application/json'}));
+    const a = document.createElement('a');a.href=url;a.download=OpsModal.sid(id)+'.json';document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  return { render, generate, open, back, filterLibrary, exportSnapshot, toggleGenerator };
 
 })();

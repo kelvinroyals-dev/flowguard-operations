@@ -20,109 +20,69 @@ const OpsAudit = (function () {
   let _pg     = null;
   let _container = null;
   let _filters = { action: '', actor: '', from: '', to: '' };
-  const _dash = v => (v == null || v === '') ? '—' : v;
+  const _dash = v => (v == null || v === '') ? '—' : OpsModal.escape(v);
 
-  // Action categories with colours
+  // Neutral event categories; result status owns success/failure colour.
   const ACTION_CONFIG = {
     // Dispatch & Alerts
-    alert_assigned:    { label:'Alert Assigned',    color:'var(--warn,#b45309)',  bg:'var(--wb,#fef3c7)' },
-    alert_resolved:    { label:'Alert Resolved',    color:'var(--ok,#0a8a6a)',    bg:'var(--ok-bg,#e2f5ee)' },
-    team_dispatched:   { label:'Team Dispatched',   color:'var(--blue,#5379ff)',  bg:'rgba(22,168,211,.08)' },
+    alert_assigned:    { label:'Incident assigned' },
+    alert_resolved:    { label:'Incident resolved' },
+    team_dispatched:   { label:'Team Dispatched' },
     // Client & Property
-    client_created:    { label:'Client Created',    color:'var(--ok,#0a8a6a)',    bg:'var(--ok-bg,#e2f5ee)' },
-    client_updated:    { label:'Client Updated',    color:'var(--blue,#5379ff)',  bg:'rgba(22,168,211,.08)' },
-    area_submitted:    { label:'Area Submitted',    color:'var(--blue,#5379ff)',  bg:'rgba(22,168,211,.08)' },
-    area_updated:      { label:'Area Updated',      color:'var(--blue,#5379ff)',  bg:'rgba(22,168,211,.08)' },
-    inspection_scheduled: { label:'Inspection Scheduled', color:'var(--amber,#f5a623)', bg:'var(--ambb,rgba(245,166,35,.09))' },
+    client_created:    { label:'Client Created' },
+    client_updated:    { label:'Client Updated' },
+    area_submitted:    { label:'Estate submitted' },
+    area_updated:      { label:'Estate Updated' },
+    inspection_scheduled: { label:'Inspection Scheduled' },
     // Auth
-    user_login:        { label:'Login',             color:'var(--ink-3,#8b909a)', bg:'var(--surface-2,#f7fafc)' },
-    user_logout:       { label:'Logout',            color:'var(--ink-3,#8b909a)', bg:'var(--surface-2,#f7fafc)' },
-    user_invited:      { label:'User Invited',      color:'var(--ok,#0a8a6a)',    bg:'var(--ok-bg,#e2f5ee)' },
-    user_deactivated:  { label:'User Deactivated',  color:'var(--err,#dc2626)',   bg:'var(--eb,#fef2f2)' },
+    user_login:        { label:'Login' },
+    user_logout:       { label:'Logout' },
+    user_invited:      { label:'User Invited' },
+    user_deactivated:  { label:'User Deactivated' },
     // Billing
-    invoice_paid:      { label:'Invoice Paid',      color:'var(--ok,#0a8a6a)',    bg:'var(--ok-bg,#e2f5ee)' },
-    reminder_sent:     { label:'Reminder Sent',     color:'var(--warn,#b45309)',  bg:'var(--wb,#fef3c7)' },
+    invoice_paid:      { label:'Invoice Paid' },
+    reminder_sent:     { label:'Reminder Sent' },
     // Settings
-    settings_updated:  { label:'Settings Updated',  color:'var(--ink-2,#34363b)', bg:'var(--surface-2,#f7fafc)' },
+    settings_updated:  { label:'Settings Updated' },
     // Team
-    team_created:      { label:'Team Created',      color:'var(--blue,#5379ff)',  bg:'rgba(22,168,211,.08)' },
-    member_added:      { label:'Member Added',      color:'var(--ok,#0a8a6a)',    bg:'var(--ok-bg,#e2f5ee)' },
-    member_removed:    { label:'Member Removed',    color:'var(--err,#dc2626)',   bg:'var(--eb,#fef2f2)' },
+    team_created:      { label:'Team Created' },
+    member_added:      { label:'Member Added' },
+    member_removed:    { label:'Member Removed' },
     // SLA
-    sla_breach:        { label:'SLA Breach',        color:'var(--err,#dc2626)',   bg:'var(--eb,#fef2f2)' },
-    breach_acknowledged: { label:'Breach Acknowledged', color:'var(--ok,#0a8a6a)', bg:'var(--ok-bg,#e2f5ee)' },
+    sla_breach:        { label:'SLA Breach' },
+    breach_acknowledged: { label:'Breach Acknowledged' },
   };
 
   function getActionConfig(action) {
-    return ACTION_CONFIG[action] || { label: (action || 'Action').replace(/_/g, ' '), color:'var(--ink-3)', bg:'var(--surface-2)' };
+    const config=ACTION_CONFIG[action] || { label: (action || 'Action').replace(/[_.]/g, ' ') };
+    // Action type is a category, not evidence that the attempted action succeeded.
+    // Result owns the semantic success/failure colour separately.
+    return {label:OpsModal.label(config.label),color:'var(--ink-2)',bg:'var(--surface-2)'};
   }
 
   function render(container) {
     _container = container;
     container.innerHTML = `
-      <style>
-        .au-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
-        .au-header-title { font-family:var(--ff-d,'Inter',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#1c1d20); letter-spacing:-.02em; margin-bottom:3px; }
-        .au-header-sub { font-size:var(--fs-base); color:var(--ink-3,#8b909a); }
 
-        /* Filters bar */
-        .au-filters { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); padding:14px 20px; display:flex; align-items:center; gap:10px; margin-bottom:16px; box-shadow:var(--sh-xs); flex-wrap:wrap; }
-        .au-filter-input { padding:7px 12px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:var(--fs-base); color:var(--ink,#1c1d20); outline:none; transition:all .2s; }
-        .au-filter-input:focus { border-color:var(--blue,#5379ff); box-shadow:0 0 0 3px rgba(22,168,211,.1); background:var(--surface,#fff); }
-        .au-filter-label { font-size:var(--fs-xs); font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--ink-3,#8b909a); }
 
-        /* Log table */
-        .au-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); overflow:hidden; box-shadow:var(--sh-xs); }
-        .au-card-head { padding:14px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; }
-        .au-card-title { font-family:var(--ff-d,'Inter',sans-serif); font-size:var(--fs-md); font-weight:700; color:var(--ink,#1c1d20); }
-
-        /* Log row */
-        .au-row { padding:12px 20px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:flex-start; gap:12px; transition:background .12s; cursor:pointer; }
-        .au-row:last-child { border-bottom:none; }
-        .au-row:hover { background:var(--surface-2,#f7fafc); }
-
-        .au-icon { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
-
-        .au-body { flex:1; min-width:0; }
-        .au-action-row { display:flex; align-items:center; gap:8px; margin-bottom:3px; flex-wrap:wrap; }
-        .au-action-badge { display:inline-flex; padding:2px 8px; border-radius:12px; font-size:var(--fs-xs); font-weight:700; letter-spacing:.3px; white-space:nowrap; }
-        .au-desc { font-size:var(--fs-base); color:var(--ink-2,#34363b); line-height:1.4; }
-        .au-meta { font-size:var(--fs-xs); color:var(--ink-4,#b5b8be); margin-top:3px; font-family:var(--ff-m,'JetBrains Mono',monospace); display:flex; align-items:center; gap:8px; }
-
-        .au-actor { display:flex; align-items:center; gap:6px; flex-shrink:0; }
-        .au-actor-av { width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:var(--fs-2xs); font-weight:700; color:white; flex-shrink:0; font-family:var(--ff-m,'JetBrains Mono',monospace); }
-        .au-actor-name { font-size:var(--fs-sm); font-weight:600; color:var(--ink-2,#34363b); white-space:nowrap; }
-        .au-actor-role { font-size:var(--fs-xs); color:var(--ink-4,#b5b8be); }
-        .au-time { font-family:var(--ff-m,'JetBrains Mono',monospace); font-size:var(--fs-xs); color:var(--ink-4,#b5b8be); flex-shrink:0; white-space:nowrap; }
-      </style>
-
-      <div class="au-header">
-        <div>
-          <div class="au-header-title">Audit Log</div>
-          <div class="au-header-sub">Every significant action with actor, timestamp, and context</div>
-        </div>
-        <button class="btn-ghost" onclick="reloadTab('audit')" style="font-size:var(--fs-base);padding:7px 14px;">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right:5px;"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-          Refresh
-        </button>
-      </div>
+      ${OpsModal.pageHeader({title:'Activity log',subtitle:'Reported actions with actor, timestamp, and context',actions:'<button class="fg-action" onclick="reloadTab(\'audit\')">Refresh</button>'})}
 
       <div class="lv-wrap">
         <div class="lv-toolbar">
           <div class="lv-search">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input id="au-actor-filter" placeholder="Search actor…" oninput="OpsAudit.applyFilters()">
+            ${OpsModal.actionIcon("search")}
+            <input id="au-actor-filter" aria-label="Search activity by actor" placeholder="Search actor…" oninput="OpsAudit.applyFilters()">
           </div>
           <div class="lv-toolbar-right">
-            <span id="au-count" style="font-size:var(--fs-xs);color:var(--ink-3);font-family:var(--ff-m);"></span>
-            <select class="au-filter-input" id="au-action-filter" onchange="OpsAudit.applyFilters()">
+            <span id="au-count" class="fg-number" style="font-size:var(--fs-xs);color:var(--ink-3);"></span>
+            <select class="au-filter-input" id="au-action-filter" aria-label="Action type" onchange="OpsAudit.applyFilters()">
               <option value="">All actions</option>
-              ${Object.entries(ACTION_CONFIG).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
+              ${Object.entries(ACTION_CONFIG).map(([k,v]) => `<option value="${k}">${OpsModal.escape(OpsModal.label(v.label))}</option>`).join('')}
             </select>
-            <input class="au-filter-input" type="date" id="au-from-filter" onchange="OpsAudit.applyFilters()" title="From date">
+            <input class="au-filter-input" type="date" id="au-from-filter" aria-label="Activity from date" onchange="OpsAudit.applyFilters()" title="From date">
             <span style="font-size:var(--fs-sm);color:var(--ink-3);">→</span>
-            <input class="au-filter-input" type="date" id="au-to-filter" onchange="OpsAudit.applyFilters()" title="To date">
-            <button class="btn-ghost" onclick="OpsAudit.clearFilters()" style="font-size:var(--fs-sm);padding:6px 12px;">Clear</button>
+            <input class="au-filter-input" type="date" id="au-to-filter" aria-label="Activity to date" onchange="OpsAudit.applyFilters()" title="To date">
+            <button class="fg-action" onclick="OpsAudit.clearFilters()">Clear</button>
           </div>
         </div>
         <div id="au-log-body">
@@ -142,16 +102,11 @@ const OpsAudit = (function () {
   async function loadLogs() {
     try {
       const res = await OpsModal.apiGet('/audit-logs');
-      _logs     = res.data || res.logs || [];
+      _logs = OpsModal.readArray(res,'Activity log',['data','logs']);
       renderLog(_logs);
     } catch (err) {
       const el = document.getElementById('au-log-body');
-      if (el) el.innerHTML = `
-        <div style="padding:48px;text-align:center;">
-          <div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load audit log</div>
-          <div style="color:var(--ink-3);font-size:var(--fs-sm);margin-bottom:16px;">${err.message}</div>
-          <button class="btn-ghost" onclick="reloadTab('audit')">Retry</button>
-        </div>`;
+      if (el) el.innerHTML = OpsModal.failure('Activity log',err,"reloadTab('audit')");
     }
   }
 
@@ -184,17 +139,13 @@ const OpsAudit = (function () {
 
   function renderLog(logs) {
     const countEl = document.getElementById('au-count');
-    if (countEl) countEl.textContent = `${logs.length} entries`;
+    if (countEl) countEl.textContent = `${logs.length} returned ${logs.length===1?'entry':'entries'}`;
 
     const el = document.getElementById('au-log-body');
     if (!el) return;
 
     if (!logs || logs.length === 0) {
-      el.innerHTML = `
-        <div style="padding:60px;text-align:center;color:var(--ink-3);">
-          <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" style="margin:0 auto 12px;opacity:.25;display:block;"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-          <div style="font-size:var(--fs-md);font-weight:600;color:var(--ink-2);">No entries match your filter</div>
-        </div>`;
+      el.innerHTML = OpsModal.emptyState(OpsModal.entityIcon('audit'),_logs.length?'No matching activity':'No activity entries returned',_logs.length?'Change the search or event filters to review other returned entries.':'No activity entries were returned. This does not establish that no actions occurred.');
       return;
     }
 
@@ -205,28 +156,20 @@ const OpsAudit = (function () {
   function renderPage(items) {
     const el = document.getElementById('au-log-body');
     if (!el) return;
-    const resultBadge = log => {
-      const r = (log.result || (String(log.action || '').includes('fail') ? 'failure' : 'success')).toLowerCase();
-      return `<span class="status-badge ${r.includes('fail') || r.includes('deny') ? 'critical' : 'nominal'}">${r}</span>`;
-    };
-    const resultPill = log => {
-      const r = (log.result || (String(log.action || '').includes('fail') ? 'failure' : 'success')).toLowerCase();
-      const bad = r.includes('fail') || r.includes('deny');
-      return `<span class="lv-status ${bad ? 'danger' : 'ok'}">${r}</span>`;
-    };
+    const resultPill = log => OpsModal.status(log.result || 'unknown',null,null,'audit');
     el.innerHTML = `
       <div class="lv-scroll">
         <table class="lv-table">
-          <thead><tr><th>Date</th><th>User</th><th>Action</th><th>Module</th><th>Object</th><th>IP address</th><th>Result</th></tr></thead>
+          <thead><tr><th scope="col">Date</th><th scope="col">User</th><th scope="col">Action</th><th scope="col">Module</th><th scope="col">Object</th><th scope="col">IP address</th><th scope="col">Result</th></tr></thead>
           <tbody>
             ${items.map(log => {
               const ac = getActionConfig(log.action);
-              return `<tr class="clickable" onclick="OpsAudit.viewEntry('${log.id || ''}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsAudit.viewEntry('${log.id || ''}')}">
+              return `<tr class="clickable" onclick="OpsAudit.viewEntry('${OpsModal.sid(log.id)}')">
                 <td class="lv-mono">${OpsModal.fmtDateTime(log.created_at)}</td>
-                <td>${_dash(log.actor_name || 'System')}</td>
-                <td><span class="au-action-badge" style="background:${ac.bg};color:${ac.color};">${ac.label}</span></td>
-                <td>${_dash(log.module || log.target_type)}</td>
-                <td>${_dash(log.target_label || log.target_id)}</td>
+                <td><span class="fg-cell-copy">${_dash(log.actor_name || 'Not recorded')}</span></td>
+                <td><button class="record-link lv-name" onclick="event.stopPropagation();OpsAudit.viewEntry('${OpsModal.sid(log.id)}')"><span class="au-action-badge" style="background:${ac.bg};color:${ac.color};">${OpsModal.escape(ac.label)}</span></button></td>
+                <td>${log.module || log.target_type ? OpsModal.escape(OpsModal.permissionLabel(log.module || log.target_type)) : 'Not supplied'}</td>
+                <td><span class="fg-cell-copy">${_dash(log.target_label || log.target_id)}</span></td>
                 <td class="lv-mono">${_dash(log.ip_address)}</td>
                 <td>${resultPill(log)}</td>
               </tr>`;
@@ -246,45 +189,41 @@ const OpsAudit = (function () {
     const log = _logs.find(l => String(l.id) === String(id));
     if (!log) return;
     const ac = getActionConfig(log.action);
-    const f = (k, v) => `<div style="min-width:0;"><div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3);">${k}</div><div style="font-size:var(--fs-md);color:var(--ink);font-weight:600;margin-top:3px;word-break:break-word;">${v}</div></div>`;
-    const sec = (t, b, needs) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r,14px);box-shadow:var(--sh-xs);margin-bottom:14px;overflow:hidden;"><div style="padding:12px 18px;border-bottom:1px solid var(--border);font-family:var(--ff-d);font-size:var(--fs-sm);font-weight:700;color:var(--ink);display:flex;justify-content:space-between;">${t}${needs ? '<span style="font-size:var(--fs-xs);color:var(--ink-4);font-style:italic;">pending backend data</span>' : ''}</div><div style="padding:16px 18px;">${b}</div></div>`;
+    const f = OpsModal.fact;
     const md = log.metadata || {};
     const before = md.before || md.old || md.from;
     const after = md.after || md.new || md.to;
-    const jsonBox = obj => `<pre style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:var(--ff-m);font-size:var(--fs-sm);color:var(--ink-2);white-space:pre-wrap;overflow-x:auto;max-height:220px;overflow-y:auto;margin:0;">${JSON.stringify(obj, null, 2)}</pre>`;
+    const jsonBox = obj => `<pre style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-control);padding:12px;font-family:var(--ff-m);font-size:var(--fs-sm);color:var(--ink-2);white-space:pre-wrap;overflow-x:auto;max-height:220px;overflow-y:auto;margin:0;">${OpsModal.escape(JSON.stringify(obj, null, 2))}</pre>`;
 
-    const details = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px 22px;">
+    const details = `<div class="fg-facts-grid">
       ${f('Date', OpsModal.fmtDateTime(log.created_at))}
-      ${f('User', log.actor_name || 'System')}
-      ${f('Role', log.actor_role ? log.actor_role.replace(/_/g, ' ') : '—')}
-      ${f('Action', `<span class="au-action-badge" style="background:${ac.bg};color:${ac.color};">${ac.label}</span>`)}
-      ${f('Module', _dash(log.module || log.target_type))}
+      ${f('User', OpsModal.escape(log.actor_name || 'Not recorded'))}
+      ${f('Role', log.actor_role ? OpsModal.escape(OpsModal.label(log.actor_role)) : '—')}
+      ${f('Action', `<span class="au-action-badge" style="background:${ac.bg};color:${ac.color};">${OpsModal.escape(ac.label)}</span>`)}
+      ${f('Module', log.module || log.target_type ? OpsModal.escape(OpsModal.permissionLabel(log.module || log.target_type)) : 'Not supplied')}
       ${f('Object', _dash(log.target_label || log.target_id))}
-      ${f('IP Address', _dash(log.ip_address))}
-      ${f('Result', _dash(log.result || 'success'))}
-    </div>${log.description ? `<div style="margin-top:12px;">${f('Description', log.description)}</div>` : ''}`;
+      ${f('IP address', _dash(log.ip_address))}
+      ${f('Result', OpsModal.status(log.result || 'unknown',null,null,'audit'))}
+    </div>${log.description ? OpsModal.textBlock('Event description',log.description) : ''}`;
 
-    _container.innerHTML = `
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap;">
-        <button class="btn-ghost" onclick="OpsAudit.back()" style="display:inline-flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Audit Log</button>
-        <div><div style="font-family:var(--ff-d);font-size:var(--fs-xl);font-weight:700;color:var(--ink);">${ac.label}</div><div style="font-size:var(--fs-sm);color:var(--ink-3);margin-top:3px;">${log.actor_name || 'System'} · ${OpsModal.fmtDateTime(log.created_at)}</div></div>
-      </div>
-      ${sec('Event Details', details)}
-      ${sec('Before', before != null ? jsonBox(before) : '<div style="color:var(--ink-3);font-size:var(--fs-sm);">No before-state recorded.</div>', before == null)}
-      ${sec('After', after != null ? jsonBox(after) : '<div style="color:var(--ink-3);font-size:var(--fs-sm);">No after-state recorded.</div>', after == null)}
-      ${sec('Metadata', Object.keys(md).length ? jsonBox(md) : '<div style="color:var(--ink-3);font-size:var(--fs-sm);">No metadata.</div>')}
-      ${sec('Related Records', log.target_id ? `<div style="color:var(--ink-2);font-size:var(--fs-sm);">${_dash(log.target_type)} · ${log.target_id}</div>` : '<div style="color:var(--ink-3);font-size:var(--fs-sm);">No related records in this response.</div>', !log.target_id)}
-    `;
+    const keys = new Set([...Object.keys(before && typeof before === 'object' ? before : {}), ...Object.keys(after && typeof after === 'object' ? after : {})]);
+    const changed = [...keys].filter(key=>JSON.stringify(before?.[key]) !== JSON.stringify(after?.[key]));
+    const display = value => value == null ? 'Not recorded' : OpsModal.escape(typeof value === 'object' ? JSON.stringify(value) : String(value));
+    const changes = changed.length ? `<table class="fgd-table"><thead><tr><th scope="col">Field</th><th scope="col">Before</th><th scope="col">After</th></tr></thead><tbody>${changed.map(key=>`<tr><td>${OpsModal.escape(OpsModal.label(key))}</td><td>${display(before?.[key])}</td><td>${display(after?.[key])}</td></tr>`).join('')}</tbody></table>` : '<div class="capability-note">No field-level change data was supplied.</div>';
+    const modules = {alert:'alerts',property:'properties',sensor:'sensors',team:'teams',job:'jobs',invoice:'billing',client:'clients'};
+    const target = modules[log.target_type];
+    const related = log.target_id ? target ? OpsModal.link(target,log.target_id,log.target_label || `${log.target_type} ${log.target_id}`) : OpsModal.escape(`${log.target_type || 'Record'} · ${log.target_id}`) : 'No related record supplied';
+    _container.innerHTML = OpsModal.detailShell({
+      back:'OpsAudit.back()',crumbRoot:'Activity log',title:OpsModal.escape(OpsModal.label(ac.label)),
+      chips:[{label:OpsModal.escape(OpsModal.label(log.result || 'Unknown result')),cls:OpsModal.statusTone(log.result,'audit')}],
+      meta:[['Actor',OpsModal.escape(log.actor_name || 'Not recorded')],['Recorded',OpsModal.fmtDateTime(log.created_at)]],
+      decision:[['Reported result',OpsModal.label(log.result || 'Unknown')],['Actor',log.actor_name || 'Not recorded'],['Next step','Review recorded changes and the related record']],
+      note:'Read-only record of the reported event. Missing results or change data are not proof of success.',
+      sections:[{id:'event',title:'Event summary',body:details},{id:'changes',title:'Field changes',body:changes},{id:'related',title:'Related record',body:`<div class="capability-note">${related}</div>`},{id:'raw',title:'Technical record',body:`<details class="capability-note"><summary>View raw metadata</summary>${jsonBox(md)}</details>`}],
+    });
   }
 
   // ── HELPERS ───────────────────────────────────────────────────────────
-
-  function avatarColor(name) {
-    const colors = ['#17181b','#3f63e6','#5379ff','#0a8a6a','#7c3aed','#b45309'];
-    let h = 0;
-    for (let i = 0; i < (name || '').length; i++) h = (h * 31 + name.charCodeAt(i)) % colors.length;
-    return colors[h];
-  }
 
   function fmtRelTime(ds) {
     if (!ds) return '—';
@@ -296,7 +235,7 @@ const OpsAudit = (function () {
     if (mins < 60) return `${mins}m ago`;
     if (hrs  < 24) return `${hrs}h ago`;
     if (days < 7)  return `${days}d ago`;
-    return new Date(ds).toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+    return OpsModal.fmtDate(ds);
   }
 
   return { render, applyFilters, clearFilters, viewEntry, back };

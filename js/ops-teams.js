@@ -8,17 +8,20 @@
 const OpsTeams = (function () {
   'use strict';
   const canMng = () => !(window.Auth && Auth.can) || Auth.can('teams.manage');
+  function requireTeamManage() { if (Auth.hasNavAccess('teams') && canMng()) return true; OpsModal.toast('You do not have permission to change teams', 'watch'); return false; }
 
   let _teams = [];
   let _pg    = null;
   let _container = null;
-  const _dash = v => (v == null || v === '') ? '—' : v;
+  let _view = 'dispatch';
+  function setView(view) { _view = view === 'roster' ? 'roster' : 'dispatch'; document.querySelectorAll('#content-teams .fg-workspace button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.workspace===_view)); applyTeams(); }
+  const _dash = v => (v == null || v === '') ? '—' : OpsModal.escape(v);
 
   // Only admins can permanently delete records
   const _isAdmin = (() => {
     try {
-      const u = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
-      return u.role === 'admin';
+      const u = Auth.getUser() || {};
+      return u.role === 'admin' || u.role === 'super_admin';
     } catch { return false; }
   })();
 
@@ -27,104 +30,25 @@ const OpsTeams = (function () {
   function render(container) {
     _container = container;
     container.innerHTML = `
-      <style>
-        .ops-table tbody tr.clickable { cursor:pointer; transition:background .12s; }
-        .ops-table tbody tr.clickable:hover { background:var(--surface-2,#f2f8fb); }
-        .tmv-back { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); font-weight:600; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:8px 13px; cursor:pointer; }
-        .tmv-top { display:flex; align-items:center; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
-        .tmv-name { font-family:var(--ff-d); font-size:var(--fs-xl); font-weight:700; color:var(--ink); line-height:1.1; }
-        .tmv-meta { font-size:var(--fs-sm); color:var(--ink-3); margin-top:3px; }
-        .tmv-actions { margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; }
-        .tmv-sec { background:var(--surface); border:1px solid var(--border); border-radius:var(--r,14px); box-shadow:var(--sh-xs); margin-bottom:14px; overflow:hidden; }
-        .tmv-sec-h { padding:12px 18px; border-bottom:1px solid var(--border); font-family:var(--ff-d); font-size:var(--fs-sm); font-weight:700; color:var(--ink); display:flex; justify-content:space-between; }
-        .tmv-sec-b { padding:16px 18px; }
-        .tmv-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px 22px; }
-        .tmv-f .k { font-size:var(--fs-2xs); font-weight:700; letter-spacing:.9px; text-transform:uppercase; color:var(--ink-3); }
-        .tmv-f .v { font-size:var(--fs-md); color:var(--ink); font-weight:600; margin-top:3px; }
-        .tmv-e { color:var(--ink-3); font-size:var(--fs-sm); padding:6px 0; }
-        .tmv-needs { font-size:var(--fs-xs); color:var(--ink-4); font-style:italic; }
-        .tm-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
-        .tm-header-title { font-family:var(--ff-d,'Inter',sans-serif); font-size:var(--fs-xl); font-weight:800; color:var(--ink,#1c1d20); letter-spacing:-.02em; margin-bottom:3px; }
-        .tm-header-sub { font-size:var(--fs-base); color:var(--ink-3,#8b909a); }
-        .um-filter { padding:7px 12px; border:1px solid var(--border,#dae6ef); border-radius:var(--rs,9px); background:var(--surface-2,#f7fafc); font-family:var(--ff-b,'Inter',sans-serif); font-size:var(--fs-base); color:var(--ink,#1c1d20); outline:none; cursor:pointer; }
-        .um-filter:focus { border-color:var(--blue,#5379ff); }
 
-        .tm-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
-        .tm-stat { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); padding:16px 18px; box-shadow:var(--sh-xs); position:relative; overflow:hidden; transition:all .2s; }
-        .tm-stat:hover { transform:translateY(-2px); box-shadow:var(--sh-md); }
-        .tm-stat::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2.5px; }
-        .tm-stat.onsite::after  { background:var(--ok,#0a8a6a); }
-        .tm-stat.enroute::after { background:var(--warn,#b45309); }
-        .tm-stat.idle::after    { background:var(--ink-4,#b5b8be); }
-        .tm-stat.total::after   { background:linear-gradient(90deg,var(--navy,#17181b),var(--blue,#5379ff)); }
-        .tm-stat-label { font-size:var(--fs-2xs); font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-3,#8b909a); margin-bottom:6px; }
-        .tm-stat-val { font-family:var(--ff-d,'Inter',sans-serif); font-size:var(--fs-2xl); font-weight:900; color:var(--ink,#1c1d20); letter-spacing:-.03em; line-height:1; }
-        .tm-stat-val.green { color:var(--ok,#0a8a6a); }
-        .tm-stat-val.amber { color:var(--warn,#b45309); }
 
-        /* Team cards */
-        .tm-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:16px; }
-
-        .tm-card { background:var(--surface,#fff); border:1px solid var(--border,#dae6ef); border-radius:var(--r,14px); overflow:hidden; box-shadow:var(--sh-xs); transition:all .2s; }
-        .tm-card:hover { box-shadow:var(--sh-md); border-color:var(--border-2,#b8d0de); }
-
-        .tm-card-head { padding:14px 16px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; gap:12px; }
-        .tm-card-avatar { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-family:var(--ff-m,'JetBrains Mono',monospace); font-size:var(--fs-base); font-weight:700; color:white; flex-shrink:0; }
-        .tm-card-name { font-size:var(--fs-md); font-weight:700; color:var(--ink,#1c1d20); margin-bottom:2px; }
-        .tm-card-id { font-family:var(--ff-m,'JetBrains Mono',monospace); font-size:var(--fs-xs); color:var(--ink-4,#b5b8be); }
-
-        /* Members strip inside card */
-        .tm-members-strip { padding:10px 16px; border-bottom:1px solid var(--border,#dae6ef); display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--surface-2,#f7fafc); }
-        .tm-member-avatars { display:flex; }
-        .tm-member-av { width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:var(--fs-2xs); font-weight:700; color:white; border:2px solid var(--surface,#fff); margin-left:-6px; flex-shrink:0; }
-        .tm-member-av:first-child { margin-left:0; }
-        .tm-member-count { font-size:var(--fs-sm); color:var(--ink-3,#8b909a); font-weight:500; }
-        .tm-member-add { font-size:var(--fs-xs); color:var(--blue,#5379ff); font-weight:600; cursor:pointer; white-space:nowrap; background:none; border:none; padding:0; }
-        .tm-member-add:hover { text-decoration:underline; }
-
-        .tm-card-body { padding:12px 16px; display:flex; flex-direction:column; gap:7px; }
-        .tm-detail-row { display:flex; align-items:center; justify-content:space-between; font-size:var(--fs-base); }
-        .tm-detail-label { color:var(--ink-3,#8b909a); font-weight:500; }
-        .tm-detail-val { color:var(--ink-2,#34363b); font-weight:600; text-align:right; }
-
-        .tm-card-foot { padding:10px 16px; border-top:1px solid var(--border,#dae6ef); display:flex; gap:6px; }
-
-        /* Member list in modal */
-        .tm-modal-member-row {
-          display:flex; align-items:center; gap:10px;
-          padding:9px 0; border-bottom:1px solid var(--border,#dae6ef);
-        }
-        .tm-modal-member-row:last-child { border-bottom:none; }
-        .tm-modal-member-av { width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:var(--fs-xs); font-weight:700; color:white; flex-shrink:0; font-family:var(--ff-m,'JetBrains Mono',monospace); }
-        .tm-modal-member-name { font-size:var(--fs-base); font-weight:600; color:var(--ink,#1c1d20); }
-        .tm-modal-member-role { font-size:var(--fs-sm); color:var(--ink-3,#8b909a); margin-top:1px; }
-        .tm-modal-member-remove { margin-left:auto; padding:4px 10px; font-size:var(--fs-xs); font-weight:600; color:var(--err,#dc2626); background:var(--eb,#fef2f2); border:1px solid rgba(220,38,38,.2); border-radius:var(--rs,9px); cursor:pointer; transition:all .18s; }
-        .tm-modal-member-remove:hover { background:var(--err,#dc2626); color:white; }
-      </style>
-
-      <div class="tm-header">
-        <div>
-          <div class="tm-header-title">Field Teams</div>
-          <div class="tm-header-sub">Each team is a group of field staff. Manage members from each team card.</div>
-        </div>
-        ${canMng() ? `<button class="btn-primary" onclick="OpsTeams.createTeam()">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-          Create Team
-        </button>` : ''}
-      </div>
+      ${OpsModal.pageHeader({title:'Teams',subtitle:'Review reported readiness and assignments, or switch to the administrative roster. Location and check-ins are not assumed live.',actions:canMng() ? '<button class="fg-action fg-action-primary" onclick="OpsTeams.createTeam()">Create team</button>' : ''})}
 
       <div class="lv-wrap">
         <div class="lv-toolbar">
           <div class="lv-search">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input id="tm-search" placeholder="Search teams…" oninput="OpsTeams.searchTeams(this.value)">
+            ${OpsModal.actionIcon("search")}
+            <input id="tm-search" aria-label="Search teams" placeholder="Search teams…" oninput="OpsTeams.searchTeams(this.value)">
           </div>
           <div class="lv-toolbar-right">
-            <select class="um-filter" onchange="OpsTeams.filterStatus(this.value)">
+            ${OpsModal.workspace({name:'Team workspace',value:_view,handler:'OpsTeams.setView',options:[['dispatch','Dispatch overview'],['roster','Team roster']]})}
+            <select id="tm-status" aria-label="Team availability" class="um-filter" onchange="OpsTeams.filterStatus(this.value)">
               <option value="all">All statuses</option>
               <option value="on_site">On site</option>
               <option value="en_route">En route</option>
-              <option value="idle">Idle</option>
+              <option value="returning">Returning</option>
+              <option value="available">Available for dispatch</option>
+              <option value="unknown">Unknown readiness</option>
             </select>
           </div>
         </div>
@@ -143,78 +67,29 @@ const OpsTeams = (function () {
 
   async function loadTeams() {
     try {
-      const res  = await OpsModal.apiGet('/teams');
-      _teams     = res.data || res.teams || [];
-      if (!Array.isArray(_teams)) _teams = [];
-      updateStats(_teams);
+      const res  = await OpsModal.apiGet('/teams',{text:'raw'});
+      _teams = OpsModal.readArray(res,'Team directory',['data','teams']);
+      const search=document.getElementById('tm-search'),status=document.getElementById('tm-status');
+      if(search)search.value=_tterm;
+      if(status)status.value=_tstatus;
       applyTeams();
     } catch (err) {
-      document.getElementById('tm-body').innerHTML = `
-        <div style="padding:48px;text-align:center;">
-          <div style="color:var(--err);font-weight:700;margin-bottom:8px;">Failed to load teams</div>
-          <div style="color:var(--ink-3);font-size:var(--fs-sm);margin-bottom:16px;">${err.message}</div>
-          <button class="btn-ghost" onclick="reloadTab('teams')">Retry</button>
-        </div>`;
+      document.getElementById('tm-body').innerHTML = OpsModal.failure('Teams',err,"reloadTab('teams')");
     }
-  }
-
-  function updateStats(teams) {
-    let onsite = 0, enroute = 0, idle = 0;
-    teams.forEach(t => {
-      const s = (t.status || '').toLowerCase();
-      if (s === 'on_site')       onsite++;
-      else if (s === 'en_route') enroute++;
-      else                       idle++;
-    });
-    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-    set('tm-onsite',  onsite);
-    set('tm-enroute', enroute);
-    set('tm-idle',    idle);
-    set('tm-total',   teams.length);
   }
 
   // ── HELPERS ───────────────────────────────────────────────────────────
 
   function statusConfig(s) {
-    const m = {
-      on_site:   { label:'On Site',   badge:'nominal', dot:'var(--ok,#0a8a6a)' },
-      en_route:  { label:'En Route',  badge:'watch',   dot:'var(--warn,#b45309)' },
-      returning: { label:'Returning', badge:'watch',   dot:'var(--warn,#b45309)' },
-      idle:      { label:'Idle',      badge:'offline', dot:'var(--off,#64748b)' },
-    };
-    return m[(s || '').toLowerCase()] || m.idle;
-  }
-
-  function teamColor(name) {
-    const colors = CONFIG.AVATAR_COLORS;
-    let h = 0;
-    for (let i = 0; i < (name || '').length; i++) h = (h * 31 + name.charCodeAt(i)) % colors.length;
-    return colors[h];
-  }
-
-  function memberColor(name) {
-    // rotated by one so a member's avatar doesn't land on the same color
-    // as a team sharing the same name-hash bucket
-    const colors = [...CONFIG.AVATAR_COLORS.slice(1), CONFIG.AVATAR_COLORS[0]];
-    let h = 0;
-    for (let i = 0; i < (name || '').length; i++) h = (h * 31 + name.charCodeAt(i)) % colors.length;
-    return colors[h];
+    const key=String(s || '').toLowerCase();
+    return {label:['available','on_site','en_route','returning','idle'].includes(key)?OpsModal.label(key):'Unknown'};
   }
 
   function initials(name) {
-    return (name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    return String(name || '').split(/\s+/).map(word=>word.match(/\p{L}/u)?.[0]).filter(Boolean).join('').toUpperCase().slice(0,2) || '?';
   }
 
-  function formatTime(ds) {
-    if (!ds) return '—';
-    const diff = Date.now() - new Date(ds).getTime();
-    const mins = Math.floor(diff / 60000);
-    const hrs  = Math.floor(diff / 3600000);
-    if (mins < 1)  return 'Just now';
-    if (mins < 60) return `${mins}m ago`;
-    if (hrs  < 24) return `${hrs}h ago`;
-    return new Date(ds).toLocaleDateString('en-GB', { day:'numeric', month:'short' });
-  }
+  function formatTime(ds) { return OpsModal.relativeTime(ds); }
 
   // ── RENDER CARDS ─────────────────────────────────────────────────────
 
@@ -222,20 +97,17 @@ const OpsTeams = (function () {
   function searchTeams(q) { _tterm = q.trim().toLowerCase(); applyTeams(); }
   function filterStatus(k) {
     _tstatus = k;
-    ['all', 'on_site', 'en_route', 'idle'].forEach(x => {
-      const el = document.getElementById('tmf-' + x);
-      if (el) el.classList.toggle('active', x === k);
-    });
     applyTeams();
   }
   function applyTeams() {
     let rows = _teams;
     if (_tstatus !== 'all') rows = rows.filter(t => {
       const s = (t.status || '').toLowerCase();
-      return _tstatus === 'idle' ? (s !== 'on_site' && s !== 'en_route') : s === _tstatus;
+      return _tstatus === 'available' ? ['idle','available'].includes(s) : _tstatus === 'unknown' ? !['idle','available','on_site','en_route','returning'].includes(s) : s === _tstatus;
     });
     if (_tterm) rows = rows.filter(t => `${t.team_name || t.name || ''} ${t.team_id || t.id || ''}`.toLowerCase().includes(_tterm));
-    renderTeams(rows);
+    _pg = FGPaginator.create(rows,{pageSize:25,containerId:'tm-body'});
+    _pg.render(renderTeams);
   }
 
   function renderTeams(teams) {
@@ -243,38 +115,36 @@ const OpsTeams = (function () {
     if (!el) return;
 
     if (!teams || teams.length === 0) {
-      el.innerHTML = `
-        <div style="padding:48px;text-align:center;color:var(--ink-3);">
-          <div style="font-size:var(--fs-md);font-weight:600;color:var(--ink-2);margin-bottom:8px;">${_teams.length ? 'No teams match this filter' : 'No teams yet'}</div>
-          ${_teams.length ? '' : '<button class="btn-primary" onclick="OpsTeams.createTeam()">Create First Team</button>'}
-        </div>`;
+      el.innerHTML = OpsModal.emptyState('',_teams.length?'No matching teams':'No teams returned',_teams.length?'Adjust the search or availability filter to review other teams.':'No teams were returned by this feed. Team creation is available to authorised operators in the page header.');
       return;
     }
 
     el.innerHTML = `
       <div class="lv-scroll">
         <table class="lv-table">
-          <thead><tr><th>Team</th><th>Members</th><th>Supervisor</th><th>Active jobs</th><th>Vehicle</th><th>Availability</th></tr></thead>
+          <thead><tr><th scope="col">Team</th>${_view === 'dispatch' ? '<th scope="col">Readiness</th><th scope="col">Assignment / location</th><th scope="col">Last check-in</th><th scope="col">Active work</th>' : '<th scope="col">Members</th><th scope="col">Supervisor</th><th scope="col">Active work</th><th scope="col">Vehicle</th><th scope="col">Readiness</th>'}</tr></thead>
           <tbody>
             ${teams.map(t => {
-              const id = t.team_id || t.id;
+              const id = OpsModal.sid(t.team_id || t.id);
               const name = t.team_name || t.name || id || '—';
               const sc = statusConfig(t.status);
-              const scls = { on_site: 'ok', en_route: 'warn' }[(t.status || '').toLowerCase()] || 'neutral';
-              const members = t.members || [];
+              const scls = OpsModal.statusTone(t.status,'crew');
+              const members = Array.isArray(t.members) ? t.members : [];
               const supervisor = t.supervisor || t.lead_name || (members.find(m => m.team_role === 'lead') || {}).full_name;
-              return `<tr class="clickable" onclick="OpsTeams.viewTeam('${id}')" tabindex="0" onkeydown="if(event.key==='Enter'){OpsTeams.viewTeam('${id}')}">
+              const workCount = OpsModal.count(t.active_jobs);
+              return `<tr class="clickable" onclick="OpsTeams.viewTeam('${id}')">
                 <td>
                   <div class="lv-name-cell">
-                    <div class="lv-avatar" style="background:var(--surface-3);color:var(--ink-2);border:1px solid var(--border);">${initials(name)}</div>
-                    <div style="min-width:0;"><div class="lv-name">${name}</div><span class="lv-source">${id}</span></div>
+                    <div class="lv-avatar" aria-hidden="true">${OpsSpatial.icon("crew")}</div>
+                    <div style="min-width:0;"><button type="button" class="record-link lv-name" onclick="event.stopPropagation();OpsTeams.viewTeam('${id}')">${OpsModal.escape(name)}</button><span class="lv-source">${OpsModal.escape(id)}</span></div>
                   </div>
                 </td>
-                <td class="lv-mono">${members.length}</td>
+                ${_view === 'dispatch' ? `<td><span class="lv-status ${scls}">${sc.label}</span></td><td>${_dash(t.current_assignment || t.assigned_property || t.current_location || t.location)}</td><td>${formatTime(t.last_checkin || t.last_check_in)}</td><td class="lv-mono">${workCount === null ? 'Not supplied' : workCount}</td>` : `
+                <td class="lv-mono">${Array.isArray(t.members) ? members.length : 'Unknown'}</td>
                 <td>${_dash(supervisor)}</td>
-                <td class="lv-mono">${t.active_jobs != null ? t.active_jobs : '<span class="lv-dash">—</span>'}</td>
+                <td class="lv-mono">${workCount === null ? 'Not supplied' : workCount}</td>
                 <td>${_dash(t.vehicle)}</td>
-                <td><span class="lv-status ${scls}">${sc.label}</span></td>
+                <td><span class="lv-status ${scls}">${sc.label}</span></td>`}
               </tr>`;
             }).join('')}
           </tbody>
@@ -285,8 +155,9 @@ const OpsTeams = (function () {
   // ── MANAGE MEMBERS MODAL ──────────────────────────────────────────────
   // This is the key feature: add/remove members from a specific team.
 
-  async function manageMembers(teamId, teamName) {
-    OpsModal.open(`${teamName} — Members`, `
+  async function manageMembers(teamId, teamName='Team') {
+    if (!requireTeamManage()) return;
+    OpsModal.open(`${teamName} — members`, `
       <div id="mm-loading" style="padding:32px;text-align:center;color:var(--ink-3);">
         <div class="loading" style="margin:0 auto 10px;"></div>
         <div style="font-size:var(--fs-base);">Loading…</div>
@@ -294,103 +165,88 @@ const OpsTeams = (function () {
       <div id="mm-body" style="display:none;"></div>
     `, [
       { label: 'Close', onclick: 'OpsModal.close()', class: 'btn-ghost' },
-      { label: 'Add Member', onclick: `OpsTeams.addMemberToTeam('${teamId}','${teamName.replace(/'/g, "\\'")}')`, class: 'btn-primary', id: 'mm-add-btn' },
+      { label: 'Add member', onclick: `OpsTeams.addMemberToTeam('${OpsModal.sid(teamId)}',${OpsModal.escape(JSON.stringify(teamName))})`, class: 'btn-primary', id: 'mm-add-btn' },
     ]);
+    const body=document.getElementById('mm-body'),loading=document.getElementById('mm-loading');
 
     try {
-      // Load team detail (members) and all available users in parallel
-      const [teamRes, usersRes] = await Promise.all([
-        OpsModal.apiGet(`/teams/${teamId}`),
-        OpsModal.apiGet('/users'),
-      ]);
-
-      const team    = teamRes.data || {};
-      const members = team.members || [];
-      const allUsers = usersRes.data || usersRes.users || [];
-
-      const loading = document.getElementById('mm-loading');
-      const body    = document.getElementById('mm-body');
+      const teamRes=await OpsModal.apiGet(`/teams/${teamId}`,{text:'raw'});
+      const team = OpsModal.readRecord(teamRes,'Team');
+      const members = OpsModal.readArray({data:team.members},'Team member directory');
+      if(!body || !document.contains(body))return;
       if (loading) loading.style.display = 'none';
       if (!body)   return;
 
       body.style.display = 'block';
 
       if (members.length === 0) {
-        body.innerHTML = `
-          <div style="padding:32px;text-align:center;color:var(--ink-3);">
-            <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" style="margin:0 auto 12px;opacity:.25;display:block;"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-            <div style="font-size:var(--fs-base);font-weight:600;color:var(--ink-2);margin-bottom:4px;">No members yet</div>
-            <div style="font-size:var(--fs-sm);">Click "Add Member" to assign staff to this team.</div>
-          </div>`;
+        body.innerHTML = OpsModal.emptyState(OpsModal.entityIcon('crew'),'No team members returned','The returned roster is empty. Add member is available to authorised operators.');
         return;
       }
 
       body.innerHTML = `
-        <div style="margin-bottom:10px;font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">
-          Current Members (${members.length})
-        </div>
+        <div class="fg-timeline-title">Current members (${members.length})</div>
         <div id="mm-member-list">
           ${members.map(m => {
             const uid  = m.user_id || m.id;
             const name = m.full_name || m.name || 'Unknown';
             const role = m.role_id || m.role || '';
             return `
-              <div class="tm-modal-member-row" id="mmr-${uid}">
-                <div class="tm-modal-member-av" style="background:${memberColor(name)};">${initials(name)}</div>
+              <div class="tm-modal-member-row" id="mmr-${OpsModal.sid(uid)}">
+                <div class="tm-modal-member-av">${OpsModal.escape(initials(name))}</div>
                 <div>
-                  <div class="tm-modal-member-name">${name}</div>
-                  <div class="tm-modal-member-role">${(CONFIG.ROLE_LABELS[role] || role).replace(/_/g, ' ')} ${m.phone ? '· ' + m.phone : ''}</div>
+                  <div class="tm-modal-member-name">${OpsModal.escape(name)}</div>
+                  <div class="tm-modal-member-role">${OpsModal.escape(OpsModal.label(CONFIG.ROLE_LABELS[role] || role))}${m.phone ? ' · ' + OpsModal.escape(m.phone) : ''}</div>
                 </div>
-                <button class="tm-modal-member-remove" onclick="OpsTeams.removeMember('${teamId}','${uid}','${name.replace(/'/g, "\\'")}')">
+                <button class="tm-modal-member-remove fg-action" onclick="OpsTeams.removeMember('${OpsModal.sid(teamId)}','${OpsModal.sid(uid)}',${OpsModal.escape(JSON.stringify(name))})">
                   Remove
                 </button>
               </div>`;
           }).join('')}
         </div>`;
     } catch (err) {
-      const body = document.getElementById('mm-body');
-      const loading = document.getElementById('mm-loading');
+      if(!body || !document.contains(body))return;
       if (loading) loading.style.display = 'none';
       if (body) {
         body.style.display = 'block';
-        body.innerHTML = `<div style="padding:24px;text-align:center;color:var(--err);">Failed to load members: ${err.message}</div>`;
+        body.innerHTML = OpsModal.failure('Team roster', err,`OpsTeams.manageMembers('${OpsModal.sid(teamId)}',${OpsModal.escape(JSON.stringify(teamName))})`);
       }
     }
   }
 
   // ── ADD MEMBER TO TEAM ────────────────────────────────────────────────
 
-  async function addMemberToTeam(teamId, teamName) {
-    // Close current modal, open add-member modal
+  async function addMemberToTeam(teamId, teamName='Team') {
+    if (!requireTeamManage()) return;
     OpsModal.close();
-    await new Promise(r => setTimeout(r, 250));
 
     let users = [];
     try {
-      const res = await OpsModal.apiGet('/users');
-      users = (res.data || res.users || []).filter(u => u.status !== 'inactive');
-    } catch {}
+      const res = await OpsModal.apiGet('/users',{text:'raw'});
+      users = OpsModal.readArray(res,'Staff directory',['data','users']).filter(u => !['inactive','suspended'].includes(String(u.status || '').toLowerCase()) && u.is_active!==false && (u.is_active===true || String(u.status || '').toLowerCase()==='active'));
+    } catch (err) { OpsModal.open('Add team member',OpsModal.failure('Staff directory',err,`OpsTeams.addMemberToTeam('${OpsModal.sid(teamId)}',${OpsModal.escape(JSON.stringify(teamName))})`),[{label:'Close',onclick:'OpsModal.close()'}]); return; }
+    const backAction={label:'Back to team roster',onclick:`OpsTeams.manageMembers('${OpsModal.sid(teamId)}',${OpsModal.escape(JSON.stringify(teamName))})`,class:'btn-ghost'};
+    if(!users.length) {OpsModal.open(`Add member — ${teamName}`,OpsModal.emptyState(OpsModal.entityIcon('crew'),'No eligible active staff returned','No staff with a supplied active account state were returned. Unknown, suspended and inactive accounts are not eligible for this choice.'),[backAction]);return;}
 
-    const userOptions = users.length > 0
-      ? users.map(u => ({
+    const userOptions = users.map(u => ({
           value: u.user_id || u.id,
-          label: `${u.full_name || u.name || u.email} (${(CONFIG.ROLE_LABELS[u.role_id || u.role] || u.role || '').replace(/_/g, ' ')})`,
-        }))
-      : [{ value: '', label: 'No available users' }];
+          label: `${u.full_name || u.name || u.email || 'Name not supplied'} (${OpsModal.label(CONFIG.ROLE_LABELS[u.role_id || u.role] || u.role_id || u.role)})`,
+        }));
 
-    OpsModal.open(`Add Member — ${teamName}`, `
+    OpsModal.open(`Add member — ${teamName}`, `
       <p style="font-size:var(--fs-base);color:var(--ink-3);margin-bottom:16px;line-height:1.55;">
         Select a staff member to add to this team. They will appear in the team's member list and can be dispatched together.
       </p>
-      ${OpsModal.field('Select Staff Member', 'user_id', 'select', '', { options: userOptions })}
-      ${OpsModal.field('Role in Team (optional)', 'team_role', 'text', '', { required: false, placeholder: 'e.g. Team Lead, Technician, Driver' })}
+      ${OpsModal.field('Select staff member', 'user_id', 'select', '', { options: userOptions })}
+      ${OpsModal.field('Role in team (optional)', 'team_role', 'text', '', { required: false, placeholder: 'e.g. Team lead, Technician, Driver' })}
     `, [
-      { label: 'Back',       onclick: `OpsModal.close();OpsTeams.manageMembers('${teamId}','${teamName.replace(/'/g, "\\'")}')`, class: 'btn-ghost' },
-      { label: 'Add Member', onclick: `OpsTeams.confirmAddMember('${teamId}','${teamName.replace(/'/g, "\\'")}')`, class: 'btn-primary', id: 'modal-save-btn' },
+      backAction,
+      { label: 'Add member', onclick: `OpsTeams.confirmAddMember('${OpsModal.sid(teamId)}',${OpsModal.escape(JSON.stringify(teamName))})`, class: 'btn-primary', id: 'modal-save-btn' },
     ]);
   }
 
   async function confirmAddMember(teamId, teamName) {
+    if (!requireTeamManage()) return;
     const data = OpsModal.getFormData();
     if (!data.user_id) { OpsModal.toast('Please select a staff member', 'warning'); return; }
     OpsModal.setLoading('modal-save-btn', true);
@@ -411,7 +267,9 @@ const OpsTeams = (function () {
   // ── REMOVE MEMBER FROM TEAM ───────────────────────────────────────────
 
   async function removeMember(teamId, userId, name) {
+    if (!requireTeamManage()) return;
     OpsModal.confirm(`Remove "${name}" from this team?`, async function () {
+      if (!requireTeamManage()) return;
       try {
         await OpsModal.apiDelete(`/teams/${teamId}/members/${userId}`);
         OpsModal.close();
@@ -434,122 +292,108 @@ const OpsTeams = (function () {
   // ── FULL DETAIL SCREEN (no pop-up) ──
   function viewTeam(id) {
     const t = _teams.find(x => (x.team_id || x.id) == id);
-    if (!t || !_container) { if (!t) OpsModal.toast('Team not found', 'warning'); return; }
+    if (!_container) return;
+    if (!t) { _container.innerHTML=OpsModal.recordFailure('Team',new Error('The requested team was not returned by the current directory.'),'OpsTeams.back()','OpsTeams.back()'); return; }
     const name = t.team_name || t.name || id;
     const sc = statusConfig(t.status);
-    const members = t.members || [];
+    const membersSupplied = Array.isArray(t.members);
+    const members = membersSupplied ? t.members : [];
     const supervisor = t.supervisor || t.lead_name || (members.find(m => m.team_role === 'lead') || {}).full_name;
-    const esc = s => s.replace(/'/g, "\\'");
-    const f = (k, v) => `<div class="tmv-f"><div class="k">${k}</div><div class="v">${v}</div></div>`;
-    const sec = (tt, b, needs) => `<div class="tmv-sec"><div class="tmv-sec-h">${tt}${needs ? '<span class="tmv-needs">pending backend data</span>' : ''}</div><div class="tmv-sec-b">${b}</div></div>`;
+    const safeId = OpsModal.sid(id);
+    const nameArg = OpsModal.escape(JSON.stringify(name));
 
     const F = OpsModal.fact, E = OpsModal.emptyState, L = OpsModal.link;
-    const statusCls = { on_site: 'ok', en_route: 'warn' }[(t.status || '').toLowerCase()] || 'neutral';
-    const iUser = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="8" r="4"/><path d="M3 21v-2a5 5 0 015-5h2a5 5 0 015 5v2"/></svg>';
+    const statusCls = OpsModal.statusTone(t.status,'crew');
+    const activeJobs=OpsModal.count(t.active_jobs);
+    const dispatchEta=OpsModal.count(t.dispatch_eta_min),reportedEta=OpsModal.count(t.eta);
 
     const overview = `
-      ${F('Team', name)}
-      ${F('Members', members.length)}
-      ${F('Supervisor', _dash(supervisor))}
-      ${F('Active jobs', t.active_jobs != null ? t.active_jobs : '—')}
       ${F('Vehicle', _dash(t.vehicle))}
-      ${F('Availability', OpsModal.detailPill(sc.label, statusCls))}
       ${F('Location', _dash(t.current_location || t.location))}
-      ${t.eta ? F('ETA', `<span style="color:var(--warn);font-weight:700;">${t.eta} min</span>`) : ''}
-      ${F('Last check-in', formatTime(t.last_checkin || t.last_check_in))}
-      ${t.equipment ? F('Equipment', t.equipment) : ''}`;
+      ${F('Dispatch destination', _dash(t.dispatch_destination))}
+      ${F('Reported assignment', _dash(t.current_assignment || t.assigned_property))}
+      ${t.current_alert_id ? F('Assigned incident', L('alerts',t.current_alert_id,'Review assigned incident')) : ''}
+      ${t.dispatch_eta_min!=null ? F('Operator-entered ETA at dispatch',dispatchEta===null?'Not supplied':dispatchEta+' min · not a live estimate') : ''}
+      ${t.dispatched_at ? F('Dispatched',OpsModal.fmtDateTime(t.dispatched_at)) : ''}
+      ${t.dispatch_notes ? F('Dispatch notes',OpsModal.escape(t.dispatch_notes)) : ''}
+      ${t.eta!=null ? F('Reported ETA',reportedEta===null?'Not supplied':reportedEta+' min · not a live estimate') : ''}
+      ${t.equipment ? F('Equipment', OpsModal.escape(t.equipment)) : ''}`;
 
     const membersBody = members.length
-      ? `<table class="fgd-table"><thead><tr><th>Member</th><th>Role</th></tr></thead><tbody>${members.map(m => {
+      ? `<div class="lv-scroll"><table class="fgd-table"><thead><tr><th scope="col">Member</th><th scope="col">Role</th></tr></thead><tbody>${members.map(m => {
           const mid = m.user_id || m.id;
           const mn = m.full_name || m.name || '—';
-          return `<tr><td class="strong">${mid ? L('team-members', mid, mn) : mn}</td><td>${(CONFIG.ROLE_LABELS[m.role_id || m.role] || '').replace(/_/g, ' ')}${m.team_role ? ' · ' + m.team_role : ''}</td></tr>`;
-        }).join('')}</tbody></table>`
-      : E(iUser, 'No members', 'No members are assigned to this team yet.');
+          return `<tr><td class="strong">${mid ? L('team-members', mid, OpsModal.escape(mn)) : OpsModal.escape(mn)}</td><td>${OpsModal.escape(OpsModal.label(CONFIG.ROLE_LABELS[m.role_id || m.role] || m.role_id || m.role))}${m.team_role ? ' · ' + OpsModal.escape(OpsModal.label(m.team_role)) : ''}</td></tr>`;
+        }).join('')}</tbody></table></div>`
+      : E(OpsModal.entityIcon('crew'), membersSupplied ? 'No members returned' : 'Member roster unavailable', membersSupplied ? 'The returned roster is empty.' : 'Member records were not supplied; the team is not assumed empty.');
 
-    const isIdle = !t.status || (t.status || '').toLowerCase() === 'idle';
-    const actions = [
-      `<button class="fgd-btn" onclick="OpsTeams.manageMembers('${id}','${esc(name)}')">Manage members</button>`,
-      `<button class="fgd-btn" onclick="OpsTeams.editStatus('${id}','${esc(name)}')">Update status</button>`,
-      isIdle ? `<button class="fgd-btn primary" onclick="OpsTeams.dispatch('${id}','${esc(name)}')">Dispatch</button>` : '',
-      _isAdmin ? `<button class="fgd-btn danger" onclick="OpsTeams.deleteTeam('${id}','${esc(name)}')">Delete</button>` : '',
-    ].filter(Boolean).join('');
-
-    const sidebar = `
-      <div class="fgd-card">
-        <div class="fgd-card-head"><h2 style="font-size:var(--fs-sm);">Quick facts</h2></div>
-        ${F('Team ID', `<span class="fgd-mono">${id}</span>`)}
-        ${F('Status', OpsModal.detailPill(sc.label, statusCls))}
-        ${F('Members', members.length)}
-        ${F('Supervisor', _dash(supervisor))}
-        ${F('Last check-in', formatTime(t.last_checkin || t.last_check_in))}
-      </div>`;
+    const isIdle = ['idle', 'available'].includes((t.status || '').toLowerCase());
+    const actions = canMng() ? [
+      `<button class="fg-action" onclick="OpsTeams.manageMembers('${safeId}',${nameArg})">Manage members</button>`,
+      `<button class="fg-action" onclick="OpsTeams.editStatus('${safeId}',${nameArg})">Update status</button>`,
+      isIdle ? `<button class="primary fg-action fg-action-primary" onclick="OpsTeams.dispatch('${safeId}',${nameArg})">Dispatch team</button>` : '',
+      _isAdmin && isIdle ? `<button class="danger fg-action" onclick="OpsTeams.deleteTeam('${safeId}',${nameArg})">Archive team</button>` : '',
+    ].filter(Boolean).join('') : '';
 
     _container.innerHTML = OpsModal.detailShell({
       back: 'OpsTeams.back()',
       crumbRoot: 'Teams',
-      title: name,
-      avatar: { text: initials(name), bg: teamColor(name) },
+      title: OpsModal.escape(name),
+      avatar: { text: OpsSpatial.icon("crew") },
       chips: [{ cls: statusCls, label: sc.label, dot: true }],
-      meta: [['ID', id], ['Members', members.length], ['Supervisor', _dash(supervisor)]],
+      meta: [['ID', OpsModal.escape(id)], ['Members', membersSupplied ? members.length : 'Not supplied']],
       actions,
+      decision:[['Supervisor',supervisor || 'Not supplied'],['Last check-in',OpsModal.fmtDateTime(t.last_checkin || t.last_check_in)],['Next step',isIdle?'Review readiness before dispatch':'Review the reported assignment and confirm progress']],
       sections: [
-        { id: 'overview', title: 'Team overview', meta: 'field_teams', body: overview },
-        { id: 'members', title: 'Members', meta: 'team_members', body: membersBody },
-        { id: 'jobs', title: 'Current jobs', body: t.active_jobs ? `<div style="font-size:var(--fs-sm);color:var(--ink-2);">${t.active_jobs} active job(s). <a onclick="switchTab('maintenance')" style="color:var(--blue-hi);cursor:pointer;font-weight:700;">Open Maintenance →</a></div>` : E(iUser, 'No current jobs', 'This team has no active work orders.') },
+        { id: 'overview', title: 'Dispatch context', body: overview },
+        { id: 'members', title: 'Members', body: membersBody },
+        { id: 'jobs', title: 'Current work', body: OpsModal.textBlock('Reported workload',`${activeJobs!==null?activeJobs+' active internal maintenance ticket'+(activeJobs===1?'':'s')+' reported.':'Active-work count was not supplied.'} Team maintenance tickets and external-provider work orders are separate queues.`)+`${Auth.hasNavAccess('maintenance') ? `<button class="fg-action" onclick="OpsMaintenance.forTeam('${OpsModal.sid(id)}')">Review this team’s maintenance</button>` : ''}` },
       ],
-      sidebar,
     });
-  }
-
-  // minimal style tag so the detail view keeps its look when it replaces the list
-  function styleTag() {
-    return `<style>
-      .ops-table tbody tr.clickable{cursor:pointer;transition:background .12s;} .ops-table tbody tr.clickable:hover{background:var(--surface-2,#f2f8fb);}
-      .tmv-back{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-sm);font-weight:600;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:8px 13px;cursor:pointer;}
-      .tmv-top{display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap;} .tmv-name{font-family:var(--ff-d);font-size:var(--fs-xl);font-weight:700;color:var(--ink);line-height:1.1;} .tmv-meta{font-size:var(--fs-sm);color:var(--ink-3);margin-top:3px;} .tmv-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;}
-      .tmv-sec{background:var(--surface);border:1px solid var(--border);border-radius:var(--r,14px);box-shadow:var(--sh-xs);margin-bottom:14px;overflow:hidden;} .tmv-sec-h{padding:12px 18px;border-bottom:1px solid var(--border);font-family:var(--ff-d);font-size:var(--fs-sm);font-weight:700;color:var(--ink);display:flex;justify-content:space-between;} .tmv-sec-b{padding:16px 18px;}
-      .tmv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px 22px;} .tmv-f .k{font-size:var(--fs-2xs);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3);} .tmv-f .v{font-size:var(--fs-md);color:var(--ink);font-weight:600;margin-top:3px;} .tmv-e{color:var(--ink-3);font-size:var(--fs-sm);padding:6px 0;} .tmv-needs{font-size:var(--fs-xs);color:var(--ink-4);font-style:italic;}
-    </style>`;
   }
 
   // ── DISPATCH ──────────────────────────────────────────────────────────
 
   async function dispatch(id, name) {
-    let alerts = [];
+    if (!requireTeamManage()) return;
+    let alerts = [],alertsUnavailable=false;
     try {
-      const res = await OpsModal.apiGet('/alerts');
-      alerts = (res.data || res.alerts || []).filter(a => !a.assigned_team);
-    } catch {}
+      const res = await OpsModal.apiGet('/alerts',{text:'raw'});
+      alerts = OpsModal.readArray(res,'Incident feed',['data','alerts']).filter(a => !a.assigned_team);
+    } catch {alertsUnavailable=true;}
 
     const alertOptions = [
       { value: '', label: '— No specific incident —' },
       ...alerts.map(a => ({
         value: a.alert_id || a.id,
-        label: `${a.alert_type || 'Alert'} — ${a.location || a.site_name || '—'}`,
+        label: `${OpsModal.label(a.alert_type) || 'Incident type not supplied'} — ${a.location || a.site_name || 'Location not supplied'}`,
       })),
     ];
 
     OpsModal.open(`Dispatch — ${name}`, `
-      ${OpsModal.field('Dispatch Location', 'destination', 'text', '', { placeholder: 'e.g. Lekki Phase 1, Zone A' })}
-      ${OpsModal.field('Assign to Incident (optional)', 'alert_id', 'select', '', { options: alertOptions, required: false })}
-      ${OpsModal.field('ETA (minutes)', 'eta', 'number', '', { placeholder: '30', required: false })}
-      ${OpsModal.field('Dispatch Notes (optional)', 'notes', 'textarea', '', { required: false, rows: 3, placeholder: 'Equipment required, access instructions, priority level…' })}
+      ${alertsUnavailable ? '<div class="capability-note">Incident choices are unavailable. You may record a destination-only dispatch, or cancel and retry before linking an incident.</div>' : ''}
+      ${OpsModal.field('Dispatch location', 'destination', 'text', '', { placeholder: 'e.g. Lekki Phase 1, Zone A' })}
+      ${OpsModal.field('Assign to incident (optional)', 'alert_id', 'select', '', { options: alertOptions, required: false })}
+      ${OpsModal.field('ETA (minutes)', 'eta', 'number', '', { placeholder: '30', required: false, min:0, step:1 })}
+      ${OpsModal.field('Dispatch notes (optional)', 'notes', 'textarea', '', { required: false, rows: 3, placeholder: 'Equipment required, access instructions, priority level…' })}
     `, [
       { label: 'Cancel',   onclick: 'OpsModal.close()', class: 'btn-ghost' },
-      { label: 'Dispatch', onclick: `OpsTeams.confirmDispatch('${id}')`, class: 'btn-primary', id: 'modal-save-btn' },
+      { label: 'Dispatch team', onclick: `OpsTeams.confirmDispatch('${OpsModal.sid(id)}')`, class: 'btn-primary', id: 'modal-save-btn' },
     ]);
   }
 
   async function confirmDispatch(id) {
+    if (!requireTeamManage()) return;
     const data = OpsModal.getFormData();
     if (!data.destination) { OpsModal.toast('Please enter a dispatch location', 'warning'); return; }
+    const eta=data.eta==null || String(data.eta).trim()==='' ? null : OpsModal.count(data.eta);
+    if (data.eta!=null && String(data.eta).trim()!=='' && eta===null) { OpsModal.toast('ETA must be a non-negative whole number of minutes', 'watch'); return; }
     OpsModal.setLoading('modal-save-btn', true);
     try {
       await OpsModal.apiPost(`/teams/${id}/dispatch`, {
         destination: data.destination,
         alert_id:    data.alert_id || null,
-        eta:         data.eta ? parseInt(data.eta) : null,
+        eta,
         notes:       data.notes || null,
         status:      'en_route',
       });
@@ -565,26 +409,32 @@ const OpsTeams = (function () {
   // ── STATUS UPDATE ─────────────────────────────────────────────────────
 
   function editStatus(id, name) {
+    if (!requireTeamManage()) return;
     const t = _teams.find(x => (x.team_id || x.id) == id);
-    OpsModal.open(`Update Status — ${name}`, `
-      ${OpsModal.field('Status', 'status', 'select', t?.status || 'idle', {
+    const status=['idle','available','en_route','on_site','returning'].includes(t?.status) ? t.status : '';
+    OpsModal.open(`Update status — ${name}`, `
+      ${OpsModal.field('Reported readiness', 'status', 'select', status, {
         options: [
+          { value:'',          label:'Not supplied — select reported readiness' },
           { value:'idle',      label:'Idle — available for dispatch' },
-          { value:'en_route',  label:'En Route — heading to site' },
-          { value:'on_site',   label:'On Site — working at location' },
+          { value:'available', label:'Available for dispatch' },
+          { value:'en_route',  label:'En route — heading to site' },
+          { value:'on_site',   label:'On site — working at location' },
           { value:'returning', label:'Returning — heading back to base' },
         ]
       })}
-      ${OpsModal.field('Current Location', 'current_location', 'text', t?.current_location || t?.location || '', { required: false })}
+      ${OpsModal.field('Current location', 'current_location', 'text', t?.current_location || t?.location || '', { required: false })}
       ${OpsModal.field('Notes (optional)', 'notes', 'textarea', '', { required: false, rows: 2 })}
     `, [
       { label: 'Cancel',        onclick: 'OpsModal.close()', class: 'btn-ghost' },
-      { label: 'Update Status', onclick: `OpsTeams.confirmStatus('${id}')`, class: 'btn-primary', id: 'modal-save-btn' },
+      { label: 'Update status', onclick: `OpsTeams.confirmStatus('${OpsModal.sid(id)}')`, class: 'btn-primary', id: 'modal-save-btn' },
     ]);
   }
 
   async function confirmStatus(id) {
+    if (!requireTeamManage()) return;
     const data = OpsModal.getFormData();
+    if (!['idle','available','en_route','on_site','returning'].includes(data.status)) { OpsModal.toast('Select the team’s reported readiness', 'watch'); return; }
     OpsModal.setLoading('modal-save-btn', true);
     try {
       await OpsModal.apiPut(`/teams/${id}/status`, { status: data.status, location: data.current_location });
@@ -600,30 +450,32 @@ const OpsTeams = (function () {
   // ── CREATE TEAM ───────────────────────────────────────────────────────
 
   function createTeam() {
-    OpsModal.open('Create Team', `
-      ${OpsModal.field('Team Name', 'team_name', 'text', '', { placeholder: 'e.g. Alpha Response Unit' })}
+    if (!requireTeamManage()) return;
+    OpsModal.open('Create team', `
+      ${OpsModal.field('Team name', 'team_name', 'text', '', { placeholder: 'e.g. Alpha Response Unit' })}
       ${OpsModal.row([
-        OpsModal.field('Team Lead', 'team_lead', 'text', '', { placeholder: 'Full name', required: false }),
-        OpsModal.field('Base Location', 'base_location', 'text', '', { placeholder: 'e.g. VI Depot', required: false }),
+        OpsModal.field('Team lead', 'team_lead', 'text', '', { placeholder: 'Full name', required: false }),
+        OpsModal.field('Base location', 'base_location', 'text', '', { placeholder: 'e.g. VI Depot', required: false }),
       ])}
       ${OpsModal.field('Equipment', 'equipment', 'text', '', { placeholder: 'e.g. Hydro-jetting unit, vacuum truck', required: false })}
       <div style="padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--rs);font-size:var(--fs-sm);color:var(--ink-3);margin-top:4px;">
-        After creating the team, use <strong style="color:var(--ink-2);">Manage Members</strong> on the team card to assign staff.
+        After creating the team, use <strong style="color:var(--ink-2);">Manage members</strong> on the team record to assign staff.
       </div>
     `, [
       { label: 'Cancel',      onclick: 'OpsModal.close()', class: 'btn-ghost' },
-      { label: 'Create Team', onclick: 'OpsTeams.confirmCreate()', class: 'btn-primary', id: 'modal-save-btn' },
+      { label: 'Create team', onclick: 'OpsTeams.confirmCreate()', class: 'btn-primary', id: 'modal-save-btn' },
     ]);
   }
 
   async function confirmCreate() {
+    if (!requireTeamManage()) return;
     const data = OpsModal.getFormData();
     if (!data.team_name) { OpsModal.toast('Team name is required', 'warning'); return; }
     OpsModal.setLoading('modal-save-btn', true);
     try {
       await OpsModal.apiPost('/teams', { ...data, status: 'idle' });
       OpsModal.close();
-      OpsModal.toast('Team created — now add members from the team card', 'nominal');
+      OpsModal.toast('Team created — add members from the team record', 'nominal');
       reloadTab('teams');
     } catch (err) {
       OpsModal.toast('Failed: ' + err.message, 'critical');
@@ -634,14 +486,17 @@ const OpsTeams = (function () {
   // ── DELETE TEAM ───────────────────────────────────────────────────────
 
   function deleteTeam(id, name) {
+    if (!requireTeamManage()) return;
+    if (!_isAdmin) return OpsModal.toast('Only an administrator can archive a team', 'watch');
     OpsModal.confirm(
-      `Permanently delete team "${name}"? Members will be unassigned but their accounts are not deleted.`,
+      `Archive team "${name}"? Historical assignments, membership and staff accounts are preserved. Teams with active assignments cannot be archived.`,
       async function () {
+        if (!requireTeamManage() || !_isAdmin) return;
         OpsModal.setLoading('modal-confirm-btn', true);
         try {
           await OpsModal.apiDelete(`/teams/${id}`);
           OpsModal.close();
-          OpsModal.toast(`Team "${name}" deleted`, 'nominal');
+          OpsModal.toast(`Team "${name}" archived; history preserved`, 'nominal');
           reloadTab('teams');
         } catch (err) {
           OpsModal.toast('Delete failed: ' + err.message, 'critical');
@@ -652,7 +507,7 @@ const OpsTeams = (function () {
   }
 
   return {
-    render, back, searchTeams, filterStatus, manageMembers, addMemberToTeam, confirmAddMember,
+    render, back, setView, searchTeams, filterStatus, manageMembers, addMemberToTeam, confirmAddMember,
     removeMember, viewTeam, dispatch, confirmDispatch,
     editStatus, confirmStatus, createTeam, confirmCreate, deleteTeam,
   };
