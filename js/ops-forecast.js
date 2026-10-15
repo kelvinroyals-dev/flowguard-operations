@@ -183,7 +183,7 @@ const OpsForecast = (function () {
     const kpis = OpsModal.kpiStrip([
       {icon:OpsModal.entityIcon('forecast'),label:'Peak predicted risk',value:overall==null?'Unavailable':`${overall}/100`,sub:`${riskBadge(overall)} · Maximum across ${scored.length} assessed estates · not a probability`},
       {icon:OpsModal.entityIcon('estate'),label:'High-risk estates',value:high,sub:`${med} moderate/elevated · ${low} low · ${countRisk('unknown')} unknown · ${scored.length} assessed`},
-      {icon:OpsSpatial.icon('water'),label:'Reference estate rain · 24h',value:rain24==='Unavailable'?'Unavailable':esc(rain24)+' mm',sub:_fc.weather_scope==='estate'?esc(_fc.weather_reference?.name || 'No reference estate')+' · Open-Meteo estimate':'Legacy regional input · not estate-specific'},
+      {icon:OpsSpatial.icon('water'),label:'Reference estate rain · 24h',value:rain24==='Unavailable'?'Unavailable':esc(rain24)+' mm',sub:_fc.weather_scope==='estate'?esc(_fc.weather_reference?.name || 'No reference estate')+' · '+esc(_fc.weather_reference?.source || 'Weather provider')+' estimate':'Legacy regional input · not estate-specific'},
       {icon:OpsModal.entityIcon('maintenance'),label:'Recommended inspections',value:preventive,sub:'Model recommendations · not scheduled work orders'},
     ]);
 
@@ -260,6 +260,7 @@ const OpsForecast = (function () {
       <div class="fcx">
         ${typeof OpsGeography!=='undefined'?OpsGeography.form():''}
         <div class="capability-note" role="status">${_fc.weather_scope==='estate'?`Estate-specific weather inputs · ${esc(_fc.weather_coverage?.available)} / ${esc(_fc.weather_coverage?.total)} estates assessed. Charts show ${esc(_fc.weather_reference?.name || 'no reference estate')}, not a national rainfall total. Scores are uncalibrated heuristics, not flood probabilities.`:'Legacy regional forecast: this response has no estate-specific weather scope. Do not interpret it as a nationwide prediction.'}</div>
+        <p class="capability-note">Weather estimates are general guidance and may be inaccurate locally. Do not rely on them alone for personal safety or emergency decisions; consult official meteorological services and relevant authorities.</p>
         ${OpsModal.pageHeader({title:'Risk forecast',subtitle:'Predicted risk is a model estimate, not an observed flood or measured drain capacity.',actions:`<div class="fcx-controls">
             <label class="fcx-ctl"><span>Forecast model</span><select class="fcx-select">${modelOpts}</select></label>
             <label class="fcx-ctl"><span>Time range</span><select class="fcx-select" onchange="OpsForecast.setHorizon(this.value)">${rangeOpts}</select></label>

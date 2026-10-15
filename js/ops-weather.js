@@ -6,6 +6,10 @@ const OpsWeather=(()=>{
   const time=v=>typeof v==='string'?Date.parse(/^\d{4}-\d\d-\d\dT\d\d:\d\d(?::\d\d)?$/.test(v)?v+'+01:00':v):NaN;
   const reading=v=>typeof v==='number'&&Number.isFinite(v)&&v>=0?v:null;
   const amount=v=>reading(v)===null?'Unavailable':v>0&&v<.1?'<0.1':v.toFixed(1);
+  function errorDescription(error){
+    const reason=String(error?.message||'Estate weather is unavailable.').replace(/\s*Missing rainfall is not zero(?: rainfall)?\./gi,'').trim();
+    return (reason||'Estate weather is unavailable.')+' Missing rainfall is not zero rainfall.';
+  }
   function parse(j,point,now=Date.now()){
     if(j.hourly_units?.precipitation&&j.hourly_units.precipitation!=='mm')throw new Error('Weather precipitation units are not millimetres.');
     const times=j.hourly?.time,values=j.hourly?.precipitation;
@@ -44,7 +48,8 @@ const OpsWeather=(()=>{
   }
   function summary(wx){
     const e=OpsModal.escape;
-    return `<div class="fg-weather-stats">${[['Last 24 completed hours',wx.last24],['Latest completed hour',wx.latest],['Next 6 hours · forecast',wx.next6]].map(([label,value])=>`<div><span>${label}</span><strong>${e(amount(value))}${value===null?'':' <small>mm</small>'}</strong></div>`).join('')}</div><p class="fg-weather-context">Open-Meteo model estimate · not measured rainfall. Period ends ${e(OpsModal.fmtDateTime(wx.windowEnd))}. Retrieved ${e(OpsModal.fmtDateTime(wx.fetchedAt))}.</p><p class="fg-weather-context">Requested ${wx.point.lat.toFixed(4)}, ${wx.point.lon.toFixed(4)} · grid ${wx.grid.lat.toFixed(4)}, ${wx.grid.lon.toFixed(4)} (${wx.gridDistanceKm.toFixed(1)} km away). ${wx.gridDistanceKm>10?'Grid is far from the estate; local rain may differ substantially.':'Local showers may differ from this grid estimate.'} Missing hours make totals unavailable. ${wx.locationVerified===false?'Estate coordinates have not been verified. ':''}${wx.historyAvailable===false?'Weather history storage is unavailable.':''}</p>`;
+    const source=wx.provider==='weatherapi'?'<a href="https://www.weatherapi.com/" target="_blank" rel="noopener noreferrer">WeatherAPI.com</a>':e(wx.source||'Open-Meteo');
+    return `<div class="fg-weather-stats">${[['Last 24 completed hours',wx.last24],['Latest completed hour',wx.latest],['Next 6 hours · forecast',wx.next6]].map(([label,value])=>`<div><span>${label}</span><strong>${e(amount(value))}${value==null?'':' <small>mm</small>'}</strong></div>`).join('')}</div><p class="fg-weather-context">${source} model estimate · not measured rainfall. Period ends ${e(OpsModal.fmtDateTime(wx.windowEnd))}. Retrieved ${e(OpsModal.fmtDateTime(wx.fetchedAt))}.</p><p class="fg-weather-context">Requested ${wx.point.lat.toFixed(4)}, ${wx.point.lon.toFixed(4)} · provider location ${wx.grid.lat.toFixed(4)}, ${wx.grid.lon.toFixed(4)} (${wx.gridDistanceKm.toFixed(1)} km away). ${wx.gridDistanceKm>10?'Provider location is far from the estate; local rain may differ substantially.':'Local showers may differ from this estimate.'} Missing hours make totals unavailable. ${wx.locationVerified===false?'Estate coordinates have not been verified. ':''}${wx.persistencePolicy==='memory_only'?'Short-lived cache only; portal weather snapshots are not archived.':wx.historyAvailable===false?'Weather history storage is unavailable.':''}</p><p class="fg-weather-context">Weather is general guidance and may be inaccurate locally. Do not rely on it alone for personal safety or emergency decisions; consult official meteorological services and relevant authorities.</p>`;
   }
   async function mount(target,record){
     if(!target)return;const stamp={};target.weatherRequest=stamp;
@@ -53,7 +58,7 @@ const OpsWeather=(()=>{
       target.innerHTML=summary(wx)+'<div class="fg-weather-chart"></div><p class="fg-weather-context">Solid bars: past-hour estimates · faded bars: forecast. No estimate confirms flooding.</p>';
       const labels=wx.hrs.map(h=>new Date(h.t).toLocaleTimeString('en-GB',{timeZone:'Africa/Lagos',hour:'2-digit',minute:'2-digit'})+' WAT');
       OpsCharts.mount(target.querySelector('.fg-weather-chart'),wx.hrs.map(h=>h.v),{type:'bar',pastLabel:'Past-hour estimate',color:'var(--chart-rain)',unit:'mm',label:'Estate hourly rainfall estimate',pointLabels:labels,xLabels:labels.filter((_,i)=>i%6===0),forecast:wx.hrs.map(h=>h.future)});
-    }catch(err){if(target.isConnected&&target.weatherRequest===stamp)target.innerHTML=OpsModal.emptyState('','Weather unavailable',err.message+' Missing rainfall is not zero rainfall.');}
+    }catch(err){if(target.isConnected&&target.weatherRequest===stamp)target.innerHTML=OpsModal.emptyState('','Weather unavailable',errorDescription(err));}
   }
-  return {location,time,amount,parse,load,summary,mount};
+  return {location,time,amount,errorDescription,parse,load,summary,mount};
 })();

@@ -27,7 +27,7 @@ const OpsSituation = (function () {
     const update=()=>{const strip=document.getElementById('sit-statistics');if(strip)strip.innerHTML=statusStrip(model());};update();
     if(!estate)return;
     try{const wx=await OpsWeather.load(estate);if(revision!==weatherRevision||!_root?.isConnected)return;_data.wx={...wx,estateName:estate.name||estate.property_name||estate.property_id};renderRainfall();update();}
-    catch(err){if(revision!==weatherRevision||!target?.isConnected)return;target.innerHTML=OpsModal.emptyState('','Weather unavailable',err.message+' Missing rainfall is not zero.');}
+    catch(err){if(revision!==weatherRevision||!target?.isConnected)return;target.innerHTML=OpsModal.emptyState('','Weather unavailable',OpsWeather.errorDescription(err));}
   }
   const coordinates = record => {
     if (![record.latitude,record.longitude].every(value=>(typeof value==='number' || typeof value==='string' && value.trim()!=='') && Number.isFinite(Number(value)))) return null;
@@ -362,12 +362,12 @@ const OpsSituation = (function () {
     const bars = wx.hrs.map((h,i) => {
       const v=readings[i],ht=v===null?0:Math.min(100,(v/max)*100);
       const col = v>=30?'var(--err)':'var(--chart-rain)';
-      return `<div class="sit-bar${h.future?' is-forecast':''}" title="${hour(h)} WAT · ${v===null?'Unavailable':v+' mm'} · ${h.future?'Forecast':'Observed'}"><div style="height:${ht}%;background:${col}"></div></div>`;
+      return `<div class="sit-bar${h.future?' is-forecast':''}" title="${hour(h)} WAT · ${v===null?'Unavailable':v+' mm'} · ${h.future?'Forecast':'Past-hour estimate'}"><div style="height:${ht}%;background:${col}"></div></div>`;
     }).join('');
     const labels = wx.hrs.map((h, i) => i % 6 === 0 ? `<span>${hour(h)}</span>` : '').join('');
-    el.innerHTML = `<div class="rain-summary"><strong>${peak.toFixed(1)}<small> mm</small></strong><span>Peak hourly value in this view</span></div><div class="rain-plot"><div class="rain-axis"><span>${max}</span><span>${max/2}</span><span>0</span></div><div class="sit-rain-chart"><div class="rain-grid"></div><div class="sit-thresh" style="bottom:${threshPct}%"><span>30 mm reference</span></div>${bars}</div></div>
+    el.innerHTML = `${typeof OpsWeather!=='undefined'&&wx.point?OpsWeather.summary(wx):''}<div class="rain-summary"><strong>${peak.toFixed(1)}<small> mm</small></strong><span>Peak hourly value in this view</span></div><div class="rain-plot"><div class="rain-axis"><span>${max}</span><span>${max/2}</span><span>0</span></div><div class="sit-rain-chart"><div class="rain-grid"></div><div class="sit-thresh" style="bottom:${threshPct}%"><span>30 mm reference</span></div>${bars}</div></div>
       <div class="sit-rain-x">${labels}</div>
-      <div class="sit-rain-lg"><span><i style="background:var(--chart-rain)"></i>Observed</span><span><i class="rain-forecast-key"></i>Forecast</span><span class="faint">Hourly mm · not flood confirmation</span></div>`;
+      <div class="sit-rain-lg"><span><i style="background:var(--chart-rain)"></i>Past-hour estimate</span><span><i class="rain-forecast-key"></i>Forecast</span><span class="faint">Hourly mm · not flood confirmation</span></div>`;
   }
 
   // ── emerging risks ──
