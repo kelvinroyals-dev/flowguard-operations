@@ -174,11 +174,11 @@ const OpsForecast = (function () {
     // Auto-scale rainfall to the actual forecast so light rain is still visible
     // (a fixed 0–100 axis flattened real ~1–3mm/hr readings to nothing).
     const maxRain = Math.max(0, ...rainVals.map(value=>chartReading(value)).filter(value=>value!=null));
-    const rainMax = Math.max(4, Math.ceil(maxRain * 1.3));
+    const rainMax = OpsWeather.chartScale(rainVals);
     const validRisk=riskVals.map(v=>chartReading(v,100)).filter(v=>v!==null);
     const firstRisk=chartReading(riskVals[0],100);
     const riskSummary=`<div class="fg-chart-summary"><strong>${firstRisk===null?'—':firstRisk}<small>/100</small></strong><span>At window start</span><aside>Peak in window<b>${validRisk.length?Math.max(...validRisk)+'/100':'Unavailable'}</b></aside></div>`;
-    const rainPeak = rainVals.some(v=>chartReading(v)!==null) ? `<div class="fg-chart-summary"><strong>${maxRain.toFixed(1)}<small> mm</small></strong><span>Highest hourly value · selected forecast</span></div>` : '';
+    const rainPeak = rainVals.some(v=>chartReading(v)!==null) ? `<div class="fg-chart-summary"><strong>${esc(OpsWeather.amount(maxRain))}<small> mm</small></strong><span>Highest hourly value · selected forecast</span></div>` : '';
 
     const kpis = OpsModal.kpiStrip([
       {icon:OpsModal.entityIcon('forecast'),label:'Peak predicted risk',value:overall==null?'Unavailable':`${overall}/100`,sub:`${riskBadge(overall)} · Maximum across ${scored.length} assessed estates · not a probability`},
@@ -221,7 +221,7 @@ const OpsForecast = (function () {
 
     const charts = `<div class="fcx-charts">
       <div class="fcx-card fcx-chart"><div class="fcx-card-head"><h3>Flood risk timeline</h3><span class="fcx-meta">index · 0–100</span></div>${riskSummary}<div class="fcx-chart-box">${lineChart(riskVals, { available:Array.isArray(_fc.series), label:'Flood risk timeline', yMax: 100, ticks: [25, 50, 75, 100], color: 'var(--err)', fill: true, xLabels: xl })}</div><div class="fg-chart-footer" style="--chart-accent:var(--err)"><span><i></i>Predicted risk index</span><span class="chart-hint">Hover or focus to inspect</span></div></div>
-      <div class="fcx-card fcx-chart"><div class="fcx-card-head"><h3>Rainfall forecast</h3><span class="fcx-meta">Hourly · mm</span></div>${rainPeak}<div class="fcx-chart-box">${barChart(rainVals, { available:Array.isArray(_fc.series), label:'Rainfall forecast', yMax: rainMax, ticks: [rainMax * 0.25, rainMax * 0.5, rainMax * 0.75, rainMax].map(v => Math.round(v)), color: 'var(--chart-rain)', xLabels: xl })}</div><div class="fg-chart-footer" style="--chart-accent:var(--chart-rain)"><span><i></i>Hourly rainfall</span><span class="chart-hint">Hover or focus to inspect</span></div></div>
+      <div class="fcx-card fcx-chart"><div class="fcx-card-head"><h3>Rainfall forecast</h3><span class="fcx-meta">Hourly · mm</span></div>${rainPeak}<div class="fcx-chart-box">${barChart(rainVals, { available:Array.isArray(_fc.series), label:'Rainfall forecast', yMax: rainMax, ticks: [0,rainMax/2,rainMax], format:OpsWeather.amount, zeroMarkers:true, color: 'var(--chart-rain)', xLabels: xl })}</div><div class="fg-chart-footer" style="--chart-accent:var(--chart-rain)"><span><i></i>Hourly rainfall · dots indicate zero</span><span class="chart-hint">Hover or focus to inspect</span></div></div>
       <div class="fcx-card fcx-chart"><div class="fcx-card-head"><h3>Estate risk distribution</h3><span class="fcx-meta">${total} returned estates</span></div>
         <div class="fcx-donut">
           ${donut(riskGroups.map(group=>({v:group.count,color:OpsSpatial.color(group.level)})), total, 'Estates')}

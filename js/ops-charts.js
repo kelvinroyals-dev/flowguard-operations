@@ -33,6 +33,8 @@ const OpsCharts = (() => {
     if(!Array.isArray(values)||opt.available===false)return OpsModal.textBlock('Chart unavailable','The source series was not supplied.');
     if(!values.length)return OpsModal.textBlock('No readings returned','This series contains no readings.');
     const floor=Number.isFinite(opt.yMin)?opt.yMin:0;
+    const format=typeof opt.format==='function'?opt.format:fmt;
+    const axisFormat=typeof opt.axisFormat==='function'?opt.axisFormat:format;
     const valid=values.map(v=>OpsModal.reading(v,floor));
     const cap=opt.yMax||Math.max(1,...valid.filter(v=>v!==null))*1.15;
     if(cap<=floor||opt.type==='bar'&&floor<0)return OpsModal.textBlock('Chart unavailable','Unsupported axis range.');
@@ -48,12 +50,13 @@ const OpsCharts = (() => {
     const points=data.map((value,i)=>value===null?null:{x:x(i),y:y(value),value,index:i});
     const parts=segments(points),last=points.filter(Boolean).at(-1);
     const ticks=opt.ticks||[0,.25,.5,.75,1].map(v=>floor+v*(cap-floor));
-    const grid=mini?'':ticks.filter((t,i,a)=>Number.isFinite(t)&&t>=floor&&t<=cap&&a.indexOf(t)===i).map(t=>`<g class="fg-chart-axis"><line x1="${pl}" x2="${W-pr}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}"/><text x="${pl-10}" y="${(y(t)+4).toFixed(1)}" text-anchor="end">${esc(fmt(t))}</text></g>`).join('');
+    const grid=mini?'':ticks.filter((t,i,a)=>Number.isFinite(t)&&t>=floor&&t<=cap&&a.indexOf(t)===i).map(t=>`<g class="fg-chart-axis"><line x1="${pl}" x2="${W-pr}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}"/><text x="${pl-10}" y="${(y(t)+4).toFixed(1)}" text-anchor="end">${esc(axisFormat(t))}</text></g>`).join('');
     const labels=opt.xLabels||[];
     const axis=mini?'':labels.map((label,i)=>`<text class="fg-chart-x" x="${(pl+(labels.length===1?.5:i/(labels.length-1))*iw).toFixed(1)}" y="${H-6}" text-anchor="${i===0?'start':i===labels.length-1?'end':'middle'}">${esc(label)}</text>`).join('');
     const defs=`<defs><linearGradient id="${id}-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${accent}" stop-opacity=".24"/><stop offset="100%" stop-color="${accent}" stop-opacity="0"/></linearGradient><linearGradient id="${id}-bar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${accent}"/><stop offset="100%" stop-color="${accent}" stop-opacity=".35"/></linearGradient></defs>`;
     const plots=bar?points.filter(Boolean).map(p=>{
       const bw=Math.min(mini?9:22,iw/n*.62),future=opt.forecast?.[p.index]===true;
+      if(opt.zeroMarkers&&p.value===0)return `<circle class="fg-chart-zero${future?' is-projected':''}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.5" fill="${accent}"/>`;
       return `<rect class="fg-chart-column${future?' is-projected':''}" x="${(p.x-bw/2).toFixed(1)}" y="${p.y.toFixed(1)}" width="${bw.toFixed(1)}" height="${(pt+ih-p.y).toFixed(1)}" rx="${Math.min(5,bw/2)}" fill="url(#${id}-bar)"/>`;
     }).join(''):parts.map(part=>{
       const path=curve(part),area=path+` L${part.at(-1).x.toFixed(1)},${pt+ih} L${part[0].x.toFixed(1)},${pt+ih} Z`;
@@ -64,7 +67,7 @@ const OpsCharts = (() => {
     const hits=mini?'':points.filter(Boolean).map((p,i)=>{
       const label=opt.pointLabels?.[p.index]||`Reading ${p.index+1}`;
       const note=opt.forecast?.[p.index]===true?'Forecast':opt.forecast?(opt.pastLabel||'Observed'):opt.note||'';
-      const detail=fmt(p.value)+(opt.unit?' '+opt.unit:'');
+      const detail=format(p.value)+(opt.unit?' '+opt.unit:'');
       return `<g class="fg-chart-hit" tabindex="${i===0?0:-1}" role="img" aria-label="${esc(label+' · '+detail+' · '+note)}" data-chart-label="${esc(label)}" data-chart-value="${esc(detail)}" data-chart-note="${esc(note)}"><line class="fg-chart-guide" x1="${p.x}" x2="${p.x}" y1="${pt}" y2="${pt+ih}"/><circle class="fg-chart-active-dot" cx="${p.x}" cy="${p.y}" r="4" fill="${accent}"/><rect x="${Math.max(pl,p.x-iw/n/2)}" y="${pt}" width="${iw/n}" height="${ih}" fill="transparent"/></g>`;
     }).join('');
     return `<div class="fg-chart-shell${mini?' is-mini':''}" style="--chart-accent:${accent}"><svg role="${mini?'img':'group'}" aria-label="${esc(opt.label||'Recorded values')}" viewBox="0 0 ${W} ${H}" width="100%" height="100%" preserveAspectRatio="none">${defs}${grid}${ref}${plots}${axis}${hits}</svg>${mini?'':'<div class="fg-chart-tooltip" role="status" hidden></div>'}</div>`;

@@ -345,29 +345,7 @@ const OpsSituation = (function () {
     const el = document.getElementById('sit-rain'); if (!el) return;
     const wx = _data.wx;
     if (!wx || !wx.hrs || !wx.hrs.length) { el.innerHTML = OpsModal.emptyState('','Rainfall data unavailable','No hourly weather readings were supplied. Missing rainfall is not zero rainfall.'); return; }
-    const readings=wx.hrs.map(h=>OpsModal.reading(h.v,0));
-    if(readings.every(v=>v===null)){el.innerHTML=OpsModal.emptyState('','Rainfall data unavailable','No valid hourly readings were supplied.');return;}
-    if(typeof OpsCharts!=='undefined'){
-      const peak=Math.max(...readings.filter(v=>v!==null));
-      const pointLabels=wx.hrs.map(h=>Number.isFinite(new Date(h.t).getTime())?new Date(h.t).toLocaleTimeString('en-GB',{timeZone:'Africa/Lagos',hour:'2-digit',minute:'2-digit'})+' WAT':'Time unavailable');
-      const selected=pointLabels.filter((_,i)=>i%6===0);
-      el.innerHTML=`${typeof OpsWeather!=='undefined'&&wx.point?OpsWeather.summary(wx):''}<div class="rain-summary"><strong>${peak.toFixed(1)}<small> mm</small></strong><span>Peak hourly value in this view</span></div><div class="fg-weather-chart"></div><div class="fg-chart-footer" style="--chart-accent:var(--chart-rain)"><span><i></i>Past-hour estimate</span><span><i style="opacity:.35"></i>Forecast</span><span class="chart-hint">Hover or focus to inspect</span></div>`;
-      OpsCharts.mount(el.querySelector('.fg-weather-chart'),readings,{type:'bar',pastLabel:'Past-hour estimate',yMax:Math.ceil(Math.max(30,peak)*1.15/5)*5,color:'var(--chart-rain)',label:'Hourly rainfall',unit:'mm',pointLabels,xLabels:selected,forecast:wx.hrs.map(h=>h.future===true),reference:30,referenceLabel:'30 mm reference'});
-      return;
-    }
-    const peak=Math.max(...readings.filter(v=>v!==null));
-    const max = Math.ceil(Math.max(30,peak)*1.15/5)*5;
-    const threshPct = Math.round((30 / max) * 100);
-    const hour=h=>Number.isFinite(new Date(h.t).getTime())?new Date(h.t).toLocaleTimeString('en-GB',{timeZone:'Africa/Lagos',hour:'2-digit',minute:'2-digit'}):'Time unavailable';
-    const bars = wx.hrs.map((h,i) => {
-      const v=readings[i],ht=v===null?0:Math.min(100,(v/max)*100);
-      const col = v>=30?'var(--err)':'var(--chart-rain)';
-      return `<div class="sit-bar${h.future?' is-forecast':''}" title="${hour(h)} WAT · ${v===null?'Unavailable':v+' mm'} · ${h.future?'Forecast':'Past-hour estimate'}"><div style="height:${ht}%;background:${col}"></div></div>`;
-    }).join('');
-    const labels = wx.hrs.map((h, i) => i % 6 === 0 ? `<span>${hour(h)}</span>` : '').join('');
-    el.innerHTML = `${typeof OpsWeather!=='undefined'&&wx.point?OpsWeather.summary(wx):''}<div class="rain-summary"><strong>${peak.toFixed(1)}<small> mm</small></strong><span>Peak hourly value in this view</span></div><div class="rain-plot"><div class="rain-axis"><span>${max}</span><span>${max/2}</span><span>0</span></div><div class="sit-rain-chart"><div class="rain-grid"></div><div class="sit-thresh" style="bottom:${threshPct}%"><span>30 mm reference</span></div>${bars}</div></div>
-      <div class="sit-rain-x">${labels}</div>
-      <div class="sit-rain-lg"><span><i style="background:var(--chart-rain)"></i>Past-hour estimate</span><span><i class="rain-forecast-key"></i>Forecast</span><span class="faint">Hourly mm · not flood confirmation</span></div>`;
+    OpsWeather.render(el,wx);
   }
 
   // ── emerging risks ──
